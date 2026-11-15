@@ -83,3 +83,74 @@ test('every catalog card receives an explicit effect coverage status',()=>{
  assert.equal(run("effectCoverage().withoutText.length"),1);
  assert.equal(run("cardEffectStatus(catalog[1]).startsWith('OFFEN')"),true);
 });
+
+test('both Used Piles recirculate at the end of either player turn',()=>{
+ const {run}=harness();
+ run("state={deck:[{id:'L0'}],used:[{id:'L1'},{id:'L2'}],botDeck:[{id:'D0'}],botUsed:[{id:'D1'}],log:[]};");
+ run("recirculateBoth()");
+ assert.equal(run("state.used.length"),0);
+ assert.equal(run("state.botUsed.length"),0);
+ assert.equal(run("state.deck.length"),3);
+ assert.equal(run("state.botDeck.length"),2);
+ assert.equal(run("state.deck.map(x=>x.id).join(',')"),'L1,L2,L0');
+ assert.equal(run("state.botDeck.map(x=>x.id).join(',')"),'D1,D0');
+});
+test('same named location cannot be deployed twice',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site'},null],force:[],light:[[],[]],dark:[[],[]]};");
+ assert.equal(run("checkDeployment({name:'Tatooine: Mos Eisley',type:'Location'},null)"),false);
+});
+test('battle damage and attrition stay separate',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{ability:4,power:4}]],dark:[[{ability:4,power:7}]]};battleSession={site:0,lightDestiny:2,darkDestiny:1,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("battleDamagePreview().lightDamage"),2);
+ assert.equal(run("battleDamagePreview().darkDamage"),0);
+});
+
+test('Control phase: confirmed exclusive presence enables drain equal to opposing icons',()=>{
+ const {run}=harness();
+ run("state={phase:1,activeSide:'Light',botTurn:null,locations:[{name:'Tatooine: A',icons:{light:1,dark:2}}],light:[[{name:'Rebel',ability:2}]],dark:[[]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null};");
+ assert.equal(run("forceDrainValue('Light',0)"),2);
+ run("state.dark[0]=[{name:'Imperial',ability:1}]");
+ assert.equal(run("forceDrainValue('Light',0)"),null);
+ run("state.dark[0]=[{name:'Unknown',ability:null}]");
+ assert.equal(run("forceDrainValue('Light',0)"),null);
+ run("state.dark[0]=[];state.light[0]=[{name:'Droid',ability:0}]");
+ assert.equal(run("forceDrainValue('Light',0)"),null);
+});
+test('Force drain cannot be initiated twice at the same location',()=>{
+ const {run}=harness();
+ run("state={phase:1,activeSide:'Light',botTurn:null,locations:[{name:'Tatooine: A',icons:{light:1,dark:1}}],light:[[{name:'Rebel',ability:1}]],dark:[[]],drainedSitesThisTurn:[0],pendingForceLoss:null,gameWinner:null};");
+ assert.equal(run("forceDrainValue('Light',0)"),null);
+});
+test('Force drain bot pays from chosen hand and life-force piles into Lost Pile',()=>{
+ const {run}=harness();
+ run("state={turn:1,phase:1,activeSide:'Light',activated:true,botTurn:null,locations:[{name:'Tatooine: A',icons:{light:1,dark:2}}],light:[[{name:'Rebel',type:'Character',ability:1,power:2}]],dark:[[]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,deck:[{name:'Reserve L'}],force:[],used:[],hand:[],lost:[],botDeck:[{name:'Reserve D'}],botForce:[],botUsed:[{name:'Used D'}],botHand:[{name:'Hand D'}],botLost:[],log:[],botHistory:[],botReason:''};");
+ assert.equal(run("initiateForceDrain('Light',0)"),true);
+ assert.equal(run("state.botLost.length"),2);
+ assert.equal(run("state.botHand.length"),0);
+ assert.equal(run("state.botUsed.length"),0);
+ assert.equal(run("state.botDeck.length"),1);
+ assert.equal(run("state.pendingForceLoss"),null);
+ assert.equal(run("state.drainedSitesThisTurn.length"),1);
+});
+test('Dark Force drain makes Light player choose from hand or a Life Force pile',()=>{
+ const {run}=harness();
+ run("state={turn:1,phase:0,activeSide:'Dark',activated:false,botTurn:{steps:[],index:0},locations:[{name:'Hoth: A',icons:{light:2,dark:0}}],light:[[]],dark:[[{name:'Imperial',ability:1,power:1}]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,deck:[{name:'Reserve L'}],force:[{name:'Force L'}],used:[],hand:[{name:'Hand L'}],lost:[],botDeck:[{name:'Reserve D'}],botForce:[],botUsed:[],botHand:[],botLost:[],log:[],botHistory:[],botReason:''};");
+ assert.equal(run("initiateForceDrain('Dark',0)"),true);
+ assert.equal(run("state.pendingForceLoss.remaining"),2);
+ assert.equal(run("loseForceForDrain('Light','force')"),true);
+ assert.equal(run("state.pendingForceLoss.remaining"),1);
+ assert.equal(run("loseForceForDrain('Light','hand',0)"),true);
+ assert.equal(run("state.pendingForceLoss"),null);
+ assert.equal(run("state.lost.length"),2);
+ assert.equal(run("state.deck.length"),1);
+});
+test('Life Force depletion ends the game even while the losing player holds cards',()=>{
+ const {run}=harness();
+ run("state={turn:1,phase:1,activeSide:'Light',activated:true,botTurn:null,locations:[{name:'Tatooine: A',icons:{light:1,dark:1}}],light:[[{name:'Rebel',ability:1,power:2,type:'Character'}]],dark:[[]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,deck:[{name:'Reserve L'}],force:[],used:[],hand:[],lost:[],botDeck:[{name:'Reserve D'}],botForce:[],botUsed:[],botHand:[],botLost:[],log:[],botHistory:[],botReason:''};");
+ assert.equal(run("initiateForceDrain('Light',0)"),true);
+ assert.equal(run("state.botDeck.length"),0);
+ assert.equal(run("state.gameWinner"),'Light');
+ assert.equal(run("state.pendingForceLoss"),null);
+});
