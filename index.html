@@ -49,7 +49,7 @@ const battleSteps=[
  ['1 · Battle Initiation','Ein Battle wird an einer Location begonnen, an der beide Seiten beteiligt sind. In den Originalregeln gelten zusätzliche Voraussetzungen und Kosten. Die Demo prüft hier nur, ob beide Seiten Charaktere haben.'],
  ['2 · Power','Power ist die Kampfstärke der beteiligten Karten. Kartentexte, Waffen und Modifikatoren können Power verändern. Diese Demo summiert ausschließlich die aufgedruckten Power-Werte.'],
  ['3 · Battle Destiny','Du kannst einen echten Destiny-Wert von der obersten Karte deines Reserve Decks aufdecken. Die aufgedeckte Karte wandert anschließend in den Used Pile. Dieser Übungs-Destiny wird noch nicht zur Battle-Power addiert, weil die vollständigen Voraussetzungen für Battle Destiny fehlen.'],
- ['4 · Attrition','Attrition ist ein separates Ergebnis der Battle-Destiny- und Kampfregeln. Der Gegner muss gegebenenfalls Karten mit ausreichendem Forfeit-Wert verlieren. Diese Demo berechnet keine verbindliche Attrition.'],
+ ['4 · Attrition','Attrition ist ein separates Ergebnis der Battle-Destiny- und Kampfregeln. Der Gegner muss gegebenenfalls Karten mit ausreichendem Forfeit-Wert verlieren. Die App zeigt den Attrition-Wert, die Auswahl der Forfeit-Karten folgt später.'],
  ['5 · Forfeit und Battle Damage','Forfeit bezeichnet den Wert einer Karte, wenn sie zur Erfüllung von Verlusten verloren geht. Battle Damage und Attrition sind getrennt zu behandeln. Die Demo zeigt Werte, führt aber nur ihren bisherigen vereinfachten Life-Abzug aus.'],
  ['6 · Ergebnis','Du siehst die Power-Differenz. Das ist eine reine Trainingsabrechnung und entspricht nicht der vollständigen originalen Battle-Resolution.']
 ];
@@ -57,19 +57,21 @@ function battle(i){
  if(!s||s.phase!==3||s.finished)return;
  if(!s.locations[i]||!s.field[i].length||!s.botField[i].length){note('Für einen Kampf müssen beide Seiten an derselben Location vertreten sein.');render();return}
  if((s.battlesResolved||[]).includes(i)){note('An dieser Location wurde diese Runde schon gekämpft.');render();return}
- battleLesson={site:i,step:0,light:s.field[i].reduce((v,c)=>v+gamePower(c),0),dark:s.botField[i].reduce((v,c)=>v+gamePower(c),0),destiny:null,destinyCard:null};
+ if(!spendForce(1)){note('Battle Initiation kostet 1 Force.');render();return}battleLesson={site:i,step:0,light:s.field[i].reduce((v,c)=>v+gamePower(c),0),dark:s.botField[i].reduce((v,c)=>v+gamePower(c),0),lightAbility:s.field[i].reduce((v,c)=>v+(c.ability||0),0),darkAbility:s.botField[i].reduce((v,c)=>v+(c.ability||0),0),destiny:null,destinyCard:null,darkDestiny:null,darkDestinyCard:null};
  render();
  document.getElementById('battleTutor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function battleTutorNext(){
  if(!battleLesson||!s)return;
- if(battleLesson.step===2&&battleLesson.destinyCard===null){note('Battle-Destiny-Demo: optionalen Destiny Draw über den Button ausführen.');render();return;}
- if(battleLesson.step<5){battleLesson.step++;render()}else finishBattleLesson();
+ if(battleLesson.step===2&&battleLesson.lightAbility>=4&&battleLesson.destinyCard===null){note('Battle-Destiny-Demo: optionalen Destiny Draw über den Button ausführen.');render();return;}
+ if(battleLesson.step===2)resolveBotDestiny();if(battleLesson.step<5){battleLesson.step++;render()}else finishBattleLesson();
 }
-function drawBattleDestiny(){if(!battleLesson||battleLesson.step!==2||battleLesson.destinyCard!==null)return;if(!s.deck.length){battleLesson.destiny='kein Reserve Deck';battleLesson.destinyCard={name:'Keine Karte',destiny:null};note('Kein Reserve Deck für Destiny Draw vorhanden.');render();return}const card=s.deck.pop();normalizePiles();s.usedPile.push(card);battleLesson.destinyCard={name:card.name,destiny:card.destiny,image:card.image||null};battleLesson.destiny=Number.isFinite(card.destiny)?card.destiny:'unbekannt';note('Übungs-Destiny gezogen: '+card.name+' (Destiny '+battleLesson.destiny+'). Karte liegt jetzt im Used Pile.');render()}
+function resolveBotDestiny(){const x=battleLesson;if(!x||x.darkDestinyCard)return;const c=x.darkAbility>=4?s.botDeck.pop():null;x.darkDestiny=c?(Number.isFinite(c.destiny)?c.destiny:0):0;x.darkDestinyCard={name:c?.name||'Kein Destiny Draw'};if(c)(s.botUsedPile??=[]).push(c);note('Bot Battle Destiny: '+x.darkDestiny)}
+function skipBattleDestiny(){if(!battleLesson||battleLesson.step!==2)return;battleLesson.destiny=0;battleLesson.destinyCard={name:'Verzicht'};resolveBotDestiny();render()}
+function drawBattleDestiny(){if(!battleLesson||battleLesson.step!==2||battleLesson.destinyCard!==null||battleLesson.lightAbility<4)return;if(!s.deck.length){battleLesson.destiny=0;battleLesson.destinyCard={name:'Keine Karte',destiny:null};note('Kein Reserve Deck für Destiny Draw vorhanden.');render();return}const card=s.deck.pop();normalizePiles();s.usedPile.push(card);battleLesson.destinyCard={name:card.name,destiny:card.destiny,image:card.image||null};battleLesson.destiny=Number.isFinite(card.destiny)?card.destiny:0;note('Übungs-Destiny gezogen: '+card.name+' (Destiny '+battleLesson.destiny+'). Karte liegt jetzt im Used Pile.');render()}
 function finishBattleLesson(){
  if(!battleLesson||!s)return;
- const i=battleLesson.site,a=battleLesson.light,b=battleLesson.dark,diff=Math.abs(a-b);
+ const i=battleLesson.site,a=battleLesson.light+(battleLesson.destiny||0),b=battleLesson.dark+(battleLesson.darkDestiny||0),diff=Math.abs(a-b);
  if(a>b)s.enemyLife-=diff;else if(b>a)s.life-=diff;
  (s.battlesResolved??=[]).push(i);
  note('Geführter DEMO-Kampf bei '+s.locations[i].name+': Light Power '+a+', Dark Power '+b+'. Vereinfachter Life-Abzug: '+diff+'. Kein regelgetreuer Battle Damage / Attrition / Forfeit.');
@@ -81,9 +83,9 @@ function showBattleLesson(){
  if(!battleLesson){box.style.display='none';return}
  box.style.display='block';const x=battleLesson,step=battleSteps[x.step],i=x.site;
  const names=(arr)=>arr.map(c=>safe(c.name)+' (Power '+(c.power??'?')+', Forfeit '+(c.forfeit??'?')+')').join('<br>')||'Keine';
- const extra=x.step===1?'<p>Light Side Power: <b>'+x.light+'</b> · Dark Side Power: <b>'+x.dark+'</b></p>':x.step===2?'<p>Aufgedeckte Karte: <b>'+safe(x.destinyCard?.name||'Noch keine')+'</b> · Destiny <b>'+(x.destiny??'–')+'</b></p>'+(x.destinyCard?.image?'<img src="'+safe(x.destinyCard.image)+'" alt="Destiny-Karte" style="width:115px;border-radius:6px">':''):x.step===3?'<p>Attrition: <b>nicht berechnet</b> – Originalregeln noch nicht implementiert.</p>':x.step===4?'<p>Light Side:<br>'+names(s.field[i])+'</p><p>Dark Side:<br>'+names(s.botField[i])+'</p>':x.step===5?'<p>Light Power '+x.light+' / Dark Power '+x.dark+' · Differenz '+Math.abs(x.light-x.dark)+'</p>':'';
+ const extra=x.step===1?'<p>Light Power: '+x.light+' · Dark Power: '+x.dark+'</p><p>Light Ability: '+x.lightAbility+' · Dark Ability: '+x.darkAbility+' (Destiny ab 4)</p>':x.step===2?'<p>Aufgedeckte Karte: <b>'+safe(x.destinyCard?.name||'Noch keine')+'</b> · Destiny <b>'+(x.destiny??'–')+'</b></p>'+(x.destinyCard?.image?'<img src="'+safe(x.destinyCard.image)+'" alt="Destiny-Karte" style="width:115px;border-radius:6px">':''):x.step===3?'<p>Attrition gegen Light: '+(x.darkDestiny||0)+' · gegen Dark: '+(x.destiny||0)+'. Forfeit-Abwicklung fehlt noch.</p>':x.step===4?'<p>Light Side:<br>'+names(s.field[i])+'</p><p>Dark Side:<br>'+names(s.botField[i])+'</p>':x.step===5?'<p>Light Power '+x.light+' / Dark Power '+x.dark+' · Differenz '+Math.abs(x.light-x.dark)+'</p>':'';
  document.getElementById('battleTutorBody').innerHTML='<p class="note">Location: '+safe(s.locations[i]?.name||'Unbekannt')+' · Schritt '+(x.step+1)+' von 6</p><h3>'+step[0]+'</h3><p>'+step[1]+'</p>'+extra;
- document.getElementById('battleTutorButtons').innerHTML=(x.step===2&&x.destinyCard===null?'<button onclick="drawBattleDestiny()">Destiny-Karte aufdecken</button> ':'')+'<button '+(x.step===2&&x.destinyCard===null?'disabled':'')+' onclick="battleTutorNext()">'+(x.step===5?'Demo-Kampf abschließen':'Weiter →')+'</button> <button onclick="cancelBattleLesson()">Abbrechen</button>';
+ document.getElementById('battleTutorButtons').innerHTML=(x.step===2&&x.destinyCard===null&&x.lightAbility>=4?'<button onclick="drawBattleDestiny()">Destiny ziehen</button> <button onclick="skipBattleDestiny()">Verzichten</button> ':'')+'<button '+(x.step===2&&x.destinyCard===null&&x.lightAbility>=4?'disabled':'')+' onclick="battleTutorNext()">'+(x.step===5?'Demo-Kampf abschließen':'Weiter →')+'</button> <button onclick="cancelBattleLesson()">Abbrechen</button>';
 }
 function bot(){draw('bot');s.botLastAction='Bot zieht eine Karte. In dieser Übungs-Demo sind seine Handkarten offen sichtbar.';note(s.botLastAction);let c=s.botHand.shift();if(c){let i=Math.floor(Math.random()*3);if(isLocation(c)){if(!s.locations[i]){const l=locationCatalog.find(x=>x.id===c.id);s.locations[i]=l||{name:c.name,lightIcons:null,darkIcons:null,verified:false};note('Bot legt Location '+c.name);s.botLastAction='Bot legt '+c.name+' als Location aus. Das eröffnet einen Schauplatz für Charaktere.'}else s.botHand.push(c)}else if(s.locations[i]){s.botField[i].push(c);note('Bot setzt '+c.name+' auf '+s.locations[i].name);s.botLastAction='Bot setzt '+c.name+' bei '+s.locations[i].name+' ein. Das verstärkt seine Präsenz dort. In der Demo gelten vereinfachte Deploy-Regeln.'}else{s.botHand.push(c);s.botLastAction='Bot kann noch keinen Charakter ausspielen und behält die Karte.'}}for(let i=0;i<3;i++)if(s.botField[i].length&&!s.field[i].length){s.life--;note('Bot-Drain bei '+sites[i]+': 1');s.botLastAction+=' Bot verursacht einen vereinfachten Force Drain bei '+sites[i]+'.'}}
 function deploy(i){if(!s)return;if(s.phase!==2||chosen<0)return;let c=s.hand[chosen];if(isLocation(c)){if(s.locations[i]){note('Dieser Platz ist belegt');render();return}const l=locationCatalog.find(x=>x.id===c.id);s.locations[i]=l||{name:c.name,lightIcons:null,darkIcons:null,verified:false};s.hand.splice(chosen,1);note('Location '+c.name+' ausgelegt (vereinfachte Übungsregel)');chosen=-1;render();return}if(!s.locations[i]){note('Zuerst eine Location ausspielen');render();return}if(!Number.isFinite(c.deploy)){note('Nicht spielbar: Deploy-Kosten fehlen für '+c.name);render();return}if(!spendForce(c.deploy)){note('Nicht genügend Force für '+c.name+' (Kosten: '+c.deploy+')');render();return}s.hand.splice(chosen,1);s.field[i].push(c);note(c.name+' auf '+sites[i]+' eingesetzt (Deploy '+c.deploy+')');chosen=-1;render()}
@@ -105,7 +107,7 @@ for(const [side,url] of sources){try{
  const id=cardId(card,side),img=card.front?.imageUrl||'',key=canonical(title);
  if(!title||!key){report.missing++;continue}
  if(byId[id]){report.duplicates++;continue}
- const entry={id,name:title,power:value(card,'power'),destiny:value(card,'destiny'),
+ const entry={id,name:title,power:value(card,'power'),ability:value(card,'ability'),destiny:value(card,'destiny'),
  text:card.front?.gametext||card.front?.gameText||card.front?.game_text||card.gametext||card.gameText||'',deploy:value(card,'deploy'),forfeit:value(card,'forfeit'),
  image:/^https:\/\//.test(img)?img:null,side,type:card.front?.type||card.type||'',
  matchStatus:/^https:\/\//.test(img)?'Datensatz und Bild-URL zugeordnet (nicht visuell geprüft)':'Bild-URL fehlt'};
