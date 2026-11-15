@@ -20,7 +20,7 @@ test('deployment rejects characters at systems and insufficient force',()=>{
 });
 test('deployment accepts an affordable character at a site',()=>{
  const {run}=harness();
- run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site'}],force:[{}],light:[[]],dark:[[]]};");
+ run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',icons:{light:1,dark:0}}],force:[{}],light:[[]],dark:[[]]};");
  assert.equal(run("checkDeployment({name:'Rebel',type:'Character',deploy:1},state.locations[0])"),true);
 });
 test('movement fails closed for different planets and nonadjacent sites',()=>{
@@ -195,4 +195,44 @@ test('Battle site limit resets on a new turn',()=>{
  run("advance()");
  assert.equal(run("state.battledSitesThisTurn.length"),0);
  assert.equal(run("state.activeSide"),'Dark');
+});
+
+test('non-spy deployment needs friendly Force icons or confirmed presence',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{light:0,dark:1}}],force:[{}],botForce:[{}],light:[[]],dark:[[]]};const rebel={name:'Rebel',type:'Character',deploy:1,side:'Light'};");
+ assert.equal(run("checkDeployment(rebel,state.locations[0])"),false);
+ run("state.locations[0].icons.light=1");
+ assert.equal(run("checkDeployment(rebel,state.locations[0])"),true);
+ run("state.locations[0].icons.light=0;state.light[0]=[{name:'Luke',ability:2}]");
+ assert.equal(run("checkDeployment(rebel,state.locations[0])"),true);
+ run("state.light[0]=[{name:'Unresolved',ability:null}]");
+ assert.equal(run("checkDeployment(rebel,state.locations[0])"),false);
+});
+test('spies ignore local Force-icon and presence requirement but still pay deploy costs',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Death Star: A',type:'Location',subType:'Site',icons:{light:0,dark:0}}],force:[{}],botForce:[],light:[[]],dark:[[]]};const spy={name:'Leia Organa',type:'Character',deploy:1,characteristics:['spy']};");
+ assert.equal(run("checkDeployment(spy,state.locations[0])"),true);
+ run("state.force=[]");
+ assert.equal(run("checkDeployment(spy,state.locations[0])"),false);
+ run("state.force=[{}];spy.characteristics=[];spy.lore='Secret Imperial spy.'");
+ assert.equal(run("checkDeployment(spy,state.locations[0])"),true);
+ run("spy.lore='Soldier with no special training'");
+ assert.equal(run("checkDeployment(spy,state.locations[0])"),false);
+});
+test('bot considers only legal Dark deployments and can use spies',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{light:1,dark:0}},{name:'Hoth: B',type:'Location',subType:'Site',icons:{light:0,dark:2}}],force:[{}],botForce:[{}],light:[[],[]],dark:[[],[]],botHand:[{name:'Stormtrooper',side:'Dark',type:'Character',deploy:1}]};");
+ assert.equal(run("botCharacterDeployOptions().length"),1);
+ assert.equal(run("botCharacterDeployOptions()[0].siteIndex"),1);
+ run("state.locations[1].icons.dark=0");
+ assert.equal(run("botCharacterDeployOptions().length"),0);
+ run("state.botHand[0].characteristics=['spy']");
+ assert.equal(run("botCharacterDeployOptions().length"),2);
+ run("state.botForce=[]");
+ assert.equal(run("botCharacterDeployOptions().length"),0);
+});
+test('character cannot deploy directly to a system even with own icons',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Tatooine',type:'Location',subType:'System',icons:{light:2,dark:1}}],force:[{}],botForce:[{}],light:[[]],dark:[[]]};");
+ assert.equal(run("checkDeployment({name:'Luke',type:'Character',deploy:1,characteristics:['spy']},state.locations[0])"),false);
 });

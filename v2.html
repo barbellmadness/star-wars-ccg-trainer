@@ -111,7 +111,35 @@ function cardEffectStatus(c){if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power 
 function effectCoverage(){const total=catalog.length,withoutText=catalog.filter(c=>!(c.gametext||'').trim()),partial=catalog.filter(c=>c.id==='Light:2'),unimplemented=catalog.filter(c=>(c.gametext||'').trim()&&c.id!=='Light:2');return {total,withoutText,partial,unimplemented}}
 function showEffectCoverage(){const v=effectCoverage();el('effectCoverage').textContent='Premiere-Karten gesamt: '+v.total+'\nOhne Kartentext: '+v.withoutText.length+'\nTeilweise implementiert: '+v.partial.length+'\nKartentexte ohne geprüfte automatische Implementierung: '+v.unimplemented.length+'\n\nOFFENE KARTEN (ID · Name · Themen):\n'+v.unimplemented.map(c=>c.id+' · '+c.name+' · '+(cardEffectFlags(c).join(', ')||'sonstige Regel')).join('\n')+'\n\nHinweis: Eine Schlüsselwortsuche ist keine Regelausführung. Der Trainer darf für diese Karten keine vollständige Originalregel-Konformität behaupten.'}
 function cardEffectFlags(c){const s=c.gametext||'';return [{name:'Force',re:/force generation|force drain|force icons?|activate.*force|generates? .*force/i},{name:'Deploy',re:/deploy|deployment/i},{name:'Destiny',re:/destiny|attrition/i},{name:'Power',re:/power [+-]|power is|power \+/i},{name:'Movement',re:/move|movement|landspeed|hyperspeed|transport/i},{name:'Immunity',re:/immun/i}].filter(x=>x.re.test(s)).map(x=>x.name)}
-function checkDeployment(card,site){if(isLoc(card))return !site&&!state.locations.some(x=>x&&x.name===card.name);if(!site||!isSite(site)||!isDeployableCharacter(card))return false;if(state.force.length<card.deploy)return false;if(isUnique(card)&&alreadyDeployed(card))return false;return true}
+function isSpyCharacter(c){
+ if(!isDeployableCharacter(c))return false;
+ return (c.characteristics||[]).some(t=>/\bspy\b/i.test(String(t)))||/\bspy\b/i.test(String(c.lore||c.rawFront?.lore||''));
+}
+function canDeployCharacter(c,site,side){
+ if(!state||!site||!isSite(site)||!isDeployableCharacter(c)||!['Light','Dark'].includes(side))return false;
+ const pile=side==='Light'?state.force:state.botForce;
+ if(!pile||pile.length<c.deploy)return false;
+ if(isUnique(c)&&alreadyDeployed(c))return false;
+ const ownIcons=site.icons?.[side==='Light'?'light':'dark'];
+ const siteIndex=state.locations.indexOf(site);
+ // A character may deploy at a location with friendly Force icons or presence.
+ // Premiere spies are exempt from this geographic prerequisite, not from cost.
+ return (Number.isFinite(ownIcons)&&ownIcons>=1)||
+  (siteIndex>=0&&confirmedPresence(side,siteIndex)===true)||isSpyCharacter(c);
+}
+function botCharacterDeployOptions(){
+ if(!state)return [];
+ const options=[];
+ state.botHand.forEach((card,cardIndex)=>state.locations.forEach((loc,siteIndex)=>{
+  if(canDeployCharacter(card,loc,'Dark'))options.push({cardIndex,siteIndex});
+ }));
+ return options;
+}
+function checkDeployment(card,site){
+ if(!state)return false;
+ if(isLoc(card))return !site&&!state.locations.some(x=>x&&x.name===card.name);
+ return canDeployCharacter(card,site,'Light');
+}
 function legal(){if(!state)return[];const acts=[];if(state.phase===2)state.hand.forEach((c,idx)=>state.locations.forEach((loc,i)=>{if(checkDeployment(c,loc))acts.push({kind:'deploy',idx,i})}));return acts}
 function play(idx,i){if(!legal().some(a=>a.idx===idx&&a.i===i))return;const c=state.hand.splice(idx,1)[0];if(!isLoc(c)){for(let j=0;j<c.deploy;j++)state.used.push(state.force.pop());log('Deploy-Kosten '+c.deploy+' Force → Used Pile.')}if(isLoc(c)){state.locations[i]=c;log('Light Side legt '+c.name+' aus')}else{state.light[i].push(c);state.deployedThisTurn.push(c);log('Light Side setzt '+c.name+' ein (weitere Deploy-Beschränkungen noch offen)')}selected=-1;render()}
 function botSay(message){state.botReason=message;state.botHistory.unshift('Runde '+state.turn+': '+message);state.botHistory=state.botHistory.slice(0,20);log(message)}
@@ -121,7 +149,7 @@ function botNextStep(){if(!state?.botTurn||state.gameWinner||state.pendingForceL
 if(action.kind==='draw'){const before=state.botHand.length;if(state.botForce.length)state.botHand.push(state.botForce.pop());botSay('Draw Phase: Bot zieht '+(state.botHand.length-before)+' Karte aus seiner Force Pile. Seine Hand enthält jetzt '+state.botHand.length+' Karten.')}
 else if(action.kind==='activate'){const before=state.botForce.length;activate('Dark',forceFromLocations('Dark').count);botSay('Activate: Bot aktiviert '+(state.botForce.length-before)+' Force. Jetzt verfügbar: '+state.botForce.length+'.')}
 else if(action.kind==='control'){const options=forceDrainOptions('Dark').sort((a,b)=>b.amount-a.amount);if(options.length){const choice=options[0];initiateForceDrain('Dark',choice.siteIndex);botSay('Control: Dark Side führt einen Force Drain '+choice.amount+' bei '+state.locations[choice.siteIndex].name+' aus. Light Side wählt die Verlustkarten.')}else botSay('Control: Keine Location mit bestätigter alleiniger Präsenz und gegnerischen Force-Icons.');}
-else if(action.kind==='deploy'){const loc=state.botHand.findIndex(c=>isLoc(c)&&!state.locations.some(x=>x&&x.name===c.name)),free=state.locations.findIndex(x=>!x);if(loc>=0&&free>=0){const c=state.botHand.splice(loc,1)[0];state.locations[free]=c;botSay('Deploy: Bot legt '+c.name+' auf den freien Location-Platz '+(free+1)+'. Grund: weitere Force Icons / Schauplatz verfügbar.')}else{const place=state.locations.findIndex(isSite),idx=state.botHand.findIndex(c=>isDeployableCharacter(c)&&c.deploy<=state.botForce.length&&!(isUnique(c)&&alreadyDeployed(c)));if(idx>=0&&place>=0){const c=state.botHand.splice(idx,1)[0];for(let j=0;j<c.deploy;j++)state.botUsed.push(state.botForce.pop());state.dark[place].push(c);botSay('Deploy: Bot setzt '+c.name+' bei '+state.locations[place].name+' ein, bezahlt '+c.deploy+' Force in den Used Pile. Grund: eigene Präsenz aufbauen.')}else botSay('Deploy: Bot passt. Keine passende bezahlbare Charakterkarte oder freie Location verfügbar.')}}
+else if(action.kind==='deploy'){const loc=state.botHand.findIndex(c=>isLoc(c)&&!state.locations.some(x=>x&&x.name===c.name)),free=state.locations.findIndex(x=>!x);if(loc>=0&&free>=0){const c=state.botHand.splice(loc,1)[0];state.locations[free]=c;botSay('Deploy: Bot legt '+c.name+' auf den freien Location-Platz '+(free+1)+'. Grund: weitere Force Icons / Schauplatz verfügbar.')}else{const option=botCharacterDeployOptions()[0];if(option){const place=option.siteIndex,c=state.botHand.splice(option.cardIndex,1)[0];for(let j=0;j<c.deploy;j++)state.botUsed.push(state.botForce.pop());state.dark[place].push(c);botSay('Deploy: Bot setzt '+c.name+' bei '+state.locations[place].name+' ein und bezahlt '+c.deploy+' Force. Erforderlich: eigene Force-Icons, Presence oder Spy.')}else botSay('Deploy: Bot passt. Keine regelkonforme, bezahlbare Charakterkarte an einem geeigneten Site.')}}
 else if(action.kind==='finish'){recirculateBoth();state.phase=0;state.activated=false;state.movedThisTurn=[];state.deployedThisTurn=[];state.drainedSitesThisTurn=[];state.battledSitesThisTurn=[];state.activeSide='Light';state.turn++;state.botTurn=null;botSay('Bot beendet seinen Lernzug. Light Side beginnt mit Activate.')}
 render()}
 function advance(){if(!state)return;if(state.gameWinner||state.pendingForceLoss){log('Spielende oder ausstehende Force-Verluste: Aktion derzeit nicht möglich.');render();return;}if(battleSession){log('Battle-Analyse bitte zuerst schließen.');render();return}if(state.botTurn){log('Bitte den sichtbaren Bot-Zug zuerst abschließen.');render();return}if(state.phase===0&&!state.activated){log('Bitte zuerst Force aktivieren (auch 0 ist erlaubt).');render();return}if(state.phase===5){recirculateBoth();state.drainedSitesThisTurn=[];state.battledSitesThisTurn=[];state.activeSide='Dark';botBegin();render();return}state.phase=(state.phase+1)%6;render()}
@@ -166,7 +194,7 @@ async function load(){try{
  const r=await fetch('data/premiere.json',{cache:'no-cache'});
  if(!r.ok)throw Error('Lokale Datenbank fehlt (HTTP '+r.status+'). Import-Workflow in GitHub Actions ausführen.');
  const payload=await r.json();if(payload.schema!==1||!Array.isArray(payload.cards)||payload.cards.length!==324)throw Error('Lokale Premiere-Datenbank ungültig: 324 Karten erwartet.');
- catalog=payload.cards.map(c=>({id:c.id,side:c.side,name:c.name||'Unbekannt',type:c.type||'',subType:c.subType||'',rarity:c.rarity||'',unique:c.unique===true,image:c.image||'',power:c.power==null?null:Number(c.power),destiny:c.destiny==null?null:Number(c.destiny),ability:c.ability==null?null:Number(c.ability),forfeit:c.forfeit==null?null:Number(c.forfeit),deploy:c.deploy==null?null:Number(c.deploy),gametext:c.gametext||'',characteristics:Array.isArray(c.rawFront?.characteristics)?c.rawFront.characteristics:[],icons:{light:iconValue(c.lightSideIcons),dark:iconValue(c.darkSideIcons)}}));
+ catalog=payload.cards.map(c=>({id:c.id,side:c.side,name:c.name||'Unbekannt',type:c.type||'',subType:c.subType||'',rarity:c.rarity||'',unique:c.unique===true,image:c.image||'',power:c.power==null?null:Number(c.power),destiny:c.destiny==null?null:Number(c.destiny),ability:c.ability==null?null:Number(c.ability),forfeit:c.forfeit==null?null:Number(c.forfeit),deploy:c.deploy==null?null:Number(c.deploy),gametext:c.gametext||'',lore:c.lore||c.rawFront?.lore||'',characteristics:Array.isArray(c.rawFront?.characteristics)?c.rawFront.characteristics:[],icons:{light:iconValue(c.lightSideIcons),dark:iconValue(c.darkSideIcons)}}));
  el('instruction').textContent=catalog.length+' Premiere-Karten aus eigener Datenbank geladen';auditData();showEffectCoverage();start()
  }catch(e){el('instruction').textContent='Lokale Kartendatenbank nicht bereit';el('hint').textContent=e.message}}
 
