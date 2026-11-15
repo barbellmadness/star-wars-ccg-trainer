@@ -84,14 +84,16 @@ test('every catalog card receives an explicit effect coverage status',()=>{
  assert.equal(run("cardEffectStatus(catalog[1]).startsWith('OFFEN')"),true);
 });
 
-test('Used Piles recirculate only for the side ending its turn',()=>{
+test('both Used Piles recirculate at the end of either player turn',()=>{
  const {run}=harness();
- run("state={deck:[{id:'L0'}],used:[{id:'L1'}],botDeck:[{id:'D0'}],botUsed:[{id:'D1'}],log:[]};");
- run("recirculate('Light')");
+ run("state={deck:[{id:'L0'}],used:[{id:'L1'},{id:'L2'}],botDeck:[{id:'D0'}],botUsed:[{id:'D1'}],log:[]};");
+ run("recirculateBoth()");
  assert.equal(run("state.used.length"),0);
- assert.equal(run("state.deck.length"),2);
- assert.equal(run("state.botUsed.length"),1);
- assert.equal(run("state.botDeck.length"),1);
+ assert.equal(run("state.botUsed.length"),0);
+ assert.equal(run("state.deck.length"),3);
+ assert.equal(run("state.botDeck.length"),2);
+ assert.equal(run("state.deck.map(x=>x.id).join(',')"),'L1,L2,L0');
+ assert.equal(run("state.botDeck.map(x=>x.id).join(',')"),'D1,D0');
 });
 test('same named location cannot be deployed twice',()=>{
  const {run}=harness();
