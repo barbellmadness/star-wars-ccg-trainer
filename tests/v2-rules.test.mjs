@@ -73,3 +73,13 @@ test('Tooex does not grant nighttime bonus at a system or unqualified location',
  run("const tooex={id:'Light:2',gametext:'nighttime conditions'};const rebel={characteristics:['rebel'],power:2};state={nightConditions:true,locations:[{name:'Tatooine',type:'Location',subType:'System'}],light:[[tooex,rebel]],dark:[[]]};");
  assert.equal(run("cardPowerModifier(state.light[0][1],'Light',0)"),0);
 });
+
+test('every catalog card receives an explicit effect coverage status',()=>{
+ const {run}=harness();
+ run("catalog=[{id:'Light:2',name:'Tooex',gametext:'nighttime conditions'},{id:'Dark:99',name:'Other',gametext:'Power +1'},{id:'Light:100',name:'Blank',gametext:''}]");
+ assert.equal(run("effectCoverage().total"),3);
+ assert.equal(run("effectCoverage().partial.length"),1);
+ assert.equal(run("effectCoverage().unimplemented.length"),1);
+ assert.equal(run("effectCoverage().withoutText.length"),1);
+ assert.equal(run("cardEffectStatus(catalog[1]).startsWith('OFFEN')"),true);
+});
