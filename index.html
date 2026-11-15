@@ -7,7 +7,7 @@ let locationCatalog=[];
 let s,chosen=-1;
 function shuffle(a){const out=a.slice();for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
 function pool(side){return Object.values(cardsById).filter(c=>c.side===side&&c.image&&Number.isFinite(c.power)&&/character/i.test(c.type||''))}
-function makeDeck(side){const options=pool(side);if(!options.length)return [];const loc=Object.values(cardsById).filter(c=>c.side===side&&/location|site|system/i.test(c.type||''));const out=[];for(let i=0;i<54;i++)out.push({...options[i%options.length]});for(let i=0;i<6;i++)out.push(loc.length?{...loc[i%loc.length],isLocation:true}:{...options[i%options.length]});return shuffle(out)}
+function makeDeck(side){const options=pool(side).slice().sort((a,b)=>a.id.localeCompare(b.id));if(!options.length)return [];const loc=Object.values(cardsById).filter(c=>c.side===side&&/location|site|system/i.test(c.type||'')).sort((a,b)=>a.id.localeCompare(b.id));const out=[];for(let i=0;i<54;i++)out.push({...options[i%options.length]});for(let i=0;i<6;i++)out.push(loc.length?{...loc[i%loc.length],isLocation:true}:{...options[i%options.length]});return shuffle(out)}
 function isLocation(c){return !!c&&(c.isLocation||/location|site|system/i.test(c.type||''))}
 function ready(){return pool('Light').length>0&&pool('Dark').length>0}
 function iconCount(v){if(typeof v==='number'&&Number.isInteger(v)&&v>=0&&v<=8)return v;if(typeof v==='string'&&/^[0-8]$/.test(v.trim()))return Number(v);return null}
