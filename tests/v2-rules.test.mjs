@@ -83,3 +83,24 @@ test('every catalog card receives an explicit effect coverage status',()=>{
  assert.equal(run("effectCoverage().withoutText.length"),1);
  assert.equal(run("cardEffectStatus(catalog[1]).startsWith('OFFEN')"),true);
 });
+
+test('Used Piles recirculate only for the side ending its turn',()=>{
+ const {run}=harness();
+ run("state={deck:[{id:'L0'}],used:[{id:'L1'}],botDeck:[{id:'D0'}],botUsed:[{id:'D1'}],log:[]};");
+ run("recirculate('Light')");
+ assert.equal(run("state.used.length"),0);
+ assert.equal(run("state.deck.length"),2);
+ assert.equal(run("state.botUsed.length"),1);
+ assert.equal(run("state.botDeck.length"),1);
+});
+test('same named location cannot be deployed twice',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site'},null],force:[],light:[[],[]],dark:[[],[]]};");
+ assert.equal(run("checkDeployment({name:'Tatooine: Mos Eisley',type:'Location'},null)"),false);
+});
+test('battle damage and attrition stay separate',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{ability:4,power:4}]],dark:[[{ability:4,power:7}]]};battleSession={site:0,lightDestiny:2,darkDestiny:1,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("battleDamagePreview().lightDamage"),2);
+ assert.equal(run("battleDamagePreview().darkDamage"),0);
+});
