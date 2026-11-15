@@ -154,3 +154,45 @@ test('Life Force depletion ends the game even while the losing player holds card
  assert.equal(run("state.gameWinner"),'Light');
  assert.equal(run("state.pendingForceLoss"),null);
 });
+
+test('Battle initiation consumes exactly 1 Force and prevents repeat at same site',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,activeSide:'Light',botTurn:null,gameWinner:null,pendingForceLoss:null,locations:[{name:'Tatooine: Mos Eisley'}],light:[[{ability:2,power:3}]],dark:[[{ability:1,power:2}]],force:[{id:'bottom'},{id:'top'}],used:[],battledSitesThisTurn:[],log:[]}");
+ assert.equal(run("canInitiateBattle(0)"),true);
+ assert.equal(run("battleAnalysis(0)"),true);
+ assert.equal(run("state.force.length"),1);
+ assert.equal(run("state.used[0].id"),'top');
+ assert.equal(run("state.battledSitesThisTurn.includes(0)"),true);
+ run("closeBattle()");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ assert.equal(run("battleAnalysis(0)"),false);
+ assert.equal(run("state.force.length"),1);
+ assert.equal(run("state.used.length"),1);
+});
+
+test('Battle initiation fails closed without cost, presence or correct phase',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,activeSide:'Light',botTurn:null,gameWinner:null,pendingForceLoss:null,locations:[{name:'Tatooine: Mos Eisley'}],light:[[{ability:2}]],dark:[[{ability:1}]],force:[],used:[],battledSitesThisTurn:[],log:[]}");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ assert.equal(run("battleAnalysis(0)"),false);
+ run("state.force.push({id:'f'})");
+ assert.equal(run("canInitiateBattle(0)"),true);
+ run("state.dark[0][0].ability=null");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ run("state.dark[0][0].ability=1;state.phase=2");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ run("state.phase=3;state.pendingForceLoss={payer:'Light',remaining:1}");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ run("state.pendingForceLoss=null;state.activeSide='Dark'");
+ assert.equal(run("canInitiateBattle(0)"),false);
+ run("state.activeSide='Light';state.gameWinner='Dark'");
+ assert.equal(run("canInitiateBattle(0)"),false);
+});
+
+test('Battle site limit resets on a new turn',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};recirculateBoth=()=>{};botBegin=()=>{};state={phase:5,activeSide:'Light',botTurn:null,gameWinner:null,pendingForceLoss:null,activated:true,locations:[{name:'Tatooine: Mos Eisley'}],light:[[{ability:2}]],dark:[[{ability:1}]],force:[{id:'f'}],used:[],battledSitesThisTurn:[0],drainedSitesThisTurn:[],log:[]}");
+ run("advance()");
+ assert.equal(run("state.battledSitesThisTurn.length"),0);
+ assert.equal(run("state.activeSide"),'Dark');
+});
