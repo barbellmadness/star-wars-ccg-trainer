@@ -60,10 +60,16 @@ test('battle destiny requires Light decision before Dark draw',()=>{
 
 test('Tooex nighttime power effect applies only to allied Rebel or alien at same site',()=>{
  const {run}=harness();
- run("const tooex={id:'Light:2',name:'2X-3KPR (Tooex)',gametext:'Where present under nighttime conditions, each of your Rebels and aliens at same planet site are power +2'};const rebel={id:'Light:4',name:'Rebel',power:2,characteristics:['rebel']};state={nightConditions:true,locations:[{name:'Tatooine: A'}],light:[[tooex,rebel]],dark:[[]]};");
+ run("const tooex={id:'Light:2',name:'2X-3KPR (Tooex)',gametext:'Where present under nighttime conditions, each of your Rebels and aliens at same planet site are power +2'};const rebel={id:'Light:4',name:'Rebel',power:2,characteristics:['rebel']};state={nightConditions:true,locations:[{name:'Tatooine: A',type:'Location',subType:'Site'}],light:[[tooex,rebel]],dark:[[]]};");
  assert.equal(run("cardPowerModifier(state.light[0][1],'Light',0)"),2);
  run("state.nightConditions=false");
  assert.equal(run("cardPowerModifier(state.light[0][1],'Light',0)"),0);
  run("state.nightConditions=true;state.light[0].shift()");
  assert.equal(run("cardPowerModifier(state.light[0][0],'Light',0)"),0);
+});
+
+test('Tooex does not grant nighttime bonus at a system or unqualified location',()=>{
+ const {run}=harness();
+ run("const tooex={id:'Light:2',gametext:'nighttime conditions'};const rebel={characteristics:['rebel'],power:2};state={nightConditions:true,locations:[{name:'Tatooine',type:'Location',subType:'System'}],light:[[tooex,rebel]],dark:[[]]};");
+ assert.equal(run("cardPowerModifier(state.light[0][1],'Light',0)"),0);
 });
