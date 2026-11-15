@@ -36,3 +36,24 @@ test('movement disallows freshly deployed and already moved characters',()=>{
  run("state.deployedThisTurn=[];state.movedThisTurn=[character]");
  assert.equal(run("movementOptions().length"),0);
 });
+
+test('Force generation includes personal Force and both location icon sources',()=>{
+ const {run}=harness();
+ run("state={locations:[{icons:{light:2,dark:1}},{icons:{light:0,dark:2}}]};");
+ assert.equal(run("forceFromLocations('Light').count"),3);
+ assert.equal(run("forceFromLocations('Dark').count"),4);
+});
+test('activation respects requested amount and Reserve Deck size',()=>{
+ const {run}=harness();
+ run("state={locations:[{icons:{light:2,dark:1}}],deck:[{id:1},{id:2}],botDeck:[],force:[],botForce:[],log:[]};");
+ assert.equal(run("activate('Light',3)"),2);
+ assert.equal(run("state.deck.length"),0);
+ assert.equal(run("state.force.length"),2);
+});
+test('battle destiny requires Light decision before Dark draw',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{ability:4,power:2}]],dark:[[{ability:4,power:2}]],deck:[{name:'A',destiny:3}],botDeck:[{name:'B',destiny:2}],used:[],botUsed:[],log:[],force:[],botForce:[]};battleSession={site:0,lightCard:null,darkCard:null,lightDestiny:null,darkDestiny:null,lightLoss:[],darkLoss:[],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Dark')");
+ assert.equal(run("state.botDeck.length"),1);
+ assert.equal(run("battleSession.darkCard"),null);
+});
