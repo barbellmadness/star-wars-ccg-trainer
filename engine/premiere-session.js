@@ -139,7 +139,11 @@ function withinDeploymentLimit(card,side){
 
 
 
-function log(x){state.log.unshift(x);state.log=state.log.slice(0,40)}
+function log(x){
+ state.log.unshift(x);
+ if(state.botTurn)(state.botHistory??=[]).unshift(x);
+ if(battleSession)battleSession.recentEvents=[x,...(battleSession.recentEvents??[]).slice(0,2)];
+}
 
 function startingLocationChoices(deck){
  const offeredTitles=new Set();
@@ -1408,11 +1412,15 @@ function botDeployPhase(){
  return actions;
 }
 
-function botSay(message){state.botReason=message;state.botHistory.unshift('Runde '+state.turn+': '+message);state.botHistory=state.botHistory.slice(0,20);log(message)}
+function botSay(message){state.botReason=message;log(message)}
 
 function botPlan(){return ['activate','control','deploy','battle','move','draw','finish'].map(kind=>({kind}))}
 
-function botBegin(){state.botTurn={steps:botPlan(),index:0};botSay('Dark Side beginnt ihren sichtbaren Lernzug. Klicke auf „Nächste Bot-Aktion zeigen“.')}
+function botBegin(){
+ state.botTurn={steps:botPlan(),index:0};
+ state.botHistory=[];
+ botSay('Dark Side beginnt ihren Zug.');
+}
 
 function botNextStep(repeatPhase=true,adaptive=true){
  if(!state?.botTurn||state.gameWinner)return false;
@@ -1543,9 +1551,11 @@ function botDrain(){
 function endTurn(side){
  checkpoint('phase:end',()=>checkpoint('turn:end',()=>{
   recirculateBoth();
+  if(side==='Dark')botSay('Bot beendet seinen Lernzug.');
   PremiereGame.resetTurn(state,PremiereGame.otherSide(side));
+  state.log=[];
   if(side==='Light')botBegin();
-  else {state.turn++;state.botTurn=null;botSay('Bot beendet seinen Lernzug. Light Side beginnt mit Activate.');}
+  else {state.turn++;state.botTurn=null;log('Light Side beginnt mit Activate.');}
   checkpoint('turn:start',()=>checkpoint('phase:start',()=>{}));
  }));
 }

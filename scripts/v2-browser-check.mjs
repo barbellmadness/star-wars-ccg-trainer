@@ -80,11 +80,12 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.locator('#gameSeed').fill('0');
     page.once('dialog', dialog => dialog.accept());
     await page.locator('#start').click();
+    await page.getByRole('checkbox', {name: 'Bot automatisch spielen lassen'}).check();
     await page.locator('#setupOptions button.start-location-option').nth(1).click();
     await page.getByRole('button', {name: 'Partie beginnen'}).click();
-    for (let step = 0; step < 18 && await page.locator('#botTurnPanel').isVisible(); step++) {
-      await page.locator('#botNext').click();
-    }
+    await page.getByRole('button', {name: 'Force aktivieren'}).waitFor();
+    assert.equal(await page.locator('#botNext').isVisible(), false);
+    assert.match(await page.locator('#botHistory').textContent(), /Bot beendet seinen Lernzug/);
     await page.getByRole('button', {name: /Eyes In The Dark ansehen/}).click();
     const effect = page.getByRole('dialog', {name: /Eyes In The Dark/});
     assert.match(await effect.textContent(), /In deiner Ausspielen-Phase/);
@@ -96,6 +97,27 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await effect.getByRole('button', {name: 'Dark Side Lost Pile verdecken (0 Force)'}).click();
     assert.equal(await effect.isVisible(), false);
     assert.match(await page.locator('#pilesDark').textContent(), /Lost Pile verdeckt/);
+
+    await page.evaluate(() => {
+      const slot = state.locations.findIndex(isSite);
+      const card = id => ({...catalog.find(card => card.id === id)});
+      state.phase = 3;
+      state.light[slot] = [{...card('Light:2052'), weapons: [card('Light:259')]}];
+      state.dark[slot] = [card('Dark:2355')];
+      presentGame();
+    });
+    await page.getByRole('button', {name: 'Battle (1 Force)', exact: true}).and(page.locator(':enabled')).first().click();
+    const battle = page.getByRole('dialog', {name: /Bodenkampf/});
+    assert.ok(await battle.isVisible());
+    assert.match(await battle.locator('.battle-side.light').textContent(), /Rebel Trooper/);
+    assert.match(await battle.locator('.battle-side.dark').textContent(), /Stormtrooper/);
+    assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Waffen');
+    await page.keyboard.press('Escape');
+    assert.ok(await battle.isVisible());
+    await battle.getByRole('button', {name: 'Im Waffen-Segment passen'}).click();
+    await battle.getByRole('button', {name: 'Light verzichtet'}).waitFor();
+    assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
+    assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
