@@ -428,3 +428,52 @@ test('all immune cards survive attrition without forfeit but battle damage remai
  assert.equal(run("battleForfeitPlan('Dark').valid"),true);
  assert.equal(run("battleForfeitPlan('Dark').remainingDamage"),8);
 });
+
+
+test('Premiere site text raises battle destiny threshold only for the named side',()=>{
+ const {run}=harness();
+ run("state={locations:[{id:'Light:2448',name:'Tatooine: Dune Sea',type:'Location',subType:'Site',gametext:'Light: Blank. Dark: Total ability of 6 or more required for you to draw battle destiny here.'},{id:'Dark:2458',name:'Tatooine: Jundland Wastes',type:'Location',subType:'Site',gametext:'Dark: Your Tusken Raiders are forfeit +1. Light: Total ability of 6 or more required for you to draw battle destiny here.'},{id:'Dark:1426',name:'Kessel',type:'Location',subType:'System',gametext:'Dark: Blank. Light: Total ability of 6 or more required for you to draw battle destiny here.'},{name:'Hoth: A',type:'Location',subType:'Site',gametext:'Dark: Blank.'}]};");
+ assert.equal(run("minimumBattleDestinyAbility('Dark',0)"),6);
+ assert.equal(run("minimumBattleDestinyAbility('Light',0)"),4);
+ assert.equal(run("minimumBattleDestinyAbility('Light',1)"),6);
+ assert.equal(run("minimumBattleDestinyAbility('Dark',1)"),4);
+ // Space battles at systems are not modeled by the current trainer.
+ assert.equal(run("minimumBattleDestinyAbility('Light',2)"),4);
+ assert.equal(run("minimumBattleDestinyAbility('Dark',3)"),4);
+});
+test('Dark bot must skip destiny at Dune Sea with ability 4 despite having Force',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Tatooine: Dune Sea',type:'Location',subType:'Site',gametext:'Light: Blank. Dark: Total ability of 6 or more required for you to draw battle destiny here.'}],light:[[{name:'L',ability:4,power:2}]],dark:[[{name:'D',ability:4,power:2}]],deck:[],used:[],botDeck:[{name:'Dark destiny',destiny:5}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("botDestinyDecision()");
+ assert.equal(run("battleSession.darkCard.name"),'Freiwillig verzichtet');
+ assert.equal(run("battleSession.darkDestiny"),0);
+ assert.equal(run("state.botDeck.length"),1);
+ assert.equal(run("state.botUsed.length"),0);
+});
+test('Dark bot draws battle destiny at Dune Sea with ability at least 6',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Tatooine: Dune Sea',type:'Location',subType:'Site',gametext:'Light: Blank. Dark: Total ability of 6 or more required for you to draw battle destiny here.'}],light:[[{name:'L',ability:4,power:2}]],dark:[[{name:'D',ability:6,power:2}]],deck:[],used:[],botDeck:[{name:'Dark destiny',destiny:5}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("botDestinyDecision()");
+ assert.equal(run("battleSession.darkDestiny"),5);
+ assert.equal(run("state.botDeck.length"),0);
+ assert.equal(run("state.botUsed.length"),1);
+});
+test('Vader increases each Dark battle destiny draw and therefore opposing attrition',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Hoth: A',type:'Location',subType:'Site'}],light:[[{name:'Rebel',ability:4,power:4}]],dark:[[{id:'Dark:634',name:'Vader',ability:6,power:6,gametext:'When in battle, adds 1 to each of your battle destiny draws. Immune to attrition < 5.'}]],deck:[],used:[],botDeck:[{name:'Destiny D',type:'Character',destiny:2}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Dark')");
+ assert.equal(run("battleSession.darkDestiny"),3);
+ assert.equal(run("battleAttritionAgainst('Light')"),3);
+ assert.equal(run("battleDamagePreview().darkTotal"),9);
+ assert.equal(run("state.botDeck.length"),0);
+ assert.equal(run("state.botUsed.length"),1);
+});
+test('Vader bonus does not apply when absent, and never generates attrition from skipped destiny',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Hoth: A',type:'Location',subType:'Site'}],light:[[{name:'Rebel',ability:4,power:4}]],dark:[[{name:'Trooper',ability:4,power:3}]],deck:[],used:[],botDeck:[{name:'Destiny D',destiny:2}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Dark')");
+ assert.equal(run("battleSession.darkDestiny"),2);
+ run("battleSession.darkCard=null;battleSession.darkDestiny=null;state.dark[0].push({id:'Dark:634',name:'Vader',gametext:'When in battle, adds 1 to each of your battle destiny draws.'});skipDestiny('Dark')");
+ assert.equal(run("battleSession.darkDestiny"),0);
+ assert.equal(run("battleAttritionAgainst('Light')"),0);
+});
