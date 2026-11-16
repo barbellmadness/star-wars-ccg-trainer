@@ -3,7 +3,7 @@ let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -73,7 +73,7 @@ function loseForceForDrain(side,zone,index){
  const card=PremiereGame.loseForce(state,side,zone,index);
  if(!card)return false;
  pending.remaining--;
- const label=pending.reason==='battleDamage'?'Battle Damage':pending.reason==='assault'?'Assault':'Force Drain';
+ const label={battleDamage:'Battle Damage',assault:'Assault',prediction:'Prophetess'}[pending.reason]??'Force Drain';
  log(side+' verliert 1 Force für '+label+' aus '+zone+': '+forceLossDescription(side,zone,card)+'.');
  if(!pending.remaining||!PremiereGame.lossChoices(state,side).length){
   state.pendingForceLoss=null;
@@ -132,8 +132,9 @@ function withinDeploymentLimit(card,side){
  const limit=card.uniquenessLimit??card.name?.match(/^[*•]+/)?.[0].length??(card.unique===true?1:Infinity);
  if(limit===Infinity)return true;
  const identity=card.personas?.map(persona=>persona.toLowerCase())??[];
- return PremiereLocations.cardsOnTable(state,side).filter(unit=>
-  locationTitle(unit)===locationTitle(card)||identity.some(persona=>unit.personas?.some(name=>name.toLowerCase()===persona))).length<limit;
+ const matches=unit=>locationTitle(unit)===locationTitle(card)||identity.some(persona=>unit.personas?.some(name=>name.toLowerCase()===persona));
+ if(state.outOfPlay?.some(unit=>(unit.owner??unit.side)===side&&matches(unit)))return false;
+ return PremiereLocations.cardsOnTable(state,side).filter(matches).length<limit;
 }
 
 
@@ -199,6 +200,7 @@ function finishSetup(){
  const botDeck=PremiereGame.shuffle(setup.dark.cards.filter((card,index)=>index!==darkChoice?.index),setup.game);
  state=PremiereGame.createState(setup.game,deck,botDeck,locations,initialLocationOrder(locations));
  state.trainingBattle=setup.trainingBattle;
+ registerDuelTiming();
  setupDecks=null;
  log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. Dark Side beginnt.');
  botBegin();
@@ -541,6 +543,8 @@ function cardPowerModifier(c,side,siteIndex){
 }
 
 function cardEffectStatus(c){
+ if(c.id==='Dark:2517')return 'UMGESETZT: Vader und Obi-Wan duellieren sich am Site. Vergleicht Power samt Lichtschwertbonus und entfernt den Verlierer aus dem Spiel.';
+ if(c.id==='Dark:1958')return 'UMGESETZT: Sagt vor dem eigenen Battle den Sieger voraus, erhält bei richtiger Vorhersage eine zufällige verlorene Karte zurück und verliert andernfalls 1 Force. Immun gegen Attrition < 3.';
  if(isLostPileEffect(c))return 'UMGESETZT: Legt den gewählten Lost Pile verdeckt. Verluste aus Life Force bleiben verdeckt, Rückholen bleibt möglich.';
  if(isBantha(c))return 'TEILWEISE: Außen-Site, Ability ½, Landspeed, React, Waffenabwehr und Power +1 für anwesende Tusken Raider. Boarding ist offen.';
  if(c.id==='Light:1593')return 'TEILWEISE: Force-Generierung +1 außerhalb von Tatooine-Sites und gedruckte Attrition-Immunität. Pilotenboni sind offen.';
@@ -1368,6 +1372,8 @@ function botNextStep(repeatPhase=true){
  if(window||state.game?.timing.pending||state.automatedPending)return performAction(legalActions(state,'Dark')[0]);
  if(state.pendingForceLoss||battleSession)return false;
  const deferred=state.botTurn.decision;
+ const duel=legalActions(state,'Dark').find(option=>option.kind==='duel');
+ if(!deferred&&duel&&performAction(duel))return true;
  const action=deferred?{kind:deferred}:state.botTurn.steps[state.botTurn.index];
  if(!deferred&&action?.kind==='deploy'&&state.phase===1&&botDrain())return true;
  if(repeatPhase&&!deferred){
@@ -1526,8 +1532,29 @@ function initiateBattleFor(side,i){
   refreshBattleParticipants();
  }
  log(side+' initiiert Battle bei '+state.locations[i].name+' (1 Force → Used Pile).');
- if(!openReactWindow('battle',side,i))enterBattleSegments();
+ const prophetess=side==='Dark'&&state.game&&PremiereLocations.presentCards(state,side,i)
+  .find(card=>card.id==='Dark:1958'&&PremiereUnits.active(card));
+ if(prophetess)battleSession.prediction={card:prophetess,winner:null};
+ else beginBattleResponses();
  publishGame();return true;
+}
+
+function beginBattleResponses(){
+ const {initiator,site}=battleSession;
+ if(!openReactWindow('battle',initiator,site))enterBattleSegments();
+}
+
+function chooseBattlePrediction(winner){
+ battleSession.prediction.winner=winner;
+ log('Prophetess sagt einen Sieg der '+winner+' Side voraus.');
+ beginBattleResponses();
+ return true;
+}
+
+function botPredictionAction(offers){
+ if(!battleSession?.prediction)return null;
+ const {lightPower,darkPower}=battleTotals(battleSession.site);
+ return offers.find(action=>action.kind==='battlePrediction'&&action.args[0]===(darkPower>=lightPower?'Dark':'Light'));
 }
 function enterBattleSegments(){
  checkpoint('battle:start',()=>{
@@ -1535,7 +1562,7 @@ function enterBattleSegments(){
   const x=battleSession;
   if(x.segmented)x.segment='weapons';
   if(battleWeaponOptions('Light').length||battleWeaponOptions('Dark').length||
-     (x.segmented&&PremiereGame.sides.some(side=>battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
+     (x.segmented&&PremiereGame.sides.some(side=>duelOptions(side).length||battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
   else if(x.segmented)x.segment='power';
  });
 }
@@ -1576,6 +1603,57 @@ function printedWarRoomExtraBattleDestiny(side,siteIndex){
  const printed=PremiereLocations.printedSide(state,siteIndex,side);
  const pattern=new RegExp('(?:^|[.!?]\\s+)'+printed+':\\s*If you initiate a battle here, add one battle destiny(?:[.!?]|$)','i');
  return pattern.test(text)?1:0;
+}
+
+function duelOptions(side){
+ if(side!=='Dark'||!state.game||!state.botForce?.length)return [];
+ const copies=state.botHand.flatMap((card,index)=>card.id==='Dark:2517'?[{card,index}]:[]);
+ if(!copies.length)return [];
+ return state.locations.flatMap((loc,site)=>{
+  if(!isSite(loc))return [];
+  const character=(player,name)=>PremiereLocations.presentCards(state,player,site)
+   .find(card=>card.type==='Character'&&locationTitle(card)===name&&PremiereUnits.active(card)&&Number.isFinite(card.power));
+  const vader=character('Dark','darth vader'),obi=character('Light','obi-wan kenobi');
+  if(!vader||!obi)return [];
+  return copies.map(({card,index})=>({args:[index,site],card,site,vader,obi,
+   label:card.name+' · Duell bei '+loc.name+' (1 Force)'}));
+ });
+}
+
+function registerDuelTiming(){
+ PremiereGame.registerTrigger(state.game,{id:'premiere-duel',side:'Dark',scope:'game',event:'phase:priority',
+  label:'Bot-Aktion zeigen',
+  when:()=>state.activeSide==='Light'&&duelOptions('Dark').length>0,
+  resolve(){playDuel('Dark',...duelOptions('Dark')[0].args);}});
+}
+
+function playDuel(side,...args){
+ const choice=duelOptions(side).find(entry=>entry.args.every((value,i)=>value===args[i]));
+ if(!choice)return false;
+ const {hand,force,used}=PremiereGame.zones(state,side);
+ hand.splice(args[0],1);
+ PremiereGame.moveTop(force,used);
+ const frame={...choice,kind:'interrupt',interrupt:'duel',side,duringBattle:!!battleSession};
+ log(choice.card.name+' · Vader und Obi-Wan duellieren sich bei '+state.locations[choice.site].name+'.');
+ if(interruptResponses('Light',frame).length)PremiereGame.openResponse(state.game,frame);
+ else settleDuel(frame);
+ return true;
+}
+
+function settleDuel(frame){
+ if(!frame.cancelled){
+  const power=(card,side)=>card.power+cardPowerModifier(card,side,frame.site)+
+   ((card.weapons??[]).some(weapon=>PremiereWeapons.definition(weapon)?.saber)?2:0);
+  const dark=power(frame.vader,'Dark'),light=power(frame.obi,'Light');
+  const result='Duell · Vader '+dark+' / Obi-Wan '+light;
+  if(dark===light)log(result+' · Gleichstand.');
+  else{
+   const loser=dark<light?frame.vader:frame.obi,side=dark<light?'Dark':'Light';
+   if(loseTableCard(side,frame.site,loser,true))log(result+' · '+loser.name+' ist aus dem Spiel.');
+  }
+ }
+ loseOwnedCard(frame.card,frame.side);
+ if(frame.duringBattle&&battleSession?.weaponTurn===frame.side)finishWeaponAction(frame.side,false);
 }
 
 function battleEffectOptions(side){
@@ -1757,6 +1835,18 @@ function settlePowerSegment(){
     activeBattleUnits('Light').some(card=>card.id==='Light:1407')){
   x.darkDestiny=0;
   log("Kal'Falnl C'ndros setzt Dark Battle Destiny auf 0.");
+ }
+ if(x.prediction?.winner){
+  const result=battleDamagePreview();
+  const winner=result.darkTotal>result.lightTotal?'Dark':result.lightTotal>result.darkTotal?'Light':null;
+  if(winner===x.prediction.winner){
+   const {lost}=PremiereGame.zones(state,'Dark');
+   const retrieved=lost.length&&PremiereGame.retrieveCard(state,'Dark',Math.floor(PremiereGame.random(state.game)*lost.length));
+   log('Prophetess hat richtig vorhergesagt'+(retrieved?' und holt eine zufällige verlorene Karte zurück.':'.'));
+  }else{
+   log('Prophetess hat den Ausgang des Battle falsch vorhergesagt.');
+   beginForceLoss('Dark',1,{reason:'prediction',locationIndex:x.site});
+  }
  }
  prepareDamageSegment();
 }
@@ -1945,7 +2035,7 @@ function botWeaponAction(){
  const options=available.filter(x=>x.kind==='fireWeapon'&&!hitTargets.includes(x.target)&&state.botDeck.length);
  options.sort((a,b)=>(b.target.power??0)-(a.target.power??0)||a.defense-a.bonus-b.defense+b.bonus||a.cost-b.cost);
  const choice=options[0];
- return choice??available.find(x=>x.kind==='battleEffect'||x.kind==='weaponEffect')??available.find(x=>x.kind==='passWeapons');
+ return available.find(x=>x.kind==='duel')??choice??available.find(x=>x.kind==='battleEffect'||x.kind==='weaponEffect')??available.find(x=>x.kind==='passWeapons');
 }
 function botWeaponDecision(){return performAction(botWeaponAction())}
 // Hits still participate in combat. The damage segment requires them to be forfeited.
@@ -2093,9 +2183,12 @@ function loseOwnedCard(card,fallback){
  if(PremiereGame.lostPileFaceDown(state,owner))log(card.name+' geht offen verloren und wird anschließend verdeckt abgelegt.');
 }
 
-function loseTableCard(side,slot,card){
+function loseTableCard(side,slot,card,outOfPlay=false){
  if(!detachTableCard(side,slot,card))return false;
- PremiereUnits.remove(card,unit=>loseOwnedCard(unit,side),passenger=>{
+ PremiereUnits.remove(card,unit=>{
+  if(outOfPlay&&unit===card)(state.outOfPlay??=[]).push(unit);
+  else loseOwnedCard(unit,side);
+ },passenger=>{
   const controller=passenger.controller??side;
   PremiereGame.zones(state,controller).board[slot].push(passenger);
   log(passenger.name+' steigt vom verlorenen Bantha ab.');
@@ -2302,6 +2395,8 @@ function resolveResponsePass(side){
   const parent=PremiereGame.responseWindow(game);
   if(frame.interrupt==='battleEffect'){
    settleBattleEffect(frame);
+  }else if(frame.interrupt==='duel'){
+   settleDuel(frame);
   }else if(frame.interrupt==='overload'){
    resolveOverload(frame);
   }else if(frame.interrupt==='assault'){
@@ -2372,6 +2467,7 @@ function settleCancelledResponse(game){
  }
  if(cancelled?.kind==='interrupt'){
   if(cancelled.interrupt==='battleEffect')settleBattleEffect(cancelled);
+  else if(cancelled.interrupt==='duel')settleDuel(cancelled);
   else{
    PremiereGame.zones(state,cancelled.side).lost.push(cancelled.card);
    if(cancelled.interrupt==='overload'&&battleSession?.weaponTurn)finishWeaponAction(cancelled.side,false);
@@ -2426,7 +2522,7 @@ function interruptResponses(side,window){
  }
  const kind=window.kind==='lostPileEffect'?'alter':window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
  if(!kind)return [];
- const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','overload'].includes(window.interrupt);
+ const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','duel','overload'].includes(window.interrupt);
  const ability=requiresDestiny?highestInterruptAbility(side):0;
  if(requiresDestiny&&!ability)return [];
  return (hand??[]).flatMap((card,index)=>(kind==='alter'?isAlter(card):['Light:2217','Dark:2216'].includes(card.id))
@@ -2502,14 +2598,16 @@ function legalActions(position,side,request){
   const x=battleSession;
   if(x.resolved||position.phase!==3)return [];
   if(x.segment==='damage')return battleDamageOptions(side).map(option=>offer(option.kind,option.args,option));
-  if(x.segment==='initiation')return [];
+  if(x.segment==='initiation')return side==='Dark'&&x.prediction&&!x.prediction.winner?
+   PremiereGame.sides.map(winner=>offer('battlePrediction',[winner])):[];
   const training=[];
   if(side==='Light'&&(!x.segmented||position.trainingBattle))for(const target of PremiereGame.sides)for(const kind of ['power','destiny']){
    for(let value=0;value<=20;value++)training.push(offer('trainingModifier',[target,kind,value]));
   }
   if(x.weaponTurn)return x.weaponTurn===side?
    [...battleWeaponOptions(side).map(shot=>offer('fireWeapon',shot.args,shot)),
-   ...(x.repeatingWeapon?[]:[...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
+   ...(x.repeatingWeapon?[]:[...duelOptions(side).map(option=>offer('duel',option.args,option)),
+    ...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
     ...weaponEffectOptions(side).filter(option=>['defuse','overload'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
    offer('passWeapons'),...training]:training;
   const first=x.initiator==='Dark'?'Dark':'Light',key=side==='Light'?'lightCard':'darkCard';
@@ -2535,6 +2633,7 @@ function legalActions(position,side,request){
  const botStep=position.botTurn?.steps[position.botTurn.index];
  if(side==='Dark'&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
  if(side==='Dark'&&botStep)actions.push(offer('botStep',[botStep.kind]));
+ for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
  if(side==='Light'&&(position.phase!==0||position.activated))actions.push(offer('advance'));
  for(const option of retrievalOptions(side))actions.push(offer('retrieve',[option.index,option.slot],option));
  for(const option of transportOptions(side))actions.push(offer('transport',option.args,option));
@@ -2621,6 +2720,8 @@ function executeAction({kind,side,args,plan,ships}){
   }
   case 'move': return moveCharacterFor(side,...args);
   case 'battle': return initiateBattleFor(side,...args);
+  case 'battlePrediction': return chooseBattlePrediction(...args);
+  case 'duel': return playDuel(side,...args);
   case 'fireWeapon': return fireBattleWeapon(side,...args);
   case 'gaderffii': return useGaderffii(side,...args);
   case 'passWeapons': return passBattleWeapons(side);

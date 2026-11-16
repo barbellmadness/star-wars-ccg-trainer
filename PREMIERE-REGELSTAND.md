@@ -19,6 +19,8 @@ Die Engine prüft Reserve Deck, Force Pile und Used Pile nach der Auflösung ein
 
 Verlieren beide Seiten gleichzeitig ihre letzte Life Force, wertet Decipher die Partie als Unentschieden („True Tie“). In der damaligen Turnierwertung erhalten beide Seiten je einen Siegpunkt und eine Differenz von null. V2 zeigt das Unentschieden an, protokolliert es und sperrt weitere Spielaktionen. [Decipher-Turnierleitfaden, Juni 1999, S. 4, „True ties“](https://starshipexcelsior.com/othersites/stccg1e/rules_archive/decipher/Z_KLAUSERS_ARCHIVE/Tourn/tournamentguide0699.pdf#page=4)
 
+Wenn Vader und Obi-Wan an derselben Site anwesend sind, kann Dark mit The Circle Is Now Complete für 1 Force ein Duell ansagen. V2 vergleicht die beiden Power-Werte, mit jeweils +2 für ein Lichtschwert. Die unterlegene Persona kommt aus dem Spiel. Ihre Ausrüstung geht in die jeweiligen Lost Piles. Sense kann das Duell aufheben. [Decipher-Glossar, The Circle Is Now Complete](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=129) · [Decipher-Glossar, Out of Play](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=99)
+
 ## Locations, Presence und Force
 
 Die gegnerische Fassung einer Location wird auf dieselbe Position gelegt. Einheiten und weiterhin gültige Effekte behalten ihre Referenz. Die frühere Location liegt unter der neuen. Revolution beeinflusst die aktiven Force-Icons und vertauscht die Seiten der bereits unterstützten Ortsregeln. Der Karteninspektor zeigt die wirksamen Icons, die Fassungen und die Ortsbedingungen. [Decipher-Glossar, Converting Locations](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=40) · [Advanced Rulebook, Locations](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=84)

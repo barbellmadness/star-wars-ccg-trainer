@@ -124,7 +124,7 @@ const PremiereGame = (() => {
         ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
-      winner: state.gameWinner, locations: state.locations.map(clone), players,
+      winner: state.gameWinner, locations: state.locations.map(clone), players, outOfPlay:(state.outOfPlay??[]).map(clone),
       buriedCounts: state.locations.map((_, slot) => (state.buriedMines ?? []).filter(record=>record.slot===slot).length),
       convertedLocations: state.locations.map((_, slot) => (state.convertedLocations?.[slot] ?? []).map(clone)),
       locationEffects: state.locations.map((_, slot) => (state.locationEffects?.[slot] ?? []).map(effect => clone(effect.card)))};

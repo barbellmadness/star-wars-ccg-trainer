@@ -1543,7 +1543,7 @@ test('starter decks replay complete matches with legal decisions and conserve al
  const {run}=await premiereHarness();
  run(`presentGame=()=>{};
  function inventory(){
-  const roots=[...state.locations.filter(Boolean),...Object.values(state.convertedLocations??{}).flat(),
+  const roots=[...state.locations.filter(Boolean),...(state.outOfPlay??[]),...Object.values(state.convertedLocations??{}).flat(),
    ...Object.values(state.locationWeapons??{}).flat(),
    ...Object.values(state.locationEffects??{}).flat().map(effect=>effect.card),
    ...[...(state.buriedMines??[]),...(state.lostPileEffects??[])].map(effect=>effect.card)];
@@ -1581,7 +1581,7 @@ test('starter decks replay complete matches with legal decisions and conserve al
     summary.botActions++;
     continue;
    }
-   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger',
+   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger','battlePrediction','duel',
     'fireWeapon','battleEffect','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage','loseForce',
     'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance'];
    const options=light.length?light:dark;
@@ -2201,6 +2201,56 @@ test('a printed battle Interrupt grants real draws and keeps the weapon segment 
  assert.equal(run("requestAction('battleEffect','Light',[1])&&battleSession.extraDraws.Light===2"),true);
  assert.equal(run("requestAction('passWeapons','Dark')&&requestAction('passWeapons','Light')"),true);
  assert.equal(run("requestAction('destiny','Light')&&battleSession.lightDestiny===6&&state.deck[0].name==='Spare'"),true);
+});
+
+test('The Circle Is Now Complete pays once, applies the saber bonus and removes only the losing persona',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const vader=card('Dark:634'),obi=card('Light:1803'),interrupt=card('Dark:2517'),blaster=card('Dark:1264');
+  setupDecks=null;state.game=PremiereGame.actionState(43,1);state.activeSide='Dark';state.botTurn={steps:botPlan(),index:2};state.phase=1;
+  state.dark[2]=[vader];state.light[3]=[obi];state.botHand=[interrupt];
+  vader.weapons=[blaster];obi.weapons=[card('Light:1813')];state.hand=[];`);
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),false);
+ assert.equal(run("state.botForce.length===5&&state.botHand[0]===interrupt"),true);
+ run('state.light[2]=state.light[3].splice(0);const reserveCount=state.botDeck.length;');
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),true);
+ assert.equal(run("state.outOfPlay[0]===vader&&state.botLost.includes(blaster)&&state.botLost.includes(interrupt)"),true);
+ assert.equal(run("!state.botLost.includes(vader)&&state.light[2][0]===obi&&state.botUsed.length===1&&state.botDeck.length===reserveCount&&!battleSession"),true);
+ assert.equal(run("withinDeploymentLimit(card('Dark:634'),'Dark')"),false);
+ assert.match(elements.get('outOfPlay').textContent,/Darth Vader/);
+});
+
+test('the duel can be played in an opposing priority window and canceled with Sense',async()=>{
+ const {run}=await craftHarness();
+ run(`const vader=card('Dark:634'),obi=card('Light:1803'),interrupt=card('Dark:2517'),sense=card('Light:2217');
+  state.game=PremiereGame.actionState(44,1);state.phase=0;
+  state.dark[2]=[vader];state.light[2]=[obi];state.botHand=[interrupt];
+  state.deck=[{name:'Spare',destiny:2},{name:'Sense Destiny',destiny:1}];state.hand=[sense];
+  registerDuelTiming();`);
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),false);
+ assert.equal(run("requestAction('activate','Light',[0])&&requestAction('timingTrigger','Dark',['premiere-duel'])"),true);
+ assert.equal(run("requestAction('interruptResponse','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.botLost.includes(interrupt)&&state.used.includes(sense)&&!state.outOfPlay&&state.dark[2][0]===vader&&state.light[2][0]===obi"),true);
+});
+
+test('Prophetess predicts before Battle and receives exactly one reward or loss after power is decided',()=>{
+ for(const predicted of ['Dark','Light']){
+  const {run,elements}=segmentedBattleHarness('Dark');
+  run(`const prophetess={id:'Dark:1958',name:'Prophetess',type:'Character',power:1,ability:1,forfeit:3};
+   trooper.ability=1;state.dark[0].push(prophetess);
+   const reward={name:'Lost card'};state.botLost=[reward];
+   const randomBefore=state.game.randomState;`);
+  assert.equal(run("requestAction('battle','Dark',[0])&&battleSession.segment==='initiation'"),true);
+  assert.match(elements.get('battleControls').innerHTML,/Vorhersage des Bots zeigen/);
+  assert.equal(run("requestAction('skipDestiny','Dark')||requestAction('battlePrediction','Light',['Light'])"),false);
+  assert.equal(run(`requestAction('battlePrediction','Dark',['${predicted}'])&&battleSession.segment==='power'`),true);
+  assert.equal(run("requestAction('skipDestiny','Dark')&&requestAction('skipDestiny','Light')"),true);
+  assert.equal(run("battleSession.segment==='damage'"),true);
+  if(predicted==='Dark'){
+   assert.equal(run('state.botUsed.includes(reward)&&state.botLost.length===0&&state.game.randomState!==randomBefore'),true);
+  }else{
+   assert.equal(run('state.botLost.includes(reward)&&state.botLost.includes(blaster)&&state.botHand.length===0'),true);
+  }
+ }
 });
 
 test('Dr. Evazan can remove the last rival participant before the damage segment',()=>{

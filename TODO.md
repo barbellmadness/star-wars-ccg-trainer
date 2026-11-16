@@ -65,7 +65,8 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [x] Treffer, veränderte Forfeit-Werte, Attrition und Battle Damage in einzelnen alternierenden Aktionen abrechnen. Ein Forfeit deckt beide offenen Werte gleichzeitig. Die Engine sperrt Passen bei offenen zahlbaren Pflichten.
 - [x] Forfeit- und Force-Loss-Aktionen für beide Seiten anbieten. Der Bot trifft die Dark-Side-Auswahl. V2 zeigt offene Werte und Pflicht-Forfeits an.
 - [x] Manuelle Power- und Destiny-Regler nur in einer gekennzeichneten Battle-Lernübung freigeben.
-- [ ] Weitere kartenspezifische Interrupt-Modi, Siegvorhersagen und Destiny- oder Immunitätseffekte ergänzen und prüfen. Neue Waffentypen und ihre Trefferfolgen folgen in Abschnitt 6.
+- [x] Prophetess sagt den Gewinner vor der Auflösung des Battle voraus. Richtige Vorhersagen holen zufällig eine Karte zurück. Andernfalls verliert Dark 1 Force.
+- [ ] Weitere kartenspezifische Interrupt-Modi und Destiny- oder Immunitätseffekte ergänzen und prüfen. Siehe Abschnitte 6 und 7.
 
 ## 6. Premiere-Waffen vervollständigen
 
@@ -103,7 +104,8 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 - [ ] Effects mit Aufstellungsziel, Dauer, laufenden Modifikatoren, Triggern, Aufheben und Ablauf umsetzen. Utinni Effects brauchen verfolgte Ziele und Ortswechsel. Death Star Plans und Kessel Run als mehrstufige Fälle mit Rückgewinnung testen.
 - [ ] Interrupts mit Used- und Lost-Verhalten, Auswahl zwischen gedruckten Optionen, Antwortfenstern, Zielbedingungen und Kosten implementieren. Sense und Alter einschließlich gegenseitiger Antworten als erste vollständige Aktionskette prüfen.
 - [ ] Gemeinsame Karteneffekt-Operationen ergänzen. Suche und Offenlegen, gezielter Stapelwechsel, Mischen, Karten austauschen, Retrieval, Verlust, Out of Play, Schutz, Kontrollwechsel und Aufheben müssen als prüfbare Aktionen verfügbar sein.
-- [ ] Kartensonderfälle mit eigenem Ablauf abdecken. Dazu zählen das Duell in The Circle Is Now Complete, das Aufheben einer Ausrüstung, das Sperren eines Wegs und die Behandlung vorübergehend geschützter Ziele.
+- [x] The Circle Is Now Complete mit Sense-Antwort, Lichtschwertbonus, Gleichstand und dauerhaftem Entfernen der unterlegenen Persona umsetzen. [Decipher-Glossar, The Circle Is Now Complete und Out of Play](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=129)
+- [ ] Weitere Kartensonderfälle mit eigenem Ablauf abdecken, etwa Ausrüstung aufheben, einen Weg sperren und geschützte Ziele behandeln.
 - [ ] Die verbleibenden Karteneffekte pro Typ bearbeiten. Mit den Karten der beiden Starterdecks beginnen, dann die übrigen Karten und ihre Kombinationen vervollständigen. Für jede neue Kartenregel einen zulässigen und einen abgelehnten Fall prüfen.
 
 ## 8. Bot

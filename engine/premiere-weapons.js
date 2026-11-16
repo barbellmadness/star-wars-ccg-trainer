@@ -14,7 +14,7 @@ const PremiereWeapons = (() => {
   const genericSaber = (host, ability) => warrior(host) ? amount(ability) : null;
 
   const blaster = (cost, bonus) => ({deploy:withHost(warrior,cost), cost, bonus, targets:ground});
-  const saber = (deploy, cost, effect, extra = {}) => ({deploy, cost, draws:2, targets:saberTargets, effect, ...extra});
+  const saber = (deploy, cost, effect, extra = {}) => ({deploy, cost, draws:2, targets:saberTargets, effect, saber:true, ...extra});
   const attached = new Map([
     ['Light:259', blaster(1,0)], ['Light:265', blaster(2,1)], ['Dark:264', blaster(2,1)], ['Dark:1264', blaster(1,0)],
     ['Light:1106', {deploy:byPersona('han',1,3),cost:1,bonus:1,targets:ground,zeroBy:'han'}],

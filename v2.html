@@ -170,6 +170,7 @@ html:has(#cardInspector[open]){overflow:hidden}
     <span id="gameSaveStatus" class="hint" role="status"></span>
   </div>
   <div class="panel" id="gameMessage"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div>
+  <p id="outOfPlay" class="hint" hidden></p>
   <div id="setup" class="panel" style="display:none">
     <p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p>
     <div id="setupOptions"></div>
@@ -383,6 +384,7 @@ function showStarterDeck(side){
 }
 
 function renderSetup(){
+ el('outOfPlay').hidden=true;
  const setup=PremiereGame.setupView(setupDecks,'Light'),available=legalActions(null,'Light');
  el('gameTable').hidden=true;
  el('gameMessage').hidden=false;
@@ -518,7 +520,9 @@ function renderBattle(){
   +(x.segmented?(x.damage?renderDamageDebt(x.damage):''):lossPreview('Light',available)+lossPreview('Dark',dark))
   +'<p class="hint">Ein Forfeit zählt gleichzeitig für Attrition und Battle Damage. Getroffene Karten müssen forfeitet werden.</p>';
  let buttons;
- if(x.segment==='damage'){
+ if(x.segment==='initiation'&&x.prediction&&!x.prediction.winner){
+  buttons=ruleButton(botPredictionAction(dark),'Vorhersage des Bots zeigen');
+ }else if(x.segment==='damage'){
   const labels={deck:'Reserve Deck',used:'Used Pile',force:'Force Pile'};
   buttons=x.damage.priority==='Dark'?ruleButton(botDamageAction(),'Schadensentscheidung des Bots zeigen'):
    available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':''):
@@ -758,6 +762,8 @@ function render(){
  el('stats').textContent='Force-Generierung: Light '+forceFromLocations('Light').count+' / Dark '+forceFromLocations('Dark').count
   +' · Runde '+view.turn+' · Seed '+(state.game?.seed??'–');
  renderPhaseTracks(view);
+ el('outOfPlay').hidden=!view.outOfPlay.length;
+ el('outOfPlay').textContent='Aus dem Spiel · '+view.outOfPlay.map(card=>card.name).join(', ');
  renderDeckPiles('Dark',dark);
  renderDeckPiles('Light',light);
  el('gameMessage').hidden=!view.winner;
