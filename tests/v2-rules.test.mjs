@@ -1107,6 +1107,85 @@ test('registered location text follows printed sides even after Revolution',asyn
  assert.equal(run("characterDeployCost(card('Light:1021'),state.locations[3],'Light')"),3);
 });
 
+test('Central Core waives Wrong Turn only for its controlling side and the tax applies to warriors',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(130,1);
+  const core=card('Dark:669'),wrongTurn=card('Dark:2833'),trooper=card('Light:2052'),droid=card('Light:2');
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.locations[4]=core;
+  state.botHand=[wrongTurn,card('Dark:2833')];state.botForce=[];`);
+ assert.equal(run("requestAction('deployTableEffect','Dark',[0])"),false);
+ run("state.botForce=forcePile()");
+ assert.equal(run("legalActions(state,'Dark').find(action=>action.kind==='deployTableEffect').cost"),3);
+ run("state.dark[4]=[card('Dark:2355')];state.light[4]=[card('Light:1593')]");
+ assert.equal(run("legalActions(state,'Dark').find(action=>action.kind==='deployTableEffect').cost"),3);
+ run("state.light[4]=[]");
+ assert.equal(run("legalActions(state,'Dark').find(action=>action.kind==='deployTableEffect').cost"),0);
+ assert.equal(run("requestAction('deployTableEffect','Dark',[0])&&state.botForce.length===5&&state.botUsed.length===0"),true);
+ assert.match(elements.get('pilesLight').innerHTML,/Effects · .*Wrong Turn/);
+ assert.equal(run("requestAction('deployTableEffect','Dark',[0])"),false);
+ assert.equal(run("boardDeployCost(trooper,dock,'Light')"),2);
+ assert.equal(run("boardDeployCost(droid,dock,'Light')"),2);
+ run("state.light[2]=[card('Light:1593')]");
+ assert.equal(run("boardDeployCost(trooper,dock,'Light')"),0);
+});
+
+test('Skywalkers cancels Wrong Turn on table and during deployment as a Lost Interrupt',async()=>{
+ for(const pending of [false,true]){
+  const {run}=await craftHarness();
+  run(`setupDecks=null;state.game=PremiereGame.actionState(131,1);
+   const wrongTurn=card('Dark:2833'),skywalkers=card('Light:2277');
+   state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[wrongTurn];
+   state.tableEffects=[];state.hand=${pending}?[skywalkers]:[];`);
+  assert.equal(run("requestAction('deployTableEffect','Dark',[0])"),true);
+  if(pending)assert.equal(run("requestAction('interruptResponse','Light',[0])"),true);
+  else{
+   run("state.hand=[skywalkers]");
+   assert.equal(run("requestAction('cancelTableEffect','Light',[0,0])"),true);
+  }
+  assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+  assert.equal(run("state.tableEffects.length===0&&state.botLost.includes(wrongTurn)&&state.lost.includes(skywalkers)"),true);
+  assert.equal(run("state.botUsed.length"),3);
+ }
+});
+
+test('Detention Block releases only imprisoned characters on the Death Star after gaining control',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(132,1);state.phase=4;
+  state.locations[2]=card('Light:672');state.locations[3]=card('Dark:673');state.locations[4]=card('Dark:682');
+  state.locationOrder=[0,1,4,2,3,5,6];
+  const prisoner={...card('Light:1495'),captured:true,imprisoned:true};
+  const escorted={...card('Light:221'),captured:true},elsewhere={...card('Light:1098'),captured:true,imprisoned:true};
+  state.dark[3]=[prisoner,escorted];state.dark[5]=[elsewhere];state.light[4]=[card('Light:1593')];
+  state.dark[2]=[card('Dark:2355')];`);
+ assert.equal(run("requestAction('move','Light',[4,0,2,'Landspeed'])"),true);
+ assert.equal(run("state.dark[3].includes(prisoner)&&prisoner.captured"),true);
+ run("state.activeSide='Dark';state.botTurn={steps:[],index:0}");
+ assert.equal(run("requestAction('move','Dark',[2,0,3,'Landspeed'])"),true);
+ assert.equal(run("state.light[3].includes(prisoner)&&!prisoner.captured&&!prisoner.imprisoned"),true);
+ assert.equal(run("state.dark[3].includes(escorted)&&escorted.captured&&state.dark[5].includes(elsewhere)&&elsewhere.captured"),true);
+});
+
+test('Central Core cancels the Tractor Beam when Light gains control',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(133,1);state.phase=4;
+  state.locations[2]=card('Dark:669');state.locations[3]=card('Dark:675');state.locationOrder=[0,1,2,3,4,5,6];
+  const beam={name:'Death Star Tractor Beam',type:'Device',side:'Dark'};
+  state.locationEffects={3:[{card:beam}]};state.light[3]=[card('Light:1593')];`);
+ assert.equal(run("state.locationEffects[3].length"),1);
+ assert.equal(run("requestAction('move','Light',[3,0,2,'Landspeed'])"),true);
+ assert.equal(run("state.locationEffects[3].length===0&&state.botLost.includes(beam)"),true);
+});
+
+test('Mos Eisley applies one bonus to the Tonnika Sisters as a combo card',async()=>{
+ const {run}=await craftHarness();
+ run(`const sisters=card('Dark:2613');state.locations[2]=card('Dark:2465');state.dark[2]=[sisters];battleSession={site:2};`);
+ assert.equal(run("cardPowerModifier(sisters,'Dark',2)"),1);
+ assert.equal(run("battleForfeitValue(sisters,'Dark')"),run('sisters.forfeit+1'));
+ run("state.locationEffects={2:[{card:card('Light:2110')}]};");
+ assert.equal(run("cardPowerModifier(sisters,'Dark',2)"),0);
+ assert.equal(run("battleForfeitValue(sisters,'Dark')"),run('sisters.forfeit'));
+});
+
 test('Massassi Throne Room starts the Light turn only when chosen under the new rules',async()=>{
  const {run,elements}=await premiereHarness();
  run(`const decks={light:deckChoices.light.find(({deck})=>deck.theme?.id==='massassi-widerstand').deck,dark:starterDecks.dark};
@@ -2129,7 +2208,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,4);
+ assert.equal(saved.cardRulesVersion,5);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -2304,15 +2383,35 @@ function reactHarness(){
 test('a Wolfman can pay once and react in the opposing turn to cancel an unresolved Force Drain',()=>{
  const {run,elements}=reactHarness();
  assert.equal(run("requestAction('drain','Dark',[1])"),true);
- assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster.*Shistavanen Wolfman/);
+ assert.match(elements.get('playerReactControls').innerHTML,/Antwortfenster.*Shistavanen Wolfman/);
+ assert.equal(elements.get('playerReactControls').hidden,false);
+ assert.equal(elements.get('controlPanel').style.display,'none');
  assert.equal(run("requestAction('passResponse','Dark')"),false);
  assert.equal(run("requestAction('draw','Light')"),false);
  assert.equal(run("requestAction('react','Light',[0,0])"),true);
  assert.equal(run("state.light[0][0]===wolfman&&state.used[0].name==='React cost'"),true);
  assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
  assert.equal(run('state.light[1][0]===wolfman&&state.pendingForceLoss===null&&state.game.responses.length===0'),true);
+ assert.equal(elements.get('playerReactControls').hidden,true);
  assert.equal(run("PremiereGame.wasUsed(state.game,'turn','react:Light:9')"),true);
  assert.equal(run("requestAction('drain','Dark',[1])"),false);
+});
+
+test('battle React appears on the Light side and follows the player back to the playmat',()=>{
+ const {run,elements}=reactHarness();
+ run(`state.phase=3;state.botForce.push({name:'Battle Force'});
+  state.light[1].push({name:'Rebel',type:'Character',ability:2,power:1});
+  el('autoBot').checked=false;`);
+ assert.equal(run("requestAction('battle','Dark',[1])"),true);
+ assert.match(elements.get('battleDetails').innerHTML,/battle-side light.*Deine React-Aktionen.*Shistavanen Wolfman.*battle-side dark/s);
+ assert.equal(elements.get('battleResponses').style.display,'none');
+ assert.equal(elements.get('playerReactControls').hidden,true);
+ run('battleOnPlaymat=battleSession;presentGame()');
+ assert.equal(elements.get('playerReactControls').hidden,false);
+ assert.match(elements.get('playerReactControls').innerHTML,/Shistavanen Wolfman/);
+ assert.equal(elements.get('controlPanel').style.display,'none');
+ run('returnToBattle()');
+ assert.equal(elements.get('playerReactControls').hidden,true);
 });
 
 test('Sense can interrupt a paid React, and Alter can cancel the pending Sense in stack order',()=>{

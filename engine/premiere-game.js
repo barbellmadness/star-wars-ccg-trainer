@@ -36,7 +36,7 @@ const PremiereGame = (() => {
     const state = {game, turn: 1, phase: 0, activeSide: firstSide, activated: false,
       deck, botDeck, hand: [], botHand: [], locations, locationOrder, convertedLocations: {}, locationEffects: {},
       light: locations.map(() => []), dark: locations.map(() => []),
-      force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [], lostPileEffects: [],
+      force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [], lostPileEffects: [], tableEffects: [],
       log: [], botReason: 'Bot wartet.', botHistory: [], botTurn: null,
       pendingForceLoss: null, gameWinner: null, nightConditions: false};
     resetTurn(state, firstSide);
@@ -120,6 +120,7 @@ const PremiereGame = (() => {
         lostCount: piles.lost?.length ?? 0, lostFaceDown: faceDown,
         lostTop: faceDown ? null : clone(piles.lost?.at(-1)) ?? null,
         lostEffects: (state.lostPileEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),
+        tableEffects: (state.tableEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),
         board: (piles.board ?? []).map(row => row.map(clone)),
         ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
     }));

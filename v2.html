@@ -130,6 +130,8 @@ a{color:#b6d8ff}
 .deck-pile-controls button{padding:5px 8px;font-size:12px}
 .deck-pile-controls .hint{margin:5px 0 0}
 .drain-loss-controls{padding:8px;border:1px solid #b98963;border-radius:8px;background:#392719}
+.react-controls{margin:6px 0 8px;padding:8px;border:1px solid #a18b5b;border-radius:8px;background:#20283a;color:#f0e4c7;width:100%;font-size:12px}
+.react-controls p{margin:4px 0}.react-controls button{padding:5px 8px;font-size:12px}
 .deck-pile-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px}
 .deck-pile-summary .life-force{color:#f2d078}
 .pile-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr);text-align:center}
@@ -292,6 +294,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
         <div class="hand-heading">
           <h2>Deine Hand · Light Side</h2>
         </div>
+        <section id="playerReactControls" class="react-controls" aria-label="Deine React-Aktionen" tabindex="-1" hidden></section>
         <div id="hand" class="cards"></div>
       </div>
       <aside class="phase-display" id="phaseDisplayLight" aria-label="Phasen der Light Side">
@@ -361,7 +364,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.12.1';
+const trainerVersion='2.13.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -397,7 +400,34 @@ function botRuleButton(action,label){
 function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
  return dispatchUI({kind:'activate',side:'Light',args:[Number(el('activateAmount').value)],gameId,revision});
 }
-function renderControlPanel(available=legalActions(state,'Light'),box=el('controlPanel')){
+function reactResponse(){
+ if(state.gameWinner||state.automatedPending||state.game?.timing.pending)return null;
+ const frames=state.game?.responses??[];
+ return frames.some(frame=>frame.kind==='react'||(['drain','battle'].includes(frame.kind)&&frame.side==='Dark'))?frames.at(-1):null;
+}
+
+function responseMarkup(window,available){
+ const title=window.kind==='destiny'?'Destiny':window.card&&window.kind!=='react'?window.card.name
+  :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
+ const loc=state.locations[window.site];
+ const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
+  +(window.kind==='destiny'?'<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>':'');
+ if(window.priority==='Dark'){
+  const option=legalActions(state,'Dark')[0];
+  return description+(battleOnPlaymat?ruleButton(option,'Antwort des Bots zeigen'):botRuleButton(option,'Antwort des Bots zeigen'));
+ }
+ return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,['react','reactDeploy'].includes(option.kind)
+  ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.label??option.card?.name??'Passen')).join(' ')+'</div>';
+}
+
+function renderPlayerReact(window,available){
+ const area=el('playerReactControls'),focus=window?.priority==='Light'&&area.hidden;
+ area.hidden=!window;
+ area.innerHTML=window?responseMarkup(window,available):'';
+ if(focus)area.focus();
+}
+
+function renderControlPanel(available=legalActions(state,'Light'),box=el('controlPanel'),react=reactResponse()){
  const drainArea=el('drainLossControls');
  const focusDrain=drainArea.hidden||drainArea.contains?.(document.activeElement);
  drainArea.hidden=true;
@@ -416,19 +446,8 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const window=PremiereGame.responseWindow(state.game);
  if(window){
-  const title=window.kind==='destiny'?'Destiny':['interrupt','lostPileEffect','locationEffect'].includes(window.kind)?window.card.name
-   :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
-  const loc=state.locations[window.site];
-  box.innerHTML='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>';
-  if(window.kind==='destiny')box.innerHTML+='<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>';
-  if(window.priority==='Dark'){
-   const option=legalActions(state,'Dark')[0];
-   box.innerHTML+=botRuleButton(option,'Antwort des Bots zeigen');
-  }else{
-   box.innerHTML+=available.map(option=>ruleButton(option,['react','reactDeploy'].includes(option.kind)
-    ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.label??option.card?.name??'Passen')).join(' ');
-  }
-  box.style.display='block';return;
+  box.innerHTML=react?'':responseMarkup(window,available);
+  box.style.display=react?'none':'block';return;
  }
  if(state.pendingReserveSearch){
   const frame=state.pendingReserveSearch,light=frame.side==='Light';
@@ -461,12 +480,14 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
+ const tableEffects=available.filter(option=>['deployTableEffect','cancelTableEffect'].includes(option.kind)&&option.args[0]===selected)
+  .map(option=>ruleButton(option,option.label)).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const rack=state.blasterRack;
  const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
- const extra=[retrieval,shuffle,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
+ const extra=[retrieval,shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
 
@@ -748,7 +769,7 @@ function battleHitCards(side,slot){
  return new Set((x.weaponHits?.[side]??[]).map(index=>row[index]).filter(Boolean));
 }
 
-function battleSideMarkup(side,power,ability,destiny,current){
+function battleSideMarkup(side,power,ability,destiny,current,controls=''){
  const x=battleSession;
  const cards=x.segmented?activeBattleUnits(side):battleCandidates(side,x.site);
  const hits=battleHitCards(side,x.site);
@@ -759,7 +780,7 @@ function battleSideMarkup(side,power,ability,destiny,current){
   +' · Ability '+(ability??'?')+' · Battle Destiny '+(destiny??'–')+'</p>'
   +'<p class="battle-stats hint">Destiny-Draws '+(battleDestinyDrawCount(side,x.site,ability)??'–')
   +' · Regulär ab Ability '+minimumBattleDestinyAbility(side,x.site)+'</p>'
-  +(figures?'<div class="battle-cards">'+figures+'</div>':'<p class="hint">Keine Einheiten beteiligt</p>')+'</section>';
+  +(figures?'<div class="battle-cards">'+figures+'</div>':'<p class="hint">Keine Einheiten beteiligt</p>')+controls+'</section>';
 }
 
 function renderBattle(){
@@ -769,6 +790,8 @@ function renderBattle(){
  const choiceSide=available.some(option=>!option.kind.startsWith('training'))?'Light':
   dark.some(option=>!option.kind.startsWith('training'))?'Dark':null;
  const response=PremiereGame.responseWindow(state.game);
+ const react=reactResponse();
+ const reactControls=react?'<section class="react-controls" aria-label="Deine React-Aktionen">'+responseMarkup(react,available)+'</section>':'';
  const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending);
  const stage=x.segment??(x.weaponTurn?'weapons':'power');
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
@@ -779,7 +802,7 @@ function renderBattle(){
  const totals=battleDamagePreview();
  el('battleDetails').innerHTML='<ol class="battle-timeline" aria-label="Kampfsegmente">'+Object.entries(steps)
   .map(([segment,label])=>'<li'+(stage===segment?' aria-current="step"':'')+'>'+escapeHTML(label)+'</li>').join('')+'</ol>'
-  +'<div class="battle-arena">'+battleSideMarkup('Light',t.lightPower,t.lightAbility,x.lightDestiny,choiceSide==='Light')
+  +'<div class="battle-arena">'+battleSideMarkup('Light',t.lightPower,t.lightAbility,x.lightDestiny,choiceSide==='Light',reactControls)
   +battleSideMarkup('Dark',t.darkPower,t.darkAbility,x.darkDestiny,choiceSide==='Dark')+'</div>'
   +(totals?'<p class="battle-totals">Gesamt-Power · Light '+totals.lightTotal+' / Dark '+totals.darkTotal+'</p>':'')
   +(x.recentEvents?.length?'<ul class="battle-events" aria-label="Letzte Kampfaktionen">'
@@ -803,7 +826,7 @@ function renderBattle(){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
@@ -837,6 +860,7 @@ function showBattlePlaymat(){
  if(!battleSession||battleSession.resolved||state.gameWinner)return;
  battleOnPlaymat=battleSession;
  el('battleAnalysis').close();
+ render();
  el('returnToBattle').hidden=false;
  el('returnToBattle').focus({preventScroll:true});
  el('playmatLocation'+battleSession.site)?.scrollIntoView({block:'nearest',inline:'center'});
@@ -924,10 +948,10 @@ function playInspectorEffect(action){
 
 function effectInspectorMarkup(card,index){
  const title='<h3>Effect ausspielen</h3>';
- const supported=isLostPileEffect(card)||card.id==='Light:2110'||locationEffectRule(card);
+ const supported=isLostPileEffect(card)||card.id==='Light:2110'||locationEffectRule(card)||tableEffectRule(card);
  if(!supported)return title+'<p class="hint">Dieser Effect ist in V2 noch nicht spielbar.</p>';
  const options=legalActions(state,'Light').filter(option=>option.args[0]===index&&
-  ['deployLostPileEffect','revolution','deployLocationEffect'].includes(option.kind));
+  ['deployLostPileEffect','revolution','deployLocationEffect','deployTableEffect'].includes(option.kind));
  if(options.length)return title+'<div class="inspector-effect-actions">'+options.map(option=>{
   const label=option.kind==='deployLostPileEffect'?option.target+' Side Lost Pile verdecken (0 Force)':
    option.label??(state.locations[option.args[1]].name+' · Force-Icons und Spieltext vertauschen ('+option.cost+' Force)');
@@ -1166,6 +1190,7 @@ function renderDeckPiles(side,player){
  const lost=cover+lostTop;
  el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
+  +(player.tableEffects?.length?'<p class="hint">Effects · '+player.tableEffects.map(card=>escapeHTML(card.name)).join(', ')+'</p>':'')
   +(side==='Light'?lost:'')
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
@@ -1178,8 +1203,11 @@ function render(){
  const available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light'),light=view.players.Light,dark=view.players.Dark;
  el('gameTable').hidden=false;
  const inBattle=!!battleSession&&!view.winner;
- el(inBattle?'controlPanel':'battleResponses').style.display='none';
- renderControlPanel(available,el(inBattle?'battleResponses':'controlPanel'));
+ const inBattleDialog=inBattle&&!battleOnPlaymat;
+ const react=reactResponse();
+ el(inBattleDialog?'controlPanel':'battleResponses').style.display='none';
+ renderControlPanel(available,el(inBattleDialog?'battleResponses':'controlPanel'),react);
+ renderPlayerReact(inBattleDialog?null:react,available);
  el('nightConditions').checked=!!state.nightConditions;
  const night=available.find(option=>option.kind==='trainingNight');
  el('nightConditions').disabled=!night;
@@ -1314,7 +1342,7 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1,2,3,latestCardRulesVersion].includes(saved.cardRulesVersion))||
+     (saved.cardRulesVersion!==undefined&&![0,1,2,3,4,latestCardRulesVersion].includes(saved.cardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }
@@ -1439,6 +1467,7 @@ function endGameFromUI(){
  el('phaseHelp').hidden=true;
  el('forceControls').hidden=true;
  el('drainLossControls').hidden=true;
+ el('playerReactControls').hidden=true;
  el('step').disabled=true;
  el('stats').textContent='';
  el('gameMessage').hidden=false;
