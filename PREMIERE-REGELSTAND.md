@@ -31,6 +31,12 @@ Bei der Auswahl eines Sternjägers bietet die Playmat den gemeinsamen Deploy mit
 
 Landspeed folgt der Site-Reihenfolge innerhalb derselben Gruppe. Lift Tubes bleiben auf mobilen Innen-Sites. Hyperspeed erfordert einen passenden Nav Computer oder Astromech, einen aktiven Piloten und ausreichende Reichweite. Landen und Starten sind an Docking Bays kostenlos. TIEs brauchen eine Docking Bay. Die Oberfläche bietet einzelne oder alle berechtigten Einheiten für Docking-Bay-Transit und jeweils eine Karte pro Andocktransfer an. Weitere Spezialfälle stehen in der TODO. [Advanced Rulebook, Movement](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=66)
 
+## Battle, Destiny und Schadensauflösung
+
+Nach der Ansage und möglichen Reacts beginnt die initiierende Seite das Waffen-Segment. Im Power-Segment entscheiden beide Seiten über ihre Battle-Destiny-Draws. V2 legt aufgedeckte Destiny-Karten nach der Auflösung in die Used Pile. Han Solo kann einen Draw neu ziehen, und Tarkin kann mit Vader einen gegnerischen Draw aufheben. Power Destiny verändert die Gesamt-Power, Attrition Destiny die Attrition. Ein tatsächlich gezogener Wert von null kann Attrition begründen. [Advanced Rulebook, Battle und Destiny](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=53)
+
+V2 friert die Attrition-Immunität beim Beginn des Damage-Segments ein. Spieler und Bot wählen abwechselnd Forfeit, Force Loss oder Passen. Ein Forfeit kann gleichzeitig Attrition und Battle Damage decken. Ein Treffer macht den Forfeit verpflichtend, die Seite darf vorher andere legale Schadensaktionen ausführen. Nach zwei zulässigen aufeinanderfolgenden Pässen endet der Kampf. Manuelle Regler sind vor Spielbeginn über „Battle-Lernübung“ wählbar. [Advanced Rulebook, Damage und Immunität](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=56)
+
 ## Kartenfassungen und Errata
 
 Die feste [Players-Committee-Revision `65cd150`](https://github.com/swccgpc/swccg-card-json/tree/65cd150d20634447a5499d763ac324436158c7a8) liefert den **aktiven Referenztext**. Ihre 324 aktiven Front-Datensätze entsprechen dem vorherigen Trainer-Snapshot. Für jede der 139 Markierungen (`E1` 138-mal, `D-E1` einmal) weist der Prüfbericht den Korrekturslip, den Druckscan und die Entscheidung aus. Der Trainer verwendet die korrigierte Fassung als Referenz, weil der Slip derselben Premiere-Karte und der festgeschriebenen Revision zugeordnet ist. Ein übernommener Referenztext wird erst mit einer konkreten Regel und einem Test automatisch gespielt.

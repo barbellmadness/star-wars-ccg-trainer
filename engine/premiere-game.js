@@ -2,7 +2,7 @@ const PremiereGame = (() => {
   const sides = ['Light', 'Dark'];
   const otherSide = side => side === 'Light' ? 'Dark' : 'Light';
   const turnMarkers = ['movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn',
-    'battledSitesThisTurn', 'weaponUsersThisTurn', 'reactedThisTurn', 'cancelledReactTitles'];
+    'battledSitesThisTurn', 'battledCardsThisTurn', 'weaponUsersThisTurn', 'weaponUsesThisTurn', 'reactedThisTurn', 'cancelledReactTitles'];
 
   function actionState(id, seed) {
     return {id, seed, randomState: seed, revision: 0, actions: [], responses: [],
@@ -129,7 +129,8 @@ const PremiereGame = (() => {
 
   function lifeForce(state, side) {
     const {deck, force, used} = zones(state, side);
-    return (deck?.length ?? 0) + (force?.length ?? 0) + (used?.length ?? 0);
+    const draws = state.game?.responses.filter(frame=>frame.kind==='destiny'&&frame.side===side&&frame.draw).length??0;
+    return (deck?.length ?? 0) + (force?.length ?? 0) + (used?.length ?? 0) + draws;
   }
 
   function outcome(state) {

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html=readFileSync(new URL('../v2.html',import.meta.url),'utf8');
 const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.meta.url),'utf8');
 const gameScript=readFileSync(new URL('../engine/premiere-game.js',import.meta.url),'utf8');
+const battleScript=readFileSync(new URL('../engine/premiere-battle.js',import.meta.url),'utf8');
 const unitScript=readFileSync(new URL('../engine/premiere-units.js',import.meta.url),'utf8');
 const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
@@ -16,6 +17,7 @@ function harness(){
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
+ vm.runInContext(battleScript,context);
  vm.runInContext(unitScript,context);
  vm.runInContext(locationScript,context);
  vm.runInContext(sessionScript,context);
@@ -1566,4 +1568,121 @@ test('an active astromech supplies navigation and hyperspeed, and disabling the 
  assert.equal(run("craftStats(red,5).hyperspeed===6&&movementOptionsFor('Light').some(move=>move.kind==='Hyperspeed')"),true);
  run('red.disabled=true');
  assert.equal(run("movementOptionsFor('Light').some(move=>move.kind==='Hyperspeed')"),false);
+});
+
+function segmentedBattleHarness(side='Light'){
+ const fixture=weaponBattleHarness(side);
+ fixture.run('state.game=PremiereGame.actionState(90,1);state.phase=3;state.trainingBattle=false;');
+ return fixture;
+}
+
+test('a regular battle advances from weapons through power to individual damage payments',()=>{
+ const {run,elements}=segmentedBattleHarness();
+ run('rebel.weapons=[rifle];');
+ assert.equal(run("requestAction('trainingNight','Light',[true])"),false);
+ assert.equal(run("requestAction('battle','Light',[0])&&battleSession.segment==='weapons'"),true);
+ assert.equal(run("requestAction('trainingModifier','Light',['Light','power',12])"),false);
+ assert.doesNotMatch(elements.get('battleDetails').innerHTML,/Manuelle Karten-Effekte/);
+ assert.equal(run("requestAction('destiny','Light')"),false);
+ assert.equal(run("requestAction('fireWeapon','Light',[0,0,0])&&battleSession.lastHit.card===trooper"),true);
+ assert.equal(run("requestAction('passWeapons','Dark')&&requestAction('passWeapons','Light')&&battleSession.segment==='power'"),true);
+ assert.equal(run("requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')&&battleSession.segment==='damage'"),true);
+ assert.equal(run("requestAction('passDamage','Light')"),true);
+ assert.equal(run("requestAction('passDamage','Dark')"),false);
+ assert.match(elements.get('battleDetails').innerHTML,/Pflicht-Forfeits Trooper/);
+ assert.equal(run("botDamageAction().kind"),'battleForfeit');
+ assert.equal(run("performAction(botDamageAction())&&state.botLost.includes(trooper)"),true);
+ assert.equal(run("requestAction('passDamage','Light')&&performAction(botDamageAction())&&battleSession===null"),true);
+});
+
+test('Han can pay for one replacement after revealing destiny, and only the replacement counts',()=>{
+ const {run,elements}=segmentedBattleHarness();
+ run(`rebel.id='Light:1098';rebel.ability=4;state.deck=[{name:'Replacement',destiny:5},{name:'First draw',destiny:1}];`);
+ assert.equal(run("requestAction('battle','Light',[0])&&requestAction('destiny','Light')"),true);
+ assert.equal(run("state.used.length===1&&lifeForceRemaining('Light')===7"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/First draw/);
+ assert.equal(run("requestAction('destinyResponse','Light',['hanRedraw'])"),false);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('destinyResponse','Light',['hanRedraw'])"),true);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("battleSession.lightDestiny===5&&state.used.slice(-2).map(card=>card.name).join()==='First draw,Replacement'"),true);
+ assert.equal(run("PremiereGame.wasUsed(state.game,'battle','hanRedraw')"),true);
+});
+
+test('Tarkin with Vader cancels an opposing draw without creating attrition',()=>{
+ const {run}=segmentedBattleHarness();
+ run(`rebel.ability=4;state.dark[0].push({id:'Dark:1061',type:'Character',name:'Grand Moff Tarkin',ability:3,power:2,forfeit:4},
+  {id:'Dark:634',type:'Character',name:'Darth Vader',ability:6,power:6,forfeit:6});`);
+ assert.equal(run("requestAction('battle','Light',[0])&&requestAction('destiny','Light')"),true);
+ assert.equal(run("requestAction('destinyResponse','Dark',['tarkinCancel'])"),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.equal(run("battleSession.lightDestiny===0&&!battleSession.battleDrawSucceeded.Light&&state.used.at(-1).name==='Weapon draw'"),true);
+ assert.equal(run("requestAction('skipDestiny','Dark')&&battleSession.damage.debt.Dark.attrition===0"),true);
+});
+
+test('a printed battle Interrupt grants real draws and keeps the weapon segment open for passes',()=>{
+ const {run}=segmentedBattleHarness();
+ run(`rebel.name='•Luke Skywalker';officer.name='•Han Solo';rebel.ability=4;
+  state.hand.push({id:'Light:758',name:"Don't Get Cocky",type:'Interrupt'});
+  state.deck=[{name:'Spare',destiny:6},{name:'Third',destiny:3},{name:'Second',destiny:2},{name:'First',destiny:1}];`);
+ assert.equal(run("requestAction('battle','Light',[0])&&battleSession.segment==='weapons'"),true);
+ assert.equal(run("requestAction('battleEffect','Light',[1])&&battleSession.extraDraws.Light===2"),true);
+ assert.equal(run("requestAction('passWeapons','Dark')&&requestAction('passWeapons','Light')"),true);
+ assert.equal(run("requestAction('destiny','Light')&&battleSession.lightDestiny===6&&state.deck[0].name==='Spare'"),true);
+});
+
+test('Dr. Evazan can remove the last rival participant before the damage segment',()=>{
+ const {run}=segmentedBattleHarness('Dark');
+ run(`state.light[0]=[rebel];trooper.weapons=[blaster];state.dark[0].push({id:'Dark:768',name:'Dr. Evazan',type:'Character',ability:2,power:2,forfeit:3});`);
+ assert.equal(run("requestAction('battle','Dark',[0])&&requestAction('fireWeapon','Dark',[0,0,0])"),true);
+ assert.equal(run("requestAction('passWeapons','Light')&&requestAction('battleEffect','Dark',[-1])"),true);
+ assert.equal(run("state.lost.includes(rebel)&&battleSession===null&&state.battledCardsThisTurn.includes(rebel)"),true);
+});
+
+test('damage freezes inherited immunity and an immune pilot may still forfeit to cover damage and attrition',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(91,1);state.phase=3;
+  const falcon=card('Light:1677'),han=card('Light:1098'),enemy=card('Dark:723');
+  PremiereUnits.add(falcon,han,'pilot','Light');state.light[0]=[falcon];state.dark[0]=[enemy];
+  state.botDeck=[{name:'Dark destiny',destiny:4}];
+  state.dark[0].push({...scout});`);
+ assert.equal(run("requestAction('battle','Light',[0])&&requestAction('skipDestiny','Light')"),true);
+ assert.equal(run("requestAction('destiny','Dark')"),false); // Permanent pilot abilities sum to only 3.
+ run('enemy.occupants=[{role:"pilot",card:card("Dark:791")}];refreshBattleParticipants();');
+ assert.equal(run("requestAction('destiny','Dark')"),true);
+ assert.equal(run("battleSession.damage.debt.Light.immunity.includes(han)&&battleSession.damage.debt.Light.immunity.includes(falcon)"),true);
+ assert.equal(run("requestAction('battleForfeit','Light',[1])&&state.lost.includes(han)"),true);
+ assert.equal(run("battleSession.damage.debt.Light.immunity.includes(falcon)&&battleSession.damage.debt.Light.attrition===0"),true);
+});
+
+test('Battle, Power and Attrition Destiny use separate totals and actually draw from the deck',()=>{
+ const {run}=segmentedBattleHarness();
+ run(`rebel.ability=4;state.deck=[{name:'Attrition',destiny:3},{name:'Power',destiny:2},{name:'Location',type:'Location'}];`);
+ assert.equal(run("requestAction('battle','Light',[0])"),true);
+ run("scheduleBattleDestiny('Light','power',1);scheduleBattleDestiny('Light','attrition',1);");
+ assert.equal(run("requestAction('destiny','Light')&&requestAction('skipDestiny','Dark')"),true);
+ assert.equal(run("battleSession.lightDestiny===0&&battleSession.damage.debt.Dark.damage===2&&battleSession.damage.debt.Dark.attrition===3"),true);
+ assert.equal(run('state.deck.length===0&&state.used.length===4'),true);
+});
+
+test('damage payments alternate even when forfeiting removes all presence on the losing side',()=>{
+ const {run}=segmentedBattleHarness();
+ run('state.light[0]=[rebel];trooper.power=7;');
+ assert.equal(run("requestAction('battle','Light',[0])&&requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')"),true);
+ assert.equal(run("requestAction('battleForceLoss','Light',['hand',0])"),true);
+ assert.equal(run("requestAction('battleForfeit','Light',[0])"),false);
+ assert.equal(run("requestAction('passDamage','Dark')&&requestAction('battleForfeit','Light',[0])"),true);
+ assert.equal(run("!confirmedPresence('Light',0)&&battleSession.damage.debt.Light.damage===1&&battleSession.segment==='damage'"),true);
+ assert.equal(run("requestAction('passDamage','Dark')&&requestAction('battleForceLoss','Light',['force'])"),true);
+ assert.equal(run("requestAction('passDamage','Dark')&&requestAction('passDamage','Light')&&battleSession===null"),true);
+});
+
+test('using a lightsaber during a drain locks that carrier to the same weapon for the turn',()=>{
+ const {run}=segmentedBattleHarness();
+ run(`const saber={id:'Light:1386',type:'Weapon',side:'Light',name:'Lightsaber'};
+  rebel.weapons=[saber,rifle];state.phase=1;state.locations[0].icons={light:1,dark:1};state.dark[0]=[];`);
+ assert.equal(run("requestAction('drain','Light',[0,1])"),true);
+ assert.equal(run("state.weaponUsesThisTurn[0].weapon===saber"),true);
+ run('state.dark[0]=[trooper];state.phase=3;');
+ assert.equal(run("requestAction('battle','Light',[0])&&battleSession.segment==='power'"),true);
+ assert.equal(run("requestAction('fireWeapon','Light',[0,1,0])"),false);
 });

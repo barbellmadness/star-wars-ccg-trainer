@@ -54,16 +54,17 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 5. Battle, Destiny und Schadensauflösung
 
-- [ ] Battle-Initiierung gegen Occupy, Kartenbeschränkungen, beteiligte Einheiten, Force-Kosten und Limits pro Ort und Einheit prüfen. Reacts abwickeln, bevor das Waffen-Segment beginnt.
-- [ ] Waffen-, Power- und Damage-Segment als eigenen Zustand modellieren. Ziele, Aktionen und Passmöglichkeiten pro Segment freigeben und Sonderfälle eines vorzeitig endenden Battles behandeln.
-- [ ] Im Waffen-Segment auch zulässige Interrupts, Device- und Charakteraktionen anbieten. Die Grenze einer Waffe pro Träger, begründete Ausnahmen und die Trennung zwischen pro Battle und pro Zug abbilden.
-- [ ] Eine gemeinsame Destiny-Aktion für Waffen, Battle, Power, Attrition und Karteneffekte einführen. Ziehen, Aufdecken, Antwortfenster, Neuziehen, Abbrechen, Ersetzen, Modifikatoren und Used Pile in Reihenfolge abwickeln.
-- [ ] Gedruckte Destiny einschließlich Sonderzeichen und mehrerer tatsächlicher Draws verarbeiten. Abgebrochene oder unmögliche Draws, leerer Reserve-Stapel und die Untergrenze null bei Modifikatoren testen.
-- [ ] Power-Destiny, Battle-Destiny, Attrition und Battle Damage getrennt berechnen. Bedingte Mindest-Ability, zusätzliche Draws, Limits, passagierbezogene Ability und Karten wie die War Rooms berücksichtigen.
-- [ ] Kartentextbasierte Immunitäten vollständig abbilden. Grenzen, Bedingungen, übertragene Immunität und Verlust oder Änderung der Immunität während des Battles testen.
-- [ ] Damage in der richtigen Reihenfolge auflösen. Pflicht-Forfeits getroffener Karten, veränderte Forfeit-Werte, verwendbare Attrition-Ziele, gleichzeitige Deckung von Attrition und Battle Damage und verbleibenden Force-Verlust prüfen.
-- [ ] Forfeit- und Force-Loss-Entscheidungen beiden Seiten regelgerecht anbieten. In der Einzelspielerpartie trifft der Bot seine Auswahl selbst. Bei unvollständiger Zahlung bleiben die zulässigen nächsten Schritte und der Grund sichtbar.
-- [ ] Manuelle Destiny- und Power-Regler nur in einer gekennzeichneten Lernübung zulassen. In der regulären Partie die Ergebnisse ausschließlich aus Aktionen und Kartentexten ableiten.
+- [x] Battle-Initiierung prüft die teilnehmende Presence beider Seiten, die Force-Kosten und die Limits pro Ort und Einheit. Reacts werden vor dem Waffen-Segment abgewickelt.
+- [x] Waffen-, Power- und Damage-Segment mit eigenen Aktionen und Priorität führen. Ohne Presence endet der Kampf vor dem Damage-Segment vorzeitig, ohne die bisherige Teilnahme zurückzusetzen.
+- [x] Ausgewählte Battle-Interrupts, Stormtrooper Backpack und Dr. Evazan abbilden. Gewählte Waffen bleiben pro Träger an den Zug gebunden, einschließlich eines Lichtschwertbonus im Force Drain. Einzelne Schüsse bleiben auf den Kampf begrenzt.
+- [x] Gemeinsamen Destiny-Pfad für Waffen, Battle, Power, Attrition und Karteneffekte verwenden. Han kann einen Draw ersetzen, Tarkin kann mit Vader einen Draw aufheben. Aufgedeckte Karten gehen nach der Auflösung in die Used Pile.
+- [x] Gedruckte Destiny einschließlich EG-6, mehrerer tatsächlicher Draws, leerer Reserve und der Untergrenze null verarbeiten.
+- [x] Power-Destiny, Battle-Destiny, Attrition und Battle Damage getrennt abrechnen. Piloten-Ability, Mindest-Ability, passende Piloten und zusätzliche War-Room-Draws sind eingebunden.
+- [x] Gedruckte und gewährte Immunitäten, unter anderem bei Falcon, Vader's Custom TIE, Yavin 4: Jungle und Droiden, zum Start des Damage-Segments festhalten. Geschlossene Träger geben ihre Immunität an die Besatzung weiter.
+- [x] Treffer, veränderte Forfeit-Werte, Attrition und Battle Damage in einzelnen alternierenden Aktionen abrechnen. Ein Forfeit deckt beide offenen Werte gleichzeitig. Die Engine sperrt Passen bei offenen zahlbaren Pflichten.
+- [x] Forfeit- und Force-Loss-Aktionen für beide Seiten anbieten. Der Bot trifft die Dark-Side-Auswahl. V2 zeigt offene Werte und Pflicht-Forfeits an.
+- [x] Manuelle Power- und Destiny-Regler nur in einer gekennzeichneten Battle-Lernübung freigeben.
+- [ ] Weitere kartenspezifische Interrupt-Modi, Siegvorhersagen und Destiny- oder Immunitätseffekte ergänzen und prüfen. Neue Waffentypen und ihre Trefferfolgen folgen in Abschnitt 6.
 
 ## 6. Premiere-Waffen vervollständigen
 
