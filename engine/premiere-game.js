@@ -271,10 +271,10 @@ const PremiereGame = (() => {
   }
 
   function execute(game, action, legalActions, resolve) {
-    if (!action || !sides.includes(action.side)) return false;
+    if (!action || !sides.includes(action.side) || !Array.isArray(action.args)) return false;
     if (game && (game.executing || action.gameId !== game.id || action.revision !== game.revision)) return false;
-    const valid = legalActions(action.side).find(option => option.kind === action.kind &&
-      Array.isArray(action.args) && option.args.length === action.args.length &&
+    const valid = legalActions(action.side, action).find(option => option.kind === action.kind &&
+      option.args.length === action.args.length &&
       option.args.every((arg, i) => arg === action.args[i]));
     if (!valid) return false;
     if (game) game.executing = true;

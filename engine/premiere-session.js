@@ -3,7 +3,7 @@ let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -340,6 +340,13 @@ function moveCharacterFor(side,from,index,to,kind){
 
 function moveCharacter(from,index,to){return moveCharacterFor('Light',from,index,to)}
 
+function canDock(first,second,slot){
+ return first!==second&&first.type==='Starship'&&second.type==='Starship'&&
+  PremiereUnits.active(first)&&PremiereUnits.active(second)&&isSystem(state.locations[slot])&&
+  [first,second].some(ship=>PremiereUnits.hasDock(ship)||PremiereUnits.capital(ship))&&
+  [first,second].some(ship=>craftStats(ship,slot).powered);
+}
+
 function transportOptions(side){
  const options=[];
  if(state.activeSide!==side||![2,4].includes(state.phase))return options;
@@ -378,8 +385,7 @@ function transportOptions(side){
    if(landed||(entry.role==='hangar'&&craftStats(card,slot,true).powered))offer('exit',slot,slot,j,i,'',0,card,host,'Aussteigen');
    if(!landed&&host.type==='Starship'&&['pilot','passenger','cargo','hangar'].includes(entry.role)){
     row.forEach((target,k)=>{
-     if(target===host||target.type!=='Starship'||(!PremiereUnits.hasDock(target)&&!PremiereUnits.hasDock(host)&&
-        !PremiereUnits.capital(target)&&!PremiereUnits.capital(host))||(!craftStats(host,slot).powered&&!craftStats(target,slot).powered))return;
+     if(!canDock(host,target,slot))return;
      for(const role of PremiereUnits.roles(target,card).filter(role=>role!=='astromech')){
       offer('dock',slot,k,j,i,role,1,card,target,'Andocken und transferieren');
      }
@@ -446,16 +452,61 @@ function transitGroups(side){
  return [...groups.values()].filter(group=>group.length>1);
 }
 
-function performTransitGroup(side,from,to){
- const group=transitGroups(side).find(group=>group[0].from===from&&group[0].to===to);
- if(!group)return false;
+function performTransitGroup(side,group){
+ const {from,to,cost}=group[0];
  const {board,force,used}=PremiereGame.zones(state,side);
  for(const move of group.slice().reverse())board[from].splice(move.index,1);
  const cards=group.map(move=>move.card);
  board[to].push(...cards);
  (state.movedThisTurn??=[]).push(...cards);
- PremiereGame.moveTop(force,used,group[0].cost);
- log(side+' verlegt '+cards.length+' Einheiten per Docking-Bay-Transit ('+group[0].cost+' Force).');
+ PremiereGame.moveTop(force,used,cost);
+ log(side+' verlegt '+cards.map(card=>card.name).join(', ')+' per Docking-Bay-Transit ('+cost+' Force).');
+ return true;
+}
+
+function dockingGroups(side){
+ if(state.phase!==4)return [];
+ const {board,force}=PremiereGame.zones(state,side);
+ if(!force?.length)return [];
+ return board.flatMap((row,slot)=>row.flatMap((first,left)=>row.flatMap((second,right)=>{
+  if(right<=left||!canDock(first,second,slot))return [];
+  const ships=[first,second];
+  const choices=ships.flatMap((ship,source)=>(ship.occupants??[]).flatMap(({card,role},index)=>{
+   if(!['pilot','passenger','cargo','hangar'].includes(role))return [];
+   const destination={...ships[1-source],occupants:[]};
+   const roles=PremiereUnits.roles(destination,card).filter(role=>role!=='astromech');
+   return roles.length?[{source,index,card,roles}]:[];
+  }));
+  return choices.length>1?[{args:[slot,left,right],from:slot,cost:1,ships,choices}]:[];
+ })));
+}
+
+function dockingPlan({ships,choices},selection){
+ if(!selection.length||selection.length%3!==0)return null;
+ const occupants=ships.map(ship=>(ship.occupants??[]).slice());
+ const moved=[new Set(),new Set()], transfers=[];
+ for(let i=0;i<selection.length;i+=3){
+  const [source,index,role]=selection.slice(i,i+3);
+  const choice=choices.find(entry=>entry.source===source&&entry.index===index&&entry.roles.includes(role));
+  if(!choice||moved[source].has(index))return null;
+  moved[source].add(index);
+  transfers.push({source,role,entry:occupants[source][index]});
+ }
+ const next=ships.map((ship,i)=>({...ship,occupants:occupants[i].filter((_,index)=>!moved[i].has(index))}));
+ for(const {source,role,entry} of transfers){
+  const destination=next[1-source];
+  if(!PremiereUnits.accepts(destination,entry.card,role))return null;
+  destination.occupants.push({...entry,role});
+ }
+ return {occupants:next.map(ship=>ship.occupants),cards:transfers.map(({entry})=>entry.card)};
+}
+
+function performDockingGroup(side,ships,plan){
+ if(!plan)return false;
+ const {force,used}=PremiereGame.zones(state,side);
+ ships.forEach((ship,index)=>{ship.occupants=plan.occupants[index]});
+ PremiereGame.moveTop(force,used);
+ log(side+' transferiert '+plan.cards.map(card=>card.name).join(', ')+' zwischen '+ships.map(ship=>ship.name).join(' und ')+' (1 Force).');
  return true;
 }
 
@@ -920,6 +971,11 @@ function seekerMoves(side){
   };
   if(carrier){
    if(isSite(origin))add(from,0,[index,from,'exit'],card.name+' verlässt '+carrier.name);
+   if(!moved&&entry.carriers.length===1&&isSystem(origin))entries.forEach((target,i)=>{
+    if(target.side===tableSide&&target.slot===from&&!target.carriers.length&&canDock(carrier,target.card,from)){
+     add(from,1,[index,from,'dock',i],card.name+' transferiert zu '+target.card.name+' (1 Force)',target.card);
+    }
+   });
    if(!moved&&PremiereUnits.capital(carrier)&&isPlanetSystem(origin))state.locations.forEach((loc,to)=>{
     if(isExteriorPlanetSite(loc)&&sitePlanet(loc)===locationGroup(origin))add(to,1,[index,to,'shuttle'],card.name+' shuttelt nach '+loc.name);
    });
@@ -2392,7 +2448,7 @@ function resolveAssault(frame,opponent){
  });
 }
 
-function legalActions(position,side){
+function legalActions(position,side,request){
  if(!PremiereGame.sides.includes(side)||position!==state)return [];
  const offer=(kind,args,details)=>PremiereGame.offer(currentGame(),side,kind,args,details);
  if(!position){
@@ -2467,6 +2523,11 @@ function legalActions(position,side){
  if(side==='Light'&&(position.phase!==0||position.activated))actions.push(offer('advance'));
  for(const option of retrievalOptions(side))actions.push(offer('retrieve',[option.index,option.slot],option));
  for(const option of transportOptions(side))actions.push(offer('transport',option.args,option));
+ for(const group of dockingGroups(side)){
+  const choosing=request?.kind==='dockGroup'&&group.args.every((arg,i)=>arg===request.args?.[i]);
+  const plan=choosing?dockingPlan(group,request.args.slice(group.args.length)):null;
+  if(!choosing||plan)actions.push(offer('dockGroup',choosing?request.args:group.args,{...group,plan}));
+ }
  if(position.phase===0&&!position.activated){
   const max=Math.min(deck?.length??0,forceFromLocations(side).count);
   for(let n=0;n<=max;n++)actions.push(offer('activate',[n]));
@@ -2499,12 +2560,16 @@ function legalActions(position,side){
  for(const option of movementOptionsFor(side))actions.push(offer('move',[option.from,option.index,option.to,option.kind],{...option,movementKind:option.kind}));
  for(const group of transitGroups(side)){
   const {from,to,cost}=group[0];
-  actions.push(offer('transitGroup',[from,to],{from,to,cost,count:group.length}));
+  const choosing=request?.kind==='transitGroup'&&request.args?.[0]===from&&request.args?.[1]===to;
+  const selection=choosing?request.args.slice(2):[];
+  const plan=selection.length?group.filter(move=>selection.includes(move.index)):group;
+  if(selection.length&&plan.length!==selection.length)continue;
+  actions.push(offer('transitGroup',choosing?request.args:[from,to],{from,to,cost,choices:group,plan}));
  }
  return actions;
 }
 
-function executeAction({kind,side,args}){
+function executeAction({kind,side,args,plan,ships}){
  switch(kind){
   case 'chooseStart': return resolveStartingChoice(side,...args);
   case 'retrySetup': prepareStartingRound();return true;
@@ -2524,7 +2589,8 @@ function executeAction({kind,side,args}){
   case 'retrieve': return playRetrieval(side,...args);
   case 'deployWithPilot': return deployWithPilot(side,...args);
   case 'transport': return performTransport(side,...args);
-  case 'transitGroup': return performTransitGroup(side,...args);
+  case 'transitGroup': return performTransitGroup(side,plan);
+  case 'dockGroup': return performDockingGroup(side,ships,plan);
   case 'equip': return deployWeaponFor(side,...args);
   case 'deployAutomated': return deployAutomated(side,...args);
   case 'buryMineCard': return buryWeaponCard(side,...args);
@@ -2570,7 +2636,7 @@ function executeAction({kind,side,args}){
 function performAction(action,followUp=true){
  const game=currentGame();
  const traffic=state?.buriedMines?.length?new Map(mineTraffic().map(entry=>[entry.card,entry.slot])):null;
- const result=PremiereGame.execute(game,action,side=>legalActions(state,side),executeAction);
+ const result=PremiereGame.execute(game,action,(side,request)=>legalActions(state,side,request),executeAction);
  if(!result)return false;
  if(state?.game){revealTrippedMines(traffic);findAutomatedWeapons();}
  if(battleSession?.segmented)stopBattleWithoutPresence();

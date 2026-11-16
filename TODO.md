@@ -50,7 +50,8 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [x] Docking-Bay-Transit für einzelne Einheiten und alle gemeinsam berechtigten Einheiten ergänzen. Sternjäger landen und starten im verwandten System. TIEs nutzen Docking Bays.
 - [x] Hyperspeed und Nav Computer beim Aktionsangebot aus Karte und Besatzung neu berechnen. Fehlender Hyperspeed, fehlender Pilot und ein deaktiviertes Schiff sperren die Bewegung.
 - [x] Bewegungs- und Deploy-Reacts für Battle und Force Drain mit Kosten, Reichweite und Auswirkungen auf den Auslöser ausführen. CZ-3 eröffnet Deploy-Reacts, passende Fahrzeuge und Dantooine erlauben Bewegungs-Reacts.
-- [ ] Freie Teilgruppen beim Docking-Bay-Transit und mehrere Transfers in einer Andockaktion anbieten. Weitere individuelle Deploy-, Besatzungs- und React-Texte sowie Kontrollwechsel durch einzelne Karteneffekte folgen mit den jeweiligen Kartenregeln.
+- [x] Freie Teilgruppen beim Docking-Bay-Transit und mehrere Transfers zwischen angedockten Schiffen anbieten. Die Gruppe zahlt einmal, und beim Andocken werden die Kapazitäten nach allen Transfers geprüft. [Decipher Premiere-FAQ, Abschnitt 2.5](https://res.starwarsccg.org/rules/premierefaq.pdf#page=9)
+- [ ] Weitere individuelle Deploy-, Besatzungs- und React-Texte sowie Kontrollwechsel durch einzelne Karteneffekte umsetzen. Siehe Abschnitt 7.
 
 ## 5. Battle, Destiny und Schadensauflösung
 
@@ -75,7 +76,8 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [x] Proton Torpedoes, Quad Laser Cannon, Boosted TIE Cannon, Ion Cannon und Turbolaser Battery haben eigene Träger-, Ziel- und Destiny-Regeln. Ionenschaden beseitigt Schiffswaffen und setzt Armor oder Maneuver sowie Hyperspeed auf null.
 - [x] Vier Seeker suchen beim Spielen und Bewegen passende Ziele, auch auf ihrer eigenen Seite. Beide Timer Mines lösen offen beim nächsten eigenen Zug oder verdeckt beim Betreten oder Kreuzen aus. Der Laser Projector kann auf Innen-Sites feuern und selbst zerstört werden.
 - [x] Waffentransfer, Blaster Rack, Disarmed, Overload, Wuher und Entschärfen durch Mining Droids verwenden dieselben Karteninstanzen und Stapel. Leere Reserve und fehlgeschlagene Schüsse werden protokolliert.
-- [ ] Weitere Kartentext-Kombinationen wie Combined Attack sowie Seeker-Transfers zwischen angedockten Schiffen ergänzen. Waffen in Kreaturenangriffen mit dem Kreaturenablauf prüfen.
+- [x] Seeker zwischen gegnerischen Schiffen am selben System während der eigenen Control Phase transferieren. Die Transferkosten und die Ziele am neuen Schiff werden geprüft. [Decipher-Glossar, Seekers](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=118)
+- [ ] Weitere Kartentext-Kombinationen wie Combined Attack ergänzen. Waffen in Kreaturenangriffen mit dem Kreaturenablauf prüfen.
 
 ## 7. Kartentexte für alle Kartentypen
 

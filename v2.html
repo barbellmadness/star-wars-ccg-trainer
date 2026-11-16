@@ -419,17 +419,43 @@ function renderSetup(){
 }
 
 const crewLabels={pilot:'Pilot',driver:'Fahrer',passenger:'Passagier',astromech:'Astromech',cargo:'Fracht',hangar:'Hangar'};
+function submitTransportGroup(form,action){
+ const chosen=action.kind==='transitGroup'?
+  [...form.querySelectorAll('input:checked')].map(input=>Number(input.value)):
+  [...form.querySelectorAll('select')].filter(input=>input.value).flatMap(input=>
+   [Number(input.dataset.ship),Number(input.dataset.index),input.value]);
+ if(!chosen.length||!dispatchUI({...action,args:[...action.args,...chosen]})){
+  form.querySelector('[role="status"]').textContent=chosen.length?
+   'Diese Auswahl ist nicht möglich. Prüfe die freien Plätze und die Phase.':'Wähle mindestens eine Karte.';
+ }
+ return false;
+}
+
+function transportGroupMarkup(option){
+ const {kind,side,args,gameId,revision}=option,transit=kind==='transitGroup';
+ const label=transit?'Gruppe → '+state.locations[option.to].name+' (Transit, '+option.cost+' Force)':
+  'Andocken · '+option.ships.map(ship=>ship.name).join(' / ')+' (1 Force)';
+ const choices=option.choices.map(choice=>transit?
+  '<label><input type="checkbox" value="'+choice.index+'"> '+escapeHTML(choice.card.name)+'</label>':
+  '<label>'+escapeHTML(choice.card.name)+' → '+escapeHTML(option.ships[1-choice.source].name)
+   +'<select data-ship="'+choice.source+'" data-index="'+choice.index+'"><option value="">An Bord lassen</option>'
+   +choice.roles.map(role=>'<option value="'+role+'">'+crewLabels[role]+'</option>').join('')+'</select></label>');
+ const submit=escapeHTML('return submitTransportGroup(this,'+JSON.stringify({kind,side,args,gameId,revision})+')');
+ return '<details><summary>'+escapeHTML(label)+'</summary><form onsubmit="'+submit+'">'
+  +choices.map(choice=>'<div>'+choice+'</div>').join('')
+  +'<button type="submit">'+(transit?'Transit ausführen':'Transfer ausführen')+'</button><p class="hint" role="status"></p></form></details>';
+}
+
 function movementPanel(i,available){
- const options=available.filter(option=>option.from===i&&['move','transitGroup','transport'].includes(option.kind)
+ const options=available.filter(option=>option.from===i&&['move','transitGroup','dockGroup','transport'].includes(option.kind)
   &&(option.args[0]!=='deployAboard'||option.args[3]===selected));
  const label=option=>{
   if(option.kind==='move')return option.name+' → '+state.locations[option.to].name+' ('+option.movementKind+', '+option.cost+' Force)';
-  if(option.kind==='transitGroup')return option.count+' Einheiten → '+state.locations[option.to].name+' (Transit, '+option.cost+' Force)';
   const role=crewLabels[option.args[5]];
   const destination=option.args[0]==='shuttleDown'?state.locations[option.to].name:option.carrier.name;
   return option.label+' · '+option.card.name+' → '+destination+(role?' · '+role:'')+' ('+option.cost+' Force)';
  };
- return options.length?'<div>'+options.map(option=>ruleButton(option,label(option))).join('')+'</div>':'';
+ return options.length?'<div>'+options.map(option=>option.choices?transportGroupMarkup(option):ruleButton(option,label(option))).join('')+'</div>':'';
 }
 
 function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}

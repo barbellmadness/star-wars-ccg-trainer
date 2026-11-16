@@ -1949,6 +1949,21 @@ test('Lift Tubes use interior mobile routes, and a grouped Docking Bay Transit p
  assert.equal(run("state.light[5].includes(a)&&state.light[5].includes(b)&&state.used.length===2"),true);
 });
 
+test('selected units transit together, leaving unselected cards and their movement available',async()=>{
+ const {run}=await craftHarness();
+ run(`const a=card('Light:2052'),b=card('Light:2040'),c=card('Light:1098');
+  const blaster=card('Light:259');a.weapons=[blaster];
+  state.locations[5]=card('Dark:675');state.phase=4;state.light[2]=[a,b,c];
+  const transit=legalActions(state,'Light').find(action=>action.kind==='transitGroup');`);
+ assert.match(run("transportGroupMarkup(transit)"),/type="checkbox".*type="checkbox".*type="checkbox"/);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5,0,0])"),false);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5,0,99])"),false);
+ assert.equal(run('state.light[2].length===3&&state.used.length===0'),true);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5,0,2])"),true);
+ assert.equal(run("state.light[2].length===1&&state.light[2][0]===b&&state.light[5].length===2&&state.light[5][0]===a&&state.light[5][1]===c&&a.weapons[0]===blaster"),true);
+ assert.equal(run("state.used.length===1&&state.movedThisTurn.includes(a)&&state.movedThisTurn.includes(c)&&!state.movedThisTurn.includes(b)"),true);
+});
+
 test('shuttling to a capital ship, a docked transfer and cargo survival respect roles and timing',async()=>{
  const {run}=await craftHarness();
  run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),cargo=card('Light:2161');
@@ -1959,6 +1974,37 @@ test('shuttling to a capital ship, a docked transfer and cargo survival respect 
  assert.equal(run("requestAction('transport','Light',['shuttleUp',2,6,0,0,'cargo'])"),true);
  assert.equal(run("PremiereLocations.aboard(state,cargo,big)&&state.used.length===3"),true);
  assert.equal(run("requestAction('transport','Light',['shuttleDown',6,2,0,0,''])"),false);
+});
+
+test('docking moves multiple chosen passengers for one Force and validates final capacity atomically',async()=>{
+ const {run}=await craftHarness();
+ run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),trooper=card('Light:2052'),luke=card('Light:1593');
+  state.phase=4;state.light[6]=[big,other];
+  PremiereUnits.add(big,han,'passenger','Light');PremiereUnits.add(big,trooper,'passenger','Light');
+  PremiereUnits.add(other,luke,'passenger','Light');`);
+ assert.match(run("transportGroupMarkup(legalActions(state,'Light').find(action=>action.kind==='dockGroup'))"),/Andocken.*Transfer ausführen/);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,1,'passenger'])"),false);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,0,'pilot'])"),false);
+ assert.equal(run("big.occupants.length===2&&other.occupants.length===1&&state.used.length===0"),true);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,1,'passenger',1,0,'passenger'])"),true);
+ assert.equal(run("big.occupants.length===1&&big.occupants[0].card===luke&&other.occupants[0].card===han&&other.occupants[1].card===trooper&&state.used.length===1"),true);
+});
+
+test('a Seeker can dock and transfer to a reachable enemy ship only during its Control phase',async()=>{
+ const {run}=await craftHarness();
+ run(`const first=card('Light:530'),second=card('Light:1677'),seeker=card('Dark:1096'),han=card('Light:1098');
+  state.game=PremiereGame.actionState(42,1);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.light[6]=[first,second];PremiereUnits.add(first,seeker,'seeker','Dark');
+  PremiereUnits.add(second,han,'pilot','Light');seeker.tableSide='Light';
+  state.phase=4;`);
+ assert.equal(run("seekerMoves('Dark').some(move=>move.args[2]==='dock')"),false);
+ run("state.phase=1;const transfer=()=>legalActions(state,'Dark').find(action=>action.kind==='moveSeeker'&&action.args[2]==='dock');");
+ assert.equal(run("!!transfer()"),true);
+ assert.equal(run("performAction(transfer())"),true);
+ assert.equal(run("!first.occupants.length&&second.occupants.some(entry=>entry.card===seeker&&entry.role==='seeker')&&state.botUsed.length===1"),true);
+ assert.equal(run("!state.automatedPending&&state.light[6][1]===second&&state.botForce.length===4"),true);
+ run('han.ability=2;findAutomatedWeapons()');
+ assert.equal(run('state.lost.includes(han)&&state.botLost.includes(seeker)'),true);
 });
 
 test('a carrier loss loses attachments and crew under their owners, except Bantha passengers',async()=>{
