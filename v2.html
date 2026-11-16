@@ -243,8 +243,8 @@ function initiateBattleFor(side,i){
  used.push(force.pop());
  if(!state.battledSitesThisTurn)state.battledSitesThisTurn=[];
  state.battledSitesThisTurn.push(i);
- battleSession={site:i,initiator:side,lightDestiny:null,darkDestiny:null,lightCard:null,darkCard:null,lightLoss:[],darkLoss:[],resolved:false,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,botForfeitsPending:true};
- log(side+' initiiert Battle bei '+state.locations[i].name+' (1 Force → Used Pile). Noch nicht unterstützt: Waffen, Reacts und weitere Kartentexte.');
+ battleSession={site:i,initiator:side,lightDestiny:null,darkDestiny:null,lightCard:null,darkCard:null,lightLoss:[],darkLoss:[],weaponHits:{Light:[],Dark:[]},resolved:false,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,botForfeitsPending:true};
+ log(side+' initiiert Battle bei '+state.locations[i].name+' (1 Force → Used Pile). Noch nicht unterstützt: automatische Waffen, Reacts und weitere Kartentexte.');
  render();renderBattle();el('battleAnalysis').scrollIntoView({behavior:'smooth',block:'nearest'});return true;
 }
 function battleAnalysis(i){return initiateBattleFor('Light',i)}
@@ -348,7 +348,23 @@ function maybePlanBotForfeits(){
  if(battleSession?.botForfeitsPending&&battleSession.lightCard!==null&&battleSession.darkCard!==null)botChooseForfeits();
 }
 function setBattleModifier(side,kind,value){const x=battleSession;if(!x||state.phase!==3)return;const key=(side==='Light'?'light':'dark')+(kind==='power'?'PowerMod':'Bonus');const n=Number(value);if(!Number.isInteger(n)||n<0||n>20){log('Ungültiger Modifikator (0–20).');return}x[key]=n;log(side+' manueller '+(kind==='power'?'Power':'zusätzlicher Battle-Destiny')+'-Bonus '+n+' (nicht automatisch durch Kartentext verifiziert).');renderBattle()}
-function toggleLoss(side,index){const x=battleSession;if(!x)return;const key=side==='Light'?'lightLoss':'darkLoss',list=x[key];x[key]=list.includes(index)?list.filter(i=>i!==index):[...list,index];if(side==='Dark')x.botForfeitsPending=false;renderBattle()}
+// Weapon hits remain in battle for power and destiny, but MUST be forfeited in the damage segment.
+// This records an already-validated hit; a weapon fire/targeting engine is not yet implemented.
+function recordBattleWeaponHit(side,index){
+ const x=battleSession;
+ if(!x||x.resolved||state?.phase!==3||!['Light','Dark'].includes(side))return false;
+ const cards=side==='Light'?state.light[x.site]:state.dark[x.site];
+ if(!cards||!Number.isInteger(index)||index<0||index>=cards.length)return false;
+ x.weaponHits??={Light:[],Dark:[]};
+ const hits=x.weaponHits[side]??=[];
+ if(!hits.includes(index))hits.push(index);
+ const key=side==='Light'?'lightLoss':'darkLoss';
+ if(!x[key].includes(index))x[key].push(index);
+ x.botForfeitsPending=true;
+ log(cards[index].name+' ist getroffen: verpflichtender Forfeit im Damage-Segment.');
+ return true;
+}
+function toggleLoss(side,index){const x=battleSession;if(!x)return;const key=side==='Light'?'lightLoss':'darkLoss',list=x[key];if((x.weaponHits?.[side]||[]).includes(index)){log('Getroffene Karte muss forfeitet werden.');return;}x[key]=list.includes(index)?list.filter(i=>i!==index):[...list,index];if(side==='Dark')x.botForfeitsPending=false;renderBattle()}
 function battleAttritionAgainst(side){
  const x=battleSession;if(!x||!['Light','Dark'].includes(side))return null;
  const k=side==='Light'?'dark':'light',card=x[k+'Card'],destiny=x[k+'Destiny'];
@@ -374,7 +390,9 @@ function battleForfeitPlan(side){
  if(incoming===null)return {valid:false,reason:'Attrition unbekannt',sum:0};
  if(new Set(indices).size!==indices.length||indices.some(i=>!Number.isInteger(i)||i<0||i>=cards.length))return {valid:false,reason:'Ungültige Kartenauswahl',sum:0};
  if(indices.some(i=>!Number.isFinite(cards[i].forfeit)||cards[i].forfeit<0))return {valid:false,reason:'Forfeit-Wert unbekannt',sum:0};
- const sum=indices.reduce((n,i)=>n+cards[i].forfeit,0);
+ const mandatory=x.weaponHits?.[side]||[];
+  if(mandatory.some(i=>!indices.includes(i)))return {valid:false,reason:'Getroffene Karten müssen forfeitet werden',sum:0};
+  const sum=indices.reduce((n,i)=>n+cards[i].forfeit,0);
  const vulnerable=cards.map((c,i)=>immuneToBattleAttrition(c,incoming)?null:i).filter(i=>i!==null);
  const satisfiesAttrition=selection=>{
   const eligibleSelection=vulnerable.filter(i=>selection.includes(i));
@@ -385,7 +403,7 @@ function battleForfeitPlan(side){
  // A selected card is unnecessary only if BOTH attrition and battle damage still remain covered without it.
  if(indices.some(i=>{
   const rest=indices.filter(j=>j!==i);
-  return satisfiesAttrition(rest)&&sum-cards[i].forfeit>=required;
+  return !mandatory.includes(i)&&satisfiesAttrition(rest)&&sum-cards[i].forfeit>=required;
  }))return {valid:false,reason:'Unnötiger freiwilliger Forfeit',sum,incoming,required};
  return {valid:true,reason:'Bereit',sum,incoming,required,remainingDamage:Math.max(0,required-sum)};
 }
@@ -395,7 +413,7 @@ function lossPreview(side){
  const cards=side==='Light'?state.light[x.site]:state.dark[x.site],selected=x[side==='Light'?'lightLoss':'darkLoss']||[];
  const p=battleForfeitPlan(side),incoming=battleAttritionAgainst(side),damage=battleDamagePreview(),required=side==='Light'?damage?.lightDamage:damage?.darkDamage;
  const sum=selected.reduce((n,i)=>n+(Number.isFinite(cards[i]?.forfeit)?cards[i].forfeit:0),0);
- return '<div style="border:1px solid #566981;border-radius:8px;padding:10px;margin:8px 0"><b>'+side+' · Forfeit-Auswahl</b><p class="hint">Eingehende Attrition: '+(incoming??'noch unbekannt')+' · Battle Damage: '+(required??'noch unbekannt')+' · gewählter Forfeit: '+sum+' · offener Battle Damage: '+(required==null?'–':Math.max(0,required-sum))+'</p>'+cards.map((c,i)=>'<label style="display:block;padding:5px"><input type="checkbox" '+(selected.includes(i)?'checked':'')+' onchange="toggleLoss(\''+side+'\','+i+')"> '+escapeHTML(c.name)+' · Forfeit '+(c.forfeit??'?')+(printedAttritionImmunityBelow(c)!==null?' · Immun gegen Attrition &lt; '+printedAttritionImmunityBelow(c)+(immuneToBattleAttrition(c,incoming)?' (aktiv)':' (inaktiv)'):'')+'</label>').join('')+'<p class="hint">'+escapeHTML(p.valid?'Forfeit-Auswahl im Basis-Lernmodus zulässig':p.reason)+'</p></div>';
+ return '<div style="border:1px solid #566981;border-radius:8px;padding:10px;margin:8px 0"><b>'+side+' · Forfeit-Auswahl</b><p class="hint">Eingehende Attrition: '+(incoming??'noch unbekannt')+' · Battle Damage: '+(required??'noch unbekannt')+' · gewählter Forfeit: '+sum+' · offener Battle Damage: '+(required==null?'–':Math.max(0,required-sum))+'</p>'+cards.map((c,i)=>'<label style="display:block;padding:5px"><input type="checkbox" '+(selected.includes(i)?'checked':'')+' onchange="toggleLoss(\''+side+'\','+i+')"> '+escapeHTML(c.name)+' · Forfeit '+(c.forfeit??'?')+(printedAttritionImmunityBelow(c)!==null?' · Immun gegen Attrition &lt; '+printedAttritionImmunityBelow(c)+(immuneToBattleAttrition(c,incoming)?' (aktiv)':' (inaktiv)'):'')+((battleSession.weaponHits?.[side]||[]).includes(i)?' · GETROFFEN (Forfeit Pflicht)':'')+'</label>').join('')+'<p class="hint">'+escapeHTML(p.valid?'Forfeit-Auswahl im Basis-Lernmodus zulässig':p.reason)+'</p></div>';
 }
 function battleDamagePreview(){if(!battleSession)return null;const x=battleSession,t=battleTotals(x.site);if(!Number.isFinite(x.lightDestiny)||!Number.isFinite(x.darkDestiny))return null;const lightTotal=(t.lightPower+x.lightPowerMod)*(x.lightPowerDoubled?2:1)+x.lightDestiny+x.lightBonus,darkTotal=(t.darkPower+x.darkPowerMod)*(x.darkPowerDoubled?2:1)+x.darkDestiny+x.darkBonus;return {lightTotal,darkTotal,lightDamage:Math.max(0,darkTotal-lightTotal),darkDamage:Math.max(0,lightTotal-darkTotal)}}
 function lossValue(side){const x=battleSession,cards=side==='Light'?state.light[x.site]:state.dark[x.site],indices=x[side==='Light'?'lightLoss':'darkLoss'];return {sum:indices.reduce((n,i)=>n+(cards[i]?.forfeit||0),0),unknown:indices.some(i=>!Number.isFinite(cards[i]?.forfeit)),count:indices.length}}
