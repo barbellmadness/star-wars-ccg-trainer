@@ -25,7 +25,7 @@
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
 @media(max-width:650px){main{padding:9px}.playmat-shell{padding:8px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:130px;height:179px}.playmat{min-height:440px}}
-</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><button id="start" disabled>Neue Lernpartie</button> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Wähle deine Light-Side-Startlocation. Der Bot wählt eine andere Dark-Side-Location. Anschließend werden die Decks gemischt und je acht Karten gezogen. Dark Side beginnt.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle-Analyse · Lernmodus</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben · Locations in der Mitte · Light Side unten. Horizontal scrollen, um alle Locations zu sehen.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" checked onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext" onclick="botNextStep()">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script>
+</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><button id="start" disabled>Neue Lernpartie</button> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle-Analyse · Lernmodus</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben · Locations in der Mitte · Light Side unten. Horizontal scrollen, um alle Locations zu sehen.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" checked onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext" onclick="botNextStep()">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script>
 const phases=['Activate','Control','Deploy','Battle','Move','Draw'],german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Spiele Charaktere an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systemen aus. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Playmat-Slots am selben Planeten. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 let catalog=[],starterDecks=null,state=null,selected=-1,battleSession=null,setupDecks=null;
@@ -139,9 +139,10 @@ function withinDeploymentLimit(card,side){
 }
 function isDeployableCharacter(c){return /character/i.test(c.type||'')&&Number.isFinite(c.deploy)&&c.deploy>=0}
 function deployedCharacterCost(c){return isDeployableCharacter(c)?c.deploy:null}
+function startingLocationTitle(card){return card.name.trim().replace(/^[•*]+\s*/,'').toLowerCase()}
 function buildStarterDeck(side,definition,catalogById){
  const error=message=>new Error(side+'-Starterdeck: '+message);
- if(!Array.isArray(definition?.cards)||!Array.isArray(definition.startingLocations)||!definition.startingLocations.length)
+ if(!Array.isArray(definition?.cards)||!Array.isArray(definition.startingLocations))
   throw error('Kartenliste oder Starting Locations fehlen.');
 
  const cards=[],ids=new Set();
@@ -158,14 +159,15 @@ function buildStarterDeck(side,definition,catalogById){
  }
  if(cards.length!==60)throw error('Erwartet sind 60 Karten, gefunden wurden '+cards.length+'.');
 
- const startingIndices=definition.startingLocations.map(id=>{
-  const index=cards.findIndex(card=>card.id===id),card=cards[index];
+ const startingCards=definition.startingLocations.map(id=>{
+  const card=ids.has(id)?catalogById.get(id):null;
   if(!card||!isLoc(card)||!Number.isInteger(card.icons?.light)||!Number.isInteger(card.icons?.dark))
    throw error('Ungültige Starting Location '+id+'.');
-  return index;
+  return card;
  });
- if(new Set(startingIndices.map(index=>cards[index].name)).size!==startingIndices.length)
+ if(new Set(startingCards.map(startingLocationTitle)).size!==startingCards.length)
   throw error('Die Starting Locations müssen unterschiedliche Namen haben.');
+ const startingIndices=startingCards.flatMap(card=>cards.flatMap((copy,index)=>copy===card?[index]:[]));
  return {cards,startingIndices};
 }
 function readStarterDecks(payload,catalog){
@@ -174,15 +176,26 @@ function readStarterDecks(payload,catalog){
  if(byId.size!==catalog.length)throw new Error('Die Premiere-Kartendatenbank enthält doppelte Karten-IDs.');
  const light=buildStarterDeck('Light',payload.decks?.Light,byId);
  const dark=buildStarterDeck('Dark',payload.decks?.Dark,byId);
- if(light.startingIndices.some(i=>!dark.startingIndices.some(j=>dark.cards[j].name!==light.cards[i].name)))
-  throw new Error('Für jede Light Starting Location muss es eine andere Dark Starting Location geben.');
  return {light,dark};
 }
 function auditData(){const loc=catalog.filter(isLoc),known=loc.filter(c=>Number.isInteger(c.icons?.light)&&Number.isInteger(c.icons?.dark));const bySide=x=>catalog.filter(c=>c.side===x).length;const missingDeploy=catalog.filter(c=>/character/i.test(c.type)&&!Number.isFinite(c.deploy)).length;const missingImages=catalog.filter(c=>!c.image).length;const textEffects=catalog.filter(c=>c.gametext.trim().length>0).length;const forceTexts=catalog.filter(c=>/force generation|force drain|force icons?|activate.*force|generates? .*force/i.test(c.gametext)).length;el('audit').textContent='Premiere-Datensätze: '+catalog.length+' (Light '+bySide('Light')+' / Dark '+bySide('Dark')+')\nLocations: '+loc.length+' · beide Force-Icon-Werte erkannt: '+known.length+'\nCharaktere ohne numerische Deploy-Kosten: '+missingDeploy+'\nKarten ohne Bild-URL: '+missingImages+'\nKartentexte mit Effekten: '+textEffects+' · mögliche Force-Effekte zur manuellen Prüfung: '+forceTexts+'\nAchtung: Kartentext-Modifikatoren werden noch NICHT ausgeführt. Die Zahl ist eine Suchhilfe, kein Regeltest.\nHinweis: Zahlen belegen noch keine visuelle Übereinstimmung von Bild und Kartentext.'}
 function draw(w){const d=w==='me'?state.deck:state.botDeck,h=w==='me'?state.hand:state.botHand;if(d.length)h.push(d.pop())}
 function log(x){state.log.unshift(x);state.log=state.log.slice(0,40)}
 function startingLocationChoices(deck){
- return deck.startingIndices.map(index=>({index,card:deck.cards[index]}));
+ const offeredTitles=new Set();
+ return deck.startingIndices.flatMap(index=>{
+  if(deck.setAside.has(index))return [];
+  const card=deck.cards[index],title=startingLocationTitle(card);
+  if(offeredTitles.has(title))return [];
+  offeredTitles.add(title);
+  return [{index,card}];
+ });
+}
+function startingLocationMarkup(card){
+ if(!card)return '<span>Kein Startort verfügbar</span>';
+ const name=escapeHTML(card.name);
+ return (card.image?'<img loading="lazy" src="'+escapeHTML(card.image)+'" alt="'+name+'">':'')
+  +'<span>'+name+' · Icons '+card.icons.light+'/'+card.icons.dark+'</span>';
 }
 function renderStarterDeckLists(){
  const sections=['light','dark'].map(side=>{
@@ -201,43 +214,78 @@ function start(){
  if(!starterDecks)return;
  battleSession=null;state=null;selected=-1;
  el('battleAnalysis').style.display='none';
- const copyDeck=deck=>({...deck,cards:deck.cards.map(card=>({...card}))});
+ el('board').innerHTML='';
+ el('step').disabled=true;
+ const copyDeck=deck=>({...deck,cards:deck.cards.map(card=>({...card})),setAside:new Set()});
  setupDecks={light:copyDeck(starterDecks.light),dark:copyDeck(starterDecks.dark)};
- const choices=startingLocationChoices(setupDecks.light);
  el('setup').style.display='block';
- el('setupOptions').innerHTML='<p>Wähle eine Starting Location aus deinem Deck.</p><div class="start-location-options">'
-  +choices.map(({card,index})=>'<button class="start-location-option" onclick="chooseStart('+index+')">'
-   +(card.image?'<img loading="lazy" src="'+escapeHTML(card.image)+'" alt="'+escapeHTML(card.name)+'">':'')
-   +'<span>'+escapeHTML(card.name)+' · Icons '+card.icons.light+'/'+card.icons.dark+'</span></button>').join('')
+ prepareStartingRound();
+}
+function prepareStartingRound(){
+ const setup=setupDecks;
+ const botChoices=startingLocationChoices(setup.dark);
+ // Lock the bot's concealed choice before the player can act this round.
+ setup.darkChoice=botChoices.length?botChoices[Math.floor(Math.random()*botChoices.length)]:null;
+ setup.revealed=null;
+
+ const choices=startingLocationChoices(setup.light);
+ const prompt=choices.length?'Wähle deine Starting Location.':'Du hast keinen verfügbaren Startort mehr.';
+ el('setupOptions').innerHTML='<p>'+prompt+'</p><div class="start-location-options">'
+  +(choices.length?choices.map(({card,index})=>'<button class="start-location-option" onclick="chooseStart('+index+')">'
+   +startingLocationMarkup(card)+'</button>').join(''):'<button onclick="chooseStart(null)">Startorte aufdecken</button>')
   +'</div>'+renderStarterDeckLists();
- el('instruction').textContent='Starting Location auswählen';
- el('hint').textContent='Light und Dark verwenden feste Starterdecks mit je 60 Premiere-Karten.';
+ el('instruction').textContent=choices.length?'Starting Location auswählen':'Startorte aufdecken';
+ el('hint').textContent='Die Auswahl des Bots bleibt bis zum Aufdecken verdeckt.';
 }
 function chooseStart(index){
- if(!setupDecks?.light.startingIndices.includes(index))return;
- const {light,dark}=setupDecks;
- const lightStart=light.cards[index];
- const candidates=startingLocationChoices(dark).filter(({card})=>card.name!==lightStart.name);
- if(!candidates.length){
-  el('hint').textContent='Keine unterschiedliche gültige Dark Starting Location gefunden.';
-  return;
+ const setup=setupDecks;
+ if(!setup||setup.revealed)return false;
+ const choices=startingLocationChoices(setup.light),lightChoice=choices.find(choice=>choice.index===index)??null;
+ if(!lightChoice&&(index!==null||choices.length))return false;
+
+ const darkChoice=setup.darkChoice;
+ const collision=!!lightChoice&&!!darkChoice&&startingLocationTitle(lightChoice.card)===startingLocationTitle(darkChoice.card);
+ if(collision){
+  setup.light.setAside.add(lightChoice.index);
+  setup.dark.setAside.add(darkChoice.index);
  }
- const darkChoice=candidates[Math.floor(Math.random()*candidates.length)];
- light.cards.splice(index,1);
- dark.cards.splice(darkChoice.index,1);
+ setup.revealed={lightChoice,darkChoice,collision};
+ el('setupOptions').innerHTML='<div class="start-location-options" aria-label="Gleichzeitig aufgedeckte Startorte">'
+  +'<div class="start-location-option"><b>Light Side</b>'+startingLocationMarkup(lightChoice?.card)+'</div>'
+  +'<div class="start-location-option"><b>Dark Side</b>'+startingLocationMarkup(darkChoice?.card)+'</div></div>'
+  +(collision?'<button onclick="retryStartingLocations()">Erneut wählen</button>'
+   :'<button onclick="beginStartingGame()">Partie beginnen</button>');
+ el('instruction').textContent=collision?'Gleicher Ortsname':'Starting Locations aufgedeckt';
+ el('hint').textContent=collision?'Beide Karten liegen bis zum Mischen beiseite. Wählt erneut.'
+  :'Lege die gewählten Startorte aus und ziehe die Starthände.';
+ return true;
+}
+function retryStartingLocations(){
+ if(!setupDecks?.revealed?.collision)return;
+ prepareStartingRound();
+}
+function beginStartingGame(){
+ const setup=setupDecks;
+ if(!setup?.revealed||setup.revealed.collision)return false;
+ const {lightChoice,darkChoice}=setup.revealed;
+ const locations=[lightChoice?.card,darkChoice?.card].filter(Boolean).concat(null);
+ // Keep every set-aside card in its owner's deck. Only the final picks leave the decks.
+ const deck=shuffle(setup.light.cards.filter((card,index)=>index!==lightChoice?.index));
+ const botDeck=shuffle(setup.dark.cards.filter((card,index)=>index!==darkChoice?.index));
  setupDecks=null;
  el('setup').style.display='none';
  state={
-  turn:1,phase:0,activeSide:'Dark',activated:false,deck:shuffle(light.cards),botDeck:shuffle(dark.cards),
-  hand:[],botHand:[],locations:[lightStart,darkChoice.card,null],light:[[],[],[]],dark:[[],[],[]],
+  turn:1,phase:0,activeSide:'Dark',activated:false,deck,botDeck,
+  hand:[],botHand:[],locations,light:locations.map(()=>[]),dark:locations.map(()=>[]),
   force:[],used:[],lost:[],botForce:[],botUsed:[],botLost:[],log:[],botReason:'Bot wartet.',botHistory:[],botTurn:null,
   movedThisTurn:[],deployedThisTurn:[],drainedSitesThisTurn:[],battledSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,nightConditions:false
  };
  selected=-1;
  for(let i=0;i<8;i++){draw('me');draw('bot')}
- log('Starting Locations: Light '+lightStart.name+' / Dark '+darkChoice.card.name+'. Je 8 Karten Starthand. Dark Side beginnt.');
+ log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. Dark Side beginnt.');
  botBegin();
  render();
+ return true;
 }
 function sitePlanet(c){if(!c||!isSite(c))return null;const match=String(c.name||'').match(/^[*•]?\s*([^:]+):\s*.+$/);return match?match[1].trim().toLowerCase():null}
 function samePlanetAdjacent(from,to){if(!state||Math.abs(from-to)!==1)return false;const a=sitePlanet(state.locations[from]),b=sitePlanet(state.locations[to]);return !!a&&a===b}
