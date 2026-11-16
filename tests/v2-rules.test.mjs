@@ -1299,7 +1299,8 @@ test('Playmat places Dark above location art and Light below and retains actions
 test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
  const {run,elements}=await premiereHarness();
  assert.match(html,/id="botHand"[\s\S]*id="phaseListDark"[\s\S]*id="board"[\s\S]*id="hand"[\s\S]*id="phaseListLight"/);
- assert.match(html,/id="forceControls"[^>]*><\/div>\s*<figure[^>]+id="pilesLight"/);
+ assert.match(html,/id="forceControls"[^>]*><\/div>\s*<section[^>]+id="drainLossControls"[^>]*><\/section>\s*<figure[^>]+id="pilesLight"/);
+ assert.match(html,/id="phaseDisplayLight"[^>]*>\s*<button id="step"[^>]*>[^<]*<\/button>\s*<p id="turnStatusLight"/);
  assert.match(html,/class="table-sidebar table-bot"[\s\S]*id="botHistory"[\s\S]*class="table-sidebar table-info"[\s\S]*id="phaseHelpText"[\s\S]*id="log"/);
  assert.equal(elements.get('gameTable').hidden,true);
  const assertPhase=(active,phase)=>{

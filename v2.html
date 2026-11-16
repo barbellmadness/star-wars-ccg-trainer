@@ -105,6 +105,7 @@ a{color:#b6d8ff}
 .hand-heading .hint,.bot-turn-controls .hint{font-size:12px}
 .hand-heading button,.bot-turn-controls button{padding:5px 8px;font-size:12px}
 .phase-display{align-self:start;border:1px solid #52617b;border-radius:8px;padding:5px;background:#0b1727;font-size:12px;line-height:1.2}
+.phase-display #step{width:100%;margin-bottom:5px;padding:5px 3px;font-size:12px}
 .phase-display p{margin:0 0 3px;padding:3px 5px;border-radius:4px;background:#1b2940;color:#c5d4e8;font-weight:700}
 .phase-display ol{display:grid;gap:1px;list-style:none;margin:0;padding:0}
 .phase-display li{padding:1px 5px;color:#b7c9e1;border-radius:4px}
@@ -120,6 +121,7 @@ a{color:#b6d8ff}
 .deck-pile-controls input{width:3.75rem}
 .deck-pile-controls button{padding:5px 8px;font-size:12px}
 .deck-pile-controls .hint{margin:5px 0 0}
+.drain-loss-controls{padding:8px;border:1px solid #b98963;border-radius:8px;background:#392719}
 .deck-pile-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px}
 .deck-pile-summary .life-force{color:#f2d078}
 .pile-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr);text-align:center}
@@ -271,16 +273,17 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
       <div>
         <div class="hand-heading">
           <h2>Deine Hand · Light Side</h2>
-          <button id="step" disabled>Nächste Phase</button>
         </div>
         <div id="hand" class="cards"></div>
       </div>
       <aside class="phase-display" id="phaseDisplayLight" aria-label="Phasen der Light Side">
+        <button id="step" type="button" disabled>Nächste Phase</button>
         <p id="turnStatusLight" role="status"></p>
         <ol id="phaseListLight" role="list"></ol>
       </aside>
       <div class="deck-pile-area">
         <div id="forceControls" class="deck-pile-controls" hidden></div>
+        <section id="drainLossControls" class="deck-pile-controls drain-loss-controls" aria-labelledby="drainLossTitle" tabindex="-1" hidden></section>
         <figure class="deck-pile-diagram" id="pilesLight" aria-label="Kartenstapel der Light Side"></figure>
       </div>
     </div>
@@ -339,7 +342,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.5.0';
+const trainerVersion='2.6.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -376,6 +379,9 @@ function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
  return dispatchUI({kind:'activate',side:'Light',args:[Number(el('activateAmount').value)],gameId,revision});
 }
 function renderControlPanel(available=legalActions(state,'Light'),box=el('controlPanel')){
+ const drainArea=el('drainLossControls');
+ const focusDrain=drainArea.hidden||drainArea.contains?.(document.activeElement);
+ drainArea.hidden=true;
  if(state.automatedPending){
   const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
@@ -417,9 +423,19 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  if(pending?.payer==='Light'&&!state.gameWinner){
   const label={battleDamage:'Battle Damage',assault:'Assault'}[pending.reason]??'Force Drain';
   const names={deck:'Reserve Deck',force:'Force Pile',used:'Used Pile'};
-  box.innerHTML='<b>'+label+' – wähle selbst, welche Force du verlierst</b><p>Verbleibende Verluste: '+pending.remaining+'. Jede Karte zählt als 1 Force.</p>'
-   +available.map(option=>ruleButton(option,option.card?'Hand: '+option.card.name:names[option.args[0]]+' (oberste Karte)')).join(' ');
-  box.style.display='block';return;
+  const choices=available.map(option=>ruleButton(option,option.card?'Hand · '+option.card.name:names[option.args[0]]+' (oberste Karte)')).join(' ');
+  if(pending.reason==='drain'&&box===el('controlPanel')){
+   const loc=state.locations[pending.locationIndex];
+   drainArea.innerHTML='<b id="drainLossTitle">Force Drain'+(loc?' · '+escapeHTML(loc.name):'')+'</b>'
+    +'<p>Wähle Karten für deinen Lost Pile. Noch '+pending.remaining+' Force.</p><div class="pile-action">'+choices+'</div>';
+   box.innerHTML='';box.style.display='none';
+   drainArea.hidden=false;
+   if(focusDrain)drainArea.focus();
+  }else{
+   box.innerHTML='<b>'+label+' – wähle selbst, welche Force du verlierst</b><p>Verbleibende Verluste: '+pending.remaining+'. Jede Karte zählt als 1 Force.</p>'+choices;
+   box.style.display='block';
+  }
+  return;
  }
  if(box===el('battleResponses')){
   box.innerHTML='';box.style.display='none';return;
@@ -473,6 +489,7 @@ function renderSetup(){
  el('phaseHelp').hidden=true;
  el('setup').style.display='block';
  el('forceControls').hidden=true;
+ el('drainLossControls').hidden=true;
  el('controlPanel').style.display='none';
  el('botTurnPanel').style.display='none';
  el('step').disabled=true;
@@ -1084,12 +1101,14 @@ function renderDeckPiles(side,player){
  const lostTop=top?'<button class="lost-top-card" type="button" aria-haspopup="dialog" onclick="inspectLostTop(\''+side+'\')">'
   +(top.image?'<img src="'+escapeHTML(top.image)+'" alt="" loading="lazy">':'')
   +'<span><small>Oben auf der Lost Pile</small><strong>'+escapeHTML(top.name)+'</strong></span></button>':'';
+ const lost=cover+lostTop;
  el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
+  +(side==='Light'?lost:'')
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
   +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
-  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+cover+lostTop;
+  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+(side==='Dark'?lost:'');
 }
 
 function render(){
@@ -1344,6 +1363,7 @@ function endGameFromUI(){
  el('outOfPlay').hidden=true;
  el('phaseHelp').hidden=true;
  el('forceControls').hidden=true;
+ el('drainLossControls').hidden=true;
  el('step').disabled=true;
  el('stats').textContent='';
  el('gameMessage').hidden=false;

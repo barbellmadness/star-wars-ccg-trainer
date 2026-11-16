@@ -158,7 +158,33 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await drain.count(), 0);
     assert.equal(await page.evaluate(() => state.botLost.length), darkLostBefore + 1);
 
+    const handLoss = await page.evaluate(() => {
+      state.activeSide = 'Dark';
+      state.drainedSitesThisTurn = [];
+      state.dark[2] = [{...catalog.find(card => card.id === 'Dark:2355')}];
+      const name = state.hand[0].name;
+      if (!requestAction('drain', 'Dark', [2])) throw Error('Dark drain did not start');
+      return name;
+    });
+    const lossControls = page.locator('.light-hand #drainLossControls');
+    assert.equal(await page.locator('#phaseDisplayLight > #step').count(), 1);
+    assert.ok(await lossControls.isVisible());
+    assert.match(await lossControls.textContent(), /Force Drain.*Cantina.*Noch 2 Force/);
+    assert.equal(await page.locator('#controlPanel').isVisible(), false);
+    await lossControls.getByRole('button', {name: 'Hand · ' + handLoss, exact: true}).first().click();
+    assert.match(await lossControls.textContent(), /Noch 1 Force/);
+    assert.equal(await page.locator('#pilesLight .lost-top-card strong').textContent(), handLoss);
     await page.evaluate(() => {
+      state.lostPileEffects.push({card: catalog.find(card => card.id === 'Dark:2897'), target: 'Light'});
+      presentGame();
+    });
+    await lossControls.getByRole('button', {name: 'Reserve Deck (oberste Karte)'}).click();
+    assert.equal(await lossControls.isVisible(), false);
+    assert.equal(await page.locator('#pilesLight .lost-top-card').count(), 0);
+    assert.match(await page.locator('#pilesLight').textContent(), /Lost Pile verdeckt/);
+
+    await page.evaluate(() => {
+      state.activeSide = 'Light';
       state.phase = 3;
       state.dark[1][0].weapons = [];
       state.force.push({name: 'Test Force'}, {name: 'Test Force'});
@@ -187,7 +213,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.5.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.6.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
