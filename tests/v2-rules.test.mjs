@@ -1100,6 +1100,8 @@ test('Playmat places Dark above location art and Light below and retains actions
 test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
  const {run,elements}=await premiereHarness();
  assert.match(html,/id="botHand"[\s\S]*id="phaseListDark"[\s\S]*id="board"[\s\S]*id="hand"[\s\S]*id="phaseListLight"/);
+ assert.match(html,/id="forceControls"[^>]*><\/div>\s*<figure[^>]+id="pilesLight"/);
+ assert.match(html,/class="table-sidebar table-bot"[\s\S]*id="botHistory"[\s\S]*class="table-sidebar table-info"[\s\S]*id="phaseHelpText"[\s\S]*id="log"/);
  assert.equal(elements.get('gameTable').hidden,true);
  const assertPhase=(active,phase)=>{
   for(const side of ['Dark','Light']){
@@ -1115,11 +1117,18 @@ test('the hand phase lists follow the current turn through setup, play and game 
  run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
  assert.equal(elements.get('gameTable').hidden,false);
  assert.equal(elements.get('gameMessage').hidden,true);
+ assert.equal(elements.get('forceControls').hidden,true);
  assertPhase('Dark','Aktivieren');
+ assert.match(elements.get('phaseHelpText').textContent,/Aktiviere/);
  run('botNextStep();botNextStep()');
  assertPhase('Dark','Kontrolle');
+ assert.match(elements.get('phaseHelpText').textContent,/Kontrolle/);
+ assert.match(elements.get('botHistory').textContent,/Control/);
+ assert.match(elements.get('log').textContent,/Control/);
  run('for(let i=0;i<5;i++)botNextStep()');
  assertPhase('Light','Aktivieren');
+ assert.equal(elements.get('forceControls').hidden,false);
+ assert.match(elements.get('forceControls').innerHTML,/Force aktivieren/);
  run("requestAction('activate','Light',[1]);requestAction('advance','Light')");
  assertPhase('Light','Kontrolle');
  run("state.gameWinner='Light';render()");
