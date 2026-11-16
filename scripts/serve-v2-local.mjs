@@ -1,0 +1,64 @@
+import {readFile} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import {join, resolve} from 'node:path';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const defaultReport = join(root, '..', 'Star Wars CCG Premiere - Drucktexte lokal', 'premiere-drucktexte-lokal.json');
+const contentTypes = {
+  html: 'text/html; charset=utf-8',
+  js: 'text/javascript; charset=utf-8',
+  json: 'application/json; charset=utf-8',
+};
+
+export function startLocalV2Server({port = 8000, reportPath = defaultReport} = {}) {
+  const server = createServer(async (request, response) => {
+    const listenPort = server.address().port;
+    if (!['127.0.0.1:' + listenPort, 'localhost:' + listenPort].includes(request.headers.host)) {
+      response.writeHead(403).end();
+      return;
+    }
+    if (request.method !== 'GET') {
+      response.writeHead(405, {Allow: 'GET'}).end();
+      return;
+    }
+    const route = request.url.split('?')[0];
+    const privateReport = route === '/local-print-texts.json';
+    if (privateReport && request.headers['sec-fetch-site'] &&
+        request.headers['sec-fetch-site'] !== 'same-origin') {
+      response.writeHead(403).end();
+      return;
+    }
+    const asset = route === '/' ? '/v2.html' : route;
+    if (!privateReport && !/^\/(?:v2\.html|index\.html|engine\/[\w-]+\.js|data\/[\w-]+\.json)$/.test(asset)) {
+      response.writeHead(404).end();
+      return;
+    }
+    const file = privateReport ? reportPath : join(root, asset.slice(1));
+    try {
+      const body = await readFile(file);
+      response.writeHead(200, {
+        'Content-Type': contentTypes[asset.split('.').at(-1)],
+        'Cache-Control': 'no-store',
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff',
+      }).end(body);
+    } catch (error) {
+      response.writeHead(error.code === 'ENOENT' ? 404 : 500).end();
+    }
+  });
+  return server.listen(port, '127.0.0.1');
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  const server = startLocalV2Server({reportPath: process.argv[2] ? resolve(process.argv[2]) : defaultReport});
+  server.on('error', error => {
+    console.error(error.code === 'EADDRINUSE'
+      ? 'Port 8000 ist belegt. Beende den laufenden lokalen Server und starte V2 erneut.'
+      : error.message);
+    process.exitCode = 1;
+  });
+  server.on('listening', () => {
+    console.log('V2 läuft unter http://127.0.0.1:8000/v2.html. Beenden mit Strg+C.');
+  });
+}

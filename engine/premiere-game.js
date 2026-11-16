@@ -124,7 +124,7 @@ const PremiereGame = (() => {
         ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
-      winner: state.gameWinner, locations: state.locations.map(clone), players,
+      winner: state.gameWinner, locations: state.locations.map(clone), players, outOfPlay:(state.outOfPlay??[]).map(clone),
       buriedCounts: state.locations.map((_, slot) => (state.buriedMines ?? []).filter(record=>record.slot===slot).length),
       convertedLocations: state.locations.map((_, slot) => (state.convertedLocations?.[slot] ?? []).map(clone)),
       locationEffects: state.locations.map((_, slot) => (state.locationEffects?.[slot] ?? []).map(effect => clone(effect.card)))};
@@ -143,7 +143,7 @@ const PremiereGame = (() => {
   }
 
   function outcome(state) {
-    if (state.gameWinner || state.pendingForceLoss || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
+    if (state.gameWinner || state.pendingForceLoss || state.pendingReserveSearch || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
     const light = lifeForce(state, 'Light'), dark = lifeForce(state, 'Dark');
     if (!light && !dark) return 'Simultaneous';
     if (!light) return 'Dark';
@@ -271,10 +271,10 @@ const PremiereGame = (() => {
   }
 
   function execute(game, action, legalActions, resolve) {
-    if (!action || !sides.includes(action.side)) return false;
+    if (!action || !sides.includes(action.side) || !Array.isArray(action.args)) return false;
     if (game && (game.executing || action.gameId !== game.id || action.revision !== game.revision)) return false;
-    const valid = legalActions(action.side).find(option => option.kind === action.kind &&
-      Array.isArray(action.args) && option.args.length === action.args.length &&
+    const valid = legalActions(action.side, action).find(option => option.kind === action.kind &&
+      option.args.length === action.args.length &&
       option.args.every((arg, i) => arg === action.args[i]));
     if (!valid) return false;
     if (game) game.executing = true;

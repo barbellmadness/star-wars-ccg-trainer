@@ -14,15 +14,18 @@ const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>true}={}){
  const elements=new Map();
+ const timers=new Map();
+ let timerId=0;
  const document={getElementById(id){
   if(!elements.has(id))elements.set(id,{
-   value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
+   value:'',checked:true,style:{},dataset:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
    showModal(){this.open=true;},close(){this.open=false;},focus(){},
   });
   return elements.get(id);
  }};
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error,
-  localStorage:storage,confirm:confirmNewGame});
+  localStorage:storage,confirm:confirmNewGame,setTimeout(callback){timers.set(++timerId,callback);return timerId;},
+  clearTimeout:id=>timers.delete(id)});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
  vm.runInContext(battleScript,context);
@@ -32,7 +35,11 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
- return {run,elements};
+ return {run,elements,tick(){
+  const [id,callback]=timers.entries().next().value??[];
+  if(!callback)return false;
+  timers.delete(id);callback();return true;
+ }};
 }
 test('deployment rejects characters at systems and insufficient force',()=>{
  const {run}=harness();
@@ -665,15 +672,22 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
 const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
 
 async function premiereHarness(deckLists=starterLists,browser){
- const {run,elements}=harness(browser);
+ const fixture=harness(browser);
+ const {run}=fixture;
  const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
+ run('globalThis.location={hostname:'+JSON.stringify(browser?.hostname??'')+'};');
  run(`fetch=async path=>{
   if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
   if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
+  if(path==='local-print-texts.json'){
+   globalThis.requestedLocalPrints=true;
+   const report=${JSON.stringify(browser?.localPrintReport??null)};
+   if(report)return {ok:true,json:async()=>report};
+  }
   return {ok:false,status:404};
  }`);
  await run('load()');
- return {run,elements};
+ return fixture;
 }
 
 test('the card inspector separates rules text, print scan, lore, German notes and special values',async()=>{
@@ -690,6 +704,29 @@ test('the card inspector separates rules text, print scan, lore, German notes an
  assert.match(elements.get('cardInspectorBody').innerHTML,/Aktiver Spieltext.*Verknüpfte Vor-Errata-Fassung/);
  run("closeCard();el('showBotHand').checked=false;inspectCard('Dark',0,'hand')");
  assert.equal(elements.get('cardInspector').open,false);
+});
+
+test('the local inspector uses scan-matched print text and keeps both location sides separate',async()=>{
+ const localPrintReport={schema:1,cards:[
+  {id:'Light:2',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Light/large/2x3kpr.gif',printText:'Printed < text'},
+  {id:'Light:672',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Light/large/deathstardetentionblockcontrolroom.gif',
+   printText:{Light:'Printed Light Side text',Dark:''}},
+  {id:'Dark:816',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Dark/large/wrong-scan.gif',printText:'Wrong scan'},
+ ]};
+ const {run,elements}=await premiereHarness(starterLists,{hostname:'127.0.0.1',localPrintReport});
+ assert.equal(run('localPrintTexts.size'),2);
+ run(`state={hand:[catalog.find(card=>card.id==='Light:2')],botHand:[catalog.find(card=>card.id==='Dark:816')]};inspectCard('Light',0,'hand')`);
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/Aktiver Spieltext.*<h3>Drucktext<\/h3><p[^>]*>Printed &lt; text/);
+ assert.equal(run('state.hand[0].texts.print'),null);
+ run(`showCardWithStats(catalog.find(card=>card.id==='Light:672'))`);
+ assert.match(body.innerHTML,/<h3>Drucktext<\/h3>.*Light Side<\/b><br>Printed Light Side text.*Dark Side<\/b><br>Feld im Scan leer/);
+ run(`inspectCard('Dark',0,'hand')`);
+ assert.match(body.innerHTML,/Drucktext im Kartenscan · Transkription offen/);
+
+ const publicPage=await premiereHarness(starterLists,{hostname:'example.com',localPrintReport});
+ assert.equal(publicPage.run('globalThis.requestedLocalPrints'),undefined);
+ assert.equal(publicPage.run('localPrintTexts.size'),0);
 });
 
 test('hand and field cards use image buttons, with hand selection and field status available in the inspector',async()=>{
@@ -713,9 +750,12 @@ test('hand and field cards use image buttons, with hand selection and field stat
  const field=run('renderPlaymatColumn(state.locations[0],0)');
  assert.match(field,/class="location-name">[^<]+/);
  assert.match(field,/aria-label="Test Ship ansehen" onclick="inspectCard\('Light',0,'field',0\)"/);
- assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|Test Weapon|Test Pilot/);
+ assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|>Test (?:Weapon|Pilot)</);
+ assert.match(field,/class="playmat-stack"[^>]+>.*aria-label="Waffe · Test Weapon ansehen".*aria-label="Pilot · Test Pilot ansehen"/);
  assert.equal(elements.get('selectInspectorCard').hidden,true);
  assert.match(elements.get('cardInspectorBody').innerHTML,/Ionenschaden.*Besatzung und Ausrüstung.*Test Weapon.*Pilot · Test Pilot/);
+ run("inspectStackLayer('Light',0,0,1)");
+ assert.equal(elements.get('cardInspectorTitle').textContent,'Test Pilot');
 });
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
@@ -907,7 +947,8 @@ test('the game stays disabled when the local starter deck file is missing',async
 });
 
 function weaponBattleHarness(initiator='Light'){
- const {run,elements}=harness();
+ const fixture=harness();
+ const {run}=fixture;
  run(`
  const rifle={id:'Light:265',side:'Light',name:'Blaster Rifle',type:'Weapon',subType:'Character'};
  const blaster={id:'Dark:1264',side:'Dark',name:'Imperial Blaster',type:'Weapon',subType:'Character'};
@@ -921,7 +962,7 @@ function weaponBattleHarness(initiator='Light'){
  deck:[{name:'Battle draw',destiny:5},{name:'Weapon draw',destiny:3}],
  botDeck:[{name:'Bot battle draw',destiny:5},{name:'Bot weapon draw',destiny:4}],
  force:forceCards(),botForce:forceCards(),used:[],botUsed:[],lost:[],botLost:[],log:[],botHistory:[],battledSitesThisTurn:[]};`);
- return {run,elements};
+ return fixture;
 }
 
 test('Light equips a blaster through the playmat only on an eligible warrior and it moves with its host',()=>{
@@ -1046,7 +1087,10 @@ test('deployment respects single and multiple Premiere uniqueness dots',async()=
 test('hyperspeed uses parsec distance, requires a nav computer, and costs one regular move',async()=>{
  const {run,elements}=await craftHarness();
  run("state.phase=4;state.light[5]=[ship];render()");
- assert.match(elements.get('board').innerHTML,/Tatooine \(Hyperspeed, 1 Force\)/);
+ assert.match(elements.get('board').innerHTML,/id="movementTrigger5"/);
+ assert.doesNotMatch(elements.get('board').innerHTML,/Hyperspeed, 1 Force|Hyperspeed \(1 Force\)/);
+ run('openMovement(5)');
+ assert.match(elements.get('movementOptions').innerHTML,/Tatooine · Hyperspeed \(1 Force\)/);
  assert.equal(run('moveCharacter(5,0,1)'),false);
  assert.equal(run('moveCharacter(5,0,2)'),false);
  run('ship.navComputer=false');
@@ -1292,6 +1336,32 @@ test('Alter can uncover a pile after Eyes In The Dark is on the table',async()=>
  assert.equal(run('state.lost.includes(eyes)&&state.lostPileEffects.length===0'),true);
 });
 
+test('a Light Effect in hand shows legal targets in the popup and plays through the normal action path',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ run("state.phase=1;inspectCard('Light',0,'hand')");
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/In deiner Ausspielen-Phase/);
+ assert.doesNotMatch(body.innerHTML,/Side Lost Pile verdecken/);
+ run("state.phase=2;inspectCard('Light',0,'hand')");
+ assert.match(body.innerHTML,/Light Side Lost Pile verdecken \(0 Force\).*Dark Side Lost Pile verdecken \(0 Force\)/);
+ assert.equal(elements.get('selectInspectorCard').hidden,true);
+ run("playInspectorEffect(legalActions(state,'Light').find(action=>action.kind==='deployLostPileEffect'&&action.target==='Dark'))");
+ assert.equal(elements.get('cardInspector').open,false);
+ assert.equal(run("state.hand.length===0&&PremiereGame.lostPileFaceDown(state,'Dark')"),true);
+});
+
+test('an unsupported Effect or an unaffordable Revolution shows why the card cannot be played',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ run(`state.hand=[catalog.find(card=>card.id==='Light:2110'),{id:'test-effect',type:'Effect',name:'Untested'}];
+  state.force=[{name:'Force'}];inspectCard('Light',0,'hand');`);
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/Revolution braucht 3 Force\. Du hast 1/);
+ run("inspectCard('Light',1,'hand')");
+ assert.match(body.innerHTML,/Effect ist in V2 noch nicht spielbar/);
+ run("state.force.push({name:'Force'},{name:'Force'});inspectCard('Light',0,'hand')");
+ assert.match(body.innerHTML,/Force-Icons und Spieltext vertauschen \(3 Force\)/);
+});
+
 test('Alter must draw below the highest ability to stop Eyes In The Dark from deploying',async()=>{
  for(const destiny of [1,4]){
   const {run,elements}=await eyesInTheDarkHarness();
@@ -1507,13 +1577,91 @@ test('a seed and the recorded action choices reproduce setup and both sides’ z
 
 function autosaveStorage(){
  const values=new Map();
- return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+ return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
 }
+
+test('starter decks replay complete matches with legal decisions and conserve all card instances',async()=>{
+ const {run}=await premiereHarness();
+ run(`presentGame=()=>{};
+ function inventory(){
+  const roots=[...state.locations.filter(Boolean),...(state.outOfPlay??[]),...Object.values(state.convertedLocations??{}).flat(),
+   ...Object.values(state.locationWeapons??{}).flat(),
+   ...Object.values(state.locationEffects??{}).flat().map(effect=>effect.card),
+   ...[...(state.buriedMines??[]),...(state.lostPileEffects??[])].map(effect=>effect.card)];
+  if(state.blasterRack)roots.push(state.blasterRack.card,...state.blasterRack.weapons);
+  for(const side of PremiereGame.sides){
+   const {deck,hand,force,used,lost,board}=PremiereGame.zones(state,side);
+   roots.push(...deck,...hand,...force,...used,...lost,...board.flat());
+  }
+  function walk(card){
+   return [card.instanceId,...[...(card.weapons??[]),...(card.attachments??[]),
+    ...(card.occupants??[]).map(entry=>entry.card)].flatMap(walk)];
+  }
+  return roots.flatMap(walk);
+ }
+ function playMatch(seed){
+  start(seed);
+  const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
+  choose();
+  while(setupDecks.revealed.collision){retryStartingLocations();choose();}
+  beginStartingGame();
+  const summary={seed,ground:false,space:false,responses:0,reactions:0,botActions:0,validated:0};
+  for(let step=0;step<1600&&!state.gameWinner;step++){
+   if(!PremiereGame.responseWindow(state.game)&&!battleSession&&!state.game.timing.pending){
+    const ids=inventory();
+    if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Card balance at '+seed+'/'+step);
+    summary.validated++;
+   }
+   const light=legalActions(state,'Light'),dark=legalActions(state,'Dark');
+   const response=PremiereGame.responseWindow(state.game);
+   if(response)summary.responses++;
+   if(battleSession)summary[isSystem(state.locations[battleSession.site])?'space':'ground']=true;
+   if(dark.some(action=>['botStep','botDecision'].includes(action.kind))&&
+      !state.pendingForceLoss&&!battleSession&&!response&&!state.game.timing.pending&&!state.automatedPending){
+    if(!botNextStep())throw Error('Bot refused a step at '+seed+'/'+step);
+    summary.botActions++;
+    continue;
+   }
+   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger','battlePrediction','duel',
+    'fireWeapon','battleEffect','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage','loseForce',
+    'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance'];
+   const options=light.length?light:dark;
+   let action;
+   if(!light.length&&battleSession?.weaponTurn==='Dark')action=botWeaponAction();
+   if(!light.length&&battleSession?.damage?.priority==='Dark')action=botDamageAction();
+   action??=preferred.map(kind=>kind==='activate'?options.filter(action=>action.kind===kind).at(-1):
+    options.find(action=>action.kind===kind)).find(Boolean);
+   if(!action||!performAction(action))throw Error('Unresolved '+(action?.kind??options.map(option=>option.kind))+' at '+seed+'/'+step+' phase '+state.phase);
+   if(['react','reactDeploy','interruptResponse'].includes(action.kind))summary.reactions++;
+  }
+  const ids=inventory();
+  if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Final card balance at '+seed);
+  return {...summary,winner:state.gameWinner,turn:state.turn,trace:JSON.stringify(state.game.actions)};
+ }`);
+ const matches=[4,7,9].map(seed=>JSON.parse(run(`JSON.stringify(playMatch(${seed}))`)));
+ assert.ok(matches.every(match=>match.winner&&match.botActions>0&&match.validated>0));
+ assert.deepEqual(new Set(matches.map(match=>match.winner)),new Set(['Light','Dark']));
+ assert.ok(matches.some(match=>match.ground&&match.space&&match.reactions>0),
+  JSON.stringify(matches.map(({trace,...match})=>match)));
+ assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches[0]);
+});
 
 function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
+
+test('ending the active game preserves an autosave changed by another tab',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ startSavedGame(run);
+ const key=run('saveKey'),otherSave=JSON.stringify({...JSON.parse(storage.getItem(key)),seed:4});
+ storage.setItem(key,otherSave);
+ assert.equal(run("el('endGame').onclick()"),true);
+ assert.equal(storage.getItem(key),otherSave);
+ assert.equal(run('currentGame()'),undefined);
+ assert.equal(run("el('resumeGame').hidden"),false);
+});
 
 test('autosave restores a partially completed bot turn and keeps the original starter decks',async()=>{
  const storage=autosaveStorage();
@@ -1552,6 +1700,32 @@ test('autosave restores a partially completed bot turn and keeps the original st
  assert.equal(JSON.parse(readSave()).commands.length,4);
 });
 
+test('automatic bot turns are saved and continue after reload, stopping at Light decisions',async()=>{
+ const storage=autosaveStorage();
+ const first=await premiereHarness(starterLists,{storage});
+ const {run,tick,elements}=first;
+ startSavedGame(run,0);
+ assert.equal(run("act('chooseStart','Light',[setupDecks.light.startingIndices[1]])&&act('beginGame')"),true);
+ assert.equal(tick(),false);
+ run('setAutoBot(true)');
+ assert.equal(elements.get('botNext').hidden,true);
+ assert.equal(tick(),true);
+ const saved=JSON.parse(storage.getItem(run('saveKey')));
+ assert.equal(saved.commands.at(-1).type,'bot');
+ assert.equal(saved.commands.at(-1).adaptive,true);
+ const second=await premiereHarness(starterLists,{storage});
+ assert.equal(second.run("el('autoBot').checked"),true);
+ assert.equal(second.tick(),false);
+ assert.equal(second.run("el('resumeGame').onclick()"),true);
+ assert.equal(second.run('currentGame().revision'),saved.revision);
+ for(let step=0;step<24&&second.tick();step++){}
+ assert.equal(second.run("state.activeSide==='Light'&&state.phase===0&&!state.activated"),true);
+ assert.equal(second.tick(),false);
+ assert.match(second.elements.get('botHistory').textContent,/Activate/);
+ assert.match(second.elements.get('botHistory').textContent,/Bot beendet seinen Lernzug/);
+ assert.doesNotMatch(second.elements.get('log').textContent,/Bot beendet|Dark aktiviert/);
+});
+
 test('a saved live battle resumes in the damage segment and accepts the remaining payment',async()=>{
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
@@ -1566,7 +1740,7 @@ test('a saved live battle resumes in the damage segment and accepts the remainin
  const reload=await premiereHarness(starterLists,{storage});
  assert.equal(reload.run("el('resumeGame').onclick()"),true);
  assert.equal(reload.run(snapshot),actual);
- assert.equal(reload.run("el('battleAnalysis').style.display"),'block');
+ assert.equal(reload.run("el('battleAnalysis').open"),true);
  assert.equal(reload.run(`dispatchUI(PremiereGame.offer(currentGame(),'Light','battleForceLoss',['force']))`),true);
  assert.equal(reload.run('battleSession.damage.debt.Light.damage'),0);
  assert.equal(reload.run('state.lost.length'),1);
@@ -1725,8 +1899,8 @@ test('the opponent gets the next optional priority when there is an eligible pha
  assert.equal(run("requestAction('advance','Light')&&state.phase===1"),true);
 });
 
-test('one mandatory callback can deplete both sides before the engine determines an outcome',()=>{
- const {run}=reactHarness();
+test('simultaneous Life Force depletion shows a draw and locks the game',()=>{
+ const {run,elements}=reactHarness();
  run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;state.activated=true;state.force=[];
   state.botDeck.length=1;
   PremiereGame.registerTrigger(state.game,{id:'both-lose',side:'Dark',mandatory:true,event:'phase:end',scope:'phase',label:'Both lose',
@@ -1735,6 +1909,11 @@ test('one mandatory callback can deplete both sides before the engine determines
  assert.equal(run("requestAction('timingTrigger','Light',['both-lose'])"),true);
  assert.equal(run('state.gameWinner'),'Simultaneous');
  assert.equal(run("legalActions(state,'Dark').length+legalActions(state,'Light').length"),0);
+ assert.match(run('state.log.join("\\n")'),/SPIELENDE – Unentschieden/);
+ run('render()');
+ assert.equal(elements.get('gameMessage').hidden,false);
+ assert.equal(elements.get('instruction').textContent,'Unentschieden – beide Life Forces gleichzeitig aufgebraucht');
+ assert.equal(elements.get('step').disabled,true);
 });
 
 test('location conversion stacks opposing printings without moving units or compatible effects',async()=>{
@@ -1832,6 +2011,42 @@ test('Force loss respects a required pile and retrieval preserves the remaining 
  assert.equal(run("PremiereGame.retrieveForce(state,'Light',2)[1]===last&&state.lost.map(card=>card.name).join()==='First,Third'"),true);
 });
 
+test('named Reserve searches spend Force before revealing choices, then transfer one card and shuffle',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const interrupt=card('Dark:2528'),motti=card('Dark:60'),tarkin=card('Dark:1061'),other=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(45,99);state.activeSide='Dark';state.phase=1;
+  state.botTurn={steps:botPlan(),index:2};state.botDeck=[motti,other,tarkin];state.botHand=[interrupt];state.hand=[];`);
+ assert.equal(run("requestAction('takeFromReserve','Dark',[0])"),false);
+ assert.equal(run("requestAction('searchReserve','Dark',[1])"),false);
+ assert.equal(run("requestAction('searchReserve','Dark',[0])"),true);
+ assert.equal(run('state.botUsed.length===4&&state.botHand.length===0&&state.botDeck.length===3'),true);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Motti|Tarkin/);
+ assert.equal(run("requestAction('takeFromReserve','Light',[1])||requestAction('takeFromReserve','Dark',[3])"),false);
+ assert.equal(run("requestAction('takeFromReserve','Dark',[1])"),true);
+ assert.equal(run("state.botHand[0]===tarkin&&state.botDeck.length===2&&state.botDeck.includes(motti)&&state.botDeck.includes(other)&&state.botLost[0]===interrupt"),true);
+ assert.equal(run("state.game.randomState!==99&&!state.pendingReserveSearch"),true);
+});
+
+test('a Reserve search with no match still consumes the Interrupt and shuffles; Sense stops a search before looking',async()=>{
+ for(const cancel of [false,true]){
+  const {run}=await craftHarness();
+  run(`setupDecks=null;state.game=PremiereGame.actionState(46,99);state.phase=1;
+   const interrupt=card('Light:1600'),other=card('Light:2052'),second=card('Light:2040');
+   state.hand=[interrupt];state.deck=[other,second];state.botHand=[];`);
+  if(cancel)run(`const sense=card('Dark:2216');state.botHand=[sense];state.dark[2]=[card('Dark:634')];
+   state.botDeck=[{name:'Destiny',destiny:1}];`);
+  assert.equal(run("requestAction('searchReserve','Light',[0])"),true);
+  if(cancel){
+   assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+   assert.equal(run('state.game.randomState===99'),true);
+  }else{
+   assert.equal(run("requestAction('takeFromReserve','Light',[null])"),true);
+   assert.equal(run('state.game.randomState!==99'),true);
+  }
+  assert.equal(run('!state.pendingReserveSearch&&state.hand.length===0&&state.used.length===3&&state.lost[0]===interrupt&&state.deck.length===2'),true);
+ }
+});
+
 test('the bot makes another legal drain after Light pays the previous one',()=>{
  const {run}=reactHarness();
  run(`state.light[0]=[];state.dark[0]=[{type:'Character',ability:1}];
@@ -1843,6 +2058,70 @@ test('the bot makes another legal drain after Light pays the previous one',()=>{
  assert.equal(run("requestAction('loseForce','Light',['hand',0])&&requestAction('loseForce','Light',['force'])"),true);
  assert.equal(run('botNextStep()&&state.pendingForceLoss.locationIndex===0&&state.phase===1'),true);
  assert.equal(run("requestAction('loseForce','Light',['deck'])&&botNextStep()&&state.phase===2"),true);
+});
+
+test('the bot reevaluates distinct battle sites before leaving the Battle phase',()=>{
+ const {run}=reactHarness();
+ run(`state.locations.forEach((_,slot)=>{
+  state.light[slot]=[{name:'Rebel '+slot,type:'Character',ability:1,power:1,forfeit:1}];
+  state.dark[slot]=[{name:'Imperial '+slot,type:'Character',ability:1,power:2,forfeit:1}];
+ });
+ state.hand=[{name:'First damage'},{name:'Second damage'}];
+ state.phase=2;state.botForce=[{name:'Battle cost 1'},{name:'Battle cost 2'}];
+ state.botTurn={steps:botPlan(),index:3};
+ function finishBattle(){
+  for(let step=0;step<24&&battleSession;step++){
+   const pass=PremiereGame.sides.flatMap(side=>legalActions(state,side)).find(action=>
+    ['passResponse','passWeapons','skipDestiny','passDamage'].includes(action.kind)||
+    (action.kind==='battleForceLoss'&&action.args[0]==='hand'));
+   if(!pass||!performAction(pass))return false;
+  }
+  return !battleSession;
+ }`);
+ assert.equal(run('botNextStep()&&state.phase===3&&battleSession.site===0'),true);
+ assert.equal(run('finishBattle()'),true);
+ assert.equal(run('botNextStep()&&state.phase===3&&battleSession.site===1'),true);
+ assert.equal(run('finishBattle()'),true);
+ assert.equal(run('botNextStep()&&state.phase===4&&state.battledSitesThisTurn.join()=== "0,1"'),true);
+});
+
+test('the bot skips a legal battle when the opponent is favored after estimated Destiny',()=>{
+ const {run}=reactHarness();
+ run(`state.phase=2;state.botTurn={steps:botPlan(),index:3};state.botForce=[{name:'Battle cost'}];
+  state.light[0]=[{name:'Rebel',type:'Character',ability:4,power:4}];
+  state.dark=[[{name:'Imperial',type:'Character',ability:2,power:5}],[]];`);
+ assert.equal(run("botNextStep()&&state.phase===3&&!battleSession&&state.botForce.length===1"),true);
+ assert.match(run('state.botHistory[0]'),/fehlt ein Vorteil/);
+ assert.equal(run("legalActions(state,'Dark').some(action=>action.kind==='battle')"),true);
+ assert.equal(run("botNextStep()&&state.phase===4&&!battleSession"),true);
+});
+
+test('the bot draws several cards to rebuild, preserves its last Life Force and can replay a one-card turn',()=>{
+ for(const [adaptive,count,forceCount] of [[true,5,6],[true,2,3],[false,1,6]]){
+  const {run}=reactHarness();
+  run(`state.activeSide='Dark';state.dark=[[],[]];state.phase=4;state.botTurn={steps:botPlan(),index:5};
+   state.botDeck=[];state.botHand=[];state.botUsed=[];
+   state.botForce=Array.from({length:${forceCount}},(_,index)=>({name:'Force '+index}));`);
+  assert.equal(run(`botNextStep(true,${adaptive})`),true);
+  assert.equal(run('state.botHand.length'),count);
+  assert.equal(run('state.botForce.length'),forceCount-count);
+  assert.equal(run('state.gameWinner'),null);
+  assert.equal(run("state.game.actions.filter(action=>action.kind==='draw').length"),count);
+ }
+});
+test('each move reevaluates the available cards and legacy replay can leave the phase after one',()=>{
+ for(const repeatPhase of [false,true]){
+  const {run}=reactHarness();
+  run(`state.phase=3;state.light=[[],[]];
+   state.locations[1].icons.light=2;
+   state.dark=[[{name:'First',type:'Character',ability:1},{name:'Second',type:'Character',ability:1}],[]];
+   state.botForce=[{name:'Move 1'},{name:'Move 2'}];state.botTurn={steps:botPlan(),index:4};`);
+  assert.equal(run('botNextStep()&&state.phase===4&&state.dark[1].length===1'),true);
+  assert.equal(run(`botNextStep(${repeatPhase})`),true);
+  assert.equal(run('state.phase'),repeatPhase?4:5);
+  assert.equal(run('state.dark[1].length'),repeatPhase?2:1);
+  if(repeatPhase)assert.equal(run('botNextStep()&&state.phase===5&&state.movedThisTurn.length===2'),true);
+ }
 });
 
 test('lightsabers offer an optional bonus, and a forbidden location offers no drain',()=>{
@@ -1879,6 +2158,11 @@ test('starfighters deploy with a manual pilot as one paid action and use the mat
  assert.equal(run(`state.hand.length===0&&state.light[0][0]===red&&red.occupants[0].card===biggs&&
   craftStats(red,0).power===5&&craftStats(red,0).maneuver===5&&craftStats(red,0).ability===biggs.ability`),true);
  assert.equal(run("PremiereLocations.aboard(state,biggs,red)&&!PremiereLocations.present(state,biggs,0)"),true);
+ run('state.dark[0]=[tie];state.dark[2]=[bantha]');
+ const field=run('renderPlaymatColumn(state.locations[0],0)');
+ assert.match(field,/dark-zone.*?Power <b>1<\/b>.*?Ability <b>1<\/b>/);
+ assert.match(run('renderPlaymatColumn(state.locations[2],2)'),/dark-zone.*?Power <b>1<\/b>.*?Ability <b>0,5<\/b>/);
+ assert.match(field,/light-zone.*?aria-label="Pilot · [^"]*Biggs Darklighter ansehen".*?Power <b>5<\/b>.*?Ability <b>2<\/b>/);
 });
 
 test('a parked unpiloted fighter cannot take off until an eligible pilot boards',async()=>{
@@ -1915,6 +2199,25 @@ test('Lift Tubes use interior mobile routes, and a grouped Docking Bay Transit p
  assert.equal(run("state.light[5].includes(a)&&state.light[5].includes(b)&&state.used.length===2"),true);
 });
 
+test('selected units transit together, leaving unselected cards and their movement available',async()=>{
+ const {run}=await craftHarness();
+ run(`const a=card('Light:2052'),b=card('Light:2040'),c=card('Light:1098');
+  const blaster=card('Light:259');a.weapons=[blaster];
+  state.locations[5]=card('Dark:675');state.phase=4;state.light[2]=[a,b,c];
+  const transit=legalActions(state,'Light').find(action=>action.kind==='transitGroup');`);
+ assert.match(run("transportGroupMarkup(transit)"),/type="checkbox".*type="checkbox".*type="checkbox"/);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5,0,0])"),false);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5,0,99])"),false);
+ assert.equal(run('state.light[2].length===3&&state.used.length===0'),true);
+ run(`openMovement(2);
+  const status={};
+  const form={querySelector:()=>status,querySelectorAll:()=>[{value:'0'},{value:'2'}]};
+  submitTransportGroup(form,transit);`);
+ assert.equal(run("el('movementDialog').open"),false);
+ assert.equal(run("state.light[2].length===1&&state.light[2][0]===b&&state.light[5].length===2&&state.light[5][0]===a&&state.light[5][1]===c&&a.weapons[0]===blaster"),true);
+ assert.equal(run("state.used.length===1&&state.movedThisTurn.includes(a)&&state.movedThisTurn.includes(c)&&!state.movedThisTurn.includes(b)"),true);
+});
+
 test('shuttling to a capital ship, a docked transfer and cargo survival respect roles and timing',async()=>{
  const {run}=await craftHarness();
  run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),cargo=card('Light:2161');
@@ -1925,6 +2228,37 @@ test('shuttling to a capital ship, a docked transfer and cargo survival respect 
  assert.equal(run("requestAction('transport','Light',['shuttleUp',2,6,0,0,'cargo'])"),true);
  assert.equal(run("PremiereLocations.aboard(state,cargo,big)&&state.used.length===3"),true);
  assert.equal(run("requestAction('transport','Light',['shuttleDown',6,2,0,0,''])"),false);
+});
+
+test('docking moves multiple chosen passengers for one Force and validates final capacity atomically',async()=>{
+ const {run}=await craftHarness();
+ run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),trooper=card('Light:2052'),luke=card('Light:1593');
+  state.phase=4;state.light[6]=[big,other];
+  PremiereUnits.add(big,han,'passenger','Light');PremiereUnits.add(big,trooper,'passenger','Light');
+  PremiereUnits.add(other,luke,'passenger','Light');`);
+ assert.match(run("transportGroupMarkup(legalActions(state,'Light').find(action=>action.kind==='dockGroup'))"),/Andocken.*Transfer ausführen/);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,1,'passenger'])"),false);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,0,'pilot'])"),false);
+ assert.equal(run("big.occupants.length===2&&other.occupants.length===1&&state.used.length===0"),true);
+ assert.equal(run("requestAction('dockGroup','Light',[6,0,1,0,0,'passenger',0,1,'passenger',1,0,'passenger'])"),true);
+ assert.equal(run("big.occupants.length===1&&big.occupants[0].card===luke&&other.occupants[0].card===han&&other.occupants[1].card===trooper&&state.used.length===1"),true);
+});
+
+test('a Seeker can dock and transfer to a reachable enemy ship only during its Control phase',async()=>{
+ const {run}=await craftHarness();
+ run(`const first=card('Light:530'),second=card('Light:1677'),seeker=card('Dark:1096'),han=card('Light:1098');
+  state.game=PremiereGame.actionState(42,1);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.light[6]=[first,second];PremiereUnits.add(first,seeker,'seeker','Dark');
+  PremiereUnits.add(second,han,'pilot','Light');seeker.tableSide='Light';
+  state.phase=4;`);
+ assert.equal(run("seekerMoves('Dark').some(move=>move.args[2]==='dock')"),false);
+ run("state.phase=1;const transfer=()=>legalActions(state,'Dark').find(action=>action.kind==='moveSeeker'&&action.args[2]==='dock');");
+ assert.equal(run("!!transfer()"),true);
+ assert.equal(run("performAction(transfer())"),true);
+ assert.equal(run("!first.occupants.length&&second.occupants.some(entry=>entry.card===seeker&&entry.role==='seeker')&&state.botUsed.length===1"),true);
+ assert.equal(run("!state.automatedPending&&state.light[6][1]===second&&state.botForce.length===4"),true);
+ run('han.ability=2;findAutomatedWeapons()');
+ assert.equal(run('state.lost.includes(han)&&state.botLost.includes(seeker)'),true);
 });
 
 test('a carrier loss loses attachments and crew under their owners, except Bantha passengers',async()=>{
@@ -1984,12 +2318,43 @@ test('a regular battle advances from weapons through power to individual damage 
  assert.equal(run("requestAction('passDamage','Light')&&performAction(botDamageAction())&&battleSession===null"),true);
 });
 
+test('the battle dialog shows facing participants, the current segment and active player',()=>{
+ const {run,elements,tick}=segmentedBattleHarness();
+ run('rebel.weapons=[rifle];setAutoBot(true);');
+ assert.equal(run("requestAction('battle','Light',[0])"),true);
+ assert.equal(elements.get('battleAnalysis').open,true);
+ assert.match(elements.get('battleTitle').textContent,/Bodenkampf.*Tatooine/);
+ assert.match(elements.get('battleDetails').innerHTML,/aria-current="step">Waffen<\/li>/);
+ assert.match(elements.get('battleDetails').innerHTML,/battle-side light.*Rebel.*battle-side dark.*Trooper/);
+ assert.match(elements.get('battlePriority').textContent,/Du bist dran/);
+ assert.equal(tick(),false);
+ assert.equal(run("requestAction('fireWeapon','Light',[0,0,0])"),true);
+ assert.match(elements.get('battleDetails').innerHTML,/Trooper<small>Getroffen/);
+ assert.match(elements.get('battleDetails').innerHTML,/Letzte Kampfaktionen.*feuert Blaster Rifle/);
+ assert.match(elements.get('battlePriority').textContent,/Bot entscheidet automatisch/);
+ assert.equal(tick(),true);
+ assert.match(elements.get('battlePriority').textContent,/Du bist dran/);
+ assert.equal(tick(),false);
+});
+
+test('game log resets each turn and the latest bot log stays readable until the next Dark turn',()=>{
+ const {run}=reactHarness();
+ run("state.botHistory=['Alter Bot-Eintrag'];state.log=['Alter Spielzug'];endTurn('Dark')");
+ assert.match(run("state.botHistory.join(' ')"),/Alter Bot-Eintrag/);
+ assert.doesNotMatch(run("state.log.join(' ')"),/Alter Spielzug|Bot beendet/);
+ run("log('Light-Aktion');endTurn('Light')");
+ assert.doesNotMatch(run("state.botHistory.join(' ')"),/Alter Bot-Eintrag/);
+ assert.doesNotMatch(run("state.log.join(' ')"),/Light-Aktion/);
+ assert.match(run("state.log.join(' ')"),/Dark Side beginnt/);
+});
+
 test('Han can pay for one replacement after revealing destiny, and only the replacement counts',()=>{
  const {run,elements}=segmentedBattleHarness();
  run(`rebel.id='Light:1098';rebel.ability=4;state.deck=[{name:'Replacement',destiny:5},{name:'First draw',destiny:1}];`);
  assert.equal(run("requestAction('battle','Light',[0])&&requestAction('destiny','Light')"),true);
  assert.equal(run("state.used.length===1&&lifeForceRemaining('Light')===7"),true);
- assert.match(elements.get('controlPanel').innerHTML,/First draw/);
+ assert.equal(elements.get('battleAnalysis').open,true);
+ assert.match(elements.get('battleResponses').innerHTML,/First draw/);
  assert.equal(run("requestAction('destinyResponse','Light',['hanRedraw'])"),false);
  assert.equal(run("requestAction('passResponse','Dark')&&requestAction('destinyResponse','Light',['hanRedraw'])"),true);
  assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
@@ -2017,6 +2382,56 @@ test('a printed battle Interrupt grants real draws and keeps the weapon segment 
  assert.equal(run("requestAction('battleEffect','Light',[1])&&battleSession.extraDraws.Light===2"),true);
  assert.equal(run("requestAction('passWeapons','Dark')&&requestAction('passWeapons','Light')"),true);
  assert.equal(run("requestAction('destiny','Light')&&battleSession.lightDestiny===6&&state.deck[0].name==='Spare'"),true);
+});
+
+test('The Circle Is Now Complete pays once, applies the saber bonus and removes only the losing persona',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const vader=card('Dark:634'),obi=card('Light:1803'),interrupt=card('Dark:2517'),blaster=card('Dark:1264');
+  setupDecks=null;state.game=PremiereGame.actionState(43,1);state.activeSide='Dark';state.botTurn={steps:botPlan(),index:2};state.phase=1;
+  state.dark[2]=[vader];state.light[3]=[obi];state.botHand=[interrupt];
+  vader.weapons=[blaster];obi.weapons=[card('Light:1813')];state.hand=[];`);
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),false);
+ assert.equal(run("state.botForce.length===5&&state.botHand[0]===interrupt"),true);
+ run('state.light[2]=state.light[3].splice(0);const reserveCount=state.botDeck.length;');
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),true);
+ assert.equal(run("state.outOfPlay[0]===vader&&state.botLost.includes(blaster)&&state.botLost.includes(interrupt)"),true);
+ assert.equal(run("!state.botLost.includes(vader)&&state.light[2][0]===obi&&state.botUsed.length===1&&state.botDeck.length===reserveCount&&!battleSession"),true);
+ assert.equal(run("withinDeploymentLimit(card('Dark:634'),'Dark')"),false);
+ assert.match(elements.get('outOfPlay').textContent,/Darth Vader/);
+});
+
+test('the duel can be played in an opposing priority window and canceled with Sense',async()=>{
+ const {run}=await craftHarness();
+ run(`const vader=card('Dark:634'),obi=card('Light:1803'),interrupt=card('Dark:2517'),sense=card('Light:2217');
+  state.game=PremiereGame.actionState(44,1);state.phase=0;
+  state.dark[2]=[vader];state.light[2]=[obi];state.botHand=[interrupt];
+  state.deck=[{name:'Spare',destiny:2},{name:'Sense Destiny',destiny:1}];state.hand=[sense];
+  registerDuelTiming();`);
+ assert.equal(run("requestAction('duel','Dark',[0,2])"),false);
+ assert.equal(run("requestAction('activate','Light',[0])&&requestAction('timingTrigger','Dark',['premiere-duel'])"),true);
+ assert.equal(run("requestAction('interruptResponse','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.botLost.includes(interrupt)&&state.used.includes(sense)&&!state.outOfPlay&&state.dark[2][0]===vader&&state.light[2][0]===obi"),true);
+});
+
+test('Prophetess predicts before Battle and receives exactly one reward or loss after power is decided',()=>{
+ for(const predicted of ['Dark','Light']){
+  const {run,elements}=segmentedBattleHarness('Dark');
+  run(`const prophetess={id:'Dark:1958',name:'Prophetess',type:'Character',power:1,ability:1,forfeit:3};
+   trooper.ability=1;state.dark[0].push(prophetess);
+   const reward={name:'Lost card'};state.botLost=[reward];
+   const randomBefore=state.game.randomState;`);
+  assert.equal(run("requestAction('battle','Dark',[0])&&battleSession.segment==='initiation'"),true);
+  assert.match(elements.get('battleControls').innerHTML,/Vorhersage des Bots zeigen/);
+  assert.equal(run("requestAction('skipDestiny','Dark')||requestAction('battlePrediction','Light',['Light'])"),false);
+  assert.equal(run(`requestAction('battlePrediction','Dark',['${predicted}'])&&battleSession.segment==='power'`),true);
+  assert.equal(run("requestAction('skipDestiny','Dark')&&requestAction('skipDestiny','Light')"),true);
+  assert.equal(run("battleSession.segment==='damage'"),true);
+  if(predicted==='Dark'){
+   assert.equal(run('state.botUsed.includes(reward)&&state.botLost.length===0&&state.game.randomState!==randomBefore'),true);
+  }else{
+   assert.equal(run('state.botLost.includes(reward)&&state.botLost.includes(blaster)&&state.botHand.length===0'),true);
+  }
+ }
 });
 
 test('Dr. Evazan can remove the last rival participant before the damage segment',()=>{
@@ -2230,6 +2645,26 @@ test('all ship armaments enforce their printed mounts, targeting families and sh
   PremiereWeapons.deployCost(ion,ship,1)===null&&PremiereWeapons.deployCost(ion,destroyer,1)===2&&
   PremiereWeapons.deployCost(turbo,{type:'Location',subType:'System',locationTags:['Mobile']},0)===3&&
   PremiereWeapons.shot(turbo,destroyer,ship,1,4).draws===2&&PremiereWeapons.shot(turbo,destroyer,ship,1,4).bonus===-5;`),true);
+});
+
+test('Combined Attack pays for two legally mounted weapons and applies their combined result in the chosen order',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const corvette=card('Light:530'),wing=card('Light:2838'),target=card('Dark:2600'),attack=card('Light:483');
+  const quad=card('Light:1971'),torpedo=card('Light:1962');
+  setupDecks=null;state.game=PremiereGame.actionState(47,1);state.phase=3;state.light[6]=[corvette,wing];
+  target.maneuver=4;state.dark[6]=[target];corvette.weapons=[quad];wing.weapons=[torpedo];
+  state.hand=[attack];state.botHand=[];state.deck=[{name:'Reserve'},{name:'First destiny',destiny:2},{name:'Second destiny',destiny:2}];`);
+ assert.equal(run("requestAction('battle','Light',[6])&&battleSession.weaponTurn==='Light'"),true);
+ assert.match(elements.get('battleControls').innerHTML,/Combined Attack.*Kombiniert feuern/);
+ run('const remainingForce=state.force;state.force=remainingForce.slice(0,1);');
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,1,0])"),false);
+ run('state.force=remainingForce;');
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,0,0])||requestAction('combinedAttack','Light',[0,0,0])"),false);
+ assert.equal(run('state.force.length===4&&state.hand[0]===attack&&state.deck.length===3'),true);
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,1,0])"),true);
+ assert.equal(run("state.force.length===2&&state.used.length===5&&state.deck.length===1&&state.lost.includes(attack)"),true);
+ assert.equal(run("battleSession.hitUnits.Dark[0]===target&&battleSession.usedWeapons[0]===torpedo&&battleSession.usedWeapons[1]===quad&&battleSession.weaponTurn==='Dark'"),true);
+ assert.match(run('state.log.join("\\n")'),/Combined Attack 5 gegen Verteidigung 4 · Treffer/);
 });
 
 test('a buried mine and a dud are hidden until crossed by a vehicle, whose crew is eligible for loss',async()=>{
