@@ -12,7 +12,7 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [ ] Die 139 im Snapshot als Errata markierten Einträge gegen den gewählten Regelstand prüfen. Originaltext, Lore, Bildversion und deutsche Erklärung als eigene Felder führen.
 - [x] Zwei feste, überprüfbare Premiere-Decklisten mit je 60 Karten und gültigen Starting Locations in [`data/premiere-starter-decks.json`](data/premiere-starter-decks.json) versionieren. V2 verwendet diese Listen für jede neue Lernpartie.
 - [ ] Decklisten auf Kartenzahl, Seite, Edition, regelrelevante Kopien und verfügbare Mechaniken prüfen. Für Lern-Decks mit noch offenen Effekten die betroffenen Karten vor Spielbeginn anzeigen.
-- [ ] Starting Locations nach dem festgelegten Regelstand wählen und gleichzeitig aufdecken. Kollisionen, fehlende gültige Location und erneute Auswahl ohne Kartenverlust testen. Erst danach mischen, acht Karten ziehen und den Startspieler setzen.
+- [x] Starting Locations verdeckt wählen und gleichzeitig aufdecken. Bei gleichem Ortsnamen erneut wählen und beiseitegelegte Karten vor dem Mischen zurücknehmen. Ohne verfügbare Auswahl startet die betroffene Seite ohne eigenen Startort. Acht Karten ziehen und Dark Side beginnen lassen.
 
 ## 2. Gemeinsame Spielengine und Aktionsreihenfolge
 

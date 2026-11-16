@@ -39,7 +39,7 @@
       ]
     },
     "Dark": {
-      "startingLocations": ["Dark:2458", "Dark:682", "Dark:1426"],
+      "startingLocations": ["Dark:2458", "Dark:2446", "Dark:1426"],
       "cards": [
         { "id": "Dark:1426", "count": 1 },
         { "id": "Dark:2848", "count": 1 },
@@ -48,7 +48,7 @@
         { "id": "Dark:675", "count": 1 },
         { "id": "Dark:678", "count": 1 },
         { "id": "Dark:682", "count": 1 },
-        { "id": "Dark:2454", "count": 1 },
+        { "id": "Dark:2446", "count": 1 },
         { "id": "Dark:2458", "count": 1 },
         { "id": "Dark:2355", "count": 10 },
         { "id": "Dark:1279", "count": 4 },

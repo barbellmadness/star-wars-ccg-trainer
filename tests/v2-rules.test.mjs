@@ -674,23 +674,116 @@ test('fixed starter lists load 60 cards per side and each new game gets independ
  }
 });
 
-test('choosing a starter location takes one card from each fixed deck before drawing eight',async()=>{
- const {run}=await premiereHarness();
- run("const unlisted=setupDecks.light.cards.findIndex(card=>card.id==='Light:80');chooseStart(unlisted)");
- assert.equal(run('state'),null);
- assert.equal(run('setupDecks.light.cards.length'),60);
- run('chooseStart(setupDecks.light.startingIndices[0])');
- assert.equal(run('state.locations[0].id'),starterLists.decks.Light.startingLocations[0]);
- assert.ok(starterLists.decks.Dark.startingLocations.includes(run('state.locations[1].id')));
- assert.equal(run('state.activeSide'),'Dark');
- for(const [side,zone] of [['Light','state.hand'],['Dark','state.botHand']]){
-  const deck=side==='Light'?'state.deck':'state.botDeck',location=side==='Light'?'state.locations[0]':'state.locations[1]';
-  assert.equal(run(`${zone}.length`),8);
-  assert.equal(run(`${deck}.length`),51);
-  const ids=JSON.parse(run(`JSON.stringify([...${zone},...${deck},${location}].map(card=>card.id).sort())`));
-  assert.deepEqual(ids,starterLists.decks[side].cards.flatMap(({id,count})=>Array(count).fill(id)).sort());
+function assertStartingDecksPreserved(run,lists){
+ for(const [side,hand,deck,lost] of [['Light','state.hand','state.deck','state.lost'],['Dark','state.botHand','state.botDeck','state.botLost']]){
+  assert.equal(run(`${hand}.length`),8);
+  assert.equal(run(`${lost}.length`),0);
+  const board=`state.locations.filter(card=>card?.side==='${side}')`;
+  const ids=JSON.parse(run(`JSON.stringify([...${hand},...${deck},...${board}].map(card=>card.id).sort())`));
+  assert.deepEqual(ids,lists.decks[side].cards.flatMap(({id,count})=>Array(count).fill(id)).sort());
  }
+ assert.equal(run('state.light.length===state.locations.length&&state.dark.length===state.locations.length'),true);
+ assert.equal(run('state.locations.at(-1)'),null);
+}
+
+test('the bot commits a concealed start and both locations are revealed before shuffling',async()=>{
+ const {run,elements}=await premiereHarness();
+ const lockedBotId=run('setupDecks.darkChoice.card.id');
+ assert.equal(run('setupDecks.revealed'),null);
+ assert.doesNotMatch(elements.get('setupOptions').innerHTML,/Gleichzeitig aufgedeckte Startorte/);
+ assert.equal(run("chooseStart(setupDecks.light.cards.findIndex(card=>card.id==='Light:80'))"),false);
+ assert.equal(run('chooseStart(null)'),false);
+ assert.equal(run('beginStartingGame()'),false);
+ assert.equal(run('setupDecks.darkChoice.card.id'),lockedBotId);
+
+ assert.equal(run('chooseStart(setupDecks.light.startingIndices[1])'),true);
+ const reveal=elements.get('setupOptions').innerHTML;
+ assert.match(reveal,/Gleichzeitig aufgedeckte Startorte.*Light Side.*Dark Side/);
+ assert.match(reveal,/Tatooine: Dune Sea/);
+ assert.ok(reveal.includes(run('setupDecks.darkChoice.card.name')));
+ assert.equal(run('state'),null);
+ run('retryStartingLocations()');
+ assert.equal(run('chooseStart(setupDecks.light.startingIndices[2])'),false);
+ assert.equal(run('beginStartingGame()'),true);
+ assert.equal(run('state.locations[0].id'),starterLists.decks.Light.startingLocations[1]);
+ assert.equal(run('state.locations[1].id'),lockedBotId);
+ assert.equal(run('state.activeSide'),'Dark');
+ assert.equal(run('state.deck.length===51&&state.botDeck.length===51'),true);
+ assertStartingDecksPreserved(run,starterLists);
 });
+
+async function startingCollisionHarness(lists){
+ const {run,elements}=await premiereHarness(lists);
+ // Choose the first available bot location each round without changing the host Math object.
+ run('Math=Object.create(Math);Math.random=()=>0;start()');
+ return {run,elements};
+}
+
+test('matching titles on both sides set aside each copy and repeated collisions preserve both decks',async()=>{
+ const lists=structuredClone(starterLists);
+ lists.decks.Dark.cards.find(card=>card.id==='Dark:1426').id='Dark:607';
+ lists.decks.Dark.startingLocations=['Dark:2446','Dark:607','Dark:2458'];
+ const {run,elements}=await startingCollisionHarness(lists);
+ for(const [lightId,darkId] of [['Light:2447','Dark:2446'],['Light:608','Dark:607']]){
+  const index=run(`startingLocationChoices(setupDecks.light).find(x=>x.card.id==='${lightId}').index`);
+  assert.equal(run(`chooseStart(${index})`),true);
+  assert.equal(run('setupDecks.revealed.darkChoice.card.id'),darkId);
+  assert.equal(run('setupDecks.revealed.collision'),true);
+  assert.equal(elements.get('instruction').textContent,'Gleicher Ortsname');
+  assert.match(elements.get('setupOptions').innerHTML,/Gleichzeitig aufgedeckte Startorte.*Light Side.*Dark Side.*Erneut wählen/);
+  assert.equal(run('beginStartingGame()'),false);
+  assert.equal(run('state'),null);
+  assert.equal(run('setupDecks.light.cards.length===60&&setupDecks.dark.cards.length===60'),true);
+  run('retryStartingLocations()');
+  assert.equal(run(`chooseStart(${index})`),false);
+  assert.equal(run(`startingLocationChoices(setupDecks.dark).some(x=>x.card.id==='${darkId}')`),false);
+ }
+ run('chooseStart(startingLocationChoices(setupDecks.light)[0].index);beginStartingGame()');
+ assert.equal(run("state.locations[0].id==='Light:2448'&&state.locations[1].id==='Dark:2458'"),true);
+ assertStartingDecksPreserved(run,lists);
+});
+
+test('another copy of a colliding starter title remains available',async()=>{
+ const lists=structuredClone(starterLists);
+ lists.decks.Light.startingLocations=['Light:2447'];
+ lists.decks.Light.cards.find(card=>card.id==='Light:2447').count=2;
+ lists.decks.Light.cards.find(card=>card.id==='Light:2052').count--;
+ lists.decks.Dark.startingLocations=['Dark:2446','Dark:1426'];
+ const {run}=await startingCollisionHarness(lists);
+ assert.equal(run('startingLocationChoices(setupDecks.light).length'),1);
+ const first=run('startingLocationChoices(setupDecks.light)[0].index');
+ run(`chooseStart(${first});retryStartingLocations()`);
+ const second=run('startingLocationChoices(setupDecks.light)[0].index');
+ assert.notEqual(second,first);
+ assert.equal(run(`chooseStart(${first})`),false);
+ run(`chooseStart(${second});beginStartingGame()`);
+ assert.equal(run('state.locations[0].id'),'Light:2447');
+ assert.equal(run("[...state.deck,...state.hand].filter(card=>card.id==='Light:2447').length"),1);
+ assertStartingDecksPreserved(run,lists);
+});
+
+for(const sideWithoutStart of ['Light','Dark','both']){
+ test(`the game starts when ${sideWithoutStart} has no alternative after a collision`,async()=>{
+  const lists=structuredClone(starterLists);
+  lists.decks.Light.startingLocations=sideWithoutStart==='Dark'?['Light:2447','Light:2448']:['Light:2447'];
+  lists.decks.Dark.startingLocations=sideWithoutStart==='Light'?['Dark:2446','Dark:2458']:['Dark:2446'];
+  const {run,elements}=await startingCollisionHarness(lists);
+  run('chooseStart(startingLocationChoices(setupDecks.light)[0].index);retryStartingLocations()');
+  if(sideWithoutStart==='Dark'){
+   assert.equal(run('chooseStart(startingLocationChoices(setupDecks.light)[0].index)'),true);
+  }else{
+   assert.match(elements.get('setupOptions').innerHTML,/chooseStart\(null\)/);
+   assert.equal(run('chooseStart(null)'),true);
+  }
+  assert.match(elements.get('setupOptions').innerHTML,/Kein Startort verfügbar/);
+  assert.equal(run('beginStartingGame()'),true);
+  const chosen=sideWithoutStart==='Light'?['Dark:2458']:sideWithoutStart==='Dark'?['Light:2448']:[];
+  assert.deepEqual(JSON.parse(run('JSON.stringify(state.locations.filter(Boolean).map(card=>card.id))')),chosen);
+  assert.equal(run('state.deck.length'),sideWithoutStart==='Dark'?51:52);
+  assert.equal(run('state.botDeck.length'),sideWithoutStart==='Light'?51:52);
+  assertStartingDecksPreserved(run,lists);
+ });
+}
 
 test('starter validation rejects invalid IDs, side, quantities and starting locations',async()=>{
  const {run}=await premiereHarness();
@@ -709,11 +802,6 @@ test('starter validation rejects invalid IDs, side, quantities and starting loca
  assertInvalid(deck=>{deck.startingLocations=['Light:1427']},/Ungültige Starting Location/);
  assertInvalid(deck=>{deck.startingLocations.push(deck.startingLocations[0])},/unterschiedliche Namen/);
 
- const conflict=structuredClone(starterLists);
- conflict.decks.Light.startingLocations=['Light:2447'];
- conflict.decks.Dark.cards.find(card=>card.id==='Dark:669').id='Dark:2446';
- conflict.decks.Dark.startingLocations=['Dark:2446'];
- assert.throws(()=>run(`readStarterDecks(${JSON.stringify(conflict)},catalog)`),/andere Dark Starting Location/);
 });
 
 test('the game stays disabled when the local starter deck file is missing',async()=>{
