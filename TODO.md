@@ -10,7 +10,7 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [ ] Den lokalen Import an eine nachvollziehbare Quellrevision binden und einen Prüfbericht erzeugen. 162 Karten pro Seite, 324 eindeutige IDs, Edition und Kartenseite prüfen. Den versionierten Snapshot erst nach erfolgreicher Validierung ersetzen.
 - [ ] Kartentyp, Untertyp, Persona, Merkmale, Einzigartigkeit, Force-Icons, Innen- und Außenbereiche, Parsec, Pilot-, Warrior- und Nav-Computer-Icons sowie alle spielrelevanten Werte typisiert laden. Fehlende, unbekannte und gedruckte Sonderwerte unterscheiden.
 - [ ] Die 139 im Snapshot als Errata markierten Einträge gegen den gewählten Regelstand prüfen. Originaltext, Lore, Bildversion und deutsche Erklärung als eigene Felder führen.
-- [ ] Zwei feste, überprüfbare Premiere-Decklisten mit je 60 Karten und gültigen Starting Locations versionieren. Die aktuellen automatisch zusammengestellten Lern-Decks durch überprüfte Listen ersetzen.
+- [x] Zwei feste, überprüfbare Premiere-Decklisten mit je 60 Karten und gültigen Starting Locations in [`data/premiere-starter-decks.json`](data/premiere-starter-decks.json) versionieren. V2 verwendet diese Listen für jede neue Lernpartie.
 - [ ] Decklisten auf Kartenzahl, Seite, Edition, regelrelevante Kopien und verfügbare Mechaniken prüfen. Für Lern-Decks mit noch offenen Effekten die betroffenen Karten vor Spielbeginn anzeigen.
 - [ ] Starting Locations nach dem festgelegten Regelstand wählen und gleichzeitig aufdecken. Kollisionen, fehlende gültige Location und erneute Auswahl ohne Kartenverlust testen. Erst danach mischen, acht Karten ziehen und den Startspieler setzen.
 

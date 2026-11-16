@@ -634,24 +634,93 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
  assert.equal(run("recordBattleWeaponHit('Light',0)"),false);
 });
 
-async function premiereHarness(){
+const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
+
+async function premiereHarness(deckLists=starterLists){
  const {run,elements}=harness();
  const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
- run(`fetch=async()=>({ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})})`);
+ run(`fetch=async path=>{
+  if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
+  if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
+  return {ok:false,status:404};
+ }`);
  await run('load()');
  return {run,elements};
 }
 
-test('Premiere snapshot loads four supported blasters into the learning decks with independent card copies',async()=>{
+test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
  const {run}=await premiereHarness();
  assert.equal(run("catalog.find(c=>c.name==='Rebel Trooper').warrior"),true);
  assert.deepEqual(JSON.parse(run('JSON.stringify(catalog.filter(basicWeaponRule).map(c=>c.id))')),['Light:259','Light:265','Dark:264','Dark:1264']);
- for(const side of ['Light','Dark']){
-  run(`var weaponTestDeck=makeDeck('${side}')`);
-  assert.equal(run('weaponTestDeck.length'),60);
-  assert.equal(run('weaponTestDeck.filter(basicWeaponRule).length'),4);
-  assert.equal(run('new Set(weaponTestDeck).size'),60);
+ for(const side of ['light','dark']){
+  assert.equal(run(`new Set(setupDecks.${side}.cards.filter(basicWeaponRule).map(c=>c.id)).size`),2);
  }
+});
+
+test('fixed starter lists load 60 cards per side and each new game gets independent copies',async()=>{
+ const {run,elements}=await premiereHarness();
+ assert.equal(elements.get('start').disabled,false);
+ assert.match(elements.get('setupOptions').innerHTML,/Starterdecklisten und Kartenabdeckung/);
+ for(const [side,key] of [['Light','light'],['Dark','dark']]){
+  const expected=starterLists.decks[side].cards.flatMap(({id,count})=>Array(count).fill(id));
+  assert.equal(expected.length,60);
+  const deck=`setupDecks.${key}`;
+  assert.deepEqual(JSON.parse(run(`JSON.stringify(${deck}.cards.map(card=>card.id))`)),expected);
+  assert.equal(run(`new Set(${deck}.cards).size`),60);
+  assert.deepEqual(JSON.parse(run(`JSON.stringify(startingLocationChoices(${deck}).map(x=>x.card.id))`)),starterLists.decks[side].startingLocations);
+  run(`${deck}.cards[0].power=999`);
+  run('start()');
+  assert.notEqual(run(`${deck}.cards[0].power`),999);
+ }
+});
+
+test('choosing a starter location takes one card from each fixed deck before drawing eight',async()=>{
+ const {run}=await premiereHarness();
+ run("const unlisted=setupDecks.light.cards.findIndex(card=>card.id==='Light:80');chooseStart(unlisted)");
+ assert.equal(run('state'),null);
+ assert.equal(run('setupDecks.light.cards.length'),60);
+ run('chooseStart(setupDecks.light.startingIndices[0])');
+ assert.equal(run('state.locations[0].id'),starterLists.decks.Light.startingLocations[0]);
+ assert.ok(starterLists.decks.Dark.startingLocations.includes(run('state.locations[1].id')));
+ assert.equal(run('state.activeSide'),'Dark');
+ for(const [side,zone] of [['Light','state.hand'],['Dark','state.botHand']]){
+  const deck=side==='Light'?'state.deck':'state.botDeck',location=side==='Light'?'state.locations[0]':'state.locations[1]';
+  assert.equal(run(`${zone}.length`),8);
+  assert.equal(run(`${deck}.length`),51);
+  const ids=JSON.parse(run(`JSON.stringify([...${zone},...${deck},${location}].map(card=>card.id).sort())`));
+  assert.deepEqual(ids,starterLists.decks[side].cards.flatMap(({id,count})=>Array(count).fill(id)).sort());
+ }
+});
+
+test('starter validation rejects invalid IDs, side, quantities and starting locations',async()=>{
+ const {run}=await premiereHarness();
+ const assertInvalid=(mutate,message)=>{
+  const copy=structuredClone(starterLists);
+  mutate(copy.decks.Light);
+  assert.throws(()=>run(`readStarterDecks(${JSON.stringify(copy)},catalog)`),message);
+ };
+ assertInvalid(deck=>{deck.cards[0].id='Light:unknown'},/Unbekannte oder seitenfremde/);
+ assertInvalid(deck=>{deck.cards[0].id='Dark:191'},/Unbekannte oder seitenfremde/);
+ assertInvalid(deck=>{deck.cards[1].id=deck.cards[0].id},/Doppelter Eintrag/);
+ assertInvalid(deck=>{deck.cards[0].count=1.5},/Ungültige Kartenanzahl/);
+ assertInvalid(deck=>{deck.cards[0].count=2},/Erwartet sind 60 Karten/);
+ assertInvalid(deck=>{deck.cards[0].id='Light:95'},/nicht ausgespielt werden/);
+ assertInvalid(deck=>{deck.startingLocations=['Light:2052']},/Ungültige Starting Location/);
+ assertInvalid(deck=>{deck.startingLocations=['Light:1427']},/Ungültige Starting Location/);
+ assertInvalid(deck=>{deck.startingLocations.push(deck.startingLocations[0])},/unterschiedliche Namen/);
+
+ const conflict=structuredClone(starterLists);
+ conflict.decks.Light.startingLocations=['Light:2447'];
+ conflict.decks.Dark.cards.find(card=>card.id==='Dark:669').id='Dark:2446';
+ conflict.decks.Dark.startingLocations=['Dark:2446'];
+ assert.throws(()=>run(`readStarterDecks(${JSON.stringify(conflict)},catalog)`),/andere Dark Starting Location/);
+});
+
+test('the game stays disabled when the local starter deck file is missing',async()=>{
+ const {run,elements}=await premiereHarness(null);
+ assert.equal(elements.get('start').disabled,true);
+ assert.match(elements.get('hint').textContent,/data\/premiere-starter-decks\.json.*404/);
+ assert.equal(run('setupDecks'),null);
 });
 
 function weaponBattleHarness(initiator='Light'){
@@ -756,15 +825,13 @@ async function craftHarness(){
 }
 
 test('learning decks contain planet systems, exterior sites, piloted starships and a Dark Bantha',async()=>{
- const {run}=await craftHarness();
- for(const side of ['Light','Dark']){
-  run(`var craftTestDeck=makeDeck('${side}')`);
-  assert.equal(run('craftTestDeck.length'),60);
-  assert.equal(run('craftTestDeck.filter(isPlanetSystem).length'),4);
-  assert.equal(run('craftTestDeck.filter(isExteriorPlanetSite).length'),2);
-  assert.equal(run('craftTestDeck.filter(isSupportedCraft).length'),6);
+ const {run}=await premiereHarness();
+ for(const side of ['light','dark']){
+  run(`var craftTestDeck=setupDecks.${side}.cards`);
+  assert.ok(run('craftTestDeck.filter(isPlanetSystem).length')>=2);
+  assert.ok(run('craftTestDeck.filter(isExteriorPlanetSite).length')>=2);
   assert.equal(run('craftTestDeck.some(c=>c.type===\'Starship\'&&cardAbility(c)===1)'),true);
-  assert.equal(run('craftTestDeck.some(isBantha)'),side==='Dark');
+  assert.equal(run('craftTestDeck.some(isBantha)'),side==='dark');
  }
 });
 
@@ -885,13 +952,12 @@ test('location art opens a detailed card inspector without changing game state',
  assert.equal(run("state.locations[0].name"),'Tatooine: Mos Eisley');
  assert.equal(run("inspectLocation(9)"),false);
 });
-test('initial location choices include original image thumbnails',()=>{
- const {run,elements}=harness();
- run("setupDecks=null;catalog=[{name:'Hoth: Echo Base',type:'Location',subType:'Site',side:'Light',icons:{light:1,dark:0},image:'https://res.starwarsccg.org/cards/echo.gif'}, {name:'Rebel',type:'Character',side:'Light',power:1,deploy:1,ability:1}, {name:'Dark Site',type:'Location',subType:'Site',side:'Dark',icons:{light:0,dark:1}}, {name:'Trooper',type:'Character',side:'Dark',power:1,deploy:1,ability:1}];");
- run("start()");
+test('initial location choices include original image thumbnails',async()=>{
+ const {elements}=await premiereHarness();
  const markup=elements.get('setupOptions').innerHTML;
  assert.match(markup,/start-location-option/);
- assert.match(markup,/https:\/\/res.starwarsccg.org\/cards\/echo.gif/);
+ assert.match(markup,/<img[^>]+tatooinedunesea\.gif/i);
+ assert.match(markup,/Tatooine: Dune Sea/);
 });
 
 test('Light may deploy successive locations beyond original three-slot board',()=>{
