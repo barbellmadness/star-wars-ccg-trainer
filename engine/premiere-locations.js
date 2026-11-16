@@ -46,8 +46,10 @@ const PremiereLocations = (() => {
   }
 
   function presentAt(entry, place) {
-    return !entry.unavailable && (entry.carriers.find(enclosed) ?? entry.slot) === place;
+    return !entry.unavailable && physicalPlace(entry) === place;
   }
+
+  function physicalPlace(entry) { return entry.carriers.find(enclosed) ?? entry.slot; }
 
   function present(state, card, place) {
     const entry = find(state, card);
@@ -156,7 +158,7 @@ const PremiereLocations = (() => {
     return {base, modifier, optional:weapons.length, weapons};
   }
 
-  return {aboard, activeCards, at, cardsOnTable, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
+  return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
     occupy: presence, present, presentCards, printedSide};
 })();
 

@@ -27,7 +27,7 @@
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
 @media(max-width:650px){main{padding:9px}.playmat-shell{padding:8px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:130px;height:179px}.playmat{min-height:440px}}
-</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label> <button id="start" disabled>Neue Partie</button> <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-session.js"></script><script>
+</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label> <button id="start" disabled>Neue Partie</button> <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -57,6 +57,13 @@ function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
 }
 function renderControlPanel(available=legalActions(state,'Light')){
  const box=el('controlPanel');
+ if(state.automatedPending){
+  const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
+  box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
+   (pending.kind==='mine'?'Noch zu verlierende Charaktere: '+pending.remaining:pending.kind==='defuse'?'Mine ausgelöst':'Wähle das Ziel des Seekers.')+'</p>'+controls.map(option=>
+    ruleButton(option,option.side==='Dark'?'Entscheidung des Bots zeigen':option.label??option.card.name)).join(' ');
+  box.style.display='block';return;
+ }
  if(state.game?.timing.pending){
   const options=available.length?available:legalActions(state,'Dark').slice(0,1);
   box.innerHTML='<b>Ausgelöste Effekte</b><p>Wähle den nächsten Effekt.</p>'
@@ -87,14 +94,18 @@ function renderControlPanel(available=legalActions(state,'Light')){
  }
  const retrieval=available.filter(option=>option.kind==='retrieve').map(option=>ruleButton(option,
   option.card.name+' · '+option.target.name+' zurückholen ('+option.cost+' Force)')).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const rack=state.blasterRack;
+ const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
+ const extra=retrieval+equipment+rackView;
  if(state.phase===1&&!state.botTurn&&!state.gameWinner){
   const drains=available.filter(option=>option.kind==='drain');
   box.innerHTML='<b>Control Phase · Force Drain</b><p class="hint">Ein legaler Drain kann den Wert 0 haben. Pro Ort ist ein Drain je Zug möglich.</p>'
    +(drains.map(option=>ruleButton(option,state.locations[option.args[0]].name+' · Drain '+option.amount+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join(' ')||'Keine verfügbaren Force Drains.')
-   +(retrieval?'<p>'+retrieval+'</p>':'');
+   +(extra?'<div>'+extra+'</div>':'');
   box.style.display='block';return;
  }
- box.innerHTML=retrieval;box.style.display=retrieval?'block':'none';
+ box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
 
 function auditData(){
@@ -220,7 +231,7 @@ function changeModifier(side,kind,value,gameId,revision){
 
 function renderBattle(){
  const x=battleSession;
- if(!x||PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.gameWinner)return;
+ if(!x||PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||state.gameWinner)return;
  const i=x.site,t=battleTotals(i),available=legalActions(state,'Light'),dark=legalActions(state,'Dark');
  const lines=[['Light',t.lightPower,t.lightAbility,x.lightDestiny],['Dark',t.darkPower,t.darkAbility,x.darkDestiny]];
  el('battleAnalysis').style.display='block';
@@ -244,9 +255,10 @@ function renderBattle(){
  }else if(x.weaponTurn==='Dark'){
   buttons=ruleButton(botWeaponAction(),'Waffenaktion des Bots zeigen');
  }else if(x.weaponTurn==='Light'){
-  buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+' ('+option.cost+' Force)')).join(' ')
-   +' '+available.filter(option=>option.kind==='battleEffect').map(option=>ruleButton(option,option.label)).join(' ')
-   +' '+ruleButton(findOffer(available,'passWeapons'),'Im Waffen-Segment passen');
+  buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
+   (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
    +ruleButton(findOffer(available,'skipDestiny'),'Light verzichtet')+' '
@@ -327,11 +339,13 @@ function inspectLocation(i){
 function closeCard(){el('cardInspector').style.display='none'}
 
 function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
- const loadout=(c.weapons??[]).map(weapon=>'<div>'+escapeHTML(weapon.name)+'</div>').join('')+
+ const loadout=[...(c.weapons??[]),...(c.attachments??[])].map(weapon=>'<div>'+escapeHTML(weapon.name)+'</div>').join('')+
   (c.occupants??[]).map(({card,role})=>'<div>'+escapeHTML((crewLabels[role]??role)+' · '+card.name)+'</div>').join('');
+ const status=(c.ionDamage?'<div>Ionenschaden · Verteidigung 0, Hyperspeed 0</div>':'')+
+  (c.tableSide?'<div>Auf der '+escapeHTML(c.tableSide)+' Side</div>':'');
  const equip=equipAction?ruleButton(equipAction,'Ausrüsten ('+equipAction.cost+' Force)'):'';
  const selection='onclick="select('+idx+','+currentGame()?.id+','+currentGame()?.revision+')"';
- return '<div class="card '+(clickable&&selected===idx?'chosen':'')+'" '+(clickable?selection:'')+'>'+(c.image?'<img loading="lazy" src="'+escapeHTML(c.image)+'" alt="">':'')+'<b>'+escapeHTML(c.name)+'</b><div>'+escapeHTML(c.type)+'</div>'+loadout+equip+'<button onclick="event.stopPropagation();inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">Details</button></div>';
+ return '<div class="card '+(clickable&&selected===idx?'chosen':'')+'" '+(clickable?selection:'')+'>'+(c.image?'<img loading="lazy" src="'+escapeHTML(c.image)+'" alt="">':'')+'<b>'+escapeHTML(c.name)+'</b><div>'+escapeHTML(c.type)+'</div>'+status+loadout+equip+'<button onclick="event.stopPropagation();inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">Details</button></div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
@@ -351,7 +365,13 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  const conversion=findOffer(available,'convertLocation',selected,i),revolution=findOffer(available,'revolution',selected,i);
  const piloted=available.filter(option=>option.kind==='deployWithPilot'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
- const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+piloted;
+ const automated=findOffer(available,'deployAutomated',selected,i);
+ const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
+ const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
+ const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+piloted
+  +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
+  +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')
+  +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const zone=(side,cards)=>'<div class="playmat-zone '+(side==='Dark'?'dark-zone':'light-zone')+'"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span><div class="cards">'+cards.map((c,j)=>mini(c,j,false,side,'field',i,side==='Light'?equipActions.get(j)??null:null)).join('')+'</div></div>';
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'">'+zone('Dark',dark)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div><div class="playmat-actions">'+ruleButton(findOffer(available,'deploy',selected,i),'Ausspielen')+ruleButton(findOffer(available,'battle',i),'Battle (1 Force)')+extra+'</div>'+movementPanel(i,available)+'</div>'
