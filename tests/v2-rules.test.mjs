@@ -1196,11 +1196,11 @@ test('lost piles reveal only their top card and keep covered bot hands face down
 async function eyesInTheDarkHarness(){
  const fixture=await premiereHarness();
  fixture.run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
-  const copies=setupDecks.light.cards.filter(isEyesInTheDark).length;
+  const copies=setupDecks.light.cards.filter(isLostPileEffect).length;
   beginStartingGame();
   for(let i=0;i<7;i++)botNextStep();
   state.phase=2;
-  const eyes=catalog.find(isEyesInTheDark);
+  const eyes=catalog.find(card=>card.side==='Light'&&isLostPileEffect(card));
   state.hand=[eyes];state.botHand=[];`);
  return fixture;
 }
@@ -1209,12 +1209,12 @@ test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses w
  const {run,elements}=await eyesInTheDarkHarness();
  assert.equal(run('copies'),1);
  assert.deepEqual(JSON.parse(run(`JSON.stringify(legalActions(state,'Light').filter(action=>
-  action.kind==='deployEyesInTheDark').map(action=>action.args))`)),[[0,'Light'],[0,'Dark']]);
- assert.equal(run("state.phase=1;requestAction('deployEyesInTheDark','Light',[0,'Light'])"),false);
- assert.equal(run("state.phase=2;requestAction('deployEyesInTheDark','Light',[0,'Unknown'])"),false);
+  action.kind==='deployLostPileEffect').map(action=>action.args))`)),[[0,'Light'],[0,'Dark']]);
+ assert.equal(run("state.phase=1;requestAction('deployLostPileEffect','Light',[0,'Light'])"),false);
+ assert.equal(run("state.phase=2;requestAction('deployLostPileEffect','Light',[0,'Unknown'])"),false);
  run("state.lost.push({name:'Previously Visible'});inspectLostTop('Light')");
  assert.equal(elements.get('cardInspector').open,true);
- assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Light'])"),true);
+ assert.equal(run("requestAction('deployLostPileEffect','Light',[0,'Light'])"),true);
  assert.equal(elements.get('cardInspector').open,false);
  run("inspectLostTop('Light')");
  assert.equal(elements.get('cardInspector').open,false);
@@ -1253,7 +1253,7 @@ test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses w
 test('Alter can uncover a pile after Eyes In The Dark is on the table',async()=>{
  const {run,elements}=await eyesInTheDarkHarness();
  run("state.botLost.push({name:'Visible Again'});state.dark[0].push({name:'Imperial',type:'Character',ability:4})");
- assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Dark'])"),true);
+ assert.equal(run("requestAction('deployLostPileEffect','Light',[0,'Dark'])"),true);
  assert.match(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
  assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Visible Again/);
  run("state.botHand=[catalog.find(card=>card.id==='Dark:94')];state.botDeck.push({name:'Destiny',destiny:1})");
@@ -1271,13 +1271,65 @@ test('Alter must draw below the highest ability to stop Eyes In The Dark from de
   run(`state.botHand=[catalog.find(card=>card.id==='Dark:94')];
    state.dark[0].push({name:'Imperial',type:'Character',ability:4});
    state.botDeck.push({name:'Destiny',destiny:${destiny}})`);
-  assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Dark'])"),true);
+  assert.equal(run("requestAction('deployLostPileEffect','Light',[0,'Dark'])"),true);
   assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster · Eyes In The Dark/);
   assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
   if(destiny===4)assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
   assert.equal(run("PremiereGame.lostPileFaceDown(state,'Dark')"),destiny===4);
   assert.equal(run('state.lost.includes(eyes)'),destiny===1);
  }
+});
+
+async function darkLostPileEffectHarness(){
+ const fixture=await premiereHarness();
+ fixture.run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
+  const copies=setupDecks.dark.cards.filter(isLostPileEffect).length;
+  beginStartingGame();
+  const darkEffect=catalog.find(card=>card.side==='Dark'&&isLostPileEffect(card));
+  state.botHand=[darkEffect];
+  botNextStep();botNextStep();`);
+ return fixture;
+}
+
+test('Dark deploys Your Eyes Can Deceive You from its starter deck and conceals its Life Force losses',async()=>{
+ const {run,elements}=await darkLostPileEffectHarness();
+ assert.equal(run('copies'),1);
+ assert.equal(run("requestAction('deployLostPileEffect','Dark',[0,'Dark'])"),false);
+ const force=run('state.botForce.length');
+ assert.equal(run('botNextStep()'),true);
+ assert.equal(run('state.botForce.length'),force);
+ assert.equal(run("state.lostPileEffects[0].card===darkEffect&&state.lostPileEffects[0].target==='Dark'"),true);
+ assert.match(elements.get('botHistory').textContent,/Your Eyes Can Deceive You/);
+ assert.match(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt.*Your Eyes Can Deceive You/);
+ assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Lost Pile verdeckt/);
+ run(`state.botDeck.push({name:'Hidden Dark Card'});
+  beginForceLoss('Dark',1,{reason:'drain',from:'deck'});`);
+ assert.equal(run("state.botLost.at(-1).name==='Hidden Dark Card'"),true);
+ assert.doesNotMatch(elements.get('log').textContent,/Hidden Dark Card/);
+ assert.doesNotMatch(run("JSON.stringify(PremiereGame.playerView(state,'Light'))"),/Hidden Dark Card/);
+});
+
+test('Dark has both legal targets and covers Light when Dark is already covered',async()=>{
+ const {run}=await darkLostPileEffectHarness();
+ run(`state.lostPileEffects.push({card:catalog.find(card=>card.id==='Light:917'),target:'Dark'});
+  requestAction('botStep','Dark',['deploy']);`);
+ assert.deepEqual(JSON.parse(run(`JSON.stringify(legalActions(state,'Dark').filter(action=>
+  action.kind==='deployLostPileEffect').map(action=>action.target))`)),['Light','Dark']);
+ run('botDeployPhase()');
+ assert.equal(run("state.lostPileEffects[1].card===darkEffect&&state.lostPileEffects[1].target==='Light'"),true);
+});
+
+test('Light can cancel Your Eyes Can Deceive You with Alter and the bot resumes its Deploy phase',async()=>{
+ const {run,elements}=await darkLostPileEffectHarness();
+ run(`state.hand=[catalog.find(card=>card.id==='Light:95')];
+  state.light[0].push({name:'Rebel',type:'Character',ability:4});
+  state.deck.push({name:'Destiny',destiny:1});`);
+ assert.equal(run('botNextStep()'),true);
+ assert.equal(run("state.botTurn.decision==='deploy'"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster · Your Eyes Can Deceive You.*Alter/);
+ assert.equal(run("requestAction('interruptResponse','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.botLost.includes(darkEffect)&&!PremiereGame.lostPileFaceDown(state,'Dark')"),true);
+ assert.equal(run("botNextStep()&&state.phase===2&&state.botTurn.decision===undefined"),true);
 });
 
 test('location art opens a detailed card inspector without changing game state',()=>{

@@ -294,7 +294,7 @@ function renderControlPanel(available=legalActions(state,'Light')){
  const retrieval=available.filter(option=>option.kind==='retrieve').map(option=>ruleButton(option,
   option.card.name+' · '+option.target.name+' zurückholen ('+option.cost+' Force)')).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
- const lostPileEffects=available.filter(option=>['deployEyesInTheDark','alterLostPileEffect'].includes(option.kind))
+ const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const rack=state.blasterRack;
  const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
