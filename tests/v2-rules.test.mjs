@@ -1087,6 +1087,39 @@ test('Playmat places Dark above location art and Light below and retains actions
  assert.match(content,/<button disabled>Battle \(1 Force\)<\/button>/);
 });
 
+test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
+ const {run,elements}=await premiereHarness();
+ assert.match(html,/id="botHand"[\s\S]*id="phaseListDark"[\s\S]*id="board"[\s\S]*id="hand"[\s\S]*id="phaseListLight"/);
+ assert.equal(elements.get('gameTable').hidden,true);
+ const assertPhase=(active,phase)=>{
+  for(const side of ['Dark','Light']){
+   const list=elements.get('phaseList'+side).innerHTML;
+   assert.equal([...list.matchAll(/<li\b/g)].length,6);
+   const highlighted=[...list.matchAll(/<li aria-current="step">([^<]+)<\/li>/g)].map(match=>match[1]);
+   assert.deepEqual(highlighted,side===active?[phase]:[]);
+   const label=!active?'Partie beendet':side!==active?'Wartet':side==='Dark'?'Bot ist am Zug':'Du bist am Zug';
+   assert.equal(elements.get('turnStatus'+side).textContent,label);
+  }
+ };
+
+ run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ assert.equal(elements.get('gameTable').hidden,false);
+ assert.equal(elements.get('gameMessage').hidden,true);
+ assertPhase('Dark','Aktivieren');
+ run('botNextStep();botNextStep()');
+ assertPhase('Dark','Kontrolle');
+ run('for(let i=0;i<5;i++)botNextStep()');
+ assertPhase('Light','Aktivieren');
+ run("requestAction('activate','Light',[1]);requestAction('advance','Light')");
+ assertPhase('Light','Kontrolle');
+ run("state.gameWinner='Light';render()");
+ assertPhase(null);
+ assert.equal(elements.get('gameMessage').hidden,false);
+ assert.match(elements.get('instruction').textContent,/Light Side gewinnt/);
+ run('start(1)');
+ assert.equal(elements.get('gameTable').hidden,true);
+});
+
 test('location art opens a detailed card inspector without changing game state',()=>{
  const {run,elements}=harness();
  run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',image:'https://res.starwarsccg.org/cards/test.gif',icons:{light:1,dark:2},gametext:'Some location effect'}],light:[[]],dark:[[]],phase:0,hand:[],force:[],botTurn:null};");

@@ -1,17 +1,18 @@
-<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;font:15px system-ui;color:#e7edf9;background:radial-gradient(ellipse at top,#1c304e,#060b15 75%)}main{max-width:1180px;margin:auto;padding:16px}h1{color:#f2d078;letter-spacing:.13em}h2{font-size:17px;color:#f2d078}.panel{border:1px solid #52617b;border-radius:12px;background:#111c2ddd;padding:14px;margin:12px 0}button{padding:10px 13px;border:1px solid #a18b5b;background:#273b55;color:white;border-radius:8px;cursor:pointer}button:disabled{opacity:.35}.phases{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}.phases span{font-size:12px;padding:10px 2px;text-align:center;background:#1b2940;border-radius:5px}.phases .active{background:#6a5226;color:#fff0b0;outline:2px solid #d9b764}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.site{border:1px solid #5a708c;border-radius:10px;padding:10px;background:#1b2a40}.cards{display:flex;gap:7px;overflow:auto;min-height:80px;padding:7px 0}.card{flex:0 0 95px;background:#273d59;border:1px solid #8197b0;border-radius:7px;padding:5px;cursor:pointer;font-size:11px}.card img{width:100%;aspect-ratio:5/7;object-fit:contain}.card.chosen{outline:3px solid #f4d27b}.hint{color:#b7c9e1}.log{max-height:170px;overflow:auto;white-space:pre-line}a{color:#b6d8ff}@media(max-width:650px){.phases span{font-size:9px}.card{flex-basis:80px}}.brand-header{display:flex;justify-content:center;align-items:center;padding:12px 0 16px}.brand-header img{width:min(380px,75vw);height:110px;object-fit:contain;filter:drop-shadow(0 4px 14px #0009)}
-.playmat-shell{border:1px solid #52617b;border-radius:16px;padding:14px;background:linear-gradient(135deg,#0b1724,#12283a 50%,#0b1724);box-shadow:inset 0 0 45px #0008}
-.playmat-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding:6px 2px 14px}
-.playmat{display:flex;align-items:stretch;gap:12px;min-height:490px;width:max-content;min-width:100%}
-.playmat-column{flex:0 0 200px;width:200px;display:grid;grid-template-rows:minmax(142px,1fr) auto minmax(142px,1fr);gap:10px;border:1px solid #3c536d;border-radius:12px;background:#16263a99;padding:9px}
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;font:15px system-ui;color:#e7edf9;background:radial-gradient(ellipse at top,#1c304e,#060b15 75%)}main{max-width:1180px;margin:auto;padding:16px}h1{color:#f2d078;letter-spacing:.13em}h2{font-size:17px;color:#f2d078}.panel{border:1px solid #52617b;border-radius:12px;background:#111c2ddd;padding:14px;margin:12px 0}button{padding:10px 13px;border:1px solid #a18b5b;background:#273b55;color:white;border-radius:8px;cursor:pointer}button:disabled{opacity:.35}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.site{border:1px solid #5a708c;border-radius:10px;padding:10px;background:#1b2a40}.cards{display:flex;gap:7px;overflow:auto;min-height:80px;padding:7px 0}.card{flex:0 0 95px;background:#273d59;border:1px solid #8197b0;border-radius:7px;padding:5px;cursor:pointer;font-size:11px}.card img{width:100%;aspect-ratio:5/7;object-fit:contain}.card.chosen{outline:3px solid #f4d27b}.hint{color:#b7c9e1}.log{max-height:170px;overflow:auto;white-space:pre-line}a{color:#b6d8ff}@media(max-width:650px){.card{flex-basis:80px}}.brand-header{display:flex;justify-content:center;align-items:center;padding:4px 0}.brand-header img{width:min(380px,75vw);height:56px;object-fit:contain;filter:drop-shadow(0 4px 14px #0009)}
+.playmat-shell{border:1px solid #52617b;border-radius:16px;padding:8px;background:linear-gradient(135deg,#0b1724,#12283a 50%,#0b1724);box-shadow:inset 0 0 45px #0008}
+.playmat-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 8px}
+.playmat{display:flex;align-items:stretch;gap:12px;width:max-content;min-width:100%}
+.playmat-column{flex:0 0 200px;width:200px;display:grid;grid-template-rows:minmax(48px,1fr) auto minmax(48px,1fr);gap:8px;border:1px solid #3c536d;border-radius:12px;background:#16263a99;padding:8px}
 .playmat-group-start{margin-inline-start:14px}
 .playmat-insertion{align-self:center;flex:0 0 90px;padding:7px;font-size:12px}
-.playmat-zone{min-height:142px;border:1px dashed #59718b80;border-radius:9px;padding:6px;background:#09182765;display:flex;flex-direction:column}
+.playmat-zone{min-height:48px;border:1px dashed #59718b80;border-radius:9px;padding:6px;background:#09182765;display:flex;flex-direction:column}
 .playmat-zone.dark-zone{border-color:#af607355}.playmat-zone.light-zone{border-color:#d3b66c55}
-.playmat-zone .cards{overflow-x:auto;min-height:88px;gap:4px;padding:4px 0}.playmat-zone .card{flex-basis:68px;padding:3px;font-size:10px}
+.playmat-zone .cards{overflow-x:auto;min-height:58px;gap:4px;padding:4px 0}.playmat-zone .card{flex-basis:68px;padding:3px;font-size:10px}
+.playmat-zone .cards:empty{min-height:0;padding:0}
 .playmat-zone .card button{padding:4px 5px;font-size:10px}
-.playmat-location{display:flex;flex-direction:column;align-items:center;gap:7px;min-height:216px;justify-content:center}
-.playmat-location img{display:block;width:154px;height:211px;object-fit:contain;border:2px solid #c9af70;border-radius:7px;background:#07101c;box-shadow:0 7px 20px #0009}
-.playmat-location .location-fallback{width:154px;height:211px;border:2px dashed #667c94;border-radius:7px;display:grid;place-items:center;text-align:center;padding:12px;color:#b9c9d9}
+.playmat-location{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center}
+.playmat-location img{display:block;width:122px;height:167px;object-fit:contain;border:2px solid #c9af70;border-radius:7px;background:#07101c;box-shadow:0 7px 20px #0009}
+.playmat-location .location-fallback{width:122px;min-height:86px;border:2px dashed #667c94;border-radius:7px;display:grid;place-items:center;text-align:center;padding:12px;color:#b9c9d9}
 .playmat-location .location-name{font-size:12px;line-height:1.2;text-align:center;max-width:176px}
 .playmat-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}.playmat-actions button{padding:6px;font-size:11px}
 .playmat-zone .zone-name{font-size:10px;letter-spacing:.12em;color:#b8c9da}
@@ -22,45 +23,124 @@
 .location-inspector-card img{width:min(310px,100%);max-height:440px;object-fit:contain;border:2px solid #cbb377;border-radius:8px}
 .location-inspector-details{min-width:180px;flex:1}
 .location-icon-pips{font-size:12px;color:#ead69a}
-.table-view{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
-.table-view .player-hand{min-width:0;margin:0}
+.game-toolbar,.game-control{margin:8px 0;padding:8px 10px}
+.game-options,.trainer-options,.bot-turn-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.game-options button{padding:6px 9px;font-size:12px}
+.trainer-options{margin:10px 0}
+#gameSeed{width:8em}
+#stats{font-size:12px;color:#b7c9e1;margin-top:6px}
+.table-view{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.table-view[hidden]{display:none}
+.table-view .player-hand{display:grid;grid-template-columns:minmax(0,1fr) clamp(7rem,24vw,9rem);gap:10px;min-width:0;margin:0;padding:8px 10px}
+.player-hand .cards{padding:4px 0}
+.player-hand .card{flex-basis:76px;padding:4px}
+.player-hand .card img{display:block;height:82px}
+.player-hand .card button{padding:3px 5px;font-size:11px}
+.player-hand .card-back{min-height:106px;display:grid;place-content:center;text-align:center;color:#f2d078}
+.hand-heading{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:30px}
+.hand-heading h2{margin:0}
+.hand-heading .hint,.bot-turn-controls .hint{font-size:12px}
+.hand-heading button,.bot-turn-controls button{padding:5px 8px;font-size:12px}
+.phase-display{align-self:start;border:1px solid #52617b;border-radius:8px;padding:5px;background:#0b1727;font-size:12px;line-height:1.2}
+.phase-display p{margin:0 0 3px;padding:3px 5px;border-radius:4px;background:#1b2940;color:#c5d4e8;font-weight:700}
+.phase-display ol{display:grid;gap:1px;list-style:none;margin:0;padding:0}
+.phase-display li{padding:1px 5px;color:#b7c9e1;border-radius:4px}
+.phase-display.turn-active{border-color:#f2d078}
+.phase-display.turn-active p{background:#6a5226;color:#fff0b0}
+.phase-display li[aria-current="step"]{background:#f2d078;color:#151e2b;font-weight:800}
 .dark-hand{border-color:#af6073}
 .light-hand{border-color:#a18b5b}
 .start-location-options{display:flex;overflow-x:auto;gap:12px;padding:10px 0}
 .start-location-option{flex:0 0 150px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px}
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
-.starter-deck-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.starter-deck-actions{display:flex;flex-wrap:wrap;gap:8px}
 #starterDeckDialog{width:min(34rem,calc(100% - 2rem));max-height:calc(100% - 2rem);padding:16px;color:#e7edf9;background:#111c2d;border:1px solid #a18b5b;border-radius:12px}
 #starterDeckDialog::backdrop{background:#060b15cc}
 .starter-deck-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 #starterDeckCards{max-height:min(55vh,28rem);overflow:auto;margin:12px 0 0;padding-inline-start:24px}
 #starterDeckCards li{padding-block:4px}
-@media(max-width:650px){main{padding:9px}.playmat-shell{padding:8px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:130px;height:179px}.playmat{min-height:440px}}
-</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label> <button id="start" disabled>Neue Partie</button> <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p>
-<div class="starter-deck-actions">
-  <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
-  <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
-</div>
-<div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div>
-<section class="table-view" aria-label="Spieltisch">
-  <div class="panel player-hand dark-hand">
-    <h2>Bot-Hand · Dark Side</h2>
-    <label><input id="showBotHand" type="checkbox" onchange="render()"> Handkarten im Lernmodus offen anzeigen</label>
-    <p id="botHandCount" class="hint"></p>
-    <div id="botHand" class="cards"></div>
+@media(max-width:650px){main{padding:9px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img{width:105px;height:144px}}
+</style>
+<main>
+  <header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header>
+  <div class="panel game-toolbar">
+    <div class="game-options">
+      <label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label>
+      <button id="start" disabled>Neue Partie</button>
+      <div class="starter-deck-actions">
+        <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
+        <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
+      </div>
+    </div>
+    <div id="stats"></div>
   </div>
-  <div class="playmat-shell">
-    <h2>Spielbrett · Playmat</h2>
-    <p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p>
-    <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
+  <div class="panel" id="gameMessage"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div>
+  <div id="setup" class="panel" style="display:none">
+    <p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p>
+    <div id="setupOptions"></div>
   </div>
-  <div class="panel player-hand light-hand">
-    <h2>Deine Hand · Light Side</h2>
-    <div id="hand" class="cards"></div>
-  </div>
-</section>
-<div class="panel"><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div>
+  <section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section>
+  <section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section>
+  <div id="forceControls" class="panel game-control" style="display:none"></div>
+  <div id="controlPanel" class="panel game-control" style="display:none"></div>
+  <section class="table-view" id="gameTable" aria-label="Spieltisch" hidden>
+    <div class="panel player-hand dark-hand">
+      <div>
+        <div class="hand-heading">
+          <h2>Bot-Hand · Dark Side</h2>
+          <span id="botHandCount" class="hint"></span>
+          <div id="botTurnPanel" class="bot-turn-controls" style="display:none">
+            <button id="botNext">Nächste Bot-Aktion zeigen</button>
+            <span id="botStepText" class="hint"></span>
+          </div>
+        </div>
+        <div id="botHand" class="cards"></div>
+      </div>
+      <aside class="phase-display" id="phaseDisplayDark" aria-label="Phasen der Dark Side">
+        <p id="turnStatusDark" role="status"></p>
+        <ol id="phaseListDark" role="list"></ol>
+      </aside>
+    </div>
+    <div class="playmat-shell">
+      <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
+    </div>
+    <div class="panel player-hand light-hand">
+      <div>
+        <div class="hand-heading">
+          <h2>Deine Hand · Light Side</h2>
+          <button id="step" disabled>Nächste Phase</button>
+        </div>
+        <div id="hand" class="cards"></div>
+      </div>
+      <aside class="phase-display" id="phaseDisplayLight" aria-label="Phasen der Light Side">
+        <p id="turnStatusLight" role="status"></p>
+        <ol id="phaseListLight" role="list"></ol>
+      </aside>
+    </div>
+  </section>
+  <details class="panel" id="phaseHelp" hidden>
+    <summary>Hilfe zur aktuellen Phase</summary>
+    <p id="phaseHelpText" class="hint"></p>
+  </details>
+  <details class="panel">
+    <summary>Bot-Aktionen und Spielprotokoll</summary>
+    <p id="botReason" class="hint"></p>
+    <h2>Letzte Bot-Aktionen</h2>
+    <div id="botHistory" class="log"></div>
+    <h2>Spielprotokoll</h2>
+    <div id="log" class="log"></div>
+  </details>
+  <details class="panel">
+    <summary>Trainer-Optionen und Kartenprüfung</summary>
+    <div class="trainer-options">
+      <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label>
+      <label><input id="showBotHand" type="checkbox"> Bot-Hand im Lernmodus offen anzeigen</label>
+      <label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label>
+    </div>
+    <button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre>
+    <p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p>
+  </details>
 </main>
 <dialog id="starterDeckDialog" aria-labelledby="starterDeckTitle">
   <header class="starter-deck-header">
@@ -182,6 +262,9 @@ function showStarterDeck(side){
 
 function renderSetup(){
  const setup=PremiereGame.setupView(setupDecks,'Light'),available=legalActions(null,'Light');
+ el('gameTable').hidden=true;
+ el('gameMessage').hidden=false;
+ el('phaseHelp').hidden=true;
  el('setup').style.display='block';
  el('forceControls').style.display='none';
  el('controlPanel').style.display='none';
@@ -437,9 +520,22 @@ function renderPlaymat(available=legalActions(state,'Light'),view=PremiereGame.p
  return columns.join('')+insertButton(order.length)||'<p class="hint">Auf der Playmat liegt noch keine Location.</p>';
 }
 
+function renderPhaseTracks(view){
+ for(const side of ['Dark','Light']){
+  const active=!view.winner&&view.activeSide===side;
+  const status=el('turnStatus'+side);
+  const label=view.winner?'Partie beendet':active?(side==='Light'?'Du bist am Zug':'Bot ist am Zug'):'Wartet';
+  if(status.textContent!==label)status.textContent=label;
+  el('phaseDisplay'+side).className=active?'phase-display turn-active':'phase-display';
+  el('phaseList'+side).innerHTML=german.map((name,index)=>
+   '<li'+(active&&index===view.phase?' aria-current="step"':'')+'>'+name+'</li>').join('');
+ }
+}
+
 function render(){
  if(!state)return;
  const available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light'),light=view.players.Light,dark=view.players.Dark;
+ el('gameTable').hidden=false;
  renderControlPanel(available);
  el('nightConditions').checked=!!state.nightConditions;
  const night=available.find(option=>option.kind==='trainingNight');
@@ -448,12 +544,16 @@ function render(){
  el('stats').textContent='Force-Generierung: Light '+forceFromLocations('Light').count+' / Dark '+forceFromLocations('Dark').count
   +' · Runde '+view.turn+' · Seed '+(state.game?.seed??'–')+' · Reserve '+light.reserveCount+' · Force '+light.forceCount+' · Used '+light.usedCount
   +' · Lost '+light.lost.length+' · Bot Reserve '+dark.reserveCount+' · Bot Force '+dark.forceCount+' · Bot Used '+dark.usedCount+' · Bot Lost '+dark.lost.length;
- el('phases').innerHTML=german.map((name,index)=>'<span class="'+(index===view.phase?'active':'')+'">'+(index+1)+'. '+name+'</span>').join('');
- el('instruction').textContent=view.winner==='Simultaneous'?'Spielende – beide Life Forces gleichzeitig aufgebraucht'
-  :view.winner?'Spielende – '+view.winner+' Side gewinnt':'Aktuelle Phase: '+german[view.phase];
- el('hint').textContent=lessons[view.phase];
+ renderPhaseTracks(view);
+ el('gameMessage').hidden=!view.winner;
+ if(view.winner){
+  el('instruction').textContent=view.winner==='Simultaneous'?'Spielende – beide Life Forces gleichzeitig aufgebraucht':'Spielende – '+view.winner+' Side gewinnt';
+  el('hint').textContent='';
+ }
+ el('phaseHelp').hidden=!!view.winner;
+ el('phaseHelpText').textContent=lessons[view.phase]??'';
  const step=findOffer(available,'advance');
- el('step').textContent=state.botTurn?'Bot-Zug läuft':view.phase===5?'Zug beenden + Bot beobachten':'Nächste Phase';
+ el('step').textContent=view.activeSide==='Light'&&view.phase===5?'Zug beenden':'Nächste Phase';
  el('step').disabled=!step;
  el('step').onclick=step?()=>dispatchUI(step):null;
  const controls=el('forceControls'),activation=available.filter(option=>option.kind==='activate').at(-1),draw=findOffer(available,'draw');
@@ -468,15 +568,15 @@ function render(){
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
  el('botNext').disabled=!botStep;
  el('botNext').onclick=botStep?()=>{if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id)botNextStep()}:null;
- el('botTurnPanel').style.display=state.botTurn?'block':'none';
+ el('botTurnPanel').style.display=state.botTurn&&!view.winner?'flex':'none';
  if(state.botTurn)el('botStepText').textContent='Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
   +' · Nächste Aktion: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
  el('board').innerHTML=renderPlaymat(available,view);
  el('hand').innerHTML=light.hand.map((card,index)=>mini(card,index,true,'Light','hand')).join('');
  const showBotHand=el('showBotHand').checked;
- el('botHandCount').textContent='Bot-Hand: '+dark.handCount+' Karten · '+(showBotHand?'offen (nur Lernmodus)':'verdeckt');
+ el('botHandCount').textContent=dark.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
  el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,false,'Dark','hand')).join('')
-  :'<div class="card" style="min-height:120px;display:grid;place-items:center;color:#f2d078">STAR WARS CCG<br>Verdeckt</div>'.repeat(dark.handCount);
+  :'<div class="card card-back">STAR WARS CCG<br>Verdeckt</div>'.repeat(dark.handCount);
  el('botHistory').textContent=(state.botHistory||[]).join('\n');
  el('botReason').textContent=state.botReason;
  el('log').textContent=state.log.join('\n');
