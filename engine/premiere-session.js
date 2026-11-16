@@ -1,9 +1,9 @@
-const {REVISION, readCatalog, readStarterDecks, buildAudit, locationTitle, isDeployableCharacter, isBantha, isEyesInTheDark, permanentPilotAbility, basicWeaponRule}=PremiereData;
+const {REVISION, readCatalog, readStarterDecks, buildAudit, locationTitle, isDeployableCharacter, isBantha, isLostPileEffect, permanentPilotAbility, basicWeaponRule}=PremiereData;
 let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','deployEyesInTheDark','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -488,7 +488,7 @@ function cardPowerModifier(c,side,siteIndex){
 }
 
 function cardEffectStatus(c){
- if(isEyesInTheDark(c))return 'UMGESETZT: Legt den gewählten Lost Pile verdeckt. Verluste aus Life Force bleiben verdeckt, Rückholen bleibt möglich.';
+ if(isLostPileEffect(c))return 'UMGESETZT: Legt den gewählten Lost Pile verdeckt. Verluste aus Life Force bleiben verdeckt, Rückholen bleibt möglich.';
  if(isBantha(c))return 'TEILWEISE: Außen-Site, Ability ½, Landspeed, React, Waffenabwehr und Power +1 für anwesende Tusken Raider. Boarding ist offen.';
  if(c.id==='Light:1593')return 'TEILWEISE: Force-Generierung +1 außerhalb von Tatooine-Sites und gedruckte Attrition-Immunität. Pilotenboni sind offen.';
  if(c.id==='Light:2110')return 'TEILWEISE: Vertauscht Force-Icons und die Seiten der implementierten Ortsregeln. Expand The Empire und Aufheben des Effects sind offen.';
@@ -1133,18 +1133,18 @@ function deployRevolution(side,handIndex,slot){
  return true;
 }
 
-function placeEyesInTheDark(effect){
+function placeLostPileEffect(effect){
  (state.lostPileEffects??=[]).push(effect);
  log(effect.card.name+' liegt bei der Lost Pile der '+effect.target+' Side. Der Stapel ist verdeckt.');
 }
 
-function deployEyesInTheDark(side,index,target){
+function deployLostPileEffect(side,index,target){
  const [card]=PremiereGame.zones(state,side).hand.splice(index,1);
  const effect={card,target},frame={kind:'lostPileEffect',side,...effect};
  if(state.game&&interruptResponses(PremiereGame.otherSide(side),frame).length){
   PremiereGame.openResponse(state.game,frame);
   log(side+' kündigt '+card.name+' für die Lost Pile der '+target+' Side an.');
- }else placeEyesInTheDark(effect);
+ }else placeLostPileEffect(effect);
  return true;
 }
 
@@ -1251,6 +1251,13 @@ function botDeployPhase(){
  const actions=[],maxActions=state.botHand.length;
  for(let k=0;k<maxActions;k++){
   const available=legalActions(state,'Dark'),own=PremiereGame.zones(state,'Dark');
+  const pileTarget=PremiereGame.lostPileFaceDown(state,'Dark')?'Light':'Dark';
+  const pileEffect=available.find(action=>action.kind==='deployLostPileEffect'&&action.target===pileTarget);
+  if(pileEffect&&!PremiereGame.lostPileFaceDown(state,pileTarget)){
+   if(!performAction(pileEffect))break;
+   actions.push(pileEffect.card.name+' für die Lost Pile der '+pileTarget+' Side');
+   continue;
+  }
   const conversion=available.find(action=>action.kind==='convertLocation');
   if(conversion){
    if(!performAction(conversion))break;
@@ -1334,7 +1341,7 @@ function botNextStep(){
   if(!botDrain())botSay('Control: Keine weitere Location erlaubt einen Force Drain.');
  }else if(action.kind==='deploy'){
   const actions=botDeployPhase();
-  botSay(actions.length?'Deploy: '+actions.join('; ')+'.':'Deploy: Bot passt; keine legale bezahlbare Karte.');
+  botSay(actions.length?'Deploy: '+actions.join('; ')+'.':'Deploy: Bot passt.');
  }
  publishGame();
  return true;
@@ -2273,7 +2280,7 @@ function resolveResponsePass(side){
    }
   }
  }else if(frame.kind==='lostPileEffect'&&!frame.cancelled){
-  placeEyesInTheDark({card:frame.card,target:frame.target});
+  placeLostPileEffect({card:frame.card,target:frame.target});
  }else if(frame.kind==='drain'&&!frame.cancelled){
   resolveForceDrain(frame.side,frame.site,frame.bonus);
  }else if(frame.kind==='battle'){
@@ -2467,8 +2474,8 @@ function legalActions(position,side){
  }else if(position.phase===2){
   for(const option of automatedDeployOptions(side))actions.push(offer('deployAutomated',[option.index,option.slot],option));
   for(const [i,card] of (hand??[]).entries()){
-   if(side==='Light'&&isEyesInTheDark(card))for(const target of PremiereGame.sides){
-    actions.push(offer('deployEyesInTheDark',[i,target],{card,target}));
+   if(card.side===side&&isLostPileEffect(card))for(const target of PremiereGame.sides){
+    actions.push(offer('deployLostPileEffect',[i,target],{card,target}));
    }
    for(const slot of locationDeployPositions(side,i))actions.push(offer('deployLocation',[i,slot],{card}));
    const conversion=conversionTarget(side,i);
@@ -2510,7 +2517,7 @@ function executeAction({kind,side,args}){
   case 'deployLocation': return deployLocationFromHand(side,...args);
   case 'convertLocation': return convertLocation(side,...args);
   case 'revolution': return deployRevolution(side,...args);
-  case 'deployEyesInTheDark': return deployEyesInTheDark(side,...args);
+  case 'deployLostPileEffect': return deployLostPileEffect(side,...args);
   case 'alterLostPileEffect': return initiateAlterLostPileEffect(side,...args);
   case 'retrieve': return playRetrieval(side,...args);
   case 'deployWithPilot': return deployWithPilot(side,...args);
@@ -2573,6 +2580,8 @@ function performAction(action,followUp=true){
   delete game.rootAction;
   PremiereGame.checkpoint(game,'phase:priority',state.activeSide,()=>{},priority);
  }
+ if(action.kind==='deployLostPileEffect'&&action.side==='Dark'&&state.botTurn&&
+    (PremiereGame.responseWindow(game)||game?.timing.pending))state.botTurn.decision='deploy';
  if(followUp&&action.kind==='retrySetup')chooseBotStartingLocation();
  if(followUp&&state?.pendingForceLoss?.payer==='Dark')botPayDrainLoss();
  publishGame();
