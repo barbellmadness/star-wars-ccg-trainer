@@ -29,6 +29,10 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     const theme = page.getByRole('dialog', {name: 'Massassi-Widerstand · 60 Karten'});
     assert.match(await theme.textContent(), /Dodonna.*Rebel Trooper/s);
     await page.keyboard.press('Escape');
+    await darkDeck.selectOption('imperiale-garnison');
+    await page.getByRole('button', {name: 'Dark Side Deck ansehen'}).click();
+    assert.match(await page.getByRole('dialog', {name: 'Imperiale Garnison · 60 Karten'}).textContent(), /Zuckuss' Snare Rifle/);
+    await page.keyboard.press('Escape');
     await lightDeck.selectOption('starter');
     await darkDeck.selectOption('starter');
     await page.locator('#gameSeed').fill('4');
@@ -253,7 +257,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.13.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.14.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -267,6 +271,33 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.reload();
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
     assert.equal(await page.locator('#resumeGame').isVisible(), false);
+
+    await page.evaluate(() => {
+      start(4);
+      const choice = legalActions(null, 'Light')[0];
+      requestAction('chooseStart', 'Light', choice.args);
+      requestAction('beginGame', 'Light');
+      state.locations[0] = catalog.find(card => card.id === 'Dark:673');
+      const prisoner = {...catalog.find(card => card.id === 'Light:1495'), captured: true, imprisoned: true};
+      state.dark[0].push(prisoner);
+      presentGame();
+    });
+    const prison = page.locator('.playmat-column').filter({hasText: 'Death Star: Detention Block Corridor'});
+    assert.ok(await prison.getByText('Inhaftiert', {exact: true}).isVisible());
+    assert.ok(await prison.getByText('Gefängnis', {exact: true}).isVisible());
+    await page.evaluate(() => {
+      const prisoner = state.dark[0].pop();
+      delete prisoner.imprisoned;
+      const escort = {...catalog.find(card => card.id === 'Dark:741'), escortedCaptive: prisoner};
+      state.dark[0].push(escort);
+      loseTableCard('Dark', 0, escort);
+      presentGame();
+    });
+    const release = page.locator('.light-hand').getByRole('region', {name: 'Gefangenenentscheidung'});
+    assert.ok(await release.isVisible());
+    await release.getByRole('button', {name: /Rally/}).click();
+    assert.equal(await release.isVisible(), false);
+    assert.ok(await prison.locator('.light-zone').getByRole('button', {name: /Leia Organa ansehen/}).isVisible());
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();

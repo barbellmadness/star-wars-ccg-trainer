@@ -5,6 +5,8 @@ const PremiereLocations = (() => {
   const title = card => (card?.name ?? '').replace(/^•+\s*/, '').split(' (')[0];
   const system = card => card?.subType === 'System';
   const region = card => system(card) ? title(card) : title(card).split(':')[0];
+  const prison = card => card?.type === 'Location' && card.subType === 'Site' &&
+    (/\bPrison\b/i.test(title(card)) || ['Death Star: Detention Block Corridor','Cloud City: Security Tower',"Jabba's Palace: Dungeon"].includes(title(card)));
   const inactive = card => card.captured || card.missing || card.inactive;
   const enclosed = card => units.enclosed(card) ||
     card.subType === 'Enclosed';
@@ -12,13 +14,15 @@ const PremiereLocations = (() => {
   function entries(state, side) {
     const board = side === 'Light' ? state.light : state.dark;
     const result = [];
-    function visit(card, slot, carriers = [], blocked = false) {
+    function visit(card, slot, carriers = [], blocked = false, captive = false) {
       if (!card) return;
       const unavailable = blocked || inactive(card);
-      result.push({card, side, slot, carriers, unavailable});
+      const held = captive || !!card.captured;
+      result.push({card, side, slot, carriers, unavailable, captive:held});
       for (const occupant of card.occupants ?? []) visit(occupant.card, slot, [card, ...carriers], unavailable);
+      if (card.escortedCaptive) visit(card.escortedCaptive, slot, carriers, true, true);
       for (const attachment of [...(card.weapons ?? []), ...(card.attachments ?? [])]){
-        visit(attachment, slot, carriers, unavailable);
+        visit(attachment, slot, carriers, unavailable, held);
       }
     }
     board?.forEach((row, slot) => row.forEach(card => visit(card, slot)));
@@ -166,7 +170,7 @@ const PremiereLocations = (() => {
     return {base, modifier, optional:weapons.length, weapons};
   }
 
-  return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
+  return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence, prison,
     findEntry: find, nightEffectsAt, occupy: presence, present, presentCards, printedSide, ruleAt};
 })();
 

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "card": {
+    "id": "Dark:2915",
+    "sourceId": 2915,
+    "side": "Dark",
+    "set": "4",
+    "gempId": "4_180",
+    "personas": ["Zuckuss' Snare Rifle"],
+    "rawFront": {
+      "title": "•Zuckuss' Snare Rifle",
+      "type": "Weapon",
+      "subType": "Character",
+      "uniqueness": "*",
+      "destiny": "1",
+      "characteristics": ["rifle"],
+      "icons": ["Dagobah"],
+      "errataSymbol": "E1",
+      "gametext": "Deploy on Zuckuss, or use 1 Force to deploy on any other bounty hunter. May target a character or creature using 2 Force. Draw destiny. Character captured if destiny -1 > defense value. Creature lost if destiny +1 > defense value.",
+      "imageUrl": "https://res.starwarsccg.org/cards/Dagobah-Dark/large/zuckusssnarerifle.gif",
+      "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Zuckuss Snare Rifle (Errata)/image.png",
+      "printableSlipType": "ERRATA"
+    }
+  }
+}

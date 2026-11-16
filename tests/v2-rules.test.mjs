@@ -673,6 +673,7 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
 
 const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
 const themedLists=readFileSync(new URL('../data/premiere-themed-decks.json',import.meta.url),'utf8');
+const supplementalCards=readFileSync(new URL('../data/premiere-supplemental-cards.json',import.meta.url),'utf8');
 
 async function premiereHarness(deckLists=starterLists,browser){
  const fixture=harness(browser);
@@ -683,6 +684,7 @@ async function premiereHarness(deckLists=starterLists,browser){
   if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
   if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
   if(path==='data/premiere-themed-decks.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(themedLists)})};
+  if(path==='data/premiere-supplemental-cards.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(supplementalCards)})};
   if(path==='local-print-texts.json'){
    globalThis.requestedLocalPrints=true;
    const report=${JSON.stringify(browser?.localPrintReport??null)};
@@ -1163,6 +1165,79 @@ test('Detention Block releases only imprisoned characters on the Death Star afte
  assert.equal(run("requestAction('move','Dark',[2,0,3,'Landspeed'])"),true);
  assert.equal(run("state.light[3].includes(prisoner)&&!prisoner.captured&&!prisoner.imprisoned"),true);
  assert.equal(run("state.dark[3].includes(escorted)&&escorted.captured&&state.dark[5].includes(elsewhere)&&elsewhere.captured"),true);
+});
+
+async function captureHarness(destiny,atPrison=false){
+ const fixture=await craftHarness(),{run}=fixture;
+ run(`setupDecks=null;state.game=PremiereGame.actionState(134,1);state.game.cardRulesVersion=6;state.game.botStrategyVersion=1;
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.locationOrder=[0,1,2,3,4,5,6];
+  state.locations[2]=card('Dark:682');state.locations[3]=card('Dark:673');state.locations[4]=card('Light:672');
+  const captureSite=${atPrison?3:2},hunter=card('Dark:741'),trooper=card('Dark:2355');
+  const prisoner=card('Light:1495'),blaster=card('Light:1503'),snare={...supplementalCatalog[0]};
+  prisoner.weapons=[blaster];state.light[captureSite]=[prisoner];state.dark[captureSite]=[hunter,trooper];
+  state.botHand=[snare];state.botDeck=[{name:'Waffen-Destiny',destiny:${destiny}}];
+  const dark=(kind,args=[])=>requestAction(kind,'Dark',args);
+  const light=(kind,args=[])=>requestAction(kind,'Light',args);
+  const custody=kind=>legalActions(state,'Dark').find(option=>option.kind==='custody'&&option.args[0]===kind);
+  const transfer=kind=>legalActions(state,'Dark').find(option=>option.kind==='prisonerTransfer'&&option.args[0]===kind);
+  const shot=()=>legalActions(state,'Dark').find(option=>option.kind==='fireWeapon'&&option.target===prisoner);`);
+ return fixture;
+}
+
+test('the bot uses printed capture rules, then escorts, imprisons and transfers a captive for free',async()=>{
+ const {run,elements}=await captureHarness(6);
+ assert.equal(run("dark('equip',[0,captureSite,1])"),false,'a regular Stormtrooper cannot equip the rifle');
+ assert.equal(run("dark('equip',[0,captureSite,0])&&hunter.weapons[0]===snare&&state.botForce.length===4"),true);
+ run('state.phase=3;');
+ assert.equal(run("dark('battle',[captureSite])&&shot().cost===2&&shot().bonus===-1"),true);
+ assert.equal(run("botWeaponAction().effect==='capture'&&performAction(botWeaponAction())"),true);
+ assert.equal(run('state.botForce.length===1&&state.pendingCustody[0].card===prisoner&&prisoner.captured'),true);
+ assert.equal(run("!!custody('imprison')||light('passWeapons')"),false,'must decide immediately, at a location without prison');
+ assert.match(elements.get('battleDetails').innerHTML,/Gefangenenentscheidung des Bots zeigen/);
+ assert.equal(run("performAction(botCustodyAction())&&hunter.escortedCaptive===prisoner&&battleSession===null"),true);
+ assert.equal(run("withinDeploymentLimit(card('Light:1495'),'Light')||withinDeploymentLimit(card('Light:1503'),'Light')"),false);
+ assert.equal(run("cardAbility(hunter)>0&&PremiereLocations.findEntry(state,prisoner).unavailable"),true);
+ assert.match(elements.get('board').innerHTML,/Eskorte · •Leia Organa/);
+ assert.equal(run("Boolean(transfer('deliver'))"),false,'only in the Dark Move phase');
+ run('state.phase=4;');
+ assert.equal(run("Boolean(transfer('deliver'))"),false,'only at the prison');
+ assert.equal(run("botMove()&&state.botForce.length===0&&PremiereLocations.findEntry(state,prisoner).slot===3"),true);
+ assert.equal(run("botMove()&&!hunter.escortedCaptive&&state.dark[3].includes(prisoner)&&prisoner.imprisoned"),true);
+ assert.match(elements.get('board').innerHTML,/Inhaftiert/);
+ assert.equal(run("performAction(transfer('take'))&&hunter.escortedCaptive===prisoner&&!prisoner.imprisoned"),true);
+ assert.equal(run("performAction(transfer('deliver'))&&state.botForce.length===0"),true);
+ run("state.dark[3]=[prisoner];state.light[3]=[card('Light:1593')];state.activeSide='Light';state.botTurn=null");
+ assert.equal(run("PremiereLocations.control(state,'Light',3,cardAbility)"),true);
+ assert.equal(run("state.dark[3].includes(prisoner)"),true);
+ assert.equal(run("light('move',[3,0,4,'Landspeed'])"),true);
+ assert.equal(run("state.light[3].includes(prisoner)&&prisoner.weapons[0]===blaster&&!prisoner.captured&&!prisoner.imprisoned"),true);
+ assert.equal(run("state.lost.includes(prisoner)||state.used.includes(prisoner)"),false);
+});
+
+test('failed snares leave the target active, and successful snares can imprison it immediately at the prison',async()=>{
+ const failed=await captureHarness(4);
+ assert.equal(failed.run("dark('equip',[0,captureSite,0]);state.phase=3;dark('battle',[captureSite]);performAction(shot())"),true);
+ assert.equal(failed.run("state.light[captureSite].includes(prisoner)&&!state.pendingCustody&&!prisoner.captured"),true);
+ const prison=await captureHarness(4,true);
+ assert.equal(prison.run("dark('equip',[0,captureSite,0]);state.phase=3;dark('battle',[captureSite]);performAction(shot())"),true);
+ assert.equal(prison.run("botCustodyAction().args[0]"),'imprison','Corridor adds 1 to Dark weapon destiny');
+ assert.equal(prison.run("performAction(botCustodyAction())&&prisoner.imprisoned&&state.dark[captureSite].includes(prisoner)"),true);
+});
+
+test('a captive needs an extra passenger seat, and removing the escort gives Light a Rally or Escape choice',async()=>{
+ const {run,elements}=await captureHarness(6);
+ run("dark('equip',[0,captureSite,0]);state.phase=3;dark('battle',[captureSite]);performAction(shot());performAction(botCustodyAction())");
+ assert.equal(run("PremiereUnits.accepts(card('Dark:1547'),hunter,'passenger')"),true);
+ assert.equal(run("PremiereUnits.accepts({...card('Dark:1547'),occupants:[1,2,3].map(()=>({card:trooper,role:'passenger'}))},hunter,'passenger')"),false);
+ assert.equal(run("loseTableCard('Dark',captureSite,hunter)&&state.pendingCustody[0].side==='Light'"),true);
+ run('render()');
+ assert.match(elements.get('playerCustodyControls').innerHTML,/Rally/);
+ assert.equal(run("dark('custody',['escape'])"),false);
+ assert.equal(run("light('custody',['escape'])&&state.used.includes(prisoner)&&state.lost.includes(blaster)&&!prisoner.captured"),true);
+ run(`const transport=card('Dark:1547'),second=card('Light:1593');
+  second.captured=true;trooper.escortedCaptive=second;
+  state.dark[captureSite]=[transport];PremiereUnits.add(transport,trooper,'passenger','Dark');`);
+ assert.equal(run("loseTableCard('Dark',captureSite,transport)&&state.lost.includes(second)&&!state.pendingCustody.length"),true);
 });
 
 test('Central Core cancels the Tractor Beam when Light gains control',async()=>{
@@ -2208,7 +2283,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,5);
+ assert.equal(saved.cardRulesVersion,6);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

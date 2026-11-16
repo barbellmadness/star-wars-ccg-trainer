@@ -23,6 +23,9 @@ const PremiereWeapons = (() => {
     ['Light:1813', saber(byPersona('obi-wan',0),0,'zero')], ['Dark:2702', saber(byPersona('vader',0),0,'zero')],
     ['Dark:146', {...blaster(2,1),deploy:withHost(warrior,3),adjacent:true}],
     ['Dark:1551', {...blaster(2,1),generator:true,repeats:true}],
+    ['Dark:2915', {deploy:host=>persona(host,'zuckuss')?0:PremiereUnits.bountyHunter(host)?1:null,
+      cost:2,targets:saberTargets,bonus:target=>target.type==='Character'?-1:1,
+      effect:target=>target.type==='Character'?'capture':'destroy',onlyPrintedTargets:true}],
     ['Dark:1002', {deploy:withHost(card=>card.type==='Character'&&title(card)==='tusken raider',2),
       cost:0,draws:2,targets:['Character'],timing:'initiation',effect:'block',threshold:5}],
     ['Light:1962', {deploy:withHost(card=>units.fighter(card)&&/\b[XYB]-wing\b/i.test(card.subType),1),cost:1,targets:space}],
@@ -61,13 +64,14 @@ const PremiereWeapons = (() => {
     const rule=definition(weapon);
     if(rule?.timing==='initiation'&&target.type!=='Character')return null;
     const category=target.type==='Vehicle'&&target.subType==='Creature'?'Creature':target.type;
+    if (rule?.onlyPrintedTargets && (projector(target) || seeker(target))) return null;
     if (!rule || (!rule.targets.includes(category) && !projector(target) && !(rule.projector&&seeker(target)))) return null;
     const cost=typeof rule.cost==='function'?rule.cost(ability):rule.cost;
     const bonus=typeof rule.bonus==='function'?rule.bonus(target):rule.bonus??0;
     const threshold=rule.threshold??defense;
     if (cost===null||!Number.isFinite(threshold)) return null;
     const effect=rule.effect==='block'?'block':projector(target)||seeker(target)?'destroy':
-      rule.effect??(rule.zeroBy&&persona(host,rule.zeroBy)?'zero':'hit');
+      typeof rule.effect==='function'?rule.effect(target):rule.effect??(rule.zeroBy&&persona(host,rule.zeroBy)?'zero':'hit');
     return {cost,bonus,defense:threshold,effect,draws:rule.draws??1,repeats:!!rule.repeats};
   }
 
