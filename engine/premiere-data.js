@@ -166,7 +166,15 @@ const PremiereData = (() => {
       return card;
     });
     if (new Set(starts.map(locationTitle)).size !== starts.length) throw error('Die Starting Locations müssen unterschiedliche Namen haben.');
-    return {cards, startingIndices: starts.flatMap(card => cards.flatMap((copy, index) => copy === card ? [index] : []))};
+    const startingIndices = starts.flatMap(card => cards.flatMap((copy, index) => copy === card ? [index] : []));
+    if (definition.theme === undefined) return {cards, startingIndices};
+    const {id, name, description} = definition.theme ?? {};
+    if (typeof id !== 'string' || !/^[a-z]+(?:-[a-z]+)*$/.test(id) || id === 'starter' ||
+        typeof name !== 'string' || !name.trim() || typeof description !== 'string' || !description.trim()) {
+      throw error('Ungültige Angaben zum Themendeck.');
+    }
+    if (!startingIndices.length) throw error('Ein Themendeck benötigt mindestens eine Starting Location.');
+    return {cards, startingIndices, theme: {id, name, description}};
   }
 
   function readStarterDecks(payload, catalog) {
@@ -177,6 +185,21 @@ const PremiereData = (() => {
       light: buildStarterDeck('Light', payload.decks?.Light, byId),
       dark: buildStarterDeck('Dark', payload.decks?.Dark, byId)
     };
+  }
+
+  function readThemedDecks(payload, catalog) {
+    if (payload?.schema !== 1) throw new Error('Unbekanntes Format der Premiere-Themendecks.');
+    const byId = new Map(catalog.map(card => [card.id, card]));
+    return Object.fromEntries(SIDES.map(side => {
+      const definitions = payload.decks?.[side];
+      if (!Array.isArray(definitions) || definitions.length !== 4) {
+        throw new Error(side + ' benötigt vier zusätzliche Premiere-Themendecks.');
+      }
+      const choices = definitions.map(definition => ({definition, deck: buildStarterDeck(side, definition, byId)}));
+      const ids = new Set(choices.map(({deck}) => deck.theme?.id));
+      if (ids.has(undefined) || ids.size !== choices.length) throw new Error(side + ': Die Themendecks benötigen eindeutige IDs.');
+      return [side.toLowerCase(), choices];
+    }));
   }
 
   function buildAudit(catalog, decks) {
@@ -217,7 +240,7 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readCardValue, locationTitle,
+  return {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readThemedDecks, readCardValue, locationTitle,
     isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility, buildAudit};
 })();
 
