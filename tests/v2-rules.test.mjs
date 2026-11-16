@@ -2129,8 +2129,13 @@ test('lightsabers offer an optional bonus, and a forbidden location offers no dr
  run(`state.activeSide='Light';state.botTurn=null;
   state.dark[1]=[];wolfman.weapons=[{id:'Light:1386',type:'Weapon'}];`);
  assert.equal(run("legalActions(state,'Light').filter(action=>action.kind==='drain').map(action=>action.amount).join()"),'1,2');
+ const column='renderPlaymatColumn(state.locations[0],0)';
+ assert.match(run(column),/>Force Drain · 1 Force<\/button>.*>Force Drain · 2 Force \(\+1 Bonus\)<\/button>/);
+ run('state.locations[0].icons.dark=0');
+ assert.match(run(column),/>Force Drain · 0 Force<\/button>/);
  run("state.locationEffects={0:[{card:{id:'test modifier'},drainForbiddenFor:'Light'}]};");
  assert.equal(run("requestAction('drain','Light',[0,1])"),false);
+ assert.doesNotMatch(run(column),/class="playmat-drain-actions"/);
 });
 
 test('Jawa deployment honors the Tatooine restriction and both players’ printed payments',async()=>{

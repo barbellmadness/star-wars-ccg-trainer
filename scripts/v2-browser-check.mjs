@@ -138,6 +138,20 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.ok(await destinationColumn.getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).isVisible());
     assert.ok(await destinationColumn.locator('.light-zone').getByRole('img', {name: 'Control · ja'}).isVisible());
     assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 1');
+    assert.equal(await page.locator('.playmat-drain-actions').count(), 0);
+    const darkLostBefore = await page.evaluate(() => {
+      state.phase = 1;
+      presentGame();
+      return state.botLost.length;
+    });
+    const drain = destinationColumn.getByRole('button', {name: 'Force Drain · 1 Force', exact: true});
+    assert.equal(await originColumn.locator('.playmat-drain-actions').count(), 0);
+    assert.equal(await page.locator('#controlPanel').getByRole('button', {name: /Force Drain/}).count(), 0);
+    await drain.click();
+    await page.waitForFunction(() => !state.pendingForceLoss && state.drainedSitesThisTurn.includes(0));
+    assert.equal(await drain.count(), 0);
+    assert.equal(await page.evaluate(() => state.botLost.length), darkLostBefore + 1);
+
     await page.evaluate(() => {
       state.phase = 3;
       state.dark[1][0].weapons = [];
@@ -167,7 +181,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.2.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.3.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

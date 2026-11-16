@@ -61,6 +61,8 @@ a{color:#b6d8ff}
 .playmat-location .location-fallback{width:168px;max-width:100%;min-height:86px;border:2px dashed #667c94;border-radius:7px;display:grid;place-items:center;text-align:center;padding:12px;color:#b9c9d9}
 .playmat-location .location-name{font-size:12px;line-height:1.2;text-align:center;max-width:min(176px,100%)}
 .playmat-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}.playmat-actions button{padding:6px;font-size:11px}
+.playmat-drain-actions{display:grid;gap:4px;width:100%}
+.playmat-drain-actions button{border-color:var(--gold);padding:6px 4px;font-size:11px}
 .playmat-location .movement-trigger{padding:6px 9px;font-size:12px}
 .playmat-zone .zone-name{font-size:10px;letter-spacing:.12em;color:#b8c9da}
 .playmat-column.empty-location .playmat-location{opacity:.7}
@@ -335,12 +337,12 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.2.0';
+const trainerVersion='2.3.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
 };
-const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
+const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','In der Phase „Kontrolle“ stehen verfügbare Force Drains mit ihrer Force-Menge direkt an der jeweiligen Location. Du brauchst dort eigene Presence ohne gegnerische Presence. Pro Location ist ein Drain je Zug möglich, auch für 0 Force.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 let selected=-1, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
@@ -427,13 +429,6 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  const rack=state.blasterRack;
  const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
  const extra=[retrieval,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
- if(state.phase===1&&!state.botTurn&&!state.gameWinner){
-  const drains=available.filter(option=>option.kind==='drain');
-  box.innerHTML='<b>Control Phase · Force Drain</b><p class="hint">Ein legaler Drain kann den Wert 0 haben. Pro Ort ist ein Drain je Zug möglich.</p>'
-   +(drains.map(option=>ruleButton(option,state.locations[option.args[0]].name+' · Drain '+option.amount+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join(' ')||'Keine verfügbaren Force Drains.')
-   +(extra?'<div>'+extra+'</div>':'');
-  box.style.display='block';return;
- }
  box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
 
@@ -963,9 +958,12 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
- const actions=(state.phase!==4||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
+ const actions=(![1,4].includes(state.phase)||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
+ const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
+  .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
+ +(drains?'<div class="playmat-drain-actions" role="group" aria-label="Force Drain bei '+escapeHTML(loc.name)+'">'+drains+'</div>':'')
  +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
  +zone('Light',light)+'</div>';
 }
