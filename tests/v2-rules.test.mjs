@@ -2502,6 +2502,26 @@ test('all ship armaments enforce their printed mounts, targeting families and sh
   PremiereWeapons.shot(turbo,destroyer,ship,1,4).draws===2&&PremiereWeapons.shot(turbo,destroyer,ship,1,4).bonus===-5;`),true);
 });
 
+test('Combined Attack pays for two legally mounted weapons and applies their combined result in the chosen order',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const corvette=card('Light:530'),wing=card('Light:2838'),target=card('Dark:2600'),attack=card('Light:483');
+  const quad=card('Light:1971'),torpedo=card('Light:1962');
+  setupDecks=null;state.game=PremiereGame.actionState(47,1);state.phase=3;state.light[6]=[corvette,wing];
+  target.maneuver=4;state.dark[6]=[target];corvette.weapons=[quad];wing.weapons=[torpedo];
+  state.hand=[attack];state.botHand=[];state.deck=[{name:'Reserve'},{name:'First destiny',destiny:2},{name:'Second destiny',destiny:2}];`);
+ assert.equal(run("requestAction('battle','Light',[6])&&battleSession.weaponTurn==='Light'"),true);
+ assert.match(elements.get('battleControls').innerHTML,/Combined Attack.*Kombiniert feuern/);
+ run('const remainingForce=state.force;state.force=remainingForce.slice(0,1);');
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,1,0])"),false);
+ run('state.force=remainingForce;');
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,0,0])||requestAction('combinedAttack','Light',[0,0,0])"),false);
+ assert.equal(run('state.force.length===4&&state.hand[0]===attack&&state.deck.length===3'),true);
+ assert.equal(run("requestAction('combinedAttack','Light',[0,0,1,0])"),true);
+ assert.equal(run("state.force.length===2&&state.used.length===5&&state.deck.length===1&&state.lost.includes(attack)"),true);
+ assert.equal(run("battleSession.hitUnits.Dark[0]===target&&battleSession.usedWeapons[0]===torpedo&&battleSession.usedWeapons[1]===quad&&battleSession.weaponTurn==='Dark'"),true);
+ assert.match(run('state.log.join("\\n")'),/Combined Attack 5 gegen Verteidigung 4 · Treffer/);
+});
+
 test('a buried mine and a dud are hidden until crossed by a vehicle, whose crew is eligible for loss',async()=>{
  const {run,elements}=await craftHarness();
  run(`const mine=card('Light:2610'),dud={name:'Hidden Dud',side:'Light'},droid=card('Light:1556'),

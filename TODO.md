@@ -78,7 +78,9 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [x] Vier Seeker suchen beim Spielen und Bewegen passende Ziele, auch auf ihrer eigenen Seite. Beide Timer Mines lösen offen beim nächsten eigenen Zug oder verdeckt beim Betreten oder Kreuzen aus. Der Laser Projector kann auf Innen-Sites feuern und selbst zerstört werden.
 - [x] Waffentransfer, Blaster Rack, Disarmed, Overload, Wuher und Entschärfen durch Mining Droids verwenden dieselben Karteninstanzen und Stapel. Leere Reserve und fehlgeschlagene Schüsse werden protokolliert.
 - [x] Seeker zwischen gegnerischen Schiffen am selben System während der eigenen Control Phase transferieren. Die Transferkosten und die Ziele am neuen Schiff werden geprüft. [Decipher-Glossar, Seekers](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=118)
-- [ ] Weitere Kartentext-Kombinationen wie Combined Attack ergänzen. Waffen in Kreaturenangriffen mit dem Kreaturenablauf prüfen.
+- [x] Combined Attack führt zwei oder mehr Schiffswaffen gegen dasselbe Ziel zusammen. V2 prüft die Einzelkosten, addiert die Weapon Destiny und wertet die Treffer in der gewählten Reihenfolge aus. [Decipher Premiere-FAQ, Combined Attack](https://res.starwarsccg.org/rules/premierefaq.pdf#page=18)
+- [x] Den Anwendungsbereich für Kreaturenangriffe geprüft. Premiere enthält keine Karten des Typs Creature. Bantha ist ein Creature Vehicle und fällt unter die Regeln für Waffen und Fahrzeuge. [Offizielle Premiere-Kartenliste](https://res.starwarsccg.org/cardlists/PremiereType.html)
+- [ ] Weitere Kombinationen zwischen Waffen und Kartentexten abdecken. Siehe Abschnitt 7.
 
 ## 7. Kartentexte für alle Kartentypen
 

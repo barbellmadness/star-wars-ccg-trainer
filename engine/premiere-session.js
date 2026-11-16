@@ -543,6 +543,7 @@ function cardPowerModifier(c,side,siteIndex){
 }
 
 function cardEffectStatus(c){
+ if(c.id==='Light:483')return 'UMGESETZT: Kombiniert mindestens zwei bezahlte Schiffswaffen gegen ein Ziel und wertet ihre gemeinsame Destiny in gewählter Reihenfolge aus.';
  if(c.id==='Dark:2517')return 'UMGESETZT: Vader und Obi-Wan duellieren sich am Site. Vergleicht Power samt Lichtschwertbonus und entfernt den Verlierer aus dem Spiel.';
  if(c.id==='Dark:1958')return 'UMGESETZT: Sagt vor dem eigenen Battle den Sieger voraus, erhält bei richtiger Vorhersage eine zufällige verlorene Karte zurück und verliert andernfalls 1 Force. Immun gegen Attrition < 3.';
  if(isLostPileEffect(c))return 'UMGESETZT: Legt den gewählten Lost Pile verdeckt. Verluste aus Life Force bleiben verdeckt, Rückholen bleibt möglich.';
@@ -2024,16 +2025,21 @@ function fireBattleWeapon(side,...args){
  return true;
 }
 
-function shootWeapon(side,shot,complete){
- const x=battleSession,{force,used}=PremiereGame.zones(state,side);
- const slot=shot.targetSlot??x.site,opponent=PremiereGame.otherSide(side);
- PremiereGame.moveTop(force,used,shot.cost);
+function markWeaponFired(shot){
+ const x=battleSession;
  (state.weaponUsersThisTurn??=[]).push(shot.host);
  PremiereUnits.recordWeaponUse(state,shot.host,shot.weapon);
  if(x){
   (x.usedWeapons??=[]).push(shot.weapon);
   x.lastHit=null;
  }
+}
+
+function shootWeapon(side,shot,complete){
+ const x=battleSession,{force,used}=PremiereGame.zones(state,side);
+ const slot=shot.targetSlot??x.site,opponent=PremiereGame.otherSide(side);
+ PremiereGame.moveTop(force,used,shot.cost);
+ markWeaponFired(shot);
  const loc=state.locations[shot.from];
  const printed=PremiereLocations.printedSide(state,shot.from,side);
  const sourceBonus=printed==='Dark'&&['Dark:673','Dark:2461','Light:2462'].includes(loc?.id)?1:0;
@@ -2047,6 +2053,84 @@ function shootWeapon(side,shot,complete){
   if(hit)applyWeaponResult(shot,opponent,slot);
   complete();
  });
+}
+
+function combinedAttackOptions(side,shots,request,offer){
+ if(side!=='Light'||!state.game)return [];
+ const {hand,force}=PremiereGame.zones(state,side);
+ const attacks=hand.flatMap((card,index)=>card.id==='Light:483'?[{card,index}]:[]);
+ if(!attacks.length)return [];
+ const targets=new Map();
+ for(const shot of shots){
+  if(shot.host.type!=='Starship'||shot.weapon.subType!=='Starship'||shot.target.type!=='Starship')continue;
+  if(!targets.has(shot.targetIndex))targets.set(shot.targetIndex,[]);
+  targets.get(shot.targetIndex).push(shot);
+ }
+ const options=[];
+ for(const [targetIndex,choices] of targets){
+  const compatible=(a,b)=>a.host!==b.host||PremiereUnits.usesMultipleWeapons(a.host);
+  if(!choices.some((a,i)=>choices.slice(i+1).some(b=>compatible(a,b)&&a.cost+b.cost<=force.length)))continue;
+  for(const {card,index} of attacks){
+   const base=[index,targetIndex];
+   const choosing=request?.kind==='combinedAttack'&&base.every((value,i)=>value===request.args?.[i]);
+   let plan;
+   if(choosing){
+    const selected=request.args.slice(2);
+    plan=selected.map(choice=>Number.isInteger(choice)&&choices[choice]);
+    if(plan.length<2||new Set(selected).size!==selected.length||plan.some(shot=>!shot)||
+       plan.reduce((sum,shot)=>sum+shot.cost,0)>force.length||
+       plan.some((a,i)=>plan.slice(i+1).some(b=>!compatible(a,b))))continue;
+   }
+   options.push(offer('combinedAttack',choosing?request.args:base,{card,target:choices[0].target,choices,plan}));
+  }
+ }
+ return options;
+}
+
+function playCombinedAttack(side,args,card,shots){
+ if(!shots)return false;
+ const {hand,force,used}=PremiereGame.zones(state,side);
+ hand.splice(args[0],1);
+ for(const shot of shots)PremiereGame.moveTop(force,used,shot.cost);
+ const frame={kind:'interrupt',interrupt:'combinedAttack',site:battleSession.site,side,card,shots};
+ log(side+' spielt '+card.name+' gegen '+shots[0].target.name+' und bezahlt '+shots.reduce((sum,shot)=>sum+shot.cost,0)+' Force.');
+ if(interruptResponses('Dark',frame).length)PremiereGame.openResponse(state.game,frame);
+ else settleCombinedAttack(frame);
+ return true;
+}
+
+function settleCombinedAttack(frame){
+ const {shots,side,site}=frame;
+ const complete=()=>{
+  loseOwnedCard(frame.card,side);
+  finishWeaponAction(side,false);
+ };
+ if(frame.cancelled){complete();return;}
+ for(const shot of shots)markWeaponFired(shot);
+ let total=0,drawn=false,known=true;
+ function draw(index){
+  if(index===shots.length){
+   const attacks=known&&drawn?Math.max(0,total):null;
+   for(const shot of shots){
+    const hit=attacks!==null&&attacks>shot.defense;
+    log(shot.weapon.name+' · Combined Attack '+(attacks??'–')+' gegen Verteidigung '+shot.defense+' · '+(hit?'Treffer':'kein Treffer')+'.');
+    if(hit)applyWeaponResult(shot,'Dark',site);
+   }
+   complete();
+   return;
+  }
+  const shot=shots[index];
+  drawDestinySeries(side,'weapon',shot.draws,0,draws=>{
+   if(draws.some(draw=>!draw.cancelled)){
+    const value=PremiereBattle.total(draws);
+    drawn=true;
+    known&&=value!==null;
+    if(value!==null)total+=value+shot.bonus;
+   }
+   draw(index+1);
+  });
+ }
+ draw(0);
 }
 
 function applyWeaponResult(shot,opponent,slot){
@@ -2443,6 +2527,8 @@ function resolveResponsePass(side){
   const parent=PremiereGame.responseWindow(game);
   if(frame.interrupt==='battleEffect'){
    settleBattleEffect(frame);
+  }else if(frame.interrupt==='combinedAttack'){
+   settleCombinedAttack(frame);
   }else if(frame.interrupt==='duel'){
    settleDuel(frame);
   }else if(frame.interrupt==='retrieve'){
@@ -2517,6 +2603,7 @@ function settleCancelledResponse(game){
  }
  if(cancelled?.kind==='interrupt'){
   if(cancelled.interrupt==='battleEffect')settleBattleEffect(cancelled);
+  else if(cancelled.interrupt==='combinedAttack')settleCombinedAttack(cancelled);
   else if(cancelled.interrupt==='duel')settleDuel(cancelled);
   else if(cancelled.interrupt==='retrieve')settleRetrieval(cancelled);
   else{
@@ -2573,7 +2660,7 @@ function interruptResponses(side,window){
  }
  const kind=window.kind==='lostPileEffect'?'alter':window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
  if(!kind)return [];
- const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','duel','overload','retrieve'].includes(window.interrupt);
+ const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','combinedAttack','duel','overload','retrieve'].includes(window.interrupt);
  const ability=requiresDestiny?highestInterruptAbility(side):0;
  if(requiresDestiny&&!ability)return [];
  return (hand??[]).flatMap((card,index)=>(kind==='alter'?isAlter(card):['Light:2217','Dark:2216'].includes(card.id))
@@ -2657,13 +2744,17 @@ function legalActions(position,side,request){
   if(side==='Light'&&(!x.segmented||position.trainingBattle))for(const target of PremiereGame.sides)for(const kind of ['power','destiny']){
    for(let value=0;value<=20;value++)training.push(offer('trainingModifier',[target,kind,value]));
   }
-  if(x.weaponTurn)return x.weaponTurn===side?
-   [...battleWeaponOptions(side).map(shot=>offer('fireWeapon',shot.args,shot)),
+  if(x.weaponTurn&&x.weaponTurn!==side)return training;
+  if(x.weaponTurn){
+   const shots=battleWeaponOptions(side);
+   return [...shots.map(shot=>offer('fireWeapon',shot.args,shot)),
    ...(x.repeatingWeapon?[]:[...duelOptions(side).map(option=>offer('duel',option.args,option)),
+    ...combinedAttackOptions(side,shots,request,offer),
     ...namedRetrievalOptions(side).map(option=>offer(option.kind,option.args,option)),
     ...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
     ...weaponEffectOptions(side).filter(option=>['defuse','overload'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
-   offer('passWeapons'),...training]:training;
+   offer('passWeapons'),...training];
+  }
   const first=x.initiator==='Dark'?'Dark':'Light',key=side==='Light'?'lightCard':'darkCard';
   if(x[key]===null){
    if(side!==first&&x[first==='Light'?'lightCard':'darkCard']===null)return training;
@@ -2737,7 +2828,7 @@ function legalActions(position,side,request){
  return actions;
 }
 
-function executeAction({kind,side,args,plan,ships}){
+function executeAction({kind,side,args,plan,ships,card}){
  switch(kind){
   case 'chooseStart': return resolveStartingChoice(side,...args);
   case 'retrySetup': prepareStartingRound();return true;
@@ -2779,6 +2870,7 @@ function executeAction({kind,side,args,plan,ships}){
   case 'battlePrediction': return chooseBattlePrediction(...args);
   case 'duel': return playDuel(side,...args);
   case 'fireWeapon': return fireBattleWeapon(side,...args);
+  case 'combinedAttack': return playCombinedAttack(side,args,card,plan);
   case 'gaderffii': return useGaderffii(side,...args);
   case 'passWeapons': return passBattleWeapons(side);
   case 'battleEffect': return playBattleEffect(side,...args);
