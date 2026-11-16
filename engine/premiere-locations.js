@@ -1,11 +1,12 @@
 const PremiereLocations = (() => {
+  const units = typeof PremiereUnits === 'undefined' ? require('./premiere-units.js') : PremiereUnits;
   const bothSides = ['Light', 'Dark'];
   const opposite = side => side === 'Light' ? 'Dark' : 'Light';
   const title = card => (card?.name ?? '').replace(/^•+\s*/, '').split(' (')[0];
   const system = card => card?.subType === 'System';
   const region = card => system(card) ? title(card) : title(card).split(':')[0];
   const inactive = card => card.captured || card.missing || card.inactive;
-  const enclosed = card => card.type === 'Starship' || card.enclosed === true ||
+  const enclosed = card => units.enclosed(card) ||
     card.subType === 'Enclosed';
 
   function entries(state, side) {
@@ -60,6 +61,8 @@ const PremiereLocations = (() => {
   function activeCards(state, side) {
     return entries(state, side).filter(entry => !entry.unavailable).map(entry => entry.card);
   }
+
+  function cardsOnTable(state, side) { return entries(state, side).map(entry => entry.card); }
 
   function presence(state, side, slot, ability) {
     if (!state.locations?.[slot]) return false;
@@ -149,7 +152,7 @@ const PremiereLocations = (() => {
     return {base, modifier, optional};
   }
 
-  return {aboard, activeCards, at, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
+  return {aboard, activeCards, at, cardsOnTable, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
     occupy: presence, present, presentCards, printedSide};
 })();
 

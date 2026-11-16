@@ -2,7 +2,7 @@ const PremiereGame = (() => {
   const sides = ['Light', 'Dark'];
   const otherSide = side => side === 'Light' ? 'Dark' : 'Light';
   const turnMarkers = ['movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn',
-    'battledSitesThisTurn', 'weaponUsersThisTurn', 'reactedThisTurn'];
+    'battledSitesThisTurn', 'weaponUsersThisTurn', 'reactedThisTurn', 'cancelledReactTitles'];
 
   function actionState(id, seed) {
     return {id, seed, randomState: seed, revision: 0, actions: [], responses: [],

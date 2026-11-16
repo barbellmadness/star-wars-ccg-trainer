@@ -39,17 +39,18 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 4. Charaktere, Fahrzeuge, Schiffe und Bewegung
 
-- [ ] Charakter-Deploy mit individuellen Orts-, Typ-, Persona- und Präsenzbedingungen vervollständigen. Eigene und gegnerische Merkmale, Kostenänderungen sowie Einzigartigkeit und Mehrfachpunkte gegen die Premiere-Karten prüfen.
-- [ ] Charakter-, Fahrzeug- und Schiffsinstanzen mit eindeutigem Platz für Träger, Anhänge und Insassen modellieren. Besitzer, aktuelle Kontrolle und Standort nach Bewegung, Verlust oder Karteneffekt korrekt nachführen.
-- [ ] Pilot, Fahrer, Passagier, Astromech und Frachtraum belegen und wechseln. Kapazitäten, Piloten-Icons, bedingte Pilotboni und den Unterschied zwischen offenem und geschlossenem Fahrzeug anwenden.
-- [ ] Manuelle Piloten beim Deploy eines Schiffs mit ausspielen. Für passende Sternjäger den unbemannten Zustand an erlaubten Orten unterstützen. Power, Maneuver, Ability, Nav Computer und Hyperspeed aus aktiver Besatzung und Kartentext berechnen.
-- [ ] Einstiege, Ausstiege, Fahrzeugtransport, Andocken, Transfers und Shuttling mit Kosten, Kapazität und Timing abbilden. Anhänge und Insassen beim Verlust des Trägers nach den Regeln behandeln, einschließlich der Bantha-Ausnahme für Passagiere.
-- [ ] Lift Tubes beider Seiten mit den passenden mobilen Innen-Sites und Sonderregeln umsetzen. Landspeeder, Sandcrawler und Ubrikkian 9000 Z001 mit ihren gedruckten Einschränkungen, Fahrern und Bonus- oder React-Bedingungen ergänzen.
+- [x] Charakter-Deploy prüft Orts-, Persona-, Präsenz- und Einzigartigkeitsbedingungen, auch für Karten an Bord. Sonderkosten unterstützen unter anderem Motti und den Droiden-Aufpreis von 5D6-RA-7.
+- [x] Karteninstanzen in Spielfeld, Träger, Besatzung und Anhänge gliedern. Trägerbewegung erhält die Verknüpfungen. Beim Verlust gehen Karten in den Lost Pile ihres Besitzers, Bantha-Passagiere steigen aus.
+- [x] Pilot, Fahrer, Passagier, Astromech und Frachtraum belegen und wechseln. Kapazität und Piloten-Icons prüfen, offene und geschlossene Fahrzeuge für Presence und Present unterscheiden.
+- [x] Sternjäger mit manuellem Piloten gemeinsam ausspielen. Sternjäger können unbemannt an Docking Bays und in passenden Hangars stehen. Power, Maneuver, Ability, Nav Computer und Hyperspeed aus aktiver Besatzung berechnen.
+- [x] Ein- und Ausstieg, Fahrzeugtransport, einen Transfer beim Andocken und Shuttling mit Kapazität und Timing ausführen.
+- [x] Lift Tubes beider Seiten auf mobilen Innen-Sites spielen. Landspeeder, Sandcrawler und Ubrikkian mit gedruckten Bewegungsgrenzen, Fahrer, freien Bewegungen und Reacts unterstützen.
 - [x] Regulären Landspeed über die benachbarten Sites desselben Bereichs ausführen. Systeme zählen bei der Site-Nachbarschaft nicht mit.
-- [ ] Landspeed für Bewegungen über mehrere Sites, gedruckte Mehrkosten und Sonderbewegungen vervollständigen.
-- [ ] Docking-Bay-Transit ergänzen. Landen und Starten von Sternjägern mit verwandten Systemen, passenden Außen-Sites, TIE-Beschränkungen und Docking-Bay-Kosten implementieren.
-- [ ] Hyperspeed um Kartentextänderungen, Nav Computer an Bord und fehlenden Hyperdrive ergänzen. Reichweite und Bewegungsberechtigung nach Besatzungs- oder Waffeneffekten neu bewerten.
-- [ ] Reacts als Deploy oder Bewegung im Antwortfenster zu Battle und Force Drain implementieren. Alternative Kosten, Reichweite und Auswirkungen auf den laufenden Auslöser prüfen.
+- [x] Landspeed über mehrere Sites, freie Bewegung nach Kartentext und die Sonderwege zwischen Mos Eisley und Cantina sowie vom Level 4 Military Corridor ausführen.
+- [x] Docking-Bay-Transit für einzelne Einheiten und alle gemeinsam berechtigten Einheiten ergänzen. Sternjäger landen und starten im verwandten System. TIEs nutzen Docking Bays.
+- [x] Hyperspeed und Nav Computer beim Aktionsangebot aus Karte und Besatzung neu berechnen. Fehlender Hyperspeed, fehlender Pilot und ein deaktiviertes Schiff sperren die Bewegung.
+- [x] Bewegungs- und Deploy-Reacts für Battle und Force Drain mit Kosten, Reichweite und Auswirkungen auf den Auslöser ausführen. CZ-3 eröffnet Deploy-Reacts, passende Fahrzeuge und Dantooine erlauben Bewegungs-Reacts.
+- [ ] Freie Teilgruppen beim Docking-Bay-Transit und mehrere Transfers in einer Andockaktion anbieten. Weitere individuelle Deploy-, Besatzungs- und React-Texte sowie Kontrollwechsel durch einzelne Karteneffekte folgen mit den jeweiligen Kartenregeln.
 
 ## 5. Battle, Destiny und Schadensauflösung
 

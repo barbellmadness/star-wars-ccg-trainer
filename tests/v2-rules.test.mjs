@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html=readFileSync(new URL('../v2.html',import.meta.url),'utf8');
 const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.meta.url),'utf8');
 const gameScript=readFileSync(new URL('../engine/premiere-game.js',import.meta.url),'utf8');
+const unitScript=readFileSync(new URL('../engine/premiere-units.js',import.meta.url),'utf8');
 const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
@@ -15,6 +16,7 @@ function harness(){
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
+ vm.runInContext(unitScript,context);
  vm.runInContext(locationScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
@@ -950,7 +952,7 @@ test('learning decks contain planet systems, exterior sites, piloted starships a
 
 test('ship deployment pays actual costs at a valid system and requires a supported pilot and friendly presence',async()=>{
  const {run}=await craftHarness();
- assert.equal(run("boardDeployCost(ship,dock,'Light')"),null);
+ assert.equal(run("boardDeployCost(ship,dock,'Light')"),2);
  assert.equal(run("boardDeployCost(card('Light:1677'),dantooine,'Light')"),null);
  assert.equal(run("boardDeployCost(scout,dantooine,'Dark')"),null);
  assert.equal(run("boardDeployCost(card('Light:530'),dantooine,'Light')"),2);
@@ -1475,4 +1477,93 @@ test('Jawa deployment honors the Tatooine restriction and both players’ printe
  run("state.force=[{name:'Light payment'}]");
  assert.ok(run("requestAction('deploy','Dark',[0,2])"));
  assert.equal(run("state.dark[0].length===1&&state.dark[2].length===1&&state.used[0].name==='Light payment'&&state.botUsed.length===2"),true);
+});
+
+test('starfighters deploy with a manual pilot as one paid action and use the matching pilot bonuses',async()=>{
+ const {run,elements}=await craftHarness();
+ run("const red=card('Light:2060'),biggs=card('Light:239');state.hand=[red,biggs];select(0)");
+ assert.match(elements.get('board').innerHTML,/Mit .*Biggs Darklighter ausspielen/);
+ assert.equal(run("requestAction('deploy','Light',[0,0])"),false);
+ assert.ok(run("requestAction('deployWithPilot','Light',[0,0,1])"));
+ assert.equal(run(`state.hand.length===0&&state.light[0][0]===red&&red.occupants[0].card===biggs&&
+  craftStats(red,0).power===5&&craftStats(red,0).maneuver===5&&craftStats(red,0).ability===biggs.ability`),true);
+ assert.equal(run("PremiereLocations.aboard(state,biggs,red)&&!PremiereLocations.present(state,biggs,0)"),true);
+});
+
+test('a parked unpiloted fighter cannot take off until an eligible pilot boards',async()=>{
+ const {run}=await craftHarness();
+ run("const xwing=card('Light:2057'),leader=card('Light:2067');state.hand=[xwing];");
+ assert.ok(run("requestAction('deploy','Light',[0,2])"));
+ run("state.phase=4;state.light[2].push(leader);");
+ assert.equal(run("movementOptionsFor('Light').some(move=>move.card===xwing)"),false);
+ assert.equal(run("requestAction('transport','Light',['embark',2,2,1,0,'pilot'])"),true);
+ assert.equal(run("requestAction('move','Light',[2,0,6,'Starten'])"),true);
+ assert.equal(run("state.light[6][0]===xwing&&state.force.length===3&&xwing.occupants[0].card===leader"),true);
+});
+
+test('a landspeeder can move several sites for free with Luke and only one regular move per turn',async()=>{
+ const {run}=await craftHarness();
+ run(`const speeder=card('Light:1609'),luke=card('Light:1593');
+  state.locations[4]=card('Light:2466');state.locationOrder=[0,1,2,4,3,6,5];
+  state.phase=4;state.light[2]=[speeder,luke];state.force=[];`);
+ assert.equal(run("requestAction('move','Light',[2,0,3,'Landspeed'])"),false);
+ assert.equal(run("requestAction('transport','Light',['embark',2,2,1,0,'driver'])"),true);
+ assert.equal(run("requestAction('move','Light',[2,0,3,'Landspeed'])"),true);
+ assert.equal(run("requestAction('move','Light',[3,0,4,'Landspeed'])"),false);
+ assert.equal(run("state.light[3][0]===speeder&&PremiereLocations.present(state,luke,3)&&state.used.length===0"),true);
+});
+
+test('Lift Tubes use interior mobile routes, and a grouped Docking Bay Transit pays once',async()=>{
+ const {run}=await craftHarness();
+ run(`const tube=card('Light:1548'),a=card('Light:2052'),b=card('Light:2040');
+  state.locations[0]=card('Dark:669');state.locations[1]=card('Dark:678');state.locations[5]=card('Dark:675');
+  state.locationOrder=[0,1,5,4,2,3,6];state.phase=4;state.light[0]=[tube];state.light[2]=[a,b];`);
+ assert.equal(run("requestAction('move','Light',[0,0,5,'Landspeed'])"),true);
+ assert.equal(run("requestAction('move','Light',[5,0,2,'Landspeed'])"),false);
+ assert.equal(run("requestAction('transitGroup','Light',[2,5])"),true);
+ assert.equal(run("state.light[5].includes(a)&&state.light[5].includes(b)&&state.used.length===2"),true);
+});
+
+test('shuttling to a capital ship, a docked transfer and cargo survival respect roles and timing',async()=>{
+ const {run}=await craftHarness();
+ run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),cargo=card('Light:2161');
+  state.phase=4;state.light[2]=[han,cargo];state.light[6]=[big,other];`);
+ assert.equal(run("requestAction('transport','Light',['shuttleUp',2,6,0,0,'passenger'])"),true);
+ assert.equal(run("requestAction('transport','Light',['dock',6,1,0,0,'pilot'])"),true);
+ assert.equal(run("craftStats(other,6).power===5&&other.occupants[0].card===han"),true);
+ assert.equal(run("requestAction('transport','Light',['shuttleUp',2,6,0,0,'cargo'])"),true);
+ assert.equal(run("PremiereLocations.aboard(state,cargo,big)&&state.used.length===3"),true);
+ assert.equal(run("requestAction('transport','Light',['shuttleDown',6,2,0,0,''])"),false);
+});
+
+test('a carrier loss loses attachments and crew under their owners, except Bantha passengers',async()=>{
+ const {run}=await craftHarness();
+ run(`const rebel=card('Light:2052'),vader=card('Dark:634');
+  const lost=[],safe=[];PremiereUnits.add(bantha,vader,'passenger','Dark');
+  PremiereUnits.remove(bantha,card=>lost.push(card),card=>safe.push(card));
+  PremiereUnits.add(ship,rebel,'pilot','Light');ship.weapons=[card('Light:259')];
+  PremiereUnits.remove(ship,card=>lost.push(card),card=>safe.push(card));`);
+ assert.equal(run('safe[0]===vader&&lost.includes(rebel)&&lost.length===4&&!ship.occupants&&!ship.weapons'),true);
+});
+
+test('CZ-3 offers a paid Deploy-React at the adjacent drain and the arrival cancels it',()=>{
+ const {run}=reactHarness();
+ run(`state.light[0]=[{type:'Character',subType:'Droid',id:'Light:593'}];
+  state.hand=[{id:'Light:2052',side:'Light',type:'Character',deploy:1,ability:1,name:'Rebel'}];`);
+ assert.equal(run("requestAction('drain','Dark',[1])&&requestAction('reactDeploy','Light',[0,-1])"),true);
+ assert.equal(run('state.light[1].length===0&&state.used.length===1&&state.hand.length===0'),true);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.light[1][0].name==='Rebel'&&state.pendingForceLoss===null&&state.game.responses.length===0"),true);
+});
+
+test('an active astromech supplies navigation and hyperspeed, and disabling the ship blocks the move',async()=>{
+ const {run}=await craftHarness();
+ run(`const red=card('Light:2060'),pilot=card('Light:239'),r2=card('Light:1995');
+  state.light[5]=[red];state.phase=4;red.navComputer=false;
+  PremiereUnits.add(red,pilot,'pilot','Light');`);
+ assert.equal(run("movementOptionsFor('Light').some(move=>move.kind==='Hyperspeed')"),false);
+ run("PremiereUnits.add(red,r2,'astromech','Light')");
+ assert.equal(run("craftStats(red,5).hyperspeed===6&&movementOptionsFor('Light').some(move=>move.kind==='Hyperspeed')"),true);
+ run('red.disabled=true');
+ assert.equal(run("movementOptionsFor('Light').some(move=>move.kind==='Hyperspeed')"),false);
 });
