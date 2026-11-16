@@ -33,9 +33,10 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     }));
 
     const firstCard = page.locator('#handCard0');
-    await firstCard.focus();
+    const firstMagnifier = page.locator('#inspectHandCard0');
+    await firstMagnifier.focus();
     await page.keyboard.press('Enter');
-    const inspector = page.getByRole('dialog', {name: await firstCard.getAttribute('aria-label').then(label => label.replace(/ ansehen$/, ''))});
+    const inspector = page.getByRole('dialog', {name: await firstMagnifier.getAttribute('aria-label').then(label => label.replace(/ ansehen$/, ''))});
     assert.ok(await inspector.isVisible());
     await page.waitForFunction(() => {
       const image = document.querySelector('#cardInspectorBody img');
@@ -51,6 +52,12 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     }));
     await page.keyboard.press('Escape');
     assert.equal(await inspector.isVisible(), false);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'inspectHandCard0');
+    assert.equal(await firstCard.getAttribute('aria-pressed'), 'false');
+    await firstCard.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await firstCard.getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#cardInspector').isVisible(), false);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'handCard0');
 
     for (let step = 0; step < 18 && await page.locator('#botTurnPanel').isVisible(); step++) {
@@ -63,8 +70,10 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.locator('#step').click();
     const playable = await page.evaluate(() => legalActions(state, 'Light').find(action => action.kind === 'deploy')?.args[0]);
     assert.ok(Number.isInteger(playable));
-    await page.locator('#handCard' + playable).click();
-    await page.getByRole('button', {name: 'Karte auswählen'}).click();
+    const playableCard = page.locator('#handCard' + playable);
+    await playableCard.click({position: {x: 8, y: 8}});
+    assert.equal(await playableCard.getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#cardInspector').isVisible(), false);
     const targets = page.locator('.playmat-actions').getByRole('button', {name: 'Ausspielen'});
     assert.ok(await targets.locator('xpath=self::button[not(@disabled)]').count() > 0);
     assert.ok(await targets.locator('xpath=self::button[@disabled]').count() > 0);
@@ -213,7 +222,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.6.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.7.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

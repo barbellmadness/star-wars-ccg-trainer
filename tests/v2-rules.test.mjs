@@ -731,20 +731,25 @@ test('the local inspector uses scan-matched print text and keeps both location s
  assert.equal(publicPage.run('localPrintTexts.size'),0);
 });
 
-test('hand and field cards use image buttons, with hand selection and field status available in the inspector',async()=>{
+test('hand images select directly and a separate magnifier opens the inspector',async()=>{
  const {run,elements}=await premiereHarness();
  run(`start(0);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()`);
  const hand=elements.get('hand').innerHTML;
- assert.match(hand,/<button class="card-face"[^>]*aria-haspopup="dialog"[^>]*onclick="inspectCard\('Light',0,'hand',0\)"><img/);
+ assert.match(hand,/<button class="card-face"[^>]*id="handCard0"[^>]*aria-pressed="false"[^>]*onclick="select\(0,\d+,\d+\)"><img/);
+ assert.match(hand,/<button class="hand-card-inspect"[^>]*aria-haspopup="dialog"[^>]*onclick="inspectCard\('Light',0,'hand'\)"/);
  assert.doesNotMatch(hand,/<b>|>Details<\/button>/);
+ assert.equal(run('select(0)'),true);
+ assert.equal(run('selected'),0);
+ assert.equal(elements.get('cardInspector').open,false);
+ assert.match(elements.get('hand').innerHTML,/id="handCard0" aria-pressed="true"/);
  run("inspectCard('Light',0,'hand',0)");
  assert.equal(elements.get('cardInspector').open,true);
- assert.equal(run('selected'),-1);
+ assert.equal(run('selected'),0);
  assert.equal(elements.get('selectInspectorCard').hidden,false);
  run("el('selectInspectorCard').onclick()");
  assert.equal(run('selected'),0);
  assert.equal(elements.get('cardInspector').open,false);
- assert.match(elements.get('hand').innerHTML,/class="card chosen"/);
+ assert.match(elements.get('hand').innerHTML,/class="card hand-card chosen"/);
 
  run(`const ship={name:'Test Ship',type:'Starship',ionDamage:true,
   weapons:[{name:'Test Weapon'}],occupants:[{role:'pilot',card:{name:'Test Pilot'}}]};
@@ -752,7 +757,7 @@ test('hand and field cards use image buttons, with hand selection and field stat
  const field=run('renderPlaymatColumn(state.locations[0],0)');
  assert.match(field,/class="location-name">[^<]+/);
  assert.match(field,/aria-label="Test Ship ansehen" onclick="inspectCard\('Light',0,'field',0\)"/);
- assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|>Test (?:Weapon|Pilot)</);
+ assert.doesNotMatch(field,/<b>Test Ship|hand-card-inspect|>Test (?:Weapon|Pilot)</);
  assert.match(field,/class="playmat-stack"[^>]+>.*aria-label="Waffe · Test Weapon ansehen".*aria-label="Pilot · Test Pilot ansehen"/);
  assert.equal(elements.get('selectInspectorCard').hidden,true);
  assert.match(elements.get('cardInspectorBody').innerHTML,/Ionenschaden.*Besatzung und Ausrüstung.*Test Weapon.*Pilot · Test Pilot/);
@@ -1162,6 +1167,9 @@ test('Death Star Plans tracks the chosen droid, rejects the docking bay and retr
   state.lost=[{name:'Lost A'},{name:'Lost B'},{name:'Lost C'}];state.force=forcePile().concat(forcePile());`);
  run("inspectCard('Light',0,'hand',0)");
  assert.match(elements.get('cardInspectorBody').innerHTML,/Level 4 Military Corridor.*Tooex.*als Ziel/);
+ run('closeCard();select(0)');
+ assert.match(run('renderPlaymatColumn(state.locations[0],0)'),/Tooex.*als Ziel/);
+ assert.doesNotMatch(run('renderPlaymatColumn(state.locations[1],1)'),/Tooex.*als Ziel/);
  assert.equal(run("requestAction('deployLocationEffect','Light',[0,1,0])"),false);
  assert.equal(run("requestAction('deployLocationEffect','Light',[0,0,0])"),true);
  assert.equal(run('state.locationEffects[0][0].target===droid'),true);
