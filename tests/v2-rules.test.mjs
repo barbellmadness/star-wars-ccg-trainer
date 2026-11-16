@@ -236,3 +236,48 @@ test('character cannot deploy directly to a system even with own icons',()=>{
  run("state={locations:[{name:'Tatooine',type:'Location',subType:'System',icons:{light:2,dark:1}}],force:[{}],botForce:[{}],light:[[]],dark:[[]]};");
  assert.equal(run("checkDeployment({name:'Luke',type:'Character',deploy:1,characteristics:['spy']},state.locations[0])"),false);
 });
+
+test('battle forfeit covers attrition and battle damage simultaneously',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,gameWinner:null,locations:[{name:'Hoth'}],light:[[{name:'Rebel',power:4,forfeit:4}]],dark:[[{name:'Trooper',power:7,forfeit:2}]],hand:[{name:'Hand'}],deck:[{name:'Deck'}],force:[{name:'Force'}],used:[],lost:[],botHand:[],botDeck:[{name:'DDeck'}],botForce:[],botUsed:[],botLost:[],log:[]};battleSession={site:0,lightCard:{name:'Destiny L'},darkCard:{name:'Destiny D'},lightDestiny:0,darkDestiny:2,lightLoss:[0],darkLoss:[],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,resolved:false}");
+ assert.equal(run("battleForfeitPlan('Light').incoming"),2);
+ assert.equal(run("battleDamagePreview().lightDamage"),5);
+ assert.equal(run("resolveBattleLosses()"),true);
+ assert.equal(run("state.lost.length"),1);
+ assert.equal(run("state.pendingForceLoss.remaining"),1);
+ assert.equal(run("state.pendingForceLoss.reason"),'battleDamage');
+ assert.equal(run("battleSession"),null);
+ assert.equal(run("loseForceForDrain('Light','hand',0)"),true);
+ assert.equal(run("state.pendingForceLoss"),null);
+ assert.equal(run("state.lost.length"),2);
+});
+test('battle remains unresolved if some attrition is uncovered while cards remain',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,gameWinner:null,locations:[{name:'Hoth'}],light:[[{name:'Light',power:5,forfeit:2}]],dark:[[{name:'A',power:2,forfeit:1},{name:'B',power:1,forfeit:1}]],hand:[],deck:[{name:'LD'}],force:[],used:[],lost:[],botHand:[],botDeck:[{name:'DD'}],botForce:[],botUsed:[],botLost:[],log:[]};battleSession={site:0,lightCard:{name:'Destiny L'},darkCard:{name:'Destiny D'},lightDestiny:3,darkDestiny:0,lightLoss:[],darkLoss:[0],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,resolved:false}");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),false);
+ assert.equal(run("resolveBattleLosses()"),false);
+ assert.equal(run("state.dark[0].length"),2);
+ assert.equal(run("state.botLost.length"),0);
+ run("battleSession.darkLoss=[0,1]");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+});
+test('bot automatically pays remaining battle damage from its hand and Life Force',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,gameWinner:null,locations:[{name:'Hoth'}],light:[[{name:'Light',power:5,forfeit:2}]],dark:[[{name:'Dark',power:2,forfeit:2}]],hand:[],deck:[{name:'LD'}],force:[],used:[],lost:[],botHand:[{name:'DH1'},{name:'DH2'}],botDeck:[{name:'DD'}],botForce:[{name:'DF'}],botUsed:[],botLost:[],log:[]};battleSession={site:0,lightCard:{name:'Destiny L'},darkCard:{name:'Destiny D'},lightDestiny:2,darkDestiny:0,lightLoss:[],darkLoss:[0],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,resolved:false}");
+ assert.equal(run("battleForfeitPlan('Dark').remainingDamage"),3);
+ assert.equal(run("resolveBattleLosses()"),true);
+ assert.equal(run("state.botLost.length"),4);
+ assert.equal(run("state.pendingForceLoss"),null);
+ assert.equal(run("state.gameWinner"),null);
+});
+test('skipped battle destiny cannot generate attrition via a manual destiny bonus',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth'}],light:[[{name:'L',power:2,forfeit:1}]],dark:[[{name:'D',power:2,forfeit:1}]]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:{name:'Destiny D'},lightDestiny:0,darkDestiny:0,lightBonus:6,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[],darkLoss:[]}");
+ assert.equal(run("battleAttritionAgainst('Dark')"),0);
+ assert.equal(run("battleAttritionAgainst('Light')"),0);
+});
+test('unneeded extra forfeits are refused when all debts already satisfied',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth'}],light:[[{name:'A',power:2,forfeit:5},{name:'B',power:2,forfeit:5}]],dark:[[{name:'D',power:5,forfeit:1}]]};battleSession={site:0,lightCard:{name:'Destiny L'},darkCard:{name:'Destiny D'},lightDestiny:0,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[0,1],darkLoss:[]}");
+ assert.equal(run("battleForfeitPlan('Light').valid"),false);
+});
