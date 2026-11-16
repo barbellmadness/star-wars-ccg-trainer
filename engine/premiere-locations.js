@@ -99,7 +99,9 @@ const PremiereLocations = (() => {
     const card = state.locations[slot];
     const printed = card?.icons?.[printedSide(state, slot, side).toLowerCase()];
     if (!Number.isInteger(printed)) return null;
-    return Math.max(0, printed + effectsAt(state, slot).reduce((sum, effect) => sum + (effect.icons?.[side] ?? 0), 0));
+    const effects = effectsAt(state, slot);
+    const bothSidesBonus = Math.max(0, ...effects.map(effect => effect.iconBonus ?? 0));
+    return Math.max(0, printed + bothSidesBonus + effects.reduce((sum, effect) => sum + (effect.icons?.[side] ?? 0), 0));
   }
 
   const transit = new Map([
@@ -159,7 +161,7 @@ const PremiereLocations = (() => {
   }
 
   return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
-    occupy: presence, present, presentCards, printedSide};
+    findEntry: find, occupy: presence, present, presentCards, printedSide};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereLocations;

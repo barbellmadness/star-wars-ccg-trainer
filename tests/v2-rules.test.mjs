@@ -9,6 +9,7 @@ const battleScript=readFileSync(new URL('../engine/premiere-battle.js',import.me
 const unitScript=readFileSync(new URL('../engine/premiere-units.js',import.meta.url),'utf8');
 const weaponScript=readFileSync(new URL('../engine/premiere-weapons.js',import.meta.url),'utf8');
 const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
+const cardRulesScript=readFileSync(new URL('../engine/premiere-card-rules.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
@@ -31,6 +32,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  vm.runInContext(battleScript,context);
  vm.runInContext(unitScript,context);
  vm.runInContext(locationScript,context);
+ vm.runInContext(cardRulesScript,context);
  vm.runInContext(weaponScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
@@ -1048,6 +1050,132 @@ async function craftHarness(){
  return {run,elements};
 }
 
+test('registered Premiere locations apply their printed sides and exceptions',async()=>{
+ const {run}=await craftHarness();
+ run(`const jawa=card('Light:1373'),spy=card('Dark:1011');
+  state.locations[2]=card('Light:2440');state.light[2]=[jawa];state.dark[2]=[tusken,spy];battleSession={site:2};`);
+ assert.equal(run("cardPowerModifier(jawa,'Light',2)"),1);
+ assert.equal(run("battleForfeitValue(spy,'Dark')"),run('spy.forfeit+1'));
+ assert.equal(run("battleForfeitValue(tusken,'Dark')"),run('tusken.forfeit'));
+ run("state.locations[2]=card('Dark:2439')");
+ assert.equal(run("cardPowerModifier(spy,'Dark',2)"),1);
+ assert.equal(run("cardPowerModifier(tusken,'Dark',2)"),0);
+ assert.equal(run("battleForfeitValue(jawa,'Light')"),run('jawa.forfeit+1'));
+ run("state.locations[2]=card('Dark:2454')");
+ assert.equal(run("cardPowerModifier(jawa,'Light',2)"),-1);
+ assert.equal(run("battleForfeitValue(jawa,'Light')"),run('jawa.forfeit-1'));
+ run("state.locations[2]=card('Dark:2465');state.locations[4]=card('Dark:682');state.dark[4]=[card('Dark:1027')]");
+ assert.equal(run("cardPowerModifier(spy,'Dark',2)"),1);
+ assert.equal(run("battleForfeitValue(spy,'Dark')"),run('spy.forfeit+1'));
+ assert.equal(run("battleForfeitValue(card('Light:2052'),'Light')"),run("card('Light:2052').forfeit-1"));
+ run("state.light[4]=[card('Light:1593')]");
+ assert.equal(run("battleForfeitValue(card('Light:2052'),'Light')"),run("card('Light:2052').forfeit"));
+});
+
+test('registered fleet power counts only ships at a controlled related system',async()=>{
+ const {run}=await craftHarness();
+ run("state.light[6]=[ship,card('Light:2907')];state.light[2]=[card('Light:2052')]");
+ assert.equal(run('battleTotals(2).lightPower'),3);
+ assert.equal(run('fleetPowerAtSite("Light",6)'),0);
+ run('state.dark[6]=[tie]');
+ assert.equal(run('battleTotals(2).lightPower'),1);
+ assert.equal(run('fleetPowerAtSite("Dark",2)'),0);
+});
+
+test('registered free deployment requires the qualifying ally or farm',async()=>{
+ const {run}=await craftHarness();
+ run(`const rebel=card('Light:2052'),owen=card('Light:1883');
+  state.locations[3]=card('Light:2462');state.hand=[rebel,owen];state.force=[];
+  state.light[2]=[{type:'Character',subType:'Rebel',ability:2}];`);
+ assert.equal(run('boardDeployCost(rebel,dock,"Light")'),null);
+ run('state.light[2][0].ability=3');
+ assert.equal(run('boardDeployCost(rebel,dock,"Light")'),0);
+ assert.equal(run('boardDeployCost(owen,state.locations[3],"Light")'),0);
+ assert.equal(run('boardDeployCost(owen,dock,"Light")'),null);
+ assert.equal(run("requestAction('deploy','Light',[0,2]).cost"),0);
+ run("state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[card('Dark:2355')];state.botForce=[];state.dark[2]=[card('Dark:1061')]");
+ assert.equal(run("requestAction('deploy','Dark',[0,2]).cost"),0);
+ assert.equal(run('state.used.length+state.botUsed.length'),0);
+});
+
+test('registered devices charge their costs, validate their mounts and apply continuous stats',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const belt=card('Light:2435'),rebel=card('Light:2052'),droid=card('Light:2');
+  state.hand=[belt,card('Light:997')];state.light[2]=[rebel,droid];state.light[6]=[ship];state.light[0]=[card('Light:2907')];
+  state.force=[];const baseStats=craftStats(ship,6);`);
+ assert.equal(run("requestAction('deployDevice','Light',[0,2,0])"),false);
+ run('state.force=forcePile();select(0)');
+ assert.match(elements.get('board').innerHTML,/Rebel Trooper ausrüsten \(1 Force\)/);
+ assert.equal(run("requestAction('deployDevice','Light',[0,2,1])"),false);
+ assert.equal(run("requestAction('deployDevice','Light',[0,2,0])"),true);
+ assert.equal(run("requestAction('deployDevice','Light',[0,0,0])"),false);
+ assert.equal(run("requestAction('deployDevice','Light',[0,6,0])"),true);
+ assert.ok(run('state.used.length===1&&craftStats(ship,6).power===baseStats.power+1&&craftStats(ship,6).hyperspeed===baseStats.hyperspeed+1&&craftStats(ship,6).maneuver===baseStats.maneuver+1'));
+ run("rebel.attachments.push({...belt});battleSession={site:2}");
+ assert.equal(run("cardPowerModifier(rebel,'Light',2)"),2);
+ assert.equal(run("battleForfeitValue(rebel,'Light')"),run('rebel.forfeit+2'));
+ run(`battleSession=null;state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[card('Dark:2360')];
+  state.locations[3]=card('Dark:675');state.dark[3]=[card('Dark:2355')];`);
+ assert.equal(run("requestAction('deployDevice','Dark',[0,3,0])"),true);
+ assert.equal(run("cardPowerModifier(state.dark[3][0],'Dark',3)"),2);
+ assert.equal(run("cardPowerModifier(state.dark[3][0],'Dark',2)"),1);
+});
+
+test('card rule registry returns source, active text and test references across the full catalog',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run('catalog.length'),324);
+ assert.ok(run(`catalog.every(card=>{
+  const entry=PremiereCardRules.entry(card);
+  return entry.cardId===card.id&&entry.source===(card.images.slip??card.images.print)&&entry.text===card.gametext&&
+   entry.effects.every(rule=>rule.test&&rule.event&&rule.targets&&rule.expires&&Number.isInteger(rule.cost));
+ })`));
+ assert.ok(run("effectCoverage().complete.some(card=>card.id==='Light:2052')"));
+ assert.ok(run("effectCoverage().unimplemented.some(card=>card.id==='Light:1429')"));
+});
+
+test('registered location effects add icons once and can be canceled by Alter',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const presence=()=>card('Dark:1939');setupDecks=null;state.game=PremiereGame.actionState(95,4);
+  state.activeSide='Dark';state.botHand=[presence(),presence(),presence()];state.botTurn={steps:[],index:0};
+  state.light[2]=[card('Light:1593')];state.hand=[];
+  state.deck=[{name:'Low destiny',destiny:1},{name:'Low destiny',destiny:1}];`);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,99])"),false);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,2])"),true);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,2])"),true);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,3])"),false);
+ assert.equal(run("PremiereLocations.icons(state,2,'Dark')+PremiereLocations.icons(state,2,'Light')"),4);
+ run("state.hand=[card('Light:95'),card('Light:95')];render()");
+ assert.match(elements.get('controlPanel').innerHTML,/Presence Of The Force.*aufheben/);
+ for(const icons of [2,1]){
+  assert.equal(run("requestAction('alterLocationEffect','Light',[0,2,0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+  assert.equal(run("PremiereLocations.icons(state,2,'Light')"),icons);
+ }
+ assert.equal(run("state.botLost.filter(card=>card.id==='Dark:1939').length"),2);
+});
+
+test('Death Star Plans tracks the chosen droid, rejects the docking bay and retrieves once at Yavin 4',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const plans=card('Light:664'),droid=card('Light:2');setupDecks=null;state.game=PremiereGame.actionState(111,0);
+  state.locations=[card('Dark:678'),card('Dark:675'),card('Light:2853'),dock];state.locationOrder=[0,1,2,3];
+  state.light=[[],[],[],[droid]];state.dark=[[],[],[],[]];state.hand=[plans];
+  state.deck=[{name:'Ordinary reserve'},{name:'First',destiny:1},{name:'Second',destiny:1},{name:'Third',destiny:1}];
+  state.lost=[{name:'Lost A'},{name:'Lost B'},{name:'Lost C'}];state.force=forcePile().concat(forcePile());`);
+ run("inspectCard('Light',0,'hand',0)");
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Level 4 Military Corridor.*Tooex.*als Ziel/);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,1,0])"),false);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,0,0])"),true);
+ assert.equal(run('state.locationEffects[0][0].target===droid'),true);
+ run('state.phase=4');
+ for(const [from,to,kind] of [[3,1,'Docking-Bay-Transit'],[1,0,'Landspeed'],[0,1,'Landspeed'],[1,2,'Docking-Bay-Transit']]){
+  run('state.movedThisTurn=[]');
+  assert.ok(run(`requestAction('move','Light',[${from},0,${to},'${kind}'])`));
+  if(to===0)assert.ok(run('state.locationEffects[0][0].plansCollected'));
+ }
+ assert.equal(run('state.locationEffects[0].length'),0);
+ assert.equal(run('state.lost.length===1&&state.lost[0]===plans&&state.deck.length===1'),true);
+ assert.ok(run("state.used.some(card=>card.name==='Lost A')&&state.used.some(card=>card.name==='Lost C')"));
+});
+
 test('learning decks contain planet systems, exterior sites, piloted starships and a Dark Bantha',async()=>{
  const {run}=await premiereHarness();
  for(const side of ['light','dark']){
@@ -1599,8 +1727,8 @@ test('starter decks replay complete matches with legal decisions and conserve al
   }
   return roots.flatMap(walk);
  }
- function playMatch(seed){
-  start(seed);
+ function playMatch(seed,cardRulesVersion=1){
+  start(seed,true,false,starterDecks,cardRulesVersion);
   const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
   choose();
   while(setupDecks.revealed.collision){retryStartingLocations();choose();}
@@ -1641,8 +1769,11 @@ test('starter decks replay complete matches with legal decisions and conserve al
  const matches=[4,7,9].map(seed=>JSON.parse(run(`JSON.stringify(playMatch(${seed}))`)));
  assert.ok(matches.every(match=>match.winner&&match.botActions>0&&match.validated>0));
  assert.deepEqual(new Set(matches.map(match=>match.winner)),new Set(['Light','Dark']));
- assert.ok(matches.some(match=>match.ground&&match.space&&match.reactions>0),
+ assert.ok(matches.some(match=>match.ground&&match.space)&&matches.some(match=>match.reactions>0),
   JSON.stringify(matches.map(({trace,...match})=>match)));
+ const legacy=JSON.parse(run('JSON.stringify(playMatch(4,0))'));
+ assert.ok(legacy.winner&&legacy.ground&&legacy.space,
+  JSON.stringify({...legacy,trace:undefined}));
  assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches[0]);
 });
 
@@ -1650,6 +1781,20 @@ function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
+
+test('legacy autosaves resume without applying new registered card rules retroactively',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ startSavedGame(run);
+ const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
+ assert.equal(saved.cardRulesVersion,1);
+ delete saved.cardRulesVersion;
+ storage.setItem(key,JSON.stringify(saved));
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.ok(reload.run("el('resumeGame').onclick()"));
+ assert.equal(reload.run('currentGame().cardRulesVersion'),0);
+ assert.equal(reload.run("activeCardRules(catalog.find(card=>card.id==='Light:2052'),'freeSiteDeploy').length"),0);
+});
 
 test('ending the active game preserves an autosave changed by another tab',async()=>{
  const storage=autosaveStorage();
