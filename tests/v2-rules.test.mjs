@@ -12,16 +12,17 @@ const locationScript=readFileSync(new URL('../engine/premiere-locations.js',impo
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
-function harness(){
+function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>true}={}){
  const elements=new Map();
  const document={getElementById(id){
   if(!elements.has(id))elements.set(id,{
-   value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,
+   value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
    showModal(){this.open=true;},close(){this.open=false;},
   });
   return elements.get(id);
  }};
- const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
+ const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error,
+  localStorage:storage,confirm:confirmNewGame});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
  vm.runInContext(battleScript,context);
@@ -663,8 +664,8 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
 
 const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
 
-async function premiereHarness(deckLists=starterLists){
- const {run,elements}=harness();
+async function premiereHarness(deckLists=starterLists,browser){
+ const {run,elements}=harness(browser);
  const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
  run(`fetch=async path=>{
   if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
@@ -1476,6 +1477,90 @@ test('a seed and the recorded action choices reproduce setup and both sides’ z
  assert.equal(run(`new Set([...state.deck,...state.botDeck,...state.force,...state.botForce,...state.hand,...state.botHand,
   ...state.used,...state.botUsed,...state.lost,...state.botLost,...state.locations.filter(Boolean),...state.light.flat(),...state.dark.flat()]
   .flatMap(card=>[card,...(card.weapons??[])]).map(card=>card.instanceId)).size`),120);
+});
+
+function autosaveStorage(){
+ const values=new Map();
+ return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+}
+
+function startSavedGame(run,seed=0){
+ run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
+  el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
+}
+
+test('autosave restores a partially completed bot turn and keeps the original starter decks',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ const readSave=()=>storage.getItem(run('saveKey'));
+ assert.equal(readSave(),null);
+ startSavedGame(run);
+ assert.equal(JSON.parse(readSave()).commands.length,0);
+ assert.equal(run("act('chooseStart','Light',[setupDecks.light.startingIndices[1]])"),true);
+ assert.equal(JSON.parse(readSave()).commands.length,1);
+ assert.equal(run("act('beginGame')"),true);
+ run("el('botNext').onclick()");
+ const saved=readSave();
+ assert.equal(JSON.parse(saved).commands.at(-1).type,'bot');
+ assert.match(run("state.botHistory[0]"),/Activate/);
+ assert.equal(run("act('advance')"),false);
+ assert.equal(readSave(),saved);
+ const snapshot='JSON.stringify([state.phase,state.botTurn,state.deck,state.botDeck,state.botForce,state.botHistory,state.log])';
+ const actual=run(snapshot);
+
+ const newDecks=structuredClone(starterLists);
+ newDecks.decks.Dark.cards.find(card=>card.id==='Dark:1279').count--;
+ newDecks.decks.Dark.cards.find(card=>card.id==='Dark:2355').count++;
+ const reload=await premiereHarness(newDecks,{storage,confirmNewGame:()=>false});
+ assert.equal(reload.run("el('resumeGame').hidden"),false);
+ assert.equal(reload.run('currentGame()'),undefined);
+ reload.run("el('start').onclick()");
+ assert.equal(reload.run("el('resumeGame').hidden"),false);
+ assert.equal(readSave(),saved);
+ assert.equal(reload.run("el('resumeGame').onclick()"),true);
+ assert.equal(reload.run(snapshot),actual);
+ assert.equal(reload.run("el('resumeGame').hidden"),true);
+ assert.equal(reload.run("currentGame().starterDecks.dark.cards.filter(card=>card.id==='Dark:1279').length"),3);
+ reload.run("el('botNext').onclick()");
+ assert.equal(reload.run('state.phase'),1);
+ assert.equal(JSON.parse(readSave()).commands.length,4);
+});
+
+test('a saved live battle resumes in the damage segment and accepts the remaining payment',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ startSavedGame(run);
+ assert.equal(run(`act('chooseStart','Light',[setupDecks.light.startingIndices[1]])&&act('beginGame')`),true);
+ run("for(let i=0;state.botTurn&&i<8;i++)el('botNext').onclick()");
+ assert.equal(run(`act('activate','Light',[4])&&act('advance')&&act('advance')&&act('deploy','Light',[1,0])&&
+  act('advance')&&act('battle','Light',[0])&&act('skipDestiny')&&act('skipDestiny','Dark')`),true);
+ assert.equal(run("battleSession.segment==='damage'&&battleSession.damage.debt.Light.damage===1"),true);
+ const snapshot='JSON.stringify([state.force,state.lost,state.hand,state.log,battleSession.damage])';
+ const actual=run(snapshot);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run("el('resumeGame').onclick()"),true);
+ assert.equal(reload.run(snapshot),actual);
+ assert.equal(reload.run("el('battleAnalysis').style.display"),'block');
+ assert.equal(reload.run(`dispatchUI(PremiereGame.offer(currentGame(),'Light','battleForceLoss',['force']))`),true);
+ assert.equal(reload.run('battleSession.damage.debt.Light.damage'),0);
+ assert.equal(reload.run('state.lost.length'),1);
+});
+
+test('an invalid saved command leaves the saved data in place and offers a new game',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ startSavedGame(run);
+ const key=run('saveKey');
+ const data=JSON.parse(storage.getItem(key));
+ data.commands.push({type:'action',kind:'invalid',side:'Light',args:[]});
+ const invalid=JSON.stringify(data);
+ storage.setItem(key,invalid);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run("el('resumeGame').onclick()"),false);
+ assert.equal(reload.run('currentGame()'),undefined);
+ assert.match(reload.run("el('gameSaveStatus').textContent"),/konnte.*nicht fortgesetzt/);
+ assert.equal(storage.getItem(key),invalid);
+ assert.equal(reload.run("el('start').disabled"),false);
 });
 
 test('the public view omits opponent hands and all Life Force order, including in setup',async()=>{

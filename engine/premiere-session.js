@@ -151,12 +151,14 @@ function startingLocationChoices(deck){
  });
 }
 
-function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false){
- if(!starterDecks||!Number.isInteger(seed)||seed<0||seed>4294967295)return false;
+function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks){
+ if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295)return false;
  battleSession=null;state=null;
- setupDecks={game:PremiereGame.actionState(++nextGameId,seed),trainingBattle,
-  light:PremiereGame.copyDeck(starterDecks.light,'Light'),
-  dark:PremiereGame.copyDeck(starterDecks.dark,'Dark')};
+ const game=PremiereGame.actionState(++nextGameId,seed);
+ game.starterDecks=decks;
+ setupDecks={game,trainingBattle,
+  light:PremiereGame.copyDeck(decks.light,'Light'),
+  dark:PremiereGame.copyDeck(decks.dark,'Dark')};
  prepareStartingRound();
  if(autoChoose)chooseBotStartingLocation();
  return true;
