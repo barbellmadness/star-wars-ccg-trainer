@@ -117,6 +117,7 @@ const PremiereGame = (() => {
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
       winner: state.gameWinner, locations: state.locations.map(clone), players,
+      buriedCounts: state.locations.map((_, slot) => (state.buriedMines ?? []).filter(record=>record.slot===slot).length),
       convertedLocations: state.locations.map((_, slot) => (state.convertedLocations?.[slot] ?? []).map(clone)),
       locationEffects: state.locations.map((_, slot) => (state.locationEffects?.[slot] ?? []).map(effect => clone(effect.card)))};
   }
@@ -134,7 +135,7 @@ const PremiereGame = (() => {
   }
 
   function outcome(state) {
-    if (state.gameWinner || state.pendingForceLoss || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
+    if (state.gameWinner || state.pendingForceLoss || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
     const light = lifeForce(state, 'Light'), dark = lifeForce(state, 'Dark');
     if (!light && !dark) return 'Simultaneous';
     if (!light) return 'Dark';

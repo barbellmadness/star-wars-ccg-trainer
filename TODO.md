@@ -68,13 +68,14 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 6. Premiere-Waffen vervollständigen
 
-- [ ] Die vier vorhandenen Blaster auf alle einschlägigen Premiere-Fahrzeugziele erweitern. Verteidigung aus Ability, Armor oder Maneuver nach Zieltyp ermitteln. Prüfen, ob Träger und Ziel am Battle teilnehmen, zueinander `present` sind und die Waffe zwischen den beteiligten Bereichen eingesetzt werden darf.
-- [ ] Han's Heavy Blaster Pistol und Leia's Sporting Blaster mit Namenszuordnung, alternativen Deploy-Kosten, Destiny-Modifikator und bedingtem Forfeit von null umsetzen.
-- [ ] Jedi Lightsaber, Dark Jedi Lightsaber, Obi-Wan's Lightsaber und Vader's Lightsaber ergänzen. Gedruckte Trägerbedingungen, Deploy- und Einsatzkosten, zwei Destiny, Drain-Bonus und jeweilige Trefferfolge prüfen.
-- [ ] Assault Rifle mit zulässiger Distanz und Regeln für Ziele außerhalb des eigenen Orts ergänzen. Light Repeating Blaster Rifle mit Generatorbedingung und wiederholtem Feuern umsetzen. Gaderffii Stick mit Timing und Waffenblockade abbilden.
-- [ ] Die fünf Schiffsbewaffnungen umsetzen. Proton Torpedoes, Quad Laser Cannon, Boosted TIE Cannon, Ion Cannon und Turbolaser Battery erhalten eigene Träger, Ziele, Kosten, Destiny und Folgen. Ion Cannon muss auch Waffenverlust sowie geändertes Armor, Maneuver und Hyperspeed abwickeln.
-- [ ] Die automatisierten Waffen implementieren. Vier Seeker mit Bewegung und Zielbedingungen, beide Timer Mines mit verzögertem Auslöser und der Laser Projector mit Aufstellung, Angriff und eigener Verwundbarkeit benötigen eigene Testfälle.
-- [ ] Entwaffnung, Waffenverlust und andere Karteneffekte auf Anhänge in Deploy, Movement, Battle und außerhalb des Battles abbilden. Fehlversuche und Kosten bei fehlender Destiny regelgerecht protokollieren.
+- [x] Die vier Blaster prüfen Charaktere, Kreaturen und Fahrzeuge mit der jeweils zutreffenden Defense. Waffenreichweite und physische Anwesenheit werden getrennt von Battle-Teilnahme ausgewertet.
+- [x] Han's Heavy Blaster Pistol und Leia's Sporting Blaster prüfen Persona, Trägerkosten, Destiny-Modifikator und Forfeit null beim Treffer des benannten Trägers.
+- [x] Die vier Lichtschwerter verwenden ihre Trägerbedingungen, Deploy- und Einsatzkosten, zwei Destiny und den optionalen Force-Drain-Bonus. Die benannten Schwerter setzen den Forfeit eines getroffenen Ziels auf null.
+- [x] Das Assault Rifle feuert von derselben oder einer benachbarten Site in einen Kampf. Das Repeating Blaster Rifle prüft seine Energiequelle und verarbeitet bezahlte Schüsse nacheinander. Der Gaderffii Stick blockiert Waffen im Antwortfenster nach der Kampfansage.
+- [x] Proton Torpedoes, Quad Laser Cannon, Boosted TIE Cannon, Ion Cannon und Turbolaser Battery haben eigene Träger-, Ziel- und Destiny-Regeln. Ionenschaden beseitigt Schiffswaffen und setzt Armor oder Maneuver sowie Hyperspeed auf null.
+- [x] Vier Seeker suchen beim Spielen und Bewegen passende Ziele, auch auf ihrer eigenen Seite. Beide Timer Mines lösen offen beim nächsten eigenen Zug oder verdeckt beim Betreten oder Kreuzen aus. Der Laser Projector kann auf Innen-Sites feuern und selbst zerstört werden.
+- [x] Waffentransfer, Blaster Rack, Disarmed, Overload, Wuher und Entschärfen durch Mining Droids verwenden dieselben Karteninstanzen und Stapel. Leere Reserve und fehlgeschlagene Schüsse werden protokolliert.
+- [ ] Weitere Kartentext-Kombinationen wie Combined Attack sowie Seeker-Transfers zwischen angedockten Schiffen ergänzen. Waffen in Kreaturenangriffen mit dem Kreaturenablauf prüfen.
 
 ## 7. Kartentexte für alle Kartentypen
 

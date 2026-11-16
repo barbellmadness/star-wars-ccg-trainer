@@ -3,7 +3,7 @@ let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','retrieve','equip','deployDevice','move','battle']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -326,6 +326,7 @@ function moveCharacterFor(side,from,index,to,kind){
  const [card]=board[from].splice(index,1);
  PremiereGame.moveTop(force,used,option.cost);
  board[to].push(card);
+ if(option.kind==='Landspeed')noteMineTraversal(side,from,to,card);
  (state.movedThisTurn??=[]).push(card);
  log(side+' bewegt '+card.name+' per '+option.kind+' nach '+state.locations[to].name+' ('+option.cost+' Force).');
  publishGame();return true;
@@ -467,9 +468,10 @@ function isDroid(c){return String(c?.type||'').toLowerCase()==='character'&&Stri
 function isPowerDroid(c){return isDroid(c)&&(c.id==='Dark:816'||(c.extraText||[]).some(tag=>/\bpower droid\b/i.test(String(tag))))}
 
 function cardPowerModifier(c,side,siteIndex){
- if(!state||!['Light','Dark'].includes(side)||!isSite(state.locations?.[siteIndex]))return 0;
+ const disarmed=PremiereWeapons.disarmed(c)?-1:0;
+ if(!state||!['Light','Dark'].includes(side)||!isSite(state.locations?.[siteIndex]))return disarmed;
  const same=PremiereLocations.presentCards(state,side,siteIndex);
- let bonus=0;
+ let bonus=disarmed;
  if(side==='Light'&&PremiereLocations.conditions(state,siteIndex,side).night&&sitePlanet(state.locations[siteIndex])&&
     same.some(x=>x.id==='Light:2'&&/nighttime conditions/i.test(x.gametext||''))&&
     characterTraits(c).some(x=>/\brebel\b|\balien\b/.test(x)))bonus+=2;
@@ -491,7 +493,10 @@ function cardEffectStatus(c){
  if(['Light:608','Dark:1426','Light:80'].includes(c.id))return 'TEILWEISE: Grundlegende Modifikatoren für Deploy oder Battle Destiny im Weltraum. Weitere Kartentexte sind offen.';
  if(['Dark:682','Light:2859'].includes(c.id))return 'TEILWEISE: Zusätzliche Battle-Destiny bei eigener Initiierung. Weitere Effekte sind offen.';
  if(['Light:2448','Dark:2458'].includes(c.id))return 'TEILWEISE: Erhöhte Mindest-Ability für Battle-Destiny berücksichtigt. Weitere Effekte sind offen.';
- if(basicWeaponRule(c))return 'TEILWEISE: Ausspielen auf einem eigenen Warrior und Waffen-Destiny gegen Charaktere und Banthas am Kampf-Site unterstützt.';if(c.id==='Dark:634'&&/When in battle, adds 1 to each of your battle destiny draws/i.test(c.gametext||''))return 'TEILWEISE: Battle-Destiny-Draws Dark +1 durch Vader und gedruckte Attrition-Immunität; Pilot- und weitere Sonderregeln offen.';if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power +2 für verbündete Rebels/Aliens am selben Planetensite; bedingte Attrition-Immunität offen.';if(c.id==='Dark:816')return 'TEILWEISE: EG-6 erhöht Power eigener Droids am selben Site; Spezial-Destiny 0 und bedingte Power-Verdopplung unterstützt.';const below=printedAttritionImmunityBelow(c);if(below!==null)return 'TEILWEISE: Unbedingte gedruckte Attrition-Immunität < '+below+' unterstützt; übrige Karteneffekte offen.';if(!(c.gametext||'').trim())return 'KEIN KARTENTEXT: keine individuellen Text-Effekte zu automatisieren (andere Spielregeln gelten weiterhin).';return 'OFFEN: Kartentext noch nicht als ausführbare Regel validiert.'}
+ if(PremiereWeapons.seeker(c))return 'TEILWEISE: Seeker mit Control-Bewegung und automatischer Zielwahl.';
+ if(PremiereWeapons.mine(c))return 'TEILWEISE: Offene Timer Mine mit Zielwahl nach dem Destiny-Draw zum nächsten eigenen Zug.';
+ if(PremiereWeapons.definition(c))return 'TEILWEISE: Träger oder Aufstellung, Waffen-Destiny und Kartenfolgen im implementierten Kampfablauf.';
+ if(c.id==='Dark:634'&&/When in battle, adds 1 to each of your battle destiny draws/i.test(c.gametext||''))return 'TEILWEISE: Battle-Destiny-Draws Dark +1 durch Vader und gedruckte Attrition-Immunität; Pilot- und weitere Sonderregeln offen.';if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power +2 für verbündete Rebels/Aliens am selben Planetensite; bedingte Attrition-Immunität offen.';if(c.id==='Dark:816')return 'TEILWEISE: EG-6 erhöht Power eigener Droids am selben Site; Spezial-Destiny 0 und bedingte Power-Verdopplung unterstützt.';const below=printedAttritionImmunityBelow(c);if(below!==null)return 'TEILWEISE: Unbedingte gedruckte Attrition-Immunität < '+below+' unterstützt; übrige Karteneffekte offen.';if(!(c.gametext||'').trim())return 'KEIN KARTENTEXT: keine individuellen Text-Effekte zu automatisieren (andere Spielregeln gelten weiterhin).';return 'OFFEN: Kartentext noch nicht als ausführbare Regel validiert.'}
 
 function effectCoverage(){const total=catalog.length,withoutText=catalog.filter(c=>!(c.gametext||'').trim()),partial=catalog.filter(c=>cardEffectStatus(c).startsWith('TEILWEISE:')),unimplemented=catalog.filter(c=>cardEffectStatus(c).startsWith('OFFEN:'));return {total,withoutText,partial,unimplemented}}
 
@@ -600,30 +605,420 @@ function boardDeployCost(card,loc,side){
  return cost!==null&&canPayBoardDeploy(card,side,cost)?cost:null;
 }
 
+function weaponMounts(side){
+ const {board}=PremiereGame.zones(state,side);
+ const entries=PremiereLocations.entries(state,side);
+ return state.locations.flatMap((location,slot)=>{
+  if(!location)return [];
+  const roots=board?.[slot]??[],local=entries.filter(entry=>entry.slot===slot);
+  const mounts=local.flatMap((entry,index)=>{
+   const card=entry.card;
+   if(entry.unavailable||(!PremiereUnits.active(card)&&!PremiereWeapons.projector(card))||
+      !['Character','Vehicle','Starship'].includes(card.type)&&!PremiereWeapons.projector(card))return [];
+   const root=roots.indexOf(card);
+   return [{host:card,slot,index:root>=0?root:roots.length+index,place:PremiereLocations.physicalPlace(entry)}];
+  });
+  if(isSystem(location)&&location.locationTags?.includes('Mobile'))mounts.push({host:location,slot,index:-1,place:slot});
+  return mounts;
+ });
+}
+
+function mountWeapons(mount){
+ if(isLoc(mount.host))return state.locationWeapons?.[mount.slot]??[];
+ if(PremiereWeapons.projector(mount.host))return [mount.host];
+ return mount.host.weapons??[];
+}
+function attachWeapon(mount,weapon){
+ if(isLoc(mount.host))((state.locationWeapons??={})[mount.slot]??=[]).push(weapon);
+ else (mount.host.weapons??=[]).push(weapon);
+}
+
 function weaponDeployOptions(side,handIndex){
  if(!state||state.phase!==2||state.activeSide!==side||state.gameWinner||state.pendingForceLoss||battleSession)return [];
- const light=side==='Light',hand=light?state.hand:state.botHand,rows=light?state.light:state.dark;
- const force=light?state.force:state.botForce,used=light?state.used:state.botUsed;
- const card=hand?.[handIndex],rule=basicWeaponRule(card);
- if(!rule||card.side!==side||!force||!used||force.length<rule.cost)return [];
- const options=[];
- state.locations.forEach((site,siteIndex)=>{
-  if(!site||!isSite(site))return;
-  rows[siteIndex].forEach((host,hostIndex)=>{
-   if(host.type==='Character'&&host.warrior&&host.side===side)options.push({siteIndex,hostIndex,host,cost:rule.cost});
-  });
+ const {hand}=PremiereGame.zones(state,side);
+ return weaponPlacementOptions(side,hand?.[handIndex]);
+}
+
+function weaponPlacementOptions(side,card,slot){
+ const {force}=PremiereGame.zones(state,side);
+ if(!PremiereWeapons.definition(card)||card.side!==side||!withinDeploymentLimit(card,side))return [];
+ return weaponMounts(side).flatMap(mount=>{
+  if(slot!==undefined&&mount.slot!==slot)return [];
+  const cost=PremiereWeapons.deployCost(card,mount.host,cardAbility(mount.host));
+  if(cost===null||cost>force.length)return [];
+  return [{mount,siteIndex:mount.slot,hostIndex:mount.index,host:mount.host,cost}];
  });
- return options;
 }
 
 function deployWeaponFor(side,handIndex,siteIndex,hostIndex){
  const option=weaponDeployOptions(side,handIndex).find(x=>x.siteIndex===siteIndex&&x.hostIndex===hostIndex);
  if(!option)return false;
- const light=side==='Light',hand=light?state.hand:state.botHand,force=light?state.force:state.botForce,used=light?state.used:state.botUsed;
- const [weapon]=hand.splice(handIndex,1);
+ const {hand,force,used}=PremiereGame.zones(state,side),[weapon]=hand.splice(handIndex,1);
  PremiereGame.moveTop(force,used,option.cost);
- (option.host.weapons??=[]).push(weapon);
+ attachWeapon(option.mount,weapon);
  log(side+' rüstet '+option.host.name+' mit '+weapon.name+' aus ('+option.cost+' Force → Used Pile).');
+ return true;
+}
+
+function allWeaponEntries(){
+ return PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side).map(entry=>({...entry,side})));
+}
+
+function weaponRecords(){
+ const entries=allWeaponEntries();
+ const records=entries.filter(entry=>!entry.unavailable&&entry.card.type==='Weapon').map(entry=>({...entry,
+  host:entries.find(other=>other.card.weapons?.includes(entry.card))?.card}));
+ const fixed=Object.entries(state.locationWeapons??{}).flatMap(([slot,cards])=>cards.map(card=>
+  ({card,slot:Number(slot),side:card.side,host:state.locations[slot],carriers:[]})));
+ return records.concat(fixed);
+}
+
+function weaponEffectOptions(side){
+ const {hand,force}=PremiereGame.zones(state,side),active=state.activeSide===side;
+ const phase=state.phase,options=[],mounts=weaponMounts(side),entries=allWeaponEntries(),weapons=weaponRecords();
+ const add=(args,label,details={})=>options.push({args,label,...details});
+ const rack=state.blasterRack;
+ if(active&&phase===2){
+  const targetMounts=mounts.filter(mount=>!isLoc(mount.host)&&!PremiereWeapons.projector(mount.host));
+  mounts.forEach((source,a)=>mountWeapons(source).forEach((weapon,w)=>{
+   if(PremiereWeapons.projector(weapon)||weapon.side!==side)return;
+   targetMounts.forEach(target=>{
+    if(source.host===target.host||source.slot!==target.slot||source.place!==target.place)return;
+    const cost=PremiereWeapons.deployCost(weapon,target.host,cardAbility(target.host));
+    if(cost!==null&&cost<=(force?.length??0))add(['transfer',a,w,target.slot,target.index],weapon.name+' → '+target.host.name+' ('+cost+' Force)',{source,weapon,target,cost});
+   });
+  }));
+  if(side==='Dark'&&!rack){
+   const index=hand?.findIndex(card=>card.id==='Dark:262')??-1;
+   if(index>=0)add(['rack',index],'Blaster Rack ausspielen',{index});
+  }
+  if(side==='Dark'&&rack)rack.weapons.forEach((weapon,index)=>targetMounts.forEach(target=>{
+   const cost=PremiereWeapons.deployCost(weapon,target.host,cardAbility(target.host));
+   if(cost!==null&&cost<=(force?.length??0))add(['rackOut',index,target.slot,target.index],weapon.name+' vom Rack → '+target.host.name+' ('+cost+' Force)',{weapon,target,cost});
+  }));
+  const tanks=hand?.findIndex(card=>card.id===(side==='Light'?'Light:997':'Dark:996'))??-1;
+  if(tanks>=0)targetMounts.forEach(target=>{
+   const system=state.locations[target.slot];
+   if(target.host.type==='Starship'&&isSystem(system)&&!target.host.attachments?.some(card=>['Light:997','Dark:996'].includes(card.id))&&
+      state.locations.some((loc,slot)=>loc&&sitePlanet(loc)===locationGroup(system)&&PremiereLocations.conditions(state,slot,side).dockingBay)){
+    add(['tanks',tanks,target.slot,target.index],'Fusion Generator Supply Tanks → '+target.host.name,{index:tanks,target});
+   }
+  });
+ }
+ if(active&&side==='Dark'&&rack)weapons.forEach((entry,index)=>{
+  if(entry.side===side&&entry.card.side===side&&entry.card.subType==='Character'&&entry.host&&isSite(state.locations[entry.slot]))
+   add(['rackIn',index],entry.card.name+' ins Blaster Rack legen',{entry});
+ });
+ if(phase===1){
+  const index=hand?.findIndex(card=>card.id===(side==='Light'?'Light:735':'Dark:734'))??-1;
+  if(index>=0){
+   const own=mounts.filter(mount=>mount.host.type==='Character'&&mount.host.weapons?.length&&mount.place===mount.slot);
+   entries.forEach((entry,j)=>{
+    const {card,slot}=entry;
+    if(entry.side===side||entry.unavailable||card.type!=='Character'||!card.weapons?.length||
+       PremiereLocations.physicalPlace(entry)!==slot||!isSite(state.locations[slot])||!own.some(unit=>unit.slot===slot))return;
+    add(['disarm',index,j],'Disarmed · '+card.name, {entry,index});
+   });
+  }
+ }
+ if(active||battleSession?.weaponTurn===side){
+  const overload=side==='Dark'?hand?.findIndex(card=>card.id==='Dark:1880')??-1:-1;
+  if(overload>=0)weapons.forEach((entry,index)=>{
+   if(entry.card.id==='Dark:1002'||!/^[^:]+:/.test(entry.card.id??''))return;
+   if(entry.card.characteristics?.some(trait=>/ewok/i.test(trait)))return;
+   add(['overload',overload,index],'Overload · '+entry.card.name,{entry,index:overload});
+  });
+ }
+ if(active&&(force?.length??0)>0)weapons.forEach((entry,index)=>{
+  if(!PremiereWeapons.mine(entry.card)||!PremiereLocations.presentCards(state,side,entry.slot).some(card=>
+     PremiereWeapons.miningDroid(card)&&PremiereUnits.active(card)))return;
+  add(['defuse',index],'Timer Mine entschärfen (1 Force)',{entry,cost:1});
+ });
+ return options;
+}
+
+function playWeaponEffect(side,...args){
+ const effect=weaponEffectOptions(side).find(option=>option.args.length===args.length&&option.args.every((value,i)=>value===args[i]));
+ if(!effect)return false;
+ const {hand,force,used}=PremiereGame.zones(state,side),{entry}=effect;
+ switch(args[0]){
+  case 'transfer':
+   mountWeapons(effect.source).splice(mountWeapons(effect.source).indexOf(effect.weapon),1);
+   PremiereGame.moveTop(force,used,effect.cost);
+   attachWeapon(effect.target,effect.weapon);
+   break;
+  case 'rack': state.blasterRack={card:hand.splice(effect.index,1)[0],weapons:[]};break;
+  case 'rackIn':
+   if(!detachTableCard(entry.side,entry.slot,entry.card))return false;
+   state.blasterRack.weapons.push(entry.card);
+   break;
+  case 'rackOut':
+   state.blasterRack.weapons.splice(args[1],1);
+   PremiereGame.moveTop(force,used,effect.cost);
+   attachWeapon(effect.target,effect.weapon);
+   break;
+  case 'disarm': {
+   const [card]=hand.splice(effect.index,1);
+   for(const weapon of entry.card.weapons.splice(0))loseOwnedCard(weapon,entry.side);
+   (entry.card.attachments??=[]).push(card);
+   break;
+  }
+  case 'tanks': {
+   const [card]=hand.splice(effect.index,1);
+   (effect.target.host.attachments??=[]).push(card);
+   break;
+  }
+  case 'overload': {
+   const [card]=hand.splice(effect.index,1);
+   const frame={kind:'interrupt',interrupt:'overload',site:entry.slot,side,card,entry};
+   if(state.game&&interruptResponses(PremiereGame.otherSide(side),frame).length)PremiereGame.openResponse(state.game,frame);
+   else resolveOverload(frame);
+   break;
+  }
+  case 'defuse':
+   PremiereGame.moveTop(force,used,effect.cost);
+   loseTableCard(entry.side,entry.slot,entry.card);
+   if(battleSession?.weaponTurn)finishWeaponAction(side,false);
+   break;
+ }
+ log(side+' · '+effect.label+'.');
+ return true;
+}
+
+function resolveOverload(frame){
+ const {entry,side,card}=frame;
+ drawDestinySeries(side,'overload',1,0,draws=>{
+  const draw=draws.find(item=>!item.cancelled);
+  const value=draw?.value,limit=printedBattleDestiny(entry.card);
+  if(Number.isFinite(value)&&Number.isFinite(limit)&&value<limit){
+   loseTableCard(entry.side,entry.slot,entry.card);
+   log(entry.card.name+' geht durch Overload verloren.');
+  }
+  if(value===0&&['Character','Starship'].includes(entry.host?.type))loseTableCard(entry.side,entry.slot,entry.host);
+  if(!draw)log('Overload: Keine wirksame Destiny.');
+  loseOwnedCard(card,side);
+  if(battleSession?.weaponTurn)finishWeaponAction(side,false);
+ });
+}
+
+function automatedDeployOptions(side){
+ const {hand,force}=PremiereGame.zones(state,side);
+ if(state.phase!==2||state.activeSide!==side)return [];
+ return (hand??[]).flatMap((card,index)=>{
+  const projector=PremiereWeapons.projector(card),mine=PremiereWeapons.mine(card),seeker=PremiereWeapons.seeker(card);
+  if(!projector&&!mine&&!seeker||card.side!==side)return [];
+  const cost=projector?2:seeker?1:0;
+  if(cost>(force?.length??0))return [];
+  return state.locations.flatMap((loc,slot)=>{
+   if(!loc||!isSite(loc))return [];
+   if(projector&&!loc.locationTags?.includes('Interior'))return [];
+   if(mine&&!PremiereLocations.presentCards(state,side,slot).some(unit=>PremiereWeapons.miningDroid(unit)&&PremiereUnits.active(unit)))return [];
+   if(seeker&&(!PremiereGame.sides.every(actor=>confirmedPresence(actor,slot)===false)||
+      allWeaponEntries().some(entry=>entry.slot===slot&&entry.card.type==='Character'&&entry.card.undercover&&!entry.unavailable)))return [];
+   return [{card,index,slot,cost}];
+  });
+ });
+}
+
+function mineLayers(side,slot){
+ return PremiereLocations.presentCards(state,side,slot).some(card=>PremiereWeapons.miningDroid(card)&&PremiereUnits.active(card));
+}
+
+function buryWeaponCard(side,index,slot){
+ const {hand}=PremiereGame.zones(state,side);
+ if(state.phase!==2||state.activeSide!==side||!isExteriorPlanetSite(state.locations[slot])||!mineLayers(side,slot)||!hand[index])return false;
+ (state.buriedMines??=[]).push({side,slot,card:hand.splice(index,1)[0]});
+ log(side+' vergräbt eine Karte bei '+state.locations[slot].name+'.');
+ return true;
+}
+
+function mineTraffic(){
+ return allWeaponEntries().filter(entry=>!entry.unavailable&&['Character','Starship','Vehicle'].includes(entry.card.type));
+}
+
+function noteMineTraversal(side,from,to,card){
+ if(!state.buriedMines?.length)return;
+ const order=boardLocationOrder(),a=order.indexOf(from),b=order.indexOf(to);
+ state.mineTraversal={side,card,slots:order.slice(Math.min(a,b)+1,Math.max(a,b))};
+}
+
+function revealTrippedMines(before){
+ const path=state.mineTraversal;
+ delete state.mineTraversal;
+ if(!state.buriedMines?.length||!before)return;
+ const arrivals=new Map();
+ for(const {side,slot,card} of mineTraffic())if(before.get(card)!==slot)arrivals.set(slot,{side});
+ for(const slot of path?.slots??[])arrivals.set(slot,{side:path.side,crossing:path.card});
+ state.buriedMines=state.buriedMines.filter(record=>{
+  const arrival=arrivals.get(record.slot);
+  if(!arrival)return true;
+  log('Aufgedeckt bei '+state.locations[record.slot].name+' · '+record.card.name+'.');
+  if(PremiereWeapons.mine(record.card))(state.mineQueue??=[]).push({...record,actor:arrival.side,crossing:arrival.crossing});
+  else loseOwnedCard(record.card,record.side);
+  return false;
+ });
+}
+
+function explodeMine(side,slot,card,crossing){
+ drawDestinySeries(side,'mine',1,0,draws=>{
+  const pending={kind:'mine',card,slot,place:slot,crossing,side:PremiereGame.otherSide(side),remaining:PremiereBattle.total(draws)??0};
+  log(card.name+' explodiert bei '+state.locations[slot].name+' · '+(draws.length?'Destiny '+pending.remaining:'Reserve Deck leer')+'.');
+  if(pending.remaining>0&&automatedTargets(pending).length)state.automatedPending=pending;
+ });
+}
+
+function settleTrippedMine(record,defused=false){
+ loseOwnedCard(record.card,record.side);
+ if(!defused&&PremiereWeapons.mine(record.card)&&record.actor!==record.side)explodeMine(record.side,record.slot,record.card,record.crossing);
+}
+
+function handleTrippedMine(side,defuse){
+ const pending=state.automatedPending;
+ if(pending?.kind!=='defuse'||pending.side!==side)return false;
+ if(defuse){
+  const {force,used}=PremiereGame.zones(state,side);
+  if(!force.length||!mineLayers(side,pending.slot))return false;
+  PremiereGame.moveTop(force,used);
+  log(pending.card.name+' wird entschärft.');
+ }
+ state.automatedPending=null;
+ settleTrippedMine(pending.record,defuse);
+ return true;
+}
+
+function deployAutomated(side,index,slot){
+ const move=automatedDeployOptions(side).find(choice=>choice.index===index&&choice.slot===slot);
+ if(!move)return false;
+ const {hand,force,used,board}=PremiereGame.zones(state,side),[card]=hand.splice(index,1);
+ PremiereGame.moveTop(force,used,move.cost);
+ card.controller=side;
+ if(!PremiereWeapons.projector(card))card.tableSide=PremiereGame.otherSide(side);
+ if(PremiereWeapons.mine(card))card.armedTurn=state.game?.timing.turn??0;
+ board[slot].push(card);
+ log(side+' legt '+card.name+' bei '+state.locations[slot].name+' aus ('+move.cost+' Force).');
+ return true;
+}
+
+function seekerMoves(side){
+ if(state.phase!==1||state.activeSide!==side)return [];
+ const {force}=PremiereGame.zones(state,side);
+ const entries=allWeaponEntries();
+ return entries.flatMap((entry,index)=>{
+  if(entry.unavailable||!PremiereWeapons.seeker(entry.card)||(entry.card.controller??entry.card.side)!==side)return [];
+  const {card,slot:from}=entry,tableSide=card.tableSide??PremiereGame.otherSide(side);
+  const moved=state.movedThisTurn?.includes(card),carrier=entry.carriers[0],origin=state.locations[from];
+  const choices=[];
+  const add=(to,cost,args,label,host)=>{
+   if(cost<=(force?.length??0))choices.push({args,entry,to,from,cost,card,label,host});
+  };
+  if(carrier){
+   if(isSite(origin))add(from,0,[index,from,'exit'],card.name+' verlässt '+carrier.name);
+   if(!moved&&PremiereUnits.capital(carrier)&&isPlanetSystem(origin))state.locations.forEach((loc,to)=>{
+    if(isExteriorPlanetSite(loc)&&sitePlanet(loc)===locationGroup(origin))add(to,1,[index,to,'shuttle'],card.name+' shuttelt nach '+loc.name);
+   });
+   return choices;
+  }
+  if(!moved)state.locations.forEach((loc,to)=>{
+   if(!loc||!isSite(loc)||from===to)return [];
+   const bay=PremiereLocations.conditions(state,from,tableSide);
+   const transit=bay.dockingBay&&PremiereLocations.conditions(state,to,tableSide).dockingBay;
+   const cost=transit?bay.transitCost:adjacentSites(from,to)?1:null;
+   if(cost!==null)add(to,cost,[index,to],card.name+' → '+loc.name+' ('+cost+' Force)');
+  });
+  entries.forEach((target,i)=>{
+   const host=target.card,loc=state.locations[target.slot];
+   if(target.side!==tableSide||target.unavailable||target.carriers.length||!PremiereUnits.active(host))return;
+   if(target.slot===from&&isSite(origin)&&['Vehicle','Starship'].includes(host.type)){
+    add(from,0,[index,from,'embark',i],card.name+' steigt auf '+host.name,host);
+   }else if(!moved&&PremiereUnits.capital(host)&&isExteriorPlanetSite(origin)&&isPlanetSystem(loc)&&sitePlanet(origin)===locationGroup(loc)){
+    add(target.slot,1,[index,target.slot,'shuttle',i],card.name+' shuttelt zu '+host.name,host);
+   }
+  });
+  return choices;
+ });
+}
+
+function moveSeeker(side,...args){
+ const move=seekerMoves(side).find(choice=>choice.args.length===args.length&&choice.args.every((value,i)=>value===args[i]));
+ if(!move)return false;
+ const {board,force,used}=PremiereGame.zones(state,side);
+ if(!detachTableCard(move.entry.side,move.from,move.card))return false;
+ if(move.host)PremiereUnits.add(move.host,move.card,'seeker',side);
+ else board[move.to].push(move.card);
+ if(!['embark','exit'].includes(args[2]))(state.movedThisTurn??=[]).push(move.card);
+ PremiereGame.moveTop(force,used,move.cost);
+ log(move.label+'.');
+ return true;
+}
+
+function automatedTargets(pending){
+ return allWeaponEntries().filter(entry=>!entry.unavailable&&entry.card.type==='Character'&&
+  (pending.kind==='seeker'?PremiereLocations.physicalPlace(entry)===pending.place&&
+  PremiereWeapons.seekerTarget(pending.card,entry.card,cardAbility(entry.card)):entry.side===pending.side&&
+   (entry.slot===pending.slot||entry.card===pending.crossing||entry.carriers.includes(pending.crossing))));
+}
+
+function findAutomatedWeapons(){
+ if(!state?.game||state.automatedPending||state.gameWinner||state.pendingForceLoss||
+    state.game.timing.pending||PremiereGame.responseWindow(state.game))return;
+ while(state.mineQueue?.length){
+  const record=state.mineQueue.shift(),{side,slot,card,actor}=record;
+  if(PremiereWeapons.mine(card)&&actor!==side&&state.activeSide===side&&mineLayers(side,slot)&&PremiereGame.zones(state,side).force.length){
+   state.automatedPending={kind:'defuse',card,slot,side,record};
+   return;
+  }
+  settleTrippedMine(record);
+  if(state.automatedPending||PremiereGame.responseWindow(state.game))return;
+ }
+ applyWuher();
+ const entries=allWeaponEntries();
+ for(const entry of entries){
+  const {card,slot}=entry;
+  if(entry.unavailable)continue;
+  const owner=card.controller??card.side;
+  if(PremiereWeapons.mine(card)&&Number.isInteger(card.armedTurn)&&owner===state.activeSide&&card.armedTurn<state.game.timing.turn){
+   loseTableCard(entry.side,slot,card);
+   explodeMine(owner,slot,card);
+   if(state.automatedPending||PremiereGame.responseWindow(state.game))return;
+  }
+  if(PremiereWeapons.seeker(card)){
+   const pending={kind:'seeker',card,slot,place:PremiereLocations.physicalPlace(entry),side:owner,entry};
+   const targets=automatedTargets(pending);
+   if(targets.length){
+    state.automatedPending=pending;
+    if(targets.length===1){resolveAutomatedTarget(owner,0);findAutomatedWeapons();return;}
+    else return;
+   }
+  }
+ }
+}
+
+function applyWuher(){
+ const entries=allWeaponEntries(),current=state.game.timing.turn;
+ for(const {card,side,slot,unavailable} of entries){
+  if(card.id!=='Dark:2834'||unavailable)continue;
+  const cantina=locationTitle(state.locations[slot])==='tatooine: cantina';
+  const phaseStart=state.phase===1&&state.activeSide===side&&card.wuherControlTurn!==current;
+  if(!cantina&&!phaseStart)continue;
+  if(phaseStart)card.wuherControlTurn=current;
+  for(const target of entries){
+   if(target.slot!==slot||(!cantina&&PremiereLocations.physicalPlace(target)!==slot)||
+      (target.card.type!=='Weapon'&&!isDroid(target.card)))continue;
+   if(loseTableCard(target.side,slot,target.card))log('Wuher · '+target.card.name+' geht verloren.');
+  }
+ }
+}
+
+function resolveAutomatedTarget(side,index){
+ const pending=state.automatedPending;
+ if(!pending||!Number.isInteger(index)||pending.side!==side)return false;
+ const target=automatedTargets(pending)[index];
+ if(!target||!loseTableCard(target.side,target.slot,target.card))return false;
+ log(pending.card.name+' · '+target.card.name+' geht verloren.');
+ if(pending.kind==='seeker'){
+  loseTableCard(pending.entry.side,pending.slot,pending.card);
+  state.automatedPending=null;
+ }else if(--pending.remaining===0||!automatedTargets(pending).length)state.automatedPending=null;
  return true;
 }
 
@@ -843,6 +1238,13 @@ function botDeployPhase(){
    if(!performAction(device))break;
    actions.push(device.host.name+' erhält '+device.card.name);continue;
   }
+  const automated=available.find(action=>action.kind==='deployAutomated');
+  if(automated){
+   if(!performAction(automated))break;
+   actions.push(automated.card.name+' auslegen');
+   if(state.automatedPending)break;
+   continue;
+  }
   const option=available.find(x=>x.kind==='deployWithPilot')??available.find(x=>x.kind==='deploy');
   if(!option)break;
   const deployed=performAction(option);
@@ -862,13 +1264,13 @@ function botBegin(){state.botTurn={steps:botPlan(),index:0};botSay('Dark Side be
 function botNextStep(){
  if(!state?.botTurn||state.gameWinner)return false;
  const window=PremiereGame.responseWindow(state.game);
- if(window||state.game?.timing.pending)return performAction(legalActions(state,'Dark')[0]);
+ if(window||state.game?.timing.pending||state.automatedPending)return performAction(legalActions(state,'Dark')[0]);
  if(state.pendingForceLoss||battleSession)return false;
  const deferred=state.botTurn.decision;
  const action=deferred?{kind:deferred}:state.botTurn.steps[state.botTurn.index];
  if(!deferred&&action?.kind==='deploy'&&state.phase===1&&botDrain())return true;
  if(!action||!requestAction(deferred?'botDecision':'botStep','Dark',[action.kind]))return false;
- if(state.game?.timing.pending)return true;
+ if(state.game?.timing.pending||state.automatedPending)return true;
  const available=legalActions(state,'Dark');
  if(action.kind==='move'){
   const choice=available.filter(x=>x.kind==='move').sort((a,b)=>botMoveScore(b)-botMoveScore(a))[0];
@@ -891,6 +1293,8 @@ function botNextStep(){
  }else if(action.kind==='control'){
   const retrieval=available.find(option=>option.kind==='retrieve');
   if(retrieval)performAction(retrieval);
+  const seeker=available.find(option=>option.kind==='moveSeeker');
+  if(seeker)requestAction('moveSeeker','Dark',seeker.args);
   if(!botDrain())botSay('Control: Keine weitere Location erlaubt einen Force Drain.');
  }else if(action.kind==='deploy'){
   const actions=botDeployPhase();
@@ -958,7 +1362,7 @@ function battleTotals(i){
 function battleCandidates(side,slot){
  const {board}=PremiereGame.zones(state,side);
  function units(card){
-  if(!PremiereUnits.active(card)||card.excludedFromBattle||card.cannotBattle)return [];
+  if(!PremiereUnits.active(card)||card.excludedFromBattle||card.cannotBattle||['Weapon','Device','Effect'].includes(card.type))return [];
   return [card,...(card.occupants??[]).filter(entry=>!['cargo','hangar'].includes(entry.role)).flatMap(entry=>units(entry.card))];
  }
  return (board?.[slot]??[]).flatMap(units);
@@ -1002,7 +1406,7 @@ function initiateBattleFor(side,i){
  if(state.game){
   Object.assign(battleSession,{segmented:true,segment:'initiation',participants:{Light:[],Dark:[]},
    extraDraws:{Light:0,Dark:0},powerDestiny:{Light:0,Dark:0},attritionDestiny:{Light:0,Dark:0},
-   battleDrawSucceeded:{Light:false,Dark:false}});
+   battleDrawSucceeded:{Light:false,Dark:false},hitUnits:{Light:[],Dark:[]}});
   refreshBattleParticipants();
  }
  log(side+' initiiert Battle bei '+state.locations[i].name+' (1 Force → Used Pile).');
@@ -1015,7 +1419,7 @@ function enterBattleSegments(){
   const x=battleSession;
   if(x.segmented)x.segment='weapons';
   if(battleWeaponOptions('Light').length||battleWeaponOptions('Dark').length||
-     (x.segmented&&PremiereGame.sides.some(side=>battleEffectOptions(side).length)))x.weaponTurn=x.initiator;
+     (x.segmented&&PremiereGame.sides.some(side=>battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
   else if(x.segmented)x.segment='power';
  });
 }
@@ -1283,28 +1687,48 @@ function maybePlanBotForfeits(){
 
 function setBattleModifier(side,kind,value){const x=battleSession;if(!x||state.phase!==3||(x.segmented&&(!state.trainingBattle||x.segment==='damage')))return;const key=(side==='Light'?'light':'dark')+(kind==='power'?'PowerMod':'Bonus');const n=Number(value);if(!Number.isInteger(n)||n<0||n>20){log('Ungültiger Modifikator (0–20).');return}x[key]=n;log(side+' manueller '+(kind==='power'?'Power':'zusätzlicher Battle-Destiny')+'-Bonus '+n+' (Lernübung).');publishGame()}
 
-function battleWeaponOptions(side){
+function battleWeaponOptions(side,timing='weapons'){
  const x=battleSession;
  if(!x||x.resolved||state?.phase!==3||x.lightCard!==null||x.darkCard!==null)return [];
- const light=side==='Light',hosts=(light?state.light:state.dark)[x.site];
- const targets=(light?state.dark:state.light)[x.site],force=light?state.force:state.botForce;
- const options=[];
- hosts.forEach((host,hostIndex)=>{
-  if(x.segmented&&(!x.participants[side].includes(host)||!PremiereUnits.active(host)))return;
-  if(!x.segmented&&!PremiereUnits.usesMultipleWeapons(host)&&state.weaponUsersThisTurn?.includes(host))return;
-  (host.weapons??[]).forEach((weapon,weaponIndex)=>{
-   if(x.usedWeapons?.includes(weapon)||!PremiereUnits.canUseWeapon(state,host,weapon))return;
-   const rule=basicWeaponRule(weapon);
-   if(!rule||weapon.side!==side||force.length<rule.cost)return;
-   targets.forEach((target,targetIndex)=>{
-    const opponent=PremiereGame.otherSide(side);
-    if(x.segmented&&(!x.participants[opponent].includes(target)||!PremiereUnits.active(target)))return;
-    const defense=isBantha(target)?target.maneuver:target.type==='Character'?cardAbility(target):null;
-    if(Number.isFinite(defense))options.push({host,hostIndex,weapon,weaponIndex,target,targetIndex,defense,...rule});
+ const opponent=PremiereGame.otherSide(side),{force}=PremiereGame.zones(state,side);
+ const targets=weaponTargets(opponent,x.site);
+ return weaponMounts(side).flatMap(mount=>{
+  const {host,slot:from,place}=mount;
+  if(PremiereWeapons.disarmed(host)||x.blockedWeapons?.includes(host))return [];
+  if(!x.segmented&&!PremiereUnits.usesMultipleWeapons(host)&&state.weaponUsersThisTurn?.includes(host))return [];
+  return mountWeapons(mount).flatMap((weapon,weaponIndex)=>{
+   const rule=PremiereWeapons.definition(weapon);
+   if(!rule||weapon.side!==side||(rule.timing??'weapons')!==timing)return [];
+   if(x.repeatingWeapon?x.repeatingWeapon!==weapon:x.usedWeapons?.includes(weapon))return [];
+   if(!PremiereUnits.canUseWeapon(state,host,weapon))return [];
+   if(host.type==='Starship'&&!craftStats(host,from).powered)return [];
+   const external=from!==x.site;
+   if(external&&(!rule.adjacent||place!==from||!adjacentSites(from,x.site)))return [];
+   if(!external&&x.segmented&&!x.participants[side].includes(host)&&!rule.projector&&!isLoc(host))return [];
+   if(rule.generator&&!PremiereLocations.presentCards(state,side,place).some(unit=>isPowerDroid(unit)||
+      unit.characteristics?.includes('fusion generator')||/^portable fusion generator$/i.test(unit.name??'')))return [];
+   return targets.flatMap(({card:target,index:targetIndex,place:targetPlace})=>{
+    if(external?targetPlace!==x.site:targetPlace!==place)return [];
+    const defense=PremiereWeapons.defense(target,cardAbility(target),craftStats(target,x.site));
+    const shot=PremiereWeapons.shot(weapon,host,target,cardAbility(host),defense);
+    if(!shot||shot.cost>force.length)return [];
+    const args=[mount.index,weaponIndex,targetIndex];
+    if(external)args.push(from);
+    return [{...shot,host,weapon,target,targetIndex,args,hostIndex:mount.index,weaponIndex,from}];
    });
   });
  });
- return options;
+}
+
+function weaponTargets(side,slot){
+ const x=battleSession,roots=PremiereGame.zones(state,side).board?.[slot]??[];
+ return PremiereLocations.entries(state,side).filter(entry=>entry.slot===slot).flatMap((entry,index)=>{
+  const target=entry.card,automated=PremiereWeapons.projector(target)||PremiereWeapons.seeker(target);
+  if(entry.unavailable||(!PremiereUnits.active(target)&&!automated))return [];
+  if(x?.segmented&&!x.participants[side].includes(target)&&!automated)return [];
+  const root=roots.indexOf(target);
+  return [{card:target,index:root>=0?root:roots.length+index,place:PremiereLocations.physicalPlace(entry)}];
+ });
 }
 
 function finishWeaponAction(side,passed){
@@ -1318,43 +1742,94 @@ function finishWeaponAction(side,passed){
 
 function passBattleWeapons(side){
  if(!battleSession||battleSession.weaponTurn!==side||state?.phase!==3)return false;
+ if(battleSession.repeatingWeapon){
+  log(side+' beendet das wiederholte Feuern.');
+  battleSession.repeatingWeapon=null;
+  finishWeaponAction(side,false);
+  return true;
+ }
  log(side+' passt im Waffen-Segment.');
  finishWeaponAction(side,true);
  return true;
 }
 
-function fireBattleWeapon(side,hostIndex,weaponIndex,targetIndex){
+function fireBattleWeapon(side,...args){
  if(!battleSession||battleSession.weaponTurn!==side)return false;
- const shot=battleWeaponOptions(side).find(x=>x.hostIndex===hostIndex&&x.weaponIndex===weaponIndex&&x.targetIndex===targetIndex);
+ const shot=battleWeaponOptions(side).find(option=>option.args.length===args.length&&option.args.every((value,i)=>value===args[i]));
  if(!shot)return false;
- const {force,used}=PremiereGame.zones(state,side);
- PremiereGame.moveTop(force,used,shot.cost);
- (state.weaponUsersThisTurn??=[]).push(shot.host);
- PremiereUnits.recordWeaponUse(state,shot.host,shot.weapon);
- (battleSession.usedWeapons??=[]).push(shot.weapon);
- battleSession.lastHit=null;
- drawDestinySeries(side,'weapon',1,shot.bonus,draws=>{
-  const draw=draws.find(item=>!item.cancelled),total=PremiereBattle.total(draws);
-  const hit=!!draw&&!draw.cancelled&&total!==null&&total>shot.defense;
-  log(side+' feuert '+shot.weapon.name+' auf '+shot.target.name+' ('+shot.cost+' Force). Waffen-Destiny: '+(draw?draw.card.name+' · '+(total??'unbekannt'):'Reserve Deck leer')+' gegen Verteidigung '+shot.defense+' → '+(hit?'Treffer':'kein Treffer')+'.');
-  if(hit){
-   const opponent=PremiereGame.otherSide(side);
-   recordBattleWeaponHit(opponent,targetIndex);
-   battleSession.lastHit={side:opponent,card:shot.target};
+ const x=battleSession;
+ shootWeapon(side,shot,()=>{
+  x.repeatingWeapon=shot.repeats?shot.weapon:null;
+  if(x.repeatingWeapon&&battleWeaponOptions(side).length){
+   x.weaponPassed=false;
+   publishGame();
+  }else{
+   x.repeatingWeapon=null;
+   finishWeaponAction(side,false);
   }
-  finishWeaponAction(side,false);
  });
  return true;
 }
 
+function shootWeapon(side,shot,complete){
+ const x=battleSession,{force,used}=PremiereGame.zones(state,side);
+ const slot=shot.targetSlot??x.site,opponent=PremiereGame.otherSide(side);
+ PremiereGame.moveTop(force,used,shot.cost);
+ (state.weaponUsersThisTurn??=[]).push(shot.host);
+ PremiereUnits.recordWeaponUse(state,shot.host,shot.weapon);
+ if(x){
+  (x.usedWeapons??=[]).push(shot.weapon);
+  x.lastHit=null;
+ }
+ const loc=state.locations[shot.from];
+ const printed=PremiereLocations.printedSide(state,shot.from,side);
+ const sourceBonus=printed==='Dark'&&['Dark:673','Dark:2461','Light:2462'].includes(loc?.id)?1:0;
+ drawDestinySeries(side,'weapon',shot.draws,sourceBonus,draws=>{
+  const valid=draws.filter(draw=>!draw.cancelled);
+  const sum=PremiereBattle.total(draws),total=valid.length&&sum!==null?Math.max(0,sum+shot.bonus):null;
+  const hit=total!==null&&total>shot.defense;
+  log(side+' feuert '+shot.weapon.name+' auf '+shot.target.name+' ('+shot.cost+' Force). Waffen-Destiny: '+
+   (draws.length?draws.map(draw=>draw.card.name+(draw.cancelled?' (aufgehoben)':'')).join(', ')+' · '+(total??'unbekannt'):'Reserve Deck leer')+
+   ' gegen Verteidigung '+shot.defense+' → '+(hit?(shot.effect==='ion'?'Ionenschaden':'Treffer'):'kein Treffer')+'.');
+  if(hit)applyWeaponResult(shot,opponent,slot);
+  complete();
+ });
+}
+
+function applyWeaponResult(shot,opponent,slot){
+ const x=battleSession,target=shot.target;
+ if(shot.effect==='ion'){
+  for(const weapon of [...(target.weapons??[])].filter(card=>card.subType==='Starship')){
+   target.weapons.splice(target.weapons.indexOf(weapon),1);
+   loseOwnedCard(weapon,opponent);
+  }
+  target.ionDamage=true;
+  log(target.name+' verliert seine Schiffswaffen. Verteidigungswert und Hyperspeed fallen auf 0.');
+ }else if(shot.effect==='block'){
+  (x.blockedWeapons??=[]).push(target);
+  log(target.name+' kann in diesem Battle keine Waffen verwenden.');
+ }else if(shot.effect==='destroy'||!x){
+  loseTableCard(opponent,slot,target);
+ }else{
+  if(shot.effect==='zero')(x.zeroForfeit??=[]).push(target);
+  const roots=PremiereGame.zones(state,opponent).board[slot];
+  const index=roots.indexOf(target);
+  const hits=((x.hitUnits??={Light:[],Dark:[]})[opponent]);
+  if(!hits.includes(target))hits.push(target);
+  if(index>=0)recordBattleWeaponHit(opponent,index);
+  else log(target.name+' ist getroffen: verpflichtender Forfeit im Damage-Segment.');
+  x.lastHit={side:opponent,card:target};
+ }
+}
+
 function botWeaponAction(){
  if(battleSession?.weaponTurn!=='Dark')return null;
- const hitTargets=battleSession.weaponHits.Light;
+ const hitTargets=battleSession.hitUnits?.Light??[];
  const available=legalActions(state,'Dark');
- const options=available.filter(x=>x.kind==='fireWeapon'&&!hitTargets.includes(x.targetIndex)&&state.botDeck.length);
+ const options=available.filter(x=>x.kind==='fireWeapon'&&!hitTargets.includes(x.target)&&state.botDeck.length);
  options.sort((a,b)=>(b.target.power??0)-(a.target.power??0)||a.defense-a.bonus-b.defense+b.bonus||a.cost-b.cost);
  const choice=options[0];
- return choice??available.find(x=>x.kind==='battleEffect')??available.find(x=>x.kind==='passWeapons');
+ return choice??available.find(x=>x.kind==='battleEffect'||x.kind==='weaponEffect')??available.find(x=>x.kind==='passWeapons');
 }
 function botWeaponDecision(){return performAction(botWeaponAction())}
 // Hits still participate in combat. The damage segment requires them to be forfeited.
@@ -1429,6 +1904,7 @@ function battleImmunity(side,card){
 }
 
 function battleForfeitValue(card,side){
+ if(battleSession.zeroForfeit?.includes(card))return 0;
  const base=card.battleForfeit??card.forfeit;
  if(!Number.isFinite(base))return null;
  const {site:slot}=battleSession,loc=state.locations[slot],printed=PremiereLocations.printedSide(state,slot,side);
@@ -1458,7 +1934,7 @@ function prepareDamageSegment(){
  if(!result)return;
  const debt=Object.fromEntries(PremiereGame.sides.map(side=>{
   const key=side.toLowerCase(),{board}=PremiereGame.zones(state,side);
-  const hits=(x.weaponHits[side]??[]).map(index=>board[x.site][index]).filter(Boolean);
+  const hits=(x.hitUnits?.[side]??(x.weaponHits[side]??[]).map(index=>board[x.site][index])).filter(card=>activeBattleUnits(side).includes(card));
   const attrition=result[key+'Attrition'],members=activeBattleUnits(side);
   const immunity=members.filter(card=>{
    if(card.immunityCancelled)return false;
@@ -1492,21 +1968,44 @@ function battleDamageOptions(side){
 }
 
 function removeBattleUnit(side,card){
- const slot=battleSession.site,{board}=PremiereGame.zones(state,side);
- function detach(row){
-  const index=row.findIndex(entry=>(entry.card??entry)===card);
-  if(index>=0){row.splice(index,1);return true;}
-  return row.some(entry=>{const unit=entry.card??entry;return unit.occupants?.length&&detach(unit.occupants);});
- }
- if(!detach(board[slot]))return false;
- PremiereUnits.remove(card,unit=>{
-  const owner=unit.owner??unit.side??side;
-  PremiereGame.zones(state,owner).lost.push(unit);
- },passenger=>{
+ return loseTableCard(side,battleSession.site,card);
+}
+
+function loseOwnedCard(card,fallback){
+ PremiereGame.zones(state,card.owner??card.side??fallback).lost.push(card);
+}
+
+function loseTableCard(side,slot,card){
+ if(!detachTableCard(side,slot,card))return false;
+ PremiereUnits.remove(card,unit=>loseOwnedCard(unit,side),passenger=>{
   const controller=passenger.controller??side;
   PremiereGame.zones(state,controller).board[slot].push(passenger);
   log(passenger.name+' steigt vom verlorenen Bantha ab.');
  });
+ return true;
+}
+
+function detachTableCard(side,slot,card){
+ const {board}=PremiereGame.zones(state,side);
+ function detach(row){
+  const index=row.findIndex(entry=>(entry.card??entry)===card);
+  if(index>=0){row.splice(index,1);return true;}
+  return row.some(entry=>{
+   const unit=entry.card??entry;
+   return [unit.occupants,unit.weapons,unit.attachments].some(children=>children?.length&&detach(children));
+  });
+ }
+ return detach(board?.[slot]??[])||detach(state.locationWeapons?.[slot]??[]);
+}
+
+function useGaderffii(side,...args){
+ const frame=PremiereGame.responseWindow(state.game);
+ if(frame?.kind!=='battle'||frame.priority!==side)return false;
+ const shot=battleWeaponOptions(side,'initiation').find(item=>item.args.length===args.length&&item.args.every((value,i)=>value===args[i]));
+ if(!shot)return false;
+ frame.priority=PremiereGame.otherSide(side);
+ frame.passes=0;
+ shootWeapon(side,shot,()=>{});
  return true;
 }
 
@@ -1644,7 +2143,7 @@ function reactOptions(side, window){
   const dantooine=card.type==='Starship'&&destination?.id==='Dark:607'&&PremiereLocations.printedSide(state,window.site,side)==='Dark';
   if(!dantooine&&!['Light:2250','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
   return travelOptions(card,side,from,window.site,true).filter(option=>option.cost<=force.length)
-   .map(option=>({from,index,card,cost:option.cost}));
+   .map(option=>({from,index,card,cost:option.cost,movement:option.kind}));
  }));
 }
 
@@ -1658,9 +2157,11 @@ function reactDeployOptions(side,window){
  return (hand??[]).flatMap((card,index)=>{
   if(state.cancelledReactTitles?.includes(locationTitle(card))||jawaCosts.has(card.id))return [];
   const cost=boardDeployCost(card,loc,side);
-  const options=cost===null?[]:[{card,index,cost,pilotIndex:-1}];
+  const options=cost===null?[]:[{card,index,cost,args:[index,-1]}];
   return options.concat(deployPilotOptions(side,index,window.site).map(pilot=>
-   ({card,index,cost:pilot.cost,pilotIndex:pilot.index,pilot:pilot.pilot})));
+   ({card,index,cost:pilot.cost,args:[index,pilot.index],pilot:pilot.pilot})),
+   weaponPlacementOptions(side,card,window.site).map(option=>
+    ({card,index,cost:option.cost,args:[index,-1,option.hostIndex],mount:option.mount})));
  });
 }
 
@@ -1668,7 +2169,8 @@ function openReactWindow(kind,side,site,bonus){
  if(!state.game)return false;
  const frame={kind,side,site,bonus};
  const opponent=PremiereGame.otherSide(side);
- if(!reactOptions(opponent,frame).length&&!reactDeployOptions(opponent,frame).length&&!interruptResponses(opponent,frame).length)return false;
+ const stick=kind==='battle'&&PremiereGame.sides.some(actor=>battleWeaponOptions(actor,'initiation').length);
+ if(!stick&&!reactOptions(opponent,frame).length&&!reactDeployOptions(opponent,frame).length&&!interruptResponses(opponent,frame).length)return false;
  PremiereGame.openResponse(state.game,frame);
  return true;
 }
@@ -1685,6 +2187,8 @@ function resolveResponsePass(side){
   const parent=PremiereGame.responseWindow(game);
   if(frame.interrupt==='battleEffect'){
    settleBattleEffect(frame);
+  }else if(frame.interrupt==='overload'){
+   resolveOverload(frame);
   }else if(frame.interrupt==='assault'){
    PremiereGame.cancelResponse(game,parent);
    resolveAssault(frame,parent.side);
@@ -1709,12 +2213,19 @@ function resolveResponsePass(side){
   const index=frame.deploy?-1:board[frame.from].indexOf(frame.card);
   if(frame.deploy||index>=0){
    if(frame.deploy){
-    frame.card.controller=frame.side;
-    if(frame.pilot)PremiereUnits.add(frame.card,frame.pilot,'pilot',frame.side);
-    board[frame.site].push(frame.card);
-    (state.deployedThisTurn??=[]).push(frame.card);
+    if(frame.mount){
+     const stillPresent=weaponMounts(frame.side).find(mount=>mount.slot===frame.site&&mount.host===frame.mount.host);
+     if(stillPresent&&!PremiereWeapons.disarmed(stillPresent.host))attachWeapon(stillPresent,frame.card);
+     else loseOwnedCard(frame.card,frame.side);
+    }else{
+     frame.card.controller=frame.side;
+     if(frame.pilot)PremiereUnits.add(frame.card,frame.pilot,'pilot',frame.side);
+     board[frame.site].push(frame.card);
+     (state.deployedThisTurn??=[]).push(frame.card);
+    }
    }else{
     board[frame.site].push(...board[frame.from].splice(index,1));
+    if(frame.movement==='Landspeed')noteMineTraversal(frame.side,frame.from,frame.site,frame.card);
    }
    log(frame.side+' · '+frame.card.name+' reagiert bei '+state.locations[frame.site].name+'.');
    const parent=PremiereGame.responseWindow(game);
@@ -1737,7 +2248,10 @@ function settleCancelledResponse(game){
  const cancelled=PremiereGame.removeCancelledResponse(game);
  if(cancelled?.kind==='interrupt'){
   if(cancelled.interrupt==='battleEffect')settleBattleEffect(cancelled);
-  else PremiereGame.zones(state,cancelled.side).lost.push(cancelled.card);
+  else{
+   PremiereGame.zones(state,cancelled.side).lost.push(cancelled.card);
+   if(cancelled.interrupt==='overload'&&battleSession?.weaponTurn)finishWeaponAction(cancelled.side,false);
+  }
   log(cancelled.card.name+' wurde aufgehoben und kommt in den Lost Pile.');
  }
  if(cancelled?.kind==='react'&&cancelled.deploy){
@@ -1753,7 +2267,7 @@ function initiateReact(side,from,index){
  const option=reactOptions(side,window).find(x=>x.from===from&&x.index===index);
  if(!option)return false;
  const {force,used}=PremiereGame.zones(state,side);
- if(!PremiereGame.answer(game,side,{kind:'react',site:window.site,from,card:option.card}))return false;
+ if(!PremiereGame.answer(game,side,{kind:'react',site:window.site,from,card:option.card,movement:option.movement}))return false;
  PremiereGame.moveTop(force,used,option.cost);
  (state.reactedThisTurn??=[]).push(option.card,...(option.card.occupants??[]).map(entry=>entry.card));
  if(option.card.instanceId)PremiereGame.useOnce(game,'turn','react:'+option.card.instanceId);
@@ -1761,10 +2275,10 @@ function initiateReact(side,from,index){
  return true;
 }
 
-function initiateReactDeploy(side,index,pilotIndex){
+function initiateReactDeploy(side,index,pilotIndex,hostIndex){
  const game=state.game,window=PremiereGame.responseWindow(game);
- const option=reactDeployOptions(side,window).find(choice=>choice.index===index&&choice.pilotIndex===pilotIndex);
- if(!option||!PremiereGame.answer(game,side,{kind:'react',deploy:true,site:window.site,card:option.card,pilot:option.pilot}))return false;
+ const option=reactDeployOptions(side,window).find(choice=>choice.index===index&&choice.args[1]===pilotIndex&&choice.args[2]===hostIndex);
+ if(!option||!PremiereGame.answer(game,side,{kind:'react',deploy:true,site:window.site,card:option.card,pilot:option.pilot,mount:option.mount}))return false;
  const {hand,force,used}=PremiereGame.zones(state,side);
  for(const i of [index,pilotIndex].filter(i=>i>=0).sort((a,b)=>b-a))hand.splice(i,1);
  PremiereGame.moveTop(force,used,option.cost);
@@ -1784,7 +2298,7 @@ function interruptResponses(side,window){
  const kind=window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
  if(!kind)return [];
  const ids=kind==='sense'?['Light:2217','Dark:2216']:['Light:95','Dark:94'];
- const requiresDestiny=window.kind==='react'||['assault','battleEffect'].includes(window.interrupt);
+ const requiresDestiny=window.kind==='react'||['assault','battleEffect','overload'].includes(window.interrupt);
  const ability=requiresDestiny?Math.max(0,...PremiereLocations.activeCards(state,side)
   .filter(card=>card.type==='Character'&&!card.undercover).map(card=>cardAbility(card)??0)):0;
  if(requiresDestiny&&!ability)return [];
@@ -1834,14 +2348,21 @@ function legalActions(position,side){
   return choices.length?choices.map(x=>offer('chooseStart',[x.index],{card:x.card})):[offer('chooseStart',[null])];
  }
  if(position.gameWinner)return [];
+ if(position.automatedPending){
+  if(position.automatedPending.side!==side)return [];
+  if(position.automatedPending.kind==='defuse')return [offer('resolveMine',[true],{label:'Entschärfen (1 Force)'}),
+   offer('resolveMine',[false],{label:'Explodieren lassen'})];
+  return automatedTargets(position.automatedPending).map((target,index)=>offer('automatedTarget',[index],{card:target.card}));
+ }
  if(position.game?.timing.pending)return PremiereGame.triggerOptions(position.game,side)
   .map(effect=>offer('timingTrigger',[effect.id],{label:effect.label}));
  const window=PremiereGame.responseWindow(position.game);
  if(window){
   if(side!==window.priority)return [];
   if(window.kind==='destiny')return [...destinyResponses(side,window).map(answer=>offer('destinyResponse',[answer.kind],{label:answer.label})),offer('passResponse')];
-  return [...reactOptions(side,window).map(x=>offer('react',[x.from,x.index],x)),
-   ...reactDeployOptions(side,window).map(x=>offer('reactDeploy',[x.index,x.pilotIndex],x)),
+  return [...(window.kind==='battle'?battleWeaponOptions(side,'initiation').map(shot=>offer('gaderffii',shot.args,{...shot,label:shot.weapon.name+' → '+shot.target.name})):[]),
+   ...reactOptions(side,window).map(x=>offer('react',[x.from,x.index],x)),
+   ...reactDeployOptions(side,window).map(x=>offer('reactDeploy',x.args,x)),
    ...interruptResponses(side,window).map(x=>offer('interruptResponse',[x.index],x)),offer('passResponse')];
  }
  const {hand,deck,force,board}=PremiereGame.zones(position,side);
@@ -1859,8 +2380,10 @@ function legalActions(position,side){
    for(let value=0;value<=20;value++)training.push(offer('trainingModifier',[target,kind,value]));
   }
   if(x.weaponTurn)return x.weaponTurn===side?
-   [...battleWeaponOptions(side).map(shot=>offer('fireWeapon',[shot.hostIndex,shot.weaponIndex,shot.targetIndex],shot)),
-   ...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),offer('passWeapons'),...training]:training;
+   [...battleWeaponOptions(side).map(shot=>offer('fireWeapon',shot.args,shot)),
+   ...(x.repeatingWeapon?[]:[...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
+    ...weaponEffectOptions(side).filter(option=>['defuse','overload'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
+   offer('passWeapons'),...training]:training;
   const first=x.initiator==='Dark'?'Dark':'Light',key=side==='Light'?'lightCard':'darkCard';
   if(x[key]===null){
    if(side!==first&&x[first==='Light'?'lightCard':'darkCard']===null)return training;
@@ -1874,6 +2397,7 @@ function legalActions(position,side){
  }
  const active=position.activeSide??(position.botTurn?'Dark':'Light');
  const actions=side==='Light'&&(!position.game||position.trainingBattle)?[offer('trainingNight',[!position.nightConditions])]:[];
+ for(const option of weaponEffectOptions(side))actions.push(offer('weaponEffect',option.args,option));
  if(side!==active)return actions;
  const botStep=position.botTurn?.steps[position.botTurn.index];
  if(side==='Dark'&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
@@ -1886,7 +2410,9 @@ function legalActions(position,side){
   for(let n=0;n<=max;n++)actions.push(offer('activate',[n]));
  }else if(position.phase===1){
   for(const option of forceDrainOptions(side))actions.push(offer('drain',option.bonus?[option.siteIndex,option.bonus]:[option.siteIndex],option));
+  for(const option of seekerMoves(side))actions.push(offer('moveSeeker',option.args,option));
  }else if(position.phase===2){
+  for(const option of automatedDeployOptions(side))actions.push(offer('deployAutomated',[option.index,option.slot],option));
   for(const [i,card] of (hand??[]).entries()){
    for(const slot of locationDeployPositions(side,i))actions.push(offer('deployLocation',[i,slot],{card}));
    const conversion=conversionTarget(side,i);
@@ -1898,6 +2424,7 @@ function legalActions(position,side){
    for(const [slot,location] of position.locations.entries()){
     const cost=boardDeployCost(card,location,side);
     if(cost!==null)actions.push(offer('deploy',[i,slot],{card,location,cost}));
+    if(isExteriorPlanetSite(location)&&mineLayers(side,slot))actions.push(offer('buryMineCard',[i,slot]));
     for(const pilot of deployPilotOptions(side,i,slot))actions.push(offer('deployWithPilot',[i,slot,pilot.index],pilot));
    }
   }
@@ -1932,6 +2459,12 @@ function executeAction({kind,side,args}){
   case 'transport': return performTransport(side,...args);
   case 'transitGroup': return performTransitGroup(side,...args);
   case 'equip': return deployWeaponFor(side,...args);
+  case 'deployAutomated': return deployAutomated(side,...args);
+  case 'buryMineCard': return buryWeaponCard(side,...args);
+  case 'moveSeeker': return moveSeeker(side,...args);
+  case 'automatedTarget': return resolveAutomatedTarget(side,...args);
+  case 'resolveMine': return handleTrippedMine(side,...args);
+  case 'weaponEffect': return playWeaponEffect(side,...args);
   case 'deployDevice': return deployBackpack(side,...args);
   case 'deploy': {
    const result=deployBoardCardFor(side,...args);
@@ -1941,6 +2474,7 @@ function executeAction({kind,side,args}){
   case 'move': return moveCharacterFor(side,...args);
   case 'battle': return initiateBattleFor(side,...args);
   case 'fireWeapon': return fireBattleWeapon(side,...args);
+  case 'gaderffii': return useGaderffii(side,...args);
   case 'passWeapons': return passBattleWeapons(side);
   case 'battleEffect': return playBattleEffect(side,...args);
   case 'destinyResponse': return answerDestiny(side,...args);
@@ -1968,12 +2502,14 @@ function executeAction({kind,side,args}){
 
 function performAction(action,followUp=true){
  const game=currentGame();
+ const traffic=state?.buriedMines?.length?new Map(mineTraffic().map(entry=>[entry.card,entry.slot])):null;
  const result=PremiereGame.execute(game,action,side=>legalActions(state,side),executeAction);
  if(!result)return false;
+ if(state?.game){revealTrippedMines(traffic);findAutomatedWeapons();}
  if(battleSession?.segmented)stopBattleWithoutPresence();
  if(game&&topLevelActions.has(action.kind))game.rootAction=action.side;
  if(state?.game&&!battleSession)checkLifeForceVictory();
- if(game?.rootAction&&!state.gameWinner&&!state.pendingForceLoss&&!battleSession&&
+ if(game?.rootAction&&!state.gameWinner&&!state.pendingForceLoss&&!state.automatedPending&&!battleSession&&
     !PremiereGame.responseWindow(game)&&!game.timing.pending){
   const priority=PremiereGame.otherSide(game.rootAction);
   delete game.rootAction;

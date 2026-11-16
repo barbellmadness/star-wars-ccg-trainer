@@ -7,6 +7,7 @@ const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.me
 const gameScript=readFileSync(new URL('../engine/premiere-game.js',import.meta.url),'utf8');
 const battleScript=readFileSync(new URL('../engine/premiere-battle.js',import.meta.url),'utf8');
 const unitScript=readFileSync(new URL('../engine/premiere-units.js',import.meta.url),'utf8');
+const weaponScript=readFileSync(new URL('../engine/premiere-weapons.js',import.meta.url),'utf8');
 const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
@@ -20,6 +21,7 @@ function harness(){
  vm.runInContext(battleScript,context);
  vm.runInContext(unitScript,context);
  vm.runInContext(locationScript,context);
+ vm.runInContext(weaponScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
@@ -1685,4 +1687,193 @@ test('using a lightsaber during a drain locks that carrier to the same weapon fo
  run('state.dark[0]=[trooper];state.phase=3;');
  assert.equal(run("requestAction('battle','Light',[0])&&battleSession.segment==='power'"),true);
  assert.equal(run("requestAction('fireWeapon','Light',[0,1,0])"),false);
+});
+
+test('all 25 Premiere weapons have a rule and deck validation admits them',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`catalog.filter(card=>card.type==='Weapon').filter(card=>PremiereWeapons.definition(card)||
+  PremiereWeapons.seeker(card)||PremiereWeapons.mine(card)).length`),25);
+ const lists=structuredClone(starterLists);
+ lists.decks.Light.cards.find(card=>card.id==='Light:259').id='Light:1962';
+ assert.equal(run(`readStarterDecks(${JSON.stringify(lists)},catalog).light.cards.length`),60);
+});
+
+test('named pistols use alternative deploy costs and reset forfeit only for their named bearer',async()=>{
+ const {run}=await premiereHarness();
+ run(`const card=id=>({...catalog.find(c=>c.id===id)}),han=card('Light:1098'),leia=card('Light:1495'),rebel=card('Light:2052');
+  const hanPistol=card('Light:1106'),leiaPistol=card('Light:1503'),enemy=card('Dark:2648');
+  setupDecks=null;state=PremiereGame.createState(PremiereGame.actionState(115,2),[],[],[card('Light:2448')],[0]);
+  state.phase=2;state.activeSide='Light';state.light[0]=[han,leia,rebel];state.dark[0]=[enemy];
+  state.hand=[hanPistol,leiaPistol];state.force=Array.from({length:8},()=>({}));
+  state.deck=[{name:'Spare'},{name:'Blaster draw',destiny:5}];state.botDeck=[{name:'Life'}];`);
+ assert.equal(run("weaponDeployOptions('Light',0).map(option=>option.cost).join()"),'1,3,3');
+ assert.equal(run("weaponDeployOptions('Light',1).map(option=>option.cost).join()"),'2,1,2');
+ assert.equal(run("PremiereWeapons.shot(leiaPistol,leia,enemy,leia.ability,1).cost"),0);
+ assert.equal(run("PremiereWeapons.shot(hanPistol,rebel,enemy,rebel.ability,1).effect"),'hit');
+ assert.equal(run("requestAction('equip','Light',[0,0,0])"),true);
+ run('state.phase=3;');
+ assert.equal(run("requestAction('battle','Light',[0])&&requestAction('fireWeapon','Light',[0,0,0])"),true);
+ // Han's optional redraw gives both sides an opportunity to respond to this weapon draw.
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("battleSession.zeroForfeit.includes(enemy)&&battleForfeitValue(enemy,'Dark')===0"),true);
+});
+
+test('lightsabers enforce named and ability-based costs and use two draws against character and creature defense',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const byId=id=>catalog.find(card=>card.id===id);
+  const obi=byId('Light:1803'),generic=byId('Light:1386'),named=byId('Light:1813'),bantha=byId('Dark:191');
+  const result=PremiereWeapons.shot(generic,obi,bantha,obi.ability,bantha.maneuver);
+  PremiereWeapons.deployCost(generic,obi,obi.ability)===1&&result.cost===1&&result.draws===2&&
+  PremiereWeapons.deployCost(named,obi,obi.ability)===0&&PremiereWeapons.deployCost(named,byId('Light:2052'),1)===null;`),true);
+});
+
+test('Assault Rifle fires from an adjacent location only into the active battle',()=>{
+ const {run}=segmentedBattleHarness('Dark');
+ run(`const rifleman={name:'Rifleman',type:'Character',warrior:true,side:'Dark',ability:2,
+  weapons:[{id:'Dark:146',side:'Dark',type:'Weapon',subType:'Character',name:'Assault Rifle'}]};state.dark[1]=[rifleman];
+  const bystander={name:'Other Light',type:'Character',ability:1};state.light[1]=[bystander];`);
+ assert.equal(run("requestAction('battle','Dark',[0])&&battleSession.segment==='weapons'"),true);
+ assert.equal(run("battleWeaponOptions('Dark').every(option=>option.from===1&&option.target!==bystander)"),true);
+ assert.equal(run("requestAction('fireWeapon','Dark',[0,0,0])"),false);
+ assert.equal(run("requestAction('fireWeapon','Dark',[0,0,0,1])&&battleSession.hitUnits.Light.includes(rebel)"),true);
+});
+
+test('Light Repeating Blaster Rifle needs a present power droid and fires consecutively with a cost per shot',()=>{
+ const {run}=segmentedBattleHarness('Dark');
+ run(`trooper.weapons=[{id:'Dark:1551',side:'Dark',type:'Weapon',subType:'Character',name:'Light Repeating Blaster Rifle'}];
+  state.botForce.push({},{});rebel.ability=2;`);
+ assert.equal(run("battleSession={site:0,lightCard:null,darkCard:null};battleWeaponOptions('Dark').length"),0);
+ run("battleSession=null;state.dark[0].push({id:'Dark:816',name:'EG-6',type:'Character',subType:'Droid'});");
+ assert.equal(run("requestAction('battle','Dark',[0])&&requestAction('fireWeapon','Dark',[0,0,0])"),true);
+ assert.equal(run("battleSession.weaponTurn==='Dark'&&battleSession.repeatingWeapon===trooper.weapons[0]"),true);
+ assert.equal(run("requestAction('fireWeapon','Dark',[0,0,1])&&state.botForce.length===2"),true);
+ assert.equal(run("battleSession.hitUnits.Light.length===2&&requestAction('passWeapons','Dark')&&battleSession.weaponTurn==='Light'"),true);
+});
+
+test('Gaderffii Stick blocks the chosen bearer only in the just-initiated battle',()=>{
+ const {run}=segmentedBattleHarness('Dark');
+ run(`trooper.name='Tusken Raider';trooper.weapons=[{id:'Dark:1002',side:'Dark',type:'Weapon',subType:'Character',name:'Gaderffii Stick'}];rebel.weapons=[rifle];`);
+ assert.equal(run("requestAction('battle','Dark',[0])&&battleSession.segment==='initiation'"),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('gaderffii','Dark',[0,0,0])"),true);
+ assert.equal(run("battleSession.blockedWeapons[0]===rebel&&state.botForce.length===4"),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')&&battleSession.segment==='power'"),true);
+});
+
+test('a successful Ion Cannon destroys ship weapons and permanently resets defense and hyperspeed without a hit',async()=>{
+ const {run}=await craftHarness();
+ run(`const destroyer=card('Dark:1291'),ion=card('Dark:1327'),torpedoes=card('Light:1962');
+  setupDecks=null;state.game=PremiereGame.actionState(116,0);state.phase=3;state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.light[1]=[ship];ship.weapons=[torpedoes];state.dark[1]=[destroyer];destroyer.weapons=[ion];
+  state.botDeck=[{name:'Ion destiny',destiny:3}];`);
+ assert.equal(run("requestAction('battle','Dark',[1])&&requestAction('fireWeapon','Dark',[0,0,0])"),true);
+ assert.equal(run("ship.ionDamage&&state.lost.includes(torpedoes)&&ship.weapons.length===0&&!battleSession.hitUnits.Light.length"),true);
+ assert.equal(run("craftStats(ship,1).hyperspeed===0&&craftStats(ship,1).maneuver===0&&craftStats(ship,1).power===3"),true);
+});
+
+test('the Laser Projector deploys inside and can itself be destroyed by a legal weapon',async()=>{
+ const {run}=await craftHarness();
+ run(`const projector=card('Dark:1479'),light=card('Light:2052'),dark=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(117,0);state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[projector];
+  state.light[4]=[light];state.dark[4]=[dark];light.weapons=[card('Light:265')];
+  state.deck=[{name:'Shot',destiny:3}];`);
+ assert.equal(run("requestAction('deployAutomated','Dark',[0,3])"),false);
+ assert.equal(run("requestAction('deployAutomated','Dark',[0,4])"),true);
+ run("state.activeSide='Light';state.phase=3;state.botTurn=null;");
+ assert.equal(run("requestAction('battle','Light',[4])&&requestAction('fireWeapon','Light',[0,0,1])"),true);
+ assert.equal(run("state.botLost.includes(projector)&&state.dark[4].length===1&&!battleSession.hitUnits.Dark.length"),true);
+});
+
+test('seekers move in the owning Control phase and choose between eligible targets on either side',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const seeker=card('Light:2400'),enemy=card('Dark:2355'),ally=card('Light:2052');ally.ability=1;
+  setupDecks=null;state.game=PremiereGame.actionState(118,0);state.hand=[seeker];state.light[3]=[ally];state.dark[3]=[enemy];
+  state.locationOrder=[0,1,2,3,4,6,5];`);
+ assert.equal(run("requestAction('deployAutomated','Light',[0,3])"),false);
+ assert.equal(run("requestAction('deployAutomated','Light',[0,2])"),true);
+ assert.equal(run("seekerMoves('Light').length"),0);
+ run("state.phase=1;const choice=legalActions(state,'Light').find(action=>action.kind==='moveSeeker'&&action.to===3);");
+ assert.equal(run('performAction(choice)&&state.automatedPending.kind==="seeker"'),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Ziel des Seekers/);
+ assert.equal(run("requestAction('automatedTarget','Light',[1])&&state.botLost.includes(enemy)&&state.lost.includes(seeker)"),true);
+ assert.equal(run('state.light[3].includes(ally)'),true);
+});
+
+test('each Timer Mine waits for its owner’s next turn and the targeted side chooses its character',()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=segmentedBattleHarness(side);
+  run(`const mine={id:'${side==='Light'?'Light:2610':'Dark:2609'}',side:'${side}',type:'Weapon',name:'Timer Mine'};
+   const droid={id:'${side==='Light'?'Light:1556':'Dark:1557'}',type:'Character',subType:'Droid',name:'Mining Droid'};
+   const own=PremiereGame.zones(state,'${side}'),enemy=PremiereGame.zones(state,PremiereGame.otherSide('${side}'));
+   own.hand.push(mine);own.board[0].push(droid);own.deck.push({name:'Mine draw',destiny:1});state.phase=2;`);
+  assert.equal(run(`requestAction('deployAutomated','${side}',[1,0])`),true);
+  assert.equal(run('own.board[0].includes(mine)&&!state.automatedPending'),true);
+  run(`endTurn('${side}');findAutomatedWeapons();`);
+  assert.equal(run('own.board[0].includes(mine)'),true);
+  run(`endTurn(PremiereGame.otherSide('${side}'));findAutomatedWeapons();`);
+  assert.equal(run('own.lost.includes(mine)&&state.automatedPending.remaining===1'),true);
+  assert.equal(run(`requestAction('automatedTarget',PremiereGame.otherSide('${side}'),[0])&&enemy.lost.length===1`),true);
+ }
+});
+
+test('Disarmed works during the opposing Control phase and prevents later weapon transfer onto the character',async()=>{
+ const {run}=await craftHarness();
+ run(`const own=card('Light:2052'),target=card('Dark:2355'),weapon=card('Dark:264'),other=card('Dark:1279');
+  own.weapons=[card('Light:259')];target.weapons=[weapon];other.weapons=[card('Dark:264')];
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.phase=1;
+  state.light[2]=[own];state.dark[2]=[target,other];state.hand=[card('Light:735')];`);
+ assert.equal(run("performAction(legalActions(state,'Light').find(option=>option.args[0]==='disarm'))"),true);
+ assert.equal(run("state.botLost.includes(weapon)&&cardPowerModifier(target,'Dark',2)===-1"),true);
+ run("state.phase=2;state.botHand=[card('Dark:264')];");
+ assert.equal(run("weaponDeployOptions('Dark',0).some(option=>option.host===target)||weaponEffectOptions('Dark').some(option=>option.target?.host===target)"),false);
+});
+
+test('all ship armaments enforce their printed mounts, targeting families and shot modifiers',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`const torps=card('Light:1962'),quad=card('Light:1971'),boosted=card('Dark:303'),ion=card('Dark:1327'),turbo=card('Dark:2644');
+  const corvette=card('Light:530'),destroyer=card('Dark:1291'),advanced=card('Dark:2595');
+  PremiereWeapons.deployCost(torps,ship,1)===1&&PremiereWeapons.deployCost(torps,corvette,1)===null&&
+  PremiereWeapons.deployCost(quad,corvette,1)===2&&PremiereWeapons.shot(quad,corvette,ship,1,4).bonus===1&&
+  PremiereWeapons.deployCost(boosted,advanced,1)===1&&PremiereWeapons.shot(boosted,advanced,destroyer,1,5).bonus===-1&&
+  PremiereWeapons.deployCost(ion,ship,1)===null&&PremiereWeapons.deployCost(ion,destroyer,1)===2&&
+  PremiereWeapons.deployCost(turbo,{type:'Location',subType:'System',locationTags:['Mobile']},0)===3&&
+  PremiereWeapons.shot(turbo,destroyer,ship,1,4).draws===2&&PremiereWeapons.shot(turbo,destroyer,ship,1,4).bonus===-5;`),true);
+});
+
+test('a buried mine and a dud are hidden until crossed by a vehicle, whose crew is eligible for loss',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const mine=card('Light:2610'),dud={name:'Hidden Dud',side:'Light'},droid=card('Light:1556'),
+  vehicle=card('Dark:2660'),driver=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(119,0);state.hand=[mine,dud];state.light[3]=[droid];
+  state.locations[4]=card('Light:2466');state.locationOrder=[0,1,2,3,4,6,5];
+  state.deck=[{name:'Mine Destiny',destiny:1}];`);
+ assert.equal(run("!requestAction('buryMineCard','Light',[0,2])&&requestAction('buryMineCard','Light',[0,3])&&requestAction('buryMineCard','Light',[0,3])"),true);
+ assert.equal(run(`const view=PremiereGame.playerView(state,'Dark');view.buriedCounts[3]===2&&!JSON.stringify(view).includes('Hidden Dud')`),true);
+ assert.match(elements.get('board').innerHTML,/2 verdeckte Karten/);
+ run("state.activeSide='Dark';state.phase=4;state.botTurn={steps:[],index:0};state.dark[2]=[vehicle];PremiereUnits.add(vehicle,driver,'driver','Dark');");
+ assert.equal(run("requestAction('move','Dark',[2,0,4,'Landspeed'])&&state.automatedPending.kind==='mine'"),true);
+ assert.equal(run("state.buriedMines.length===0&&state.lost.includes(dud)&&state.lost.includes(mine)"),true);
+ assert.equal(run("requestAction('automatedTarget','Dark',[0])&&state.botLost.includes(driver)&&state.dark[4][0]===vehicle"),true);
+});
+
+test('all four seekers distinguish named characters from their printed fallback and ability ceilings',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const card=id=>catalog.find(c=>c.id===id);
+  const han=card('Light:1098'),tarkin=card('Dark:1061'),luke=card('Light:1593');
+  PremiereWeapons.seekerTarget(card('Light:2400'),{type:'Character',warrior:true},2)&&
+  !PremiereWeapons.seekerTarget(card('Light:2400'),{type:'Character',warrior:true},3)&&
+  PremiereWeapons.seekerTarget(card('Light:2426'),tarkin,2)&&
+  PremiereWeapons.seekerTarget(card('Dark:1096'),han,2)&&
+  PremiereWeapons.seekerTarget(card('Dark:1592'),luke,3)&&!PremiereWeapons.seekerTarget(card('Dark:1592'),luke,4);`),true);
+});
+
+test('weapon transfer charges the deploy cost, and Overload can lose the weapon and carrier outside battle',async()=>{
+ const {run}=await craftHarness();
+ run(`const a=card('Light:2052'),b=card('Light:239'),weapon=card('Light:265');
+  setupDecks=null;state.game=PremiereGame.actionState(120,0);state.light[2]=[a,b];a.weapons=[weapon];
+  state.botHand=[card('Dark:1880')];state.botDeck=[{name:'Empty-site Draw',type:'Location'}];`);
+ assert.equal(run("performAction(legalActions(state,'Light').find(action=>action.args[0]==='transfer'))"),true);
+ assert.equal(run('a.weapons.length===0&&b.weapons[0]===weapon&&state.used.length===2'),true);
+ run("state.activeSide='Dark';state.phase=4;state.botTurn={steps:[],index:0};");
+ assert.equal(run("performAction(legalActions(state,'Dark').find(action=>action.args[0]==='overload'))"),true);
+ assert.equal(run("state.lost.includes(weapon)&&state.lost.includes(b)&&state.light[2][0]===a&&state.botUsed.length===1"),true);
 });

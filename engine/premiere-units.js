@@ -80,8 +80,17 @@ const PremiereUnits = (() => {
       if ((r1 || r2) && Number.isFinite(hyperspeed)) hyperspeed++;
       if (r4 && Number.isFinite(landspeed)) landspeed++;
     }
+    if (powered && (card.attachments??[]).some(device=>['Light:997','Dark:996'].includes(device.id))) {
+      power++;
+      if (Number.isFinite(maneuver)) maneuver++;
+      if (Number.isFinite(hyperspeed)) hyperspeed++;
+    }
+    if(card.ionDamage){
+      if (Number.isFinite(maneuver)) maneuver=0;
+      if (Number.isFinite(hyperspeed)) hyperspeed=0;
+    }
     const pilotAbility = pilots.reduce((sum, pilot) => sum + (pilot.ability ?? 0), 0);
-    return {powered, motor, navComputer, power: powered ? power : 0, maneuver: powered ? maneuver : null,
+    return {powered, motor, navComputer, power: powered ? power : 0, armor:card.ionDamage&&Number.isFinite(card.armor)?0:card.armor, maneuver: powered ? maneuver : null,
       hyperspeed: powered ? hyperspeed : null, landspeed: powered ? landspeed : null,
       ability: powered && card.type === 'Starship' ? ability + pilotAbility : 0};
   }
@@ -117,6 +126,9 @@ const PremiereUnits = (() => {
     delete card.attachments;
     delete card.dockedWith;
     delete card.controller;
+    delete card.ionDamage;
+    delete card.armedTurn;
+    delete card.tableSide;
     process(card);
     for (const attachment of attachments) remove(attachment, process, survive);
     for (const entry of occupants) {
