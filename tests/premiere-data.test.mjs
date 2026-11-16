@@ -15,6 +15,7 @@ test('the checked-in catalog and starter decks validate against the pinned editi
   const audit = buildAudit(catalog, decks);
   assert.deepEqual(audit.cards, {Light: 162, Dark: 162});
   assert.equal(audit.cardsWithPrintScan, 324);
+  assert.equal(audit.transcribedPrintTexts + audit.openPrintTexts.length, audit.cardsWithPrintScan);
   assert.equal(audit.errata.length, 139);
   for (const side of ['Light', 'Dark']) {
     assert.equal(audit.decks[side].cards, 60);
@@ -25,6 +26,26 @@ test('the checked-in catalog and starter decks validate against the pinned editi
   assert.deepEqual(historical.map(card => [card.id, card.preErrataSourceId]), [['Dark:1767', 20016]]);
   assert.notEqual(historical[0].texts.preErrata, historical[0].texts.active);
   assert.equal(historical[0].texts.print, null);
+});
+
+test('linked print text is kept separate and the audit lists the remaining scans', () => {
+  const catalog = readCatalog(snapshot);
+  const audit = buildAudit(catalog, readStarterDecks(definitions, catalog));
+  const notes = json('premiere-card-notes.json');
+  const submittedPrints = Object.entries(notes).filter(([, note]) => note.printText != null);
+  assert.equal(audit.transcribedPrintTexts, submittedPrints.length);
+  assert.ok(submittedPrints.length > 0);
+  for (const [id, note] of submittedPrints) {
+    const card = catalog.find(card => card.id === id);
+    assert.equal(card.texts.print, note.printText);
+    assert.equal(card.images.print, note.printSource);
+    assert.ok(!audit.openPrintTexts.some(item => item.id === id));
+  }
+  const unverified = catalog.find(card => card.id === 'Dark:1767');
+  assert.ok(audit.openPrintTexts.some(item => item.id === unverified.id && item.printScan === unverified.images.print));
+  const redOne = catalog.find(card => card.id === 'Light:2057');
+  assert.match(redOne.texts.print, /Must have pilot aboard/);
+  assert.doesNotMatch(redOne.texts.active, /Must have pilot aboard/);
 });
 
 test('typed cards distinguish missing, unknown, printed special and numeric values', () => {
