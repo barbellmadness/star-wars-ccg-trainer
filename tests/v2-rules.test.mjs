@@ -29,10 +29,10 @@ test('movement fails closed for different planets and nonadjacent sites',()=>{
  assert.equal(run("samePlanetAdjacent(0,1)"),false);
  assert.equal(run("samePlanetAdjacent(0,2)"),false);
 });
-test('movement disallows freshly deployed and already moved characters',()=>{
+test('regular site movement allows a deployed character but blocks a second regular move',()=>{
  const {run}=harness();
  run("const character={name:'Rebel',type:'Character',deploy:1};state={phase:4,botTurn:null,locations:[{name:'Hoth: A',type:'Location',subType:'Site'},{name:'Hoth: B',type:'Location',subType:'Site'}],light:[[character],[]],force:[{}],movedThisTurn:[],deployedThisTurn:[character]};");
- assert.equal(run("movementOptions().length"),0);
+ assert.equal(run("movementOptions().length"),1);
  run("state.deployedThisTurn=[];state.movedThisTurn=[character]");
  assert.equal(run("movementOptions().length"),0);
 });
@@ -280,4 +280,54 @@ test('unneeded extra forfeits are refused when all debts already satisfied',()=>
  const {run}=harness();
  run("state={phase:3,locations:[{name:'Hoth'}],light:[[{name:'A',power:2,forfeit:5},{name:'B',power:2,forfeit:5}]],dark:[[{name:'D',power:5,forfeit:1}]]};battleSession={site:0,lightCard:{name:'Destiny L'},darkCard:{name:'Destiny D'},lightDestiny:0,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[0,1],darkLoss:[]}");
  assert.equal(run("battleForfeitPlan('Light').valid"),false);
+});
+
+test('Dark side character uses one Force to move to adjacent site and cannot move twice',()=>{
+ const {run}=harness();
+ run("render=()=>{};const trooper={name:'Stormtrooper',type:'Character',deploy:1,ability:1};state={phase:0,activeSide:'Dark',botTurn:{steps:[],index:0},locations:[{name:'Tatooine: A',type:'Location',subType:'Site',icons:{light:0}},{name:'Tatooine: B',type:'Location',subType:'Site',icons:{light:2}}],light:[[],[]],dark:[[trooper],[]],botForce:[{id:'one'}],botUsed:[],movedThisTurn:[],log:[]};");
+ assert.equal(run("movementOptionsFor('Dark').length"),1);
+ assert.equal(run("moveCharacterFor('Dark',0,0,1)"),true);
+ assert.equal(run("state.botForce.length"),0);
+ assert.equal(run("state.botUsed.length"),1);
+ assert.equal(run("state.dark[0].length"),0);
+ assert.equal(run("state.dark[1][0].name"),'Stormtrooper');
+ assert.equal(run("movementOptionsFor('Dark').length"),0);
+ assert.equal(run("moveCharacterFor('Dark',1,0,0)"),false);
+});
+
+test('movement options reject wrong side, wrong phase and insufficient Force',()=>{
+ const {run}=harness();
+ run("const rebel={name:'Rebel',type:'Character',deploy:1};const trooper={name:'Trooper',type:'Character',deploy:1};state={phase:4,activeSide:'Light',botTurn:null,locations:[{name:'Hoth: A',type:'Location',subType:'Site'},{name:'Hoth: B',type:'Location',subType:'Site'}],light:[[rebel],[]],dark:[[trooper],[]],force:[{}],botForce:[{}],movedThisTurn:[],log:[]};");
+ assert.equal(run("movementOptionsFor('Light').length"),1);
+ assert.equal(run("movementOptionsFor('Dark').length"),0);
+ run("state.phase=3");
+ assert.equal(run("movementOptionsFor('Light').length"),0);
+ run("state.phase=4;state.force=[]");
+ assert.equal(run("movementOptionsFor('Light').length"),0);
+ run("state.activeSide='Dark';state.botTurn={steps:[],index:0}");
+ assert.equal(run("movementOptionsFor('Light').length"),0);
+ assert.equal(run("movementOptionsFor('Dark').length"),1);
+ run("state.botForce=[]");
+ assert.equal(run("movementOptionsFor('Dark').length"),0);
+});
+
+test('Dark bot schedules a Move phase and moves toward opponent Force icons',()=>{
+ const {run}=harness();
+ assert.equal(run("botPlan().map(s=>s.kind).join(',')"),'activate,control,deploy,move,draw,finish');
+ run("render=()=>{};const trooper={name:'Trooper',type:'Character',deploy:1,ability:1};state={turn:2,phase:0,activeSide:'Dark',botTurn:{steps:[{kind:'move'}],index:0},locations:[{name:'Tatooine: A',type:'Location',subType:'Site',icons:{light:0,dark:1}},{name:'Tatooine: B',type:'Location',subType:'Site',icons:{light:2,dark:0}}],light:[[],[]],dark:[[trooper],[]],botForce:[{id:'force'}],botUsed:[],movedThisTurn:[],botHistory:[],log:[]};");
+ run("botNextStep()");
+ assert.equal(run("state.dark[1][0].name"),'Trooper');
+ assert.equal(run("state.botUsed.length"),1);
+ assert.equal(run("state.botForce.length"),0);
+ assert.equal(run("state.movedThisTurn.length"),1);
+ assert.equal(run("state.botHistory[0].includes('Move: Bot bewegt')"),true);
+});
+
+test('Dark bot does not spend Force when no legal adjacent destination exists',()=>{
+ const {run}=harness();
+ run("render=()=>{};const trooper={name:'Trooper',type:'Character',deploy:1,ability:1};state={turn:2,activeSide:'Dark',phase:0,botTurn:{steps:[{kind:'move'}],index:0},locations:[{name:'Tatooine: A',type:'Location',subType:'Site',icons:{light:0}},{name:'Hoth: B',type:'Location',subType:'Site',icons:{light:2}}],light:[[],[]],dark:[[trooper],[]],botForce:[{id:'force'}],botUsed:[],movedThisTurn:[],botHistory:[],log:[]};");
+ run("botNextStep()");
+ assert.equal(run("state.dark[0].length"),1);
+ assert.equal(run("state.botForce.length"),1);
+ assert.equal(run("state.botUsed.length"),0);
 });
