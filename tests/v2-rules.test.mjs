@@ -1298,14 +1298,20 @@ test('Nightfall and Sunsdown enable free Spy deployment and Power Destiny limite
   const spy=card('Dark:1011'),nightfall=card('Light:1778'),sunsdown=card('Dark:2373');
   state.locations[4]=card('Dark:673');state.hand=[nightfall];state.botHand=[sunsdown];
   state.light[2]=[card('Light:2052')];state.dark[2]=[card('Dark:2355')];`);
+ const column=slot=>run(`renderPlaymatColumn(state.locations[${slot}],${slot})`);
+ assert.doesNotMatch(column(2),/location-night/);
  assert.equal(run("requestAction('deployLocationEffect','Light',[0,2])"),false);
  assert.equal(run("requestAction('deployLocationEffect','Light',[0,6])"),true);
+ assert.match(column(2),/location-night">Nacht aktiv · Nightfall</);
+ assert.doesNotMatch(column(4),/location-night/);
+ assert.doesNotMatch(column(6),/location-night/);
  assert.equal(run("PremiereLocations.conditions(state,2,'Dark').night"),true);
  assert.equal(run("PremiereLocations.conditions(state,4,'Dark').night"),false);
  assert.equal(run("characterDeployCost(spy,dock,'Dark')"),0);
  assert.equal(run("characterDeployCost(spy,state.locations[4],'Dark')"),run('spy.deploy'));
  run("state.activeSide='Dark';state.botTurn={steps:[],index:0}");
  assert.equal(run("requestAction('deployLocationEffect','Dark',[0,6])"),true);
+ assert.match(column(2),/location-night">Nacht aktiv · Nightfall \+ Sunsdown</);
  run(`state.phase=3;state.activeSide='Light';state.botTurn=null;
   state.deck=[{name:'Light Life'},{name:'L power 1',destiny:2},{name:'L power 2',destiny:3}];
   state.botDeck=[{name:'Dark Life'},{name:'D power 1',destiny:4},{name:'D power 2',destiny:5}];`);
@@ -1313,6 +1319,10 @@ test('Nightfall and Sunsdown enable free Spy deployment and Power Destiny limite
  assert.equal(run("battleSession.powerDestiny.Light"),5);
  assert.equal(run("battleSession.powerDestiny.Dark"),9);
  assert.equal(run("battleSession.damage.debt.Light.attrition+battleSession.damage.debt.Dark.attrition"),0);
+ run('cancelLocationEffect(6,PremiereLocations.effectsAt(state,6)[0])');
+ assert.match(column(2),/location-night">Nacht aktiv · Sunsdown</);
+ run('cancelLocationEffect(6,PremiereLocations.effectsAt(state,6)[0])');
+ assert.doesNotMatch(column(2),/location-night/);
 });
 
 test('registered location effects add icons once and can be canceled by Alter',async()=>{
