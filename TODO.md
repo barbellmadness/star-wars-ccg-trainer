@@ -27,7 +27,7 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 3. Locations, Presence und Force
 
-- [ ] Beziehungen zwischen Planetensystemen, Planetensites und mobilen Sites mit stabilen IDs modellieren. Sites regelgerecht anordnen und neue Sites zwischen bestehende einfügen. Die Playmat aus diesen Beziehungen aufbauen.
+- [x] Planetensysteme, Planetensites und mobile Sites des Premiere-Sets gruppieren. Sites regelgerecht einfügen und die Playmat in dieser Reihenfolge darstellen. Bereits ausgespielte Karten behalten ihren Standort.
 - [ ] Location-Deploy und Konvertieren gegnerischer Varianten desselben Orts umsetzen. Die neue Kartenseite, bleibende Karten am Ort, beteiligte Effekte und den Referenzzustand prüfen.
 - [ ] `at`, `present`, `aboard`, Presence, Occupy und Control als eigenständige Regelabfragen abbilden. Halbe Ability, Droiden, Spione, Passagiere und eingeschlossene Einheiten in den jeweils zutreffenden Abfragen berücksichtigen.
 - [ ] Force-Generierung um Location- und Kartentextmodifikatoren ergänzen. Unbekannte Icon-Werte und Nullwerte unterscheiden. Optionale Aktivierung, Reserve-Grenze und Umlauf beider Used Piles am Zugende mit vollständigem Stapelverlauf prüfen.
@@ -43,7 +43,8 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [ ] Manuelle Piloten beim Deploy eines Schiffs mit ausspielen. Für passende Sternjäger den unbemannten Zustand an erlaubten Orten unterstützen. Power, Maneuver, Ability, Nav Computer und Hyperspeed aus aktiver Besatzung und Kartentext berechnen.
 - [ ] Einstiege, Ausstiege, Fahrzeugtransport, Andocken, Transfers und Shuttling mit Kosten, Kapazität und Timing abbilden. Anhänge und Insassen beim Verlust des Trägers nach den Regeln behandeln, einschließlich der Bantha-Ausnahme für Passagiere.
 - [ ] Lift Tubes beider Seiten mit den passenden mobilen Innen-Sites und Sonderregeln umsetzen. Landspeeder, Sandcrawler und Ubrikkian 9000 Z001 mit ihren gedruckten Einschränkungen, Fahrern und Bonus- oder React-Bedingungen ergänzen.
-- [ ] Landspeed über echte Site-Nachbarschaft statt Playmat-Spalten ausführen. Reichweite, durchquerte Sites, verbotene Übergänge, gedruckte Mehrkosten und einmalige reguläre Bewegung testen.
+- [x] Regulären Landspeed über die benachbarten Sites desselben Bereichs ausführen. Systeme zählen bei der Site-Nachbarschaft nicht mit.
+- [ ] Landspeed für Bewegungen über mehrere Sites, gedruckte Mehrkosten und Sonderbewegungen vervollständigen.
 - [ ] Docking-Bay-Transit ergänzen. Landen und Starten von Sternjägern mit verwandten Systemen, passenden Außen-Sites, TIE-Beschränkungen und Docking-Bay-Kosten implementieren.
 - [ ] Hyperspeed um Kartentextänderungen, Nav Computer an Bord und fehlenden Hyperdrive ergänzen. Reichweite und Bewegungsberechtigung nach Besatzungs- oder Waffeneffekten neu bewerten.
 - [ ] Reacts als Deploy oder Bewegung im Antwortfenster zu Battle und Force Drain implementieren. Alternative Kosten, Reichweite und Auswirkungen auf den laufenden Auslöser prüfen.

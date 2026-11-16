@@ -23,11 +23,17 @@ test('deployment accepts an affordable character at a site',()=>{
  run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',icons:{light:1,dark:0}}],force:[{}],light:[[]],dark:[[]]};");
  assert.equal(run("checkDeployment({name:'Rebel',type:'Character',deploy:1},state.locations[0])"),true);
 });
-test('movement fails closed for different planets and nonadjacent sites',()=>{
+test('site neighborhoods follow related table rows instead of storage slots',()=>{
  const {run}=harness();
- run("state={locations:[{name:'Tatooine: A',type:'Location',subType:'Site'},{name:'Hoth: B',type:'Location',subType:'Site'},{name:'Tatooine: C',type:'Location',subType:'Site'}]};");
- assert.equal(run("samePlanetAdjacent(0,1)"),false);
- assert.equal(run("samePlanetAdjacent(0,2)"),false);
+ run(`state={locations:[
+  {name:'Tatooine: A',type:'Location',subType:'Site'}, {name:'Hoth: B',type:'Location',subType:'Site'},
+  {name:'Tatooine: C',type:'Location',subType:'Site'}, {name:'Tatooine: D',type:'Location',subType:'Site'},
+  {name:'Tatooine',type:'Location',subType:'System'}
+ ]}`);
+ assert.equal(run('adjacentSites(0,1)'),false);
+ assert.equal(run('adjacentSites(0,2)&&adjacentSites(2,0)'),true);
+ assert.equal(run('adjacentSites(0,3)'),false);
+ assert.equal(run('adjacentSites(3,4)'),false);
 });
 test('regular site movement allows a deployed character but blocks a second regular move',()=>{
  const {run}=harness();
@@ -97,8 +103,9 @@ test('both Used Piles recirculate at the end of either player turn',()=>{
 });
 test('same named location cannot be deployed twice',()=>{
  const {run}=harness();
- run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site'},null],force:[],light:[[],[]],dark:[[],[]]};");
- assert.equal(run("checkDeployment({name:'Tatooine: Mos Eisley',type:'Location'},null)"),false);
+ run(`state={phase:2,activeSide:'Light',locations:[{name:'•Tatooine: Mos Eisley',side:'Dark',type:'Location',subType:'Site'},null],
+  hand:[{name:'Tatooine: Mos Eisley',side:'Light',type:'Location',subType:'Site'}],light:[[],[]],dark:[[],[]]}`);
+ assert.equal(run("locationDeployPositions('Light',0).length"),0);
 });
 test('battle damage and attrition stay separate',()=>{
  const {run}=harness();
@@ -1051,11 +1058,11 @@ test('initial location choices include original image thumbnails',async()=>{
 test('Light may deploy successive locations beyond original three-slot board',()=>{
  const {run}=harness();
  run("render=()=>{};state={phase:2,activeSide:'Light',locations:[{name:'Hoth: A',type:'Location',subType:'Site'} ,null],light:[[],[]],dark:[[],[]],hand:[{name:'Hoth: B',type:'Location',subType:'Site'},{name:'Hoth: C',type:'Location',subType:'Site'}],force:[],used:[],deployedThisTurn:[],log:[]};");
- run("play(0,1)");
+ run('playLocation(0,1)');
  assert.equal(run("state.locations.length"),3);
  assert.equal(run("state.locations[2]===null"),true);
  assert.equal(run("state.light.length"),3);
- run("play(0,2)");
+ run('playLocation(0,2)');
  assert.equal(run("state.locations.length"),4);
  assert.equal(run("state.locations[3]===null"),true);
  assert.equal(run("state.hand.length"),0);
@@ -1077,13 +1084,76 @@ test('Dark bot multi-deploy cannot spend more Force than available',()=>{
  assert.equal(run("state.botHand.length"),1);
  assert.equal(run("state.botForce.length"),0);
 });
-test('Location deploy rejects duplicate, occupied slot and wrong player phase',()=>{
+test('Location deploy rejects duplicate titles, invalid insertion positions and the wrong side or phase',()=>{
  const {run}=harness();
  run("state={phase:2,activeSide:'Light',locations:[{name:'Hoth: A',type:'Location',subType:'Site'},null],light:[[],[]],dark:[[],[]],hand:[{name:'Hoth: A',type:'Location'},{name:'Hoth: B',type:'Location'}],log:[]};");
  assert.equal(run("deployLocationFromHand('Light',0,1)"),false);
- assert.equal(run("deployLocationFromHand('Light',1,0)"),false);
+ assert.equal(run("deployLocationFromHand('Light',1,2)"),false);
  assert.equal(run("deployLocationFromHand('Dark',1,1)"),false);
  assert.equal(run("state.locations.length"),2);
+ run('state.phase=3');
+ assert.equal(run("deployLocationFromHand('Light',1,1)"),false);
+ run('state.phase=2');
  assert.equal(run("deployLocationFromHand('Light',1,1)"),true);
  assert.equal(run("state.locations.length"),3);
+});
+
+test('starting locations use their geographic order while keeping the original location references',async()=>{
+ const {run,elements}=await premiereHarness();
+ run('Math=Object.create(Math);Math.random=()=>0.4;start()');
+ run('chooseStart(setupDecks.light.startingIndices[1]);beginStartingGame()');
+ assert.equal(run("state.locations[0].id==='Light:2448'&&state.locations[1].id==='Dark:2446'"),true);
+ assert.equal(run('boardLocationOrder().join()'),'1,0');
+ assert.equal(run('adjacentSites(0,1)'),true);
+ const board=elements.get('board').innerHTML;
+ assert.ok(board.indexOf('inspectLocation(1)')<board.indexOf('inspectLocation(0)'));
+});
+
+test('Tatooine insertion preserves the spaceport block, offers exterior gaps and keeps units on their sites',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const rebel=card('Light:2052');const stormtrooper=card('Dark:2355');
+  state.locations=[tatooine,card('Dark:682'),dunes,null];
+  state.light=[[],[],[rebel],[]];state.dark=[[],[],[stormtrooper],[]];
+  state.hand=[cantina,dock,card('Light:2466'),card('Light:2462')];
+  state.drainedSitesThisTurn=[2];state.battledSitesThisTurn=[2];`);
+ assert.equal(run('boardLocationOrder().join()'),'2,0,1');
+ assert.equal(run("locationDeployPositions('Light',0).join()"),'0');
+ run('playLocation(0,0)');
+ assert.equal(run('adjacentSites(3,2)'),true);
+ assert.equal(run("locationDeployPositions('Light',0).join()"),'1');
+ run('playLocation(0,1)');
+ assert.equal(run('adjacentSites(3,2)'),false);
+ assert.equal(run('adjacentSites(3,4)&&adjacentSites(4,2)'),true);
+ assert.equal(run("locationDeployPositions('Light',0).join()"),'2');
+ run('playLocation(0,2);select(0)');
+ assert.equal(run("locationDeployPositions('Light',0).join()"),'3,4');
+ assert.equal(run("deployLocationFromHand('Light',0,2)"),false);
+ const board=elements.get('board').innerHTML;
+ assert.match(board,/onclick="playLocation\(0,3\)"/);
+ assert.match(board,/onclick="playLocation\(0,4\)"/);
+ assert.doesNotMatch(board,/onclick="playLocation\(0,2\)"/);
+
+ run('playLocation(0,3)');
+ assert.equal(run('boardLocationOrder().join()'),'3,4,5,6,2,0,1');
+ assert.equal(run('state.locations[2]===dunes&&state.light[2][0]===rebel&&state.dark[2][0]===stormtrooper'),true);
+ assert.equal(run('state.drainedSitesThisTurn[0]===2&&state.battledSitesThisTurn[0]===2'),true);
+ assert.equal(run('adjacentSites(6,2)&&!adjacentSites(5,2)&&!adjacentSites(2,0)&&!adjacentSites(2,1)'),true);
+ run('state.phase=4');
+ assert.equal(run('moveCharacter(2,0,5)'),false);
+ assert.equal(run('moveCharacter(2,0,6)'),true);
+ assert.equal(run('state.light[6][0]===rebel&&state.dark[2][0]===stormtrooper&&state.force.length===4'),true);
+});
+
+test('the bot inserts Death Star and Yavin 4 sites using the same legal order',async()=>{
+ const {run}=await craftHarness();
+ run(`state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.locations=[card('Dark:682'),card('Dark:2848'),card('Light:2859'),null];
+  state.light=[[],[],[],[]];state.dark=[[],[],[],[]];
+  state.botHand=[card('Dark:675'),card('Dark:669'),card('Dark:2852'),card('Dark:2854')];`);
+ assert.equal(run('botDeployPhase().length'),4);
+ assert.equal(run('boardLocationOrder().map(slot=>state.locations[slot].id).join()'),
+  'Dark:682,Dark:669,Dark:675,Light:2859,Dark:2852,Dark:2854,Dark:2848');
+ assert.equal(run('adjacentSites(4,3)&&adjacentSites(2,5)&&adjacentSites(5,6)'),true);
+ assert.equal(run('adjacentSites(3,2)||adjacentSites(6,1)'),false);
+ assert.equal(run('state.botForce.length'),5);
 });
