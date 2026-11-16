@@ -18,6 +18,10 @@ python -m http.server 8000 --bind 127.0.0.1
 
 Die vollständige vorhandene Testsuite läuft in einem Terminal mit `node --test` (Node.js 22 oder neuer).
 
+## Premiere Kartenbasis
+
+Der [Regelstand](PREMIERE-REGELSTAND.md) dokumentiert die fixierte Kartenrevision, die behandelten Klarstellungen und die Herkunft der Errata. `node scripts/import_premiere.mjs --check` prüft Karten und Decks offline. `--report` gibt den Prüfbericht aus. `--verify-source` reproduziert den Snapshot aus den Originalquellen, um ihn mit der versionierten Datei zu vergleichen.
+
 ## Entwicklung
 
 Entwickle und teste lokal. Ausgangspunkt ist `automation/multi-deploy-growing-sites-20261116-0740` oder ein darauf aufbauender Entwicklungsbranch. Prüfe den aktiven Branch und den Arbeitsbaum mit `git status --short --branch --untracked-files=all` vor Arbeitsbeginn und erneut vor einem Abruf oder Branchwechsel.
@@ -25,11 +29,10 @@ Entwickle und teste lokal. Ausgangspunkt ist `automation/multi-deploy-growing-si
 Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen `node --test` aus und halte Commit, Testergebnis und offene Fehler im Pull Request fest. Pushe den Entwicklungsbranch ohne Force und verwende Pull Requests für Änderungen an der Basis.
 
 ## Nächste Arbeitsschritte
-1. Verifizierten Premiere-Datensatz aus autorisierter Quelle importieren und auf 162 Karten pro Seite prüfen.
-2. Originalwerte und Texte ohne erfundene Fallbacks anzeigen.
-3. Regelengine auf Grundlage des Premiere-Regelbuchs aufbauen und testen.
-4. Die Karteneffekte der beiden festen Starterdecks und die zugehörigen Bot-Entscheidungen vervollständigen.
-5. Erst nach rechtlicher Prüfung Bilder öffentlich ausliefern.
+1. Drucktranskriptionen anhand der Kartenbilder prüfen und ergänzen.
+2. Regelengine auf Grundlage des Premiere-Regelstands weiter ausbauen und testen.
+3. Die Karteneffekte der beiden festen Starterdecks und die zugehörigen Bot-Entscheidungen vervollständigen.
+4. Erst nach rechtlicher Prüfung Bilder öffentlich ausliefern.
 
 ## Veröffentlichung
 GitHub Pages ist bei einem privaten Repository nicht in jedem GitHub-Tarif verfügbar. Wenn Pages in Settings > Pages nicht verfügbar ist, kann ein separater Hosting-Dienst verwendet werden. Eine Live-Webadresse ist aktuell noch nicht eingerichtet.

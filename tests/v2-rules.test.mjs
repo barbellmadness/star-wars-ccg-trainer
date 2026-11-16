@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const html=readFileSync(new URL('../v2.html',import.meta.url),'utf8');
+const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness(){
  const elements=new Map();
  const document={getElementById(id){if(!elements.has(id))elements.set(id,{value:'',checked:true,style:{},innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(id)}};
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
+ vm.runInContext(cardDataScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
  return {run,elements};
@@ -654,6 +656,16 @@ async function premiereHarness(deckLists=starterLists){
  await run('load()');
  return {run,elements};
 }
+
+test('the card inspector separates rules text, print scan, lore, German notes and special values',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`state={botHand:[catalog.find(card=>card.id==='Dark:816'),catalog.find(card=>card.id==='Dark:1767')]};inspectCard('Dark',0,'hand')`);
+ const eg6=elements.get('cardInspectorBody').innerHTML;
+ assert.match(eg6,/Destiny \* \(Sonderwert\)/);
+ assert.match(eg6,/Aktiver Spieltext.*Korrekturslip.*Drucktext im Kartenscan.*Lore.*Deutsche Erklärung/);
+ run("inspectCard('Dark',1,'hand')");
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Aktiver Spieltext.*Verknüpfte Vor-Errata-Fassung/);
+});
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
  const {run}=await premiereHarness();

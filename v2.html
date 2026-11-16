@@ -27,14 +27,13 @@
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
 @media(max-width:650px){main{padding:9px}.playmat-shell{padding:8px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:130px;height:179px}.playmat{min-height:440px}}
-</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><button id="start" disabled>Neue Lernpartie</button> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle-Analyse · Lernmodus</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" checked onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext" onclick="botNextStep()">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script>
+</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><button id="start" disabled>Neue Lernpartie</button> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle-Analyse · Lernmodus</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" checked onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext" onclick="botNextStep()">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script src="engine/premiere-data.js"></script><script>
 const phases=['Activate','Control','Deploy','Battle','Move','Draw'],german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
+const {REVISION, readCatalog, readStarterDecks, buildAudit, locationTitle, isDeployableCharacter, isBantha, permanentPilotAbility, basicWeaponRule}=PremiereData;
 let catalog=[],starterDecks=null,state=null,selected=-1,battleSession=null,setupDecks=null;
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-function iconValue(v){if(typeof v==='number'&&Number.isInteger(v)&&v>=0&&v<=8)return v;if(typeof v==='string'&&/^[0-8]$/.test(v.trim()))return Number(v);return null}
-function getIcons(c){const x=c.front||{};return {light:iconValue(x.lightSideIcons??x.lightIcons??x.lightSideForceIcons??c.lightSideIcons),dark:iconValue(x.darkSideIcons??x.darkIcons??x.darkSideForceIcons??c.darkSideIcons)}}
 function forceFromLocations(side){if(!state)return {count:0,unknown:0};let count=1,unknown=0;for(const c of state.locations){if(!c)continue;const n=side==='Light'?c.icons?.light:c.icons?.dark;if(Number.isInteger(n))count+=n;else unknown++}return {count,unknown}}
 function activate(side,requested){const x=forceFromLocations(side),deck=side==='Light'?state.deck:state.botDeck,pile=side==='Light'?state.force:state.botForce;const count=Math.max(0,Math.min(Number.isInteger(requested)?requested:x.count,x.count,deck.length));for(let i=0;i<count;i++)pile.push(deck.pop());log(side+' aktiviert '+count+' Force (Maximum '+x.count+' inklusive 1 persönlicher Force).');return count}
 function activateMe(){if(!state||state.phase!==0||state.activated)return;const requested=Number(el('activateAmount').value);if(!Number.isInteger(requested)||requested<0||requested>forceFromLocations('Light').count){log('Ungültige Force-Aktivierung.');return}activate('Light',requested);state.activated=true;render()}
@@ -126,61 +125,20 @@ function isSite(c){return isLoc(c)&&!/system/i.test(c.subType||'')}
 function isSystem(c){return isLoc(c)&&/system/i.test(c.subType||'')}
 function isPlanetSystem(c){return !!c&&isSystem(c)&&c.locationTags?.includes('Planet')&&Number.isInteger(c.parsec)}
 function isExteriorPlanetSite(c){return !!c&&isSite(c)&&c.locationTags?.includes('Planet')&&c.locationTags.includes('Exterior')}
-function isBantha(c){return c?.type==='Vehicle'&&c.id==='Dark:191'&&/\bBantha ability = ½\./.test(c.gametext||'')}
-function permanentPilotAbility(c){
- if(c?.type!=='Starship')return null;
- const ability=String(c.gametext||'').match(/\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i);
- return ability?Number(ability[1]):null;
-}
-function isSupportedCraft(c){return isBantha(c)||permanentPilotAbility(c)!==null}
 function withinDeploymentLimit(card,side){
- const limit=card.name?.match(/^[*•]+/)?.[0].length??(card.unique===true?1:Infinity);
+ const limit=card.uniquenessLimit??card.name?.match(/^[*•]+/)?.[0].length??(card.unique===true?1:Infinity);
  if(limit===Infinity)return true;
  const rows=side==='Light'?state.light:state.dark;
  return rows.flat().filter(c=>c.name===card.name).length<limit;
 }
-function isDeployableCharacter(c){return /character/i.test(c.type||'')&&Number.isFinite(c.deploy)&&c.deploy>=0}
-function deployedCharacterCost(c){return isDeployableCharacter(c)?c.deploy:null}
-function locationTitle(card){return String(card.name??'').trim().replace(/^[•*]+\s*/,'').toLowerCase()}
-function buildStarterDeck(side,definition,catalogById){
- const error=message=>new Error(side+'-Starterdeck: '+message);
- if(!Array.isArray(definition?.cards)||!Array.isArray(definition.startingLocations))
-  throw error('Kartenliste oder Starting Locations fehlen.');
-
- const cards=[],ids=new Set();
- for(const entry of definition.cards){
-  const {id,count}=entry??{},card=catalogById.get(id);
-  if(!card||card.side!==side)throw error('Unbekannte oder seitenfremde Premiere-Karte '+id+'.');
-  if(ids.has(id))throw error('Doppelter Eintrag für '+id+'.');
-  if(!Number.isInteger(count)||count<1||count>60)throw error('Ungültige Kartenanzahl für '+id+'.');
-  if(!(isLoc(card)||isDeployableCharacter(card)||isSupportedCraft(card)||basicWeaponRule(card)))
-   throw error(card.name+' kann im aktuellen Lernmodus nicht ausgespielt werden.');
-
-  ids.add(id);
-  for(let i=0;i<count;i++)cards.push(card);
- }
- if(cards.length!==60)throw error('Erwartet sind 60 Karten, gefunden wurden '+cards.length+'.');
-
- const startingCards=definition.startingLocations.map(id=>{
-  const card=ids.has(id)?catalogById.get(id):null;
-  if(!card||!isLoc(card)||!Number.isInteger(card.icons?.light)||!Number.isInteger(card.icons?.dark))
-   throw error('Ungültige Starting Location '+id+'.');
-  return card;
- });
- if(new Set(startingCards.map(locationTitle)).size!==startingCards.length)
-  throw error('Die Starting Locations müssen unterschiedliche Namen haben.');
- const startingIndices=startingCards.flatMap(card=>cards.flatMap((copy,index)=>copy===card?[index]:[]));
- return {cards,startingIndices};
+function auditData(){
+ if(!starterDecks)return;
+ const report=buildAudit(catalog,starterDecks);
+ el('audit').textContent='Premiere Limited · Revision '+REVISION+'\n'
+  +report.cards.Light+' Light + '+report.cards.Dark+' Dark · '+report.errata.length+' Errata mit Korrekturslip\n'
+  +report.cardsWithPrintScan+' Druckscans · '+report.transcribedPrintTexts+' verifizierte Drucktranskriptionen · '+report.preErrataTexts+' verknüpfte Vor-Errata-Textfassung\n'
+  +'Starterdecks: '+report.decks.Light.cards+' Light / '+report.decks.Dark.cards+' Dark. Prüfbericht: node scripts/import_premiere.mjs --report';
 }
-function readStarterDecks(payload,catalog){
- if(payload?.schema!==1)throw new Error('Unbekanntes Format der Premiere-Starterdecks.');
- const byId=new Map(catalog.map(card=>[card.id,card]));
- if(byId.size!==catalog.length)throw new Error('Die Premiere-Kartendatenbank enthält doppelte Karten-IDs.');
- const light=buildStarterDeck('Light',payload.decks?.Light,byId);
- const dark=buildStarterDeck('Dark',payload.decks?.Dark,byId);
- return {light,dark};
-}
-function auditData(){const loc=catalog.filter(isLoc),known=loc.filter(c=>Number.isInteger(c.icons?.light)&&Number.isInteger(c.icons?.dark));const bySide=x=>catalog.filter(c=>c.side===x).length;const missingDeploy=catalog.filter(c=>/character/i.test(c.type)&&!Number.isFinite(c.deploy)).length;const missingImages=catalog.filter(c=>!c.image).length;const textEffects=catalog.filter(c=>c.gametext.trim().length>0).length;const forceTexts=catalog.filter(c=>/force generation|force drain|force icons?|activate.*force|generates? .*force/i.test(c.gametext)).length;el('audit').textContent='Premiere-Datensätze: '+catalog.length+' (Light '+bySide('Light')+' / Dark '+bySide('Dark')+')\nLocations: '+loc.length+' · beide Force-Icon-Werte erkannt: '+known.length+'\nCharaktere ohne numerische Deploy-Kosten: '+missingDeploy+'\nKarten ohne Bild-URL: '+missingImages+'\nKartentexte mit Effekten: '+textEffects+' · mögliche Force-Effekte zur manuellen Prüfung: '+forceTexts+'\nAchtung: Kartentext-Modifikatoren werden noch NICHT ausgeführt. Die Zahl ist eine Suchhilfe, kein Regeltest.\nHinweis: Zahlen belegen noch keine visuelle Übereinstimmung von Bild und Kartentext.'}
 function draw(w){const d=w==='me'?state.deck:state.botDeck,h=w==='me'?state.hand:state.botHand;if(d.length)h.push(d.pop())}
 function log(x){state.log.unshift(x);state.log=state.log.slice(0,40)}
 function startingLocationChoices(deck){
@@ -395,6 +353,8 @@ function cardEffectStatus(c){
  if(isBantha(c))return 'TEILWEISE: Außen-Site, Ability ½, Landspeed, Waffenabwehr und Power +1 für anwesende Tusken Raider. Passagiere und Reacts sind offen.';
  if(permanentPilotAbility(c)!==null)return 'TEILWEISE: System-Deploy, Power und permanente Piloten-Ability. Hyperspeed mit Nav Computer, soweit vorhanden. Boarding, Landen und Schiffsbewaffnung sind offen.';
  if(['Light:608','Dark:1426','Light:80'].includes(c.id))return 'TEILWEISE: Grundlegende Modifikatoren für Deploy oder Battle Destiny im Weltraum. Weitere Kartentexte sind offen.';
+ if(['Dark:682','Light:2859'].includes(c.id))return 'TEILWEISE: Zusätzliche Battle-Destiny bei eigener Initiierung. Weitere Effekte sind offen.';
+ if(['Light:2448','Dark:2458'].includes(c.id))return 'TEILWEISE: Erhöhte Mindest-Ability für Battle-Destiny berücksichtigt. Weitere Effekte sind offen.';
  if(basicWeaponRule(c))return 'TEILWEISE: Ausspielen auf einem eigenen Warrior und Waffen-Destiny gegen Charaktere und Banthas am Kampf-Site unterstützt.';if(c.id==='Dark:634'&&/When in battle, adds 1 to each of your battle destiny draws/i.test(c.gametext||''))return 'TEILWEISE: Battle-Destiny-Draws Dark +1 durch Vader und gedruckte Attrition-Immunität; Pilot- und weitere Sonderregeln offen.';if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power +2 für verbündete Rebels/Aliens am selben Planetensite; bedingte Attrition-Immunität offen.';if(c.id==='Dark:816')return 'TEILWEISE: EG-6 erhöht Power eigener Droids am selben Site; Spezial-Destiny 0 und bedingte Power-Verdopplung unterstützt.';const below=printedAttritionImmunityBelow(c);if(below!==null)return 'TEILWEISE: Unbedingte gedruckte Attrition-Immunität < '+below+' unterstützt; übrige Karteneffekte offen.';if(!(c.gametext||'').trim())return 'KEIN KARTENTEXT: keine individuellen Text-Effekte zu automatisieren (andere Spielregeln gelten weiterhin).';return 'OFFEN: Kartentext noch nicht als ausführbare Regel validiert.'}
 function effectCoverage(){const total=catalog.length,withoutText=catalog.filter(c=>!(c.gametext||'').trim()),partial=catalog.filter(c=>cardEffectStatus(c).startsWith('TEILWEISE:')),unimplemented=catalog.filter(c=>cardEffectStatus(c).startsWith('OFFEN:'));return {total,withoutText,partial,unimplemented}}
 function showEffectCoverage(){const v=effectCoverage();el('effectCoverage').textContent='Premiere-Karten gesamt: '+v.total+'\nOhne Kartentext: '+v.withoutText.length+'\nTeilweise implementiert: '+v.partial.length+'\nKartentexte ohne geprüfte automatische Implementierung: '+v.unimplemented.length+'\n\nOFFENE KARTEN (ID · Name · Themen):\n'+v.unimplemented.map(c=>c.id+' · '+c.name+' · '+(cardEffectFlags(c).join(', ')||'sonstige Regel')).join('\n')+'\n\nHinweis: Eine Schlüsselwortsuche ist keine Regelausführung. Der Trainer darf für diese Karten keine vollständige Originalregel-Konformität behaupten.'}
@@ -442,16 +402,6 @@ function botBoardDeployOptions(){
   if(cost!==null)options.push({cardIndex,siteIndex,cost});
  }));
  return options;
-}
-// Premiere card texts in data/premiere.json, limited to targets on the current character board.
-const basicCharacterWeapons=new Map([
- ['Light:259',{cost:1,bonus:0}], // Blaster
- ['Light:265',{cost:2,bonus:1}], // Blaster Rifle
- ['Dark:264',{cost:2,bonus:1}],  // Blaster Rifle
- ['Dark:1264',{cost:1,bonus:0}]  // Imperial Blaster
-]);
-function basicWeaponRule(card){
- return card?.type==='Weapon'&&card.subType==='Character'?basicCharacterWeapons.get(card.id):undefined;
 }
 function weaponDeployOptions(side,handIndex){
  if(!state||state.phase!==2||state.activeSide!==side||state.gameWinner||state.pendingForceLoss||battleSession)return [];
@@ -903,16 +853,44 @@ function renderWeaponControls(side){
 function modifierControls(){const x=battleSession;return '<div class="panel"><b>Manuelle Karten-Effekte (nur Lernmodus)</b><p class="hint">Trage zusätzliche Destiny-Werte oder Power-Modifikatoren nur ein, wenn du sie anhand des Originalkartentexts geprüft hast. Diese Werte werden nicht automatisch aus Karten erkannt. Ein zusätzlicher Destiny Draw wird hier nicht vom Reserve Deck gezogen.</p>'+['Light','Dark'].map(side=>{const k=side==='Light'?'light':'dark';return '<p>'+side+': Zusätzlicher Destiny-Bonus <input type="number" min="0" max="20" value="'+x[k+'Bonus']+'" style="width:55px" onchange="setBattleModifier(\''+side+'\',\'destiny\',this.value)"> · Power-Bonus <input type="number" min="0" max="20" value="'+x[k+'PowerMod']+'" style="width:55px" onchange="setBattleModifier(\''+side+'\',\'power\',this.value)"></p>'}).join('')+'</div>'}
 function renderBattle(){const x=battleSession;if(!x)return;const i=x.site,t=battleTotals(i),lightReady=x.lightCard!==null,darkReady=x.darkCard!==null;el('battleAnalysis').style.display='block';el('battleDetails').innerHTML='<p><b>'+escapeHTML(state.locations[i].name)+'</b></p><p>Light: Power '+t.lightPower+' · Ability '+(t.lightAbility??'?')+' · Battle Destiny '+(x.lightDestiny??'–')+' (Ability mindestens '+minimumBattleDestinyAbility('Light',i)+' · Draws '+(battleDestinyDrawCount('Light',i,t.lightAbility)??'?')+')</p><p>Dark: Power '+t.darkPower+' · Ability '+(t.darkAbility??'?')+' · Battle Destiny '+(x.darkDestiny??'–')+' (Ability mindestens '+minimumBattleDestinyAbility('Dark',i)+' · Draws '+(battleDestinyDrawCount('Dark',i,t.darkAbility)??'?')+')</p><p>Gesamt-Power (inkl. Modifikatoren): Light '+(battleDamagePreview()?.lightTotal??'–')+' · Dark '+(battleDamagePreview()?.darkTotal??'–')+'</p>'+modifierControls()+lossPreview('Light')+lossPreview('Dark')+'<p class="hint">Forfeits zählen gleichzeitig für Attrition und Battle Damage. Den restlichen Battle Damage bezahlst du durch Force-Verluste aus Hand oder Life Force. Unbedingte gedruckte Attrition-Immunität (< N) berücksichtigt. Getroffene Karten nehmen weiter am Kampf teil und müssen im Damage-Segment forfeitet werden. Bedingte Immunitäten und Reacts sind offen. Zwei War-Room-Effekte für echte Zusatz-Draws sind umgesetzt. Die Kampfauflösung bleibt ein Basisregel-Lernmodus.</p>';el('battleControls').innerHTML=x.weaponTurn?renderWeaponControls(x.weaponTurn):'<button '+(lightReady||(x.initiator==='Dark'&&!darkReady)||battleDestinyDrawCount('Light',i,t.lightAbility)<1||battleDestinyDrawCount('Light',i,t.lightAbility)===null?'disabled':'')+' onclick="battleDestiny(\'Light\')">Light Battle Destiny ziehen</button> <button '+(lightReady||(x.initiator==='Dark'&&!darkReady)?'disabled':'')+' onclick="skipDestiny(\'Light\')">Light verzichtet</button> <button '+((x.initiator!=='Dark'&&!lightReady)||darkReady?'disabled':'')+' onclick="botDestinyDecision()">Bot-Entscheidung zeigen</button><p class="hint">Die initiierende Seite entscheidet zuerst; Dark Side wird vom Bot gespielt. Echte Zusatz-Draws sind für Death Star: War Room (Light-Initiator) und Yavin 4: Massassi War Room (Dark-Initiator) implementiert. Andere Zusatz-Draws sind offen.</p><button '+(!lightReady||!darkReady?'disabled':'')+' onclick="resolveBattleLosses()">Forfeits bestätigen und Battle Damage bezahlen</button>'}
 function closeBattle(){if(battleSession&&!battleSession.resolved){log('Ein initiierter Kampf muss erst aufgelöst werden. Ein Abbruch ohne Regelgrund ist nicht möglich.');renderBattle();return false}battleSession=null;el('battleAnalysis').style.display='none';render();return true}
-function inspectCard(side,i,zone,site){if(!state)return;const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];const c=cards?.[i];if(!c)return;
- const movement=[['Landspeed',c.landspeed],['Hyperspeed',c.hyperspeed],['Maneuver',c.maneuver]].filter(([,value])=>Number.isFinite(value));
- const movementStats=movement.length?'<p>'+movement.map(([label,value])=>label+' '+value).join(' · ')+'</p>':'';
- el('cardInspector').style.display='block';el('cardInspectorBody').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:15px"><div>'+(c.image?'<img src="'+escapeHTML(c.image)+'" alt="Originalkarte" style="width:210px;max-width:100%">':'')+'</div><div style="flex:1;min-width:200px"><b>'+escapeHTML(c.name)+'</b><p>Power '+(c.power??'–')+' · Ability '+(cardAbility(c)??'–')+' · Deploy '+(c.deploy??'–')+' · Forfeit '+(c.forfeit??'–')+' · Destiny '+(c.destiny??'–')+'</p>'+movementStats+'<p style="white-space:pre-wrap">'+escapeHTML(c.gametext||'Kein Kartentext in Datenbank')+'</p><p class="hint">'+escapeHTML(cardEffectStatus(c))+'</p></div></div>';el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'})}
+function cardTextDetails(card){
+ const texts=card.texts??{};
+ const block=(label,value)=>'<h3>'+label+'</h3><p style="white-space:pre-wrap">'+escapeHTML(value)+'</p>';
+ const slip=card.errataSymbol?'<p><a href="'+escapeHTML(card.images.slip)+'" target="_blank" rel="noopener">Korrekturslip · '+escapeHTML(card.errataSymbol)+'</a></p>':'';
+ const print=texts.print?block('Drucktext',texts.print):card.images?.print?'<p class="hint">Drucktext im Kartenscan · Transkription offen</p>':'';
+ return block('Aktiver Spieltext',(texts.active??card.gametext)||'Kein Spieltext vorhanden')+slip+print
+  +(texts.preErrata?block('Verknüpfte Vor-Errata-Fassung',texts.preErrata):'')
+  +(texts.lore?block('Lore',texts.lore):'')
+  +(texts.explanationDe?block('Deutsche Erklärung',texts.explanationDe):'')
+  +'<p class="hint">'+escapeHTML(cardEffectStatus(card))+'</p>';
+}
+function displayCardValue(card,field){
+ const parsed=card.values?.[field];
+ if(parsed?.kind==='special')return escapeHTML(parsed.raw)+' (Sonderwert)';
+ if(parsed?.kind==='unknown')return 'unbekannt';
+ return escapeHTML((field==='ability'?cardAbility(card):card[field])??'–');
+}
+function inspectCard(side,i,zone,site){
+ if(!state)return;
+ const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];
+ const card=cards?.[i];if(!card)return;
+ const stats=[['Power','power'],['Ability','ability'],['Deploy','deploy'],['Forfeit','forfeit'],['Destiny','destiny']];
+ for(const [label,field] of [['Landspeed','landspeed'],['Hyperspeed','hyperspeed'],['Maneuver','maneuver'],['Armor','armor']]){
+  if(Number.isFinite(card[field])||['special','unknown'].includes(card.values?.[field]?.kind))stats.push([label,field]);
+ }
+ el('cardInspector').style.display='block';
+ el('cardInspectorBody').innerHTML='<div class="location-inspector-card">'
+  +(card.image?'<img src="'+escapeHTML(card.image)+'" alt="Kartenscan">':'')
+  +'<div class="location-inspector-details"><h2>'+escapeHTML(card.name)+'</h2><p>'
+  +stats.map(([label,field])=>label+' '+displayCardValue(card,field)).join(' · ')+'</p>'+cardTextDetails(card)+'</div></div>';
+ el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 function inspectLocation(i){
  if(!state||!Number.isInteger(i)||i<0||i>=state.locations.length)return false;
  const c=state.locations[i];if(!c)return false;
  const icons=c.icons||{};
  el('cardInspector').style.display='block';
- el('cardInspectorBody').innerHTML='<div class="location-inspector-card">'+(c.image?'<img src="'+escapeHTML(c.image)+'" alt="Location-Karte: '+escapeHTML(c.name)+'">':'<div class="location-fallback">Kein Kartenbild</div>')+'<div class="location-inspector-details"><h2>'+escapeHTML(c.name)+'</h2><p class="location-icon-pips">Force-Icons · Light '+(icons.light??'?')+' / Dark '+(icons.dark??'?')+'</p><p>'+escapeHTML(c.subType||c.type||'Location')+'</p><p style="white-space:pre-wrap">'+escapeHTML(c.gametext||'Kein Kartentext vorhanden')+'</p><p class="hint">Originalkarte aus der importierten Premiere-Datenbank. Der Trainer führt nicht alle Karteneffekte automatisch aus.</p></div></div>';
+ el('cardInspectorBody').innerHTML='<div class="location-inspector-card">'+(c.image?'<img src="'+escapeHTML(c.image)+'" alt="Location-Karte: '+escapeHTML(c.name)+'">':'<div class="location-fallback">Kein Kartenbild</div>')+'<div class="location-inspector-details"><h2>'+escapeHTML(c.name)+'</h2><p class="location-icon-pips">Force-Icons · Light '+(icons.light??'?')+' / Dark '+(icons.dark??'?')+'</p><p>'+escapeHTML(c.subType||c.type||'Location')+'</p>'+cardTextDetails(c)+'</div></div>';
  el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'});
  return true;
 }
@@ -962,23 +940,9 @@ async function load(){try{
   readLocalJson('data/premiere.json'),
   readLocalJson('data/premiere-starter-decks.json')
  ]);
- if(payload?.schema!==1||!Array.isArray(payload.cards)||payload.cards.length!==324)
-  throw new Error('Lokale Premiere-Datenbank ungültig: 324 Karten erwartet.');
- catalog=payload.cards.map(c=>{
-  const front=c.rawFront??{},tags=Array.isArray(c.icons)?c.icons:[];
-  const number=value=>value==null?null:Number(value);
-  return {
-   id:c.id,side:c.side,name:c.name||'Unbekannt',type:c.type||'',subType:c.subType||'',rarity:c.rarity||'',
-   unique:c.unique===true,image:c.image||'',power:number(c.power),destiny:number(c.destiny),ability:number(c.ability),
-   forfeit:number(c.forfeit),deploy:number(c.deploy),gametext:c.gametext||'',lore:c.lore||front.lore||'',
-   characteristics:Array.isArray(front.characteristics)?front.characteristics:[],
-   extraText:Array.isArray(front.extraText)?front.extraText:[],
-   warrior:tags.includes('Warrior'),navComputer:tags.includes('Nav Computer'),locationTags:isLoc(c)?tags:[],
-   parsec:number(front.parsec),hyperspeed:number(front.hyperspeed),landspeed:number(front.landspeed),maneuver:number(front.maneuver),
-   icons:{light:iconValue(c.lightSideIcons),dark:iconValue(c.darkSideIcons)}
-  };
- });
- starterDecks=readStarterDecks(deckLists,catalog);
+ const cards=readCatalog(payload);
+ starterDecks=readStarterDecks(deckLists,cards);
+ catalog=cards;
  el('start').disabled=false;
  auditData();showEffectCoverage();start();
  }catch(e){

@@ -1,0 +1,9 @@
+{
+  "Light:259": {"explanationDe": "Für 1 Force auf einen eigenen Warrior ausspielen. Im Waffen-Segment kostet der Schuss 1 Force. Ein Charakter wird getroffen, wenn die Waffen-Destiny seinen Verteidigungswert übersteigt."},
+  "Light:265": {"explanationDe": "Für 2 Force auf einen eigenen Warrior ausspielen. Ein Schuss kostet 2 Force. Für den Treffervergleich zählt die gezogene Waffen-Destiny plus 1."},
+  "Dark:264": {"explanationDe": "Für 2 Force auf einen eigenen Warrior ausspielen. Ein Schuss kostet 2 Force. Für den Treffervergleich zählt die gezogene Waffen-Destiny plus 1."},
+  "Dark:1264": {"explanationDe": "Für 1 Force auf einen eigenen Warrior ausspielen und für 1 Force feuern. Die Waffen-Destiny muss größer sein als der Verteidigungswert des Ziels."},
+  "Dark:191": {"explanationDe": "Ein Kreaturenfahrzeug mit Ability ½ und Maneuver 2. An einem Außen-Site erhält ein anwesender Tusken Raider durch den Bantha zusätzliche Power. Als Fahrzeugziel verteidigt er sich mit Maneuver."},
+  "Dark:634": {"explanationDe": "Vader erhöht jeden tatsächlichen Dark-Side-Battle-Destiny-Draw seiner Schlacht um 1. In derselben Schlacht ist er gegen Attrition unter 5 immun."},
+  "Dark:816": {"explanationDe": "EG-6 hat den Sonderwert Destiny 0. Wird er als Dark-Side-Battle-Destiny gezogen, kann sein Kartentext die anwesende Dark Power einmal pro Schlacht verdoppeln."}
+}

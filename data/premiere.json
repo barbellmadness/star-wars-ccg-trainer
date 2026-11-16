@@ -1,6 +1,8 @@
 {
-  "schema": 1,
+  "schema": 2,
   "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "edition": "1",
   "cards": [
     {
       "id": "Light:2",
@@ -37,7 +39,9 @@
         "subType": "Droid",
         "title": "2X-3KPR (Tooex)",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_1"
     },
     {
       "id": "Light:24",
@@ -65,7 +69,9 @@
         "subType": "Used",
         "title": "A Few Maneuvers",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_70"
     },
     {
       "id": "Light:38",
@@ -96,7 +102,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/A Tremor In The Force (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_42"
     },
     {
       "id": "Light:68",
@@ -127,7 +135,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Affect Mind (Effect) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_43"
     },
     {
       "id": "Light:80",
@@ -163,7 +173,9 @@
         "title": "•Alderaan",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_121"
     },
     {
       "id": "Light:95",
@@ -191,7 +203,9 @@
         "subType": "Used",
         "title": "Alter",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_71"
     },
     {
       "id": "Light:215",
@@ -219,7 +233,9 @@
         "title": "•Beggar",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_44"
     },
     {
       "id": "Light:221",
@@ -258,7 +274,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Beru Lars (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_2"
     },
     {
       "id": "Light:222",
@@ -290,7 +308,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Beru Stew (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_72"
     },
     {
       "id": "Light:239",
@@ -333,7 +353,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Biggs Darklighter (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_3"
     },
     {
       "id": "Light:259",
@@ -367,7 +389,10 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Blaster (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_152",
+      "explanationDe": "Für 1 Force auf einen eigenen Warrior ausspielen. Im Waffen-Segment kostet der Schuss 1 Force. Ein Charakter wird getroffen, wenn die Waffen-Destiny seinen Verteidigungswert übersteigt."
     },
     {
       "id": "Light:265",
@@ -402,7 +427,10 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Blaster Rifle (Light) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_153",
+      "explanationDe": "Für 2 Force auf einen eigenen Warrior ausspielen. Ein Schuss kostet 2 Force. Für den Treffervergleich zählt die gezogene Waffen-Destiny plus 1."
     },
     {
       "id": "Light:305",
@@ -446,7 +474,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/BoShek (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_4",
+      "personas": [
+        "BoShek"
+      ]
     },
     {
       "id": "Light:343",
@@ -481,7 +514,12 @@
         "title": "•C-3PO (See-Threepio)",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_5",
+      "personas": [
+        "C-3PO"
+      ]
     },
     {
       "id": "Light:348",
@@ -508,7 +546,9 @@
         "lore": "Hand-held device that can remotely command restraining bolt. Each caller can be keyed to specific bolt. Used by many species. Also called 'restraining bolt activators.",
         "title": "Caller",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_34"
     },
     {
       "id": "Light:352",
@@ -536,7 +576,9 @@
         "subType": "Lost",
         "title": "Cantina Brawl",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_73"
     },
     {
       "id": "Light:468",
@@ -567,7 +609,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Collision! (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_74"
     },
     {
       "id": "Light:483",
@@ -598,7 +642,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Combined Attack (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_75"
     },
     {
       "id": "Light:530",
@@ -644,7 +690,9 @@
         "subType": "Capital: Corvette",
         "title": "Corellian Corvette",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_140"
     },
     {
       "id": "Light:585",
@@ -675,7 +723,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Crash Site Memorial (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_45"
     },
     {
       "id": "Light:593",
@@ -709,7 +759,9 @@
         "subType": "Droid",
         "title": "CZ-3 (Seezee-Three)",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_6"
     },
     {
       "id": "Light:608",
@@ -745,7 +797,9 @@
         "title": "•Dantooine",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_122"
     },
     {
       "id": "Light:664",
@@ -774,7 +828,9 @@
         "title": "•Death Star Plans",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_46"
     },
     {
       "id": "Light:672",
@@ -816,7 +872,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Death Star Detention Block Control Room (Light) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_123"
     },
     {
       "id": "Light:676",
@@ -857,7 +915,9 @@
         "title": "•Death Star: Docking Bay 327",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_124"
     },
     {
       "id": "Light:680",
@@ -894,7 +954,9 @@
         "title": "•Death Star: Trash Compactor",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_125"
     },
     {
       "id": "Light:695",
@@ -924,7 +986,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Demotion (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_47"
     },
     {
       "id": "Light:730",
@@ -963,7 +1027,9 @@
         "title": "•Dice Ibegon",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_7"
     },
     {
       "id": "Light:735",
@@ -993,7 +1059,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Disarmed (Light) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_48"
     },
     {
       "id": "Light:758",
@@ -1025,7 +1093,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dont Get Cocky (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_76"
     },
     {
       "id": "Light:761",
@@ -1053,7 +1123,9 @@
         "subType": "Lost",
         "title": "Don't Underestimate Our Chances",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_77"
     },
     {
       "id": "Light:781",
@@ -1084,7 +1156,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Droid Shutdown (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_78"
     },
     {
       "id": "Light:799",
@@ -1130,7 +1204,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dutch (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_8",
+      "personas": [
+        "Dutch"
+      ]
     },
     {
       "id": "Light:821",
@@ -1160,7 +1239,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Electrobinoculars (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_35"
     },
     {
       "id": "Light:826",
@@ -1190,7 +1271,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ellorrs Madak (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_49"
     },
     {
       "id": "Light:882",
@@ -1221,7 +1304,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Escape Pod (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_79"
     },
     {
       "id": "Light:917",
@@ -1248,7 +1333,9 @@
         "lore": "'I don't like the look of this.'",
         "title": "Eyes In The Dark",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_50"
     },
     {
       "id": "Light:942",
@@ -1286,7 +1373,12 @@
         "title": "•Figrin D'an",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_9",
+      "personas": [
+        "Figrin D'an"
+      ]
     },
     {
       "id": "Light:985",
@@ -1314,7 +1406,9 @@
         "subType": "Lost",
         "title": "Friendly Fire",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_80"
     },
     {
       "id": "Light:994",
@@ -1346,7 +1440,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Full Throttle (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_81"
     },
     {
       "id": "Light:997",
@@ -1376,7 +1472,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Fusion Generator Supply Tanks (Light) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_36"
     },
     {
       "id": "Light:1021",
@@ -1418,7 +1516,9 @@
         "title": "•General Dodonna",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_10"
     },
     {
       "id": "Light:1039",
@@ -1447,7 +1547,9 @@
         "title": "•Gift Of The Mentor",
         "type": "Interrupt",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_82"
     },
     {
       "id": "Light:1045",
@@ -1491,7 +1593,12 @@
         "title": "•Gold 1",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_141",
+      "personas": [
+        "Gold 1"
+      ]
     },
     {
       "id": "Light:1050",
@@ -1538,7 +1645,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Gold 5 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_142"
     },
     {
       "id": "Light:1098",
@@ -1590,7 +1699,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Han Solo (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_11",
+      "personas": [
+        "Han"
+      ]
     },
     {
       "id": "Light:1102",
@@ -1618,7 +1732,9 @@
         "subType": "Lost",
         "title": "Han's Back",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_83"
     },
     {
       "id": "Light:1104",
@@ -1646,7 +1762,9 @@
         "subType": "Used",
         "title": "Han's Dice",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_84"
     },
     {
       "id": "Light:1106",
@@ -1681,7 +1799,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Hans Heavy Blaster Pistol (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_154",
+      "personas": [
+        "Han's Heavy Blaster Pistol"
+      ]
     },
     {
       "id": "Light:1120",
@@ -1712,7 +1835,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Hear Me Baby, Hold Together (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_85"
     },
     {
       "id": "Light:1125",
@@ -1743,7 +1868,9 @@
         "subType": "Used",
         "title": "Help Me Obi-Wan Kenobi",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_86"
     },
     {
       "id": "Light:1187",
@@ -1771,7 +1898,9 @@
         "subType": "Used",
         "title": "How Did We Get Into This Mess?",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_87"
     },
     {
       "id": "Light:1196",
@@ -1801,7 +1930,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Hydroponics Station (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_37"
     },
     {
       "id": "Light:1197",
@@ -1832,7 +1963,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Hyper Escape (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_88"
     },
     {
       "id": "Light:1321",
@@ -1860,7 +1993,9 @@
         "subType": "Used",
         "title": "Into The Garbage Chute, Flyboy",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_89"
     },
     {
       "id": "Light:1331",
@@ -1888,7 +2023,9 @@
         "subType": "Used",
         "title": "It Could Be Worse",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_90"
     },
     {
       "id": "Light:1236",
@@ -1919,7 +2056,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ive Got A Bad Feeling About This (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_91"
     },
     {
       "id": "Light:1373",
@@ -1955,7 +2094,9 @@
         "subType": "Alien",
         "title": "Jawa",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_12"
     },
     {
       "id": "Light:1380",
@@ -1983,7 +2124,9 @@
         "title": "•Jawa Siesta",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_51"
     },
     {
       "id": "Light:1386",
@@ -2017,7 +2160,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Jedi Lightsaber (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_155"
     },
     {
       "id": "Light:1389",
@@ -2045,7 +2190,9 @@
         "subType": "Lost",
         "title": "Jedi Presence",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_92"
     },
     {
       "id": "Light:1390",
@@ -2088,7 +2235,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Jek Porkins (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_13"
     },
     {
       "id": "Light:1406",
@@ -2125,7 +2274,9 @@
         "title": "•Kabe",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_14"
     },
     {
       "id": "Light:1407",
@@ -2169,7 +2320,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/KalFalnl Cndros (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_15"
     },
     {
       "id": "Light:1427",
@@ -2205,7 +2358,9 @@
         "title": "•Kessel",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_126"
     },
     {
       "id": "Light:1429",
@@ -2234,7 +2389,9 @@
         "title": "•Kessel Run",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_52"
     },
     {
       "id": "Light:1402",
@@ -2268,7 +2425,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Klor Slug (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_53"
     },
     {
       "id": "Light:1455",
@@ -2297,7 +2456,9 @@
         "title": "•Krayt Dragon Howl",
         "type": "Interrupt",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_93"
     },
     {
       "id": "Light:1489",
@@ -2337,7 +2498,9 @@
         "title": "•Leesub Sirln",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_16"
     },
     {
       "id": "Light:1495",
@@ -2385,7 +2548,12 @@
         "title": "•Leia Organa",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_17",
+      "personas": [
+        "Leia"
+      ]
     },
     {
       "id": "Light:1500",
@@ -2413,7 +2581,9 @@
         "subType": "Lost",
         "title": "Leia's Back",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_94"
     },
     {
       "id": "Light:1503",
@@ -2448,7 +2618,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Leias Sporting Blaster (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_156"
     },
     {
       "id": "Light:1548",
@@ -2484,7 +2656,9 @@
         "subType": "Transport",
         "title": "Lift Tube",
         "type": "Vehicle"
-      }
+      },
+      "set": "1",
+      "gempId": "1_148"
     },
     {
       "id": "Light:1554",
@@ -2515,7 +2689,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Lightsaber Proficiency (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_54"
     },
     {
       "id": "Light:1556",
@@ -2552,7 +2728,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/LIN-V8K (Elleyein-Veeatekay) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_18"
     },
     {
       "id": "Light:1593",
@@ -2598,7 +2776,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Luke Skywalker (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_19",
+      "personas": [
+        "Luke"
+      ]
     },
     {
       "id": "Light:1600",
@@ -2626,7 +2809,9 @@
         "subType": "Lost",
         "title": "Luke's Back",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_95"
     },
     {
       "id": "Light:1609",
@@ -2663,7 +2848,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Lukes X-34 Landspeeder (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_149"
     },
     {
       "id": "Light:1643",
@@ -2697,7 +2884,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Mantellian Savrip (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_55"
     },
     {
       "id": "Light:1677",
@@ -2742,7 +2931,12 @@
         "title": "•Millennium Falcon",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_143",
+      "personas": [
+        "Falcon"
+      ]
     },
     {
       "id": "Light:1690",
@@ -2782,7 +2976,9 @@
         "title": "•Momaw Nadon",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_20"
     },
     {
       "id": "Light:1707",
@@ -2812,7 +3008,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Move Along... (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_96"
     },
     {
       "id": "Light:1749",
@@ -2843,7 +3041,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Nabrun Leids (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_97"
     },
     {
       "id": "Light:1755",
@@ -2874,7 +3074,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Narrow Escape (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_98"
     },
     {
       "id": "Light:1778",
@@ -2901,7 +3103,9 @@
         "lore": "Tatoo I and Tatoo II, twin suns of Tatooine, create a harsh desert environment, but provide spectacular sunsets. At night, many dangers emerge from the shadows.",
         "title": "Nightfall",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_56"
     },
     {
       "id": "Light:1794",
@@ -2929,7 +3133,9 @@
         "subType": "Lost",
         "title": "Noble Sacrifice",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_99"
     },
     {
       "id": "Light:1803",
@@ -2976,7 +3182,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Obi-Wan Kenobi (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_21",
+      "personas": [
+        "Obi-Wan"
+      ]
     },
     {
       "id": "Light:1810",
@@ -3007,7 +3218,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Obi-Wans Cape (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_57"
     },
     {
       "id": "Light:1813",
@@ -3041,7 +3254,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Obi-Wans Lightsaber (Premiere) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_157",
+      "personas": [
+        "Obi-Wan's Lightsaber"
+      ]
     },
     {
       "id": "Light:1827",
@@ -3072,7 +3290,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Old Ben (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_100"
     },
     {
       "id": "Light:1834",
@@ -3100,7 +3320,9 @@
         "subType": "Lost",
         "title": "On The Edge",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_101"
     },
     {
       "id": "Light:1870",
@@ -3129,7 +3351,9 @@
         "title": "•Our Most Desperate Hour",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_58"
     },
     {
       "id": "Light:1874",
@@ -3160,7 +3384,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Out Of Nowhere (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_102"
     },
     {
       "id": "Light:1883",
@@ -3199,7 +3425,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Owen Lars (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_22"
     },
     {
       "id": "Light:1893",
@@ -3230,7 +3458,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Panic (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_103"
     },
     {
       "id": "Light:1913",
@@ -3262,7 +3492,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Plastoid Armor (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_59"
     },
     {
       "id": "Light:1924",
@@ -3305,7 +3537,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Pops (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_23"
     },
     {
       "id": "Light:1962",
@@ -3339,7 +3573,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Proton Torpedoes (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_158"
     },
     {
       "id": "Light:1971",
@@ -3374,7 +3610,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Quad Laser Cannon (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_159"
     },
     {
       "id": "Light:1995",
@@ -3416,7 +3654,9 @@
         "subType": "Droid",
         "title": "R2-X2 (Artoo-Extoo)",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_24"
     },
     {
       "id": "Light:2000",
@@ -3456,7 +3696,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/R4-E1 (Arfour-Eeone) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_25"
     },
     {
       "id": "Light:2011",
@@ -3484,7 +3726,9 @@
         "subType": "Used",
         "title": "Radar Scanner",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_104"
     },
     {
       "id": "Light:2033",
@@ -3512,7 +3756,9 @@
         "subType": "Used",
         "title": "Rebel Barrier",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_105"
     },
     {
       "id": "Light:2038",
@@ -3547,7 +3793,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Rebel Guard (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_26"
     },
     {
       "id": "Light:2040",
@@ -3587,7 +3835,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Rebel Pilot (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_27"
     },
     {
       "id": "Light:2041",
@@ -3618,7 +3868,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Rebel Planners (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_60"
     },
     {
       "id": "Light:2043",
@@ -3646,7 +3898,9 @@
         "subType": "Lost",
         "title": "Rebel Reinforcements",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_106"
     },
     {
       "id": "Light:2052",
@@ -3688,7 +3942,9 @@
         "subType": "Rebel",
         "title": "Rebel Trooper",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_28"
     },
     {
       "id": "Light:2057",
@@ -3732,7 +3988,12 @@
         "title": "•Red 1",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_144",
+      "personas": [
+        "Red 1"
+      ]
     },
     {
       "id": "Light:2060",
@@ -3779,7 +4040,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Red 3 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_145"
     },
     {
       "id": "Light:2067",
@@ -3825,7 +4088,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Red Leader (errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_29",
+      "personas": [
+        "Red Leader"
+      ]
     },
     {
       "id": "Light:2100",
@@ -3852,7 +4120,9 @@
         "lore": "Fits in a special socket on a droid's body. When installed, restricts actions of droids, forcing them to follow orders. Can be operated remotely by a 'caller.'",
         "title": "Restraining Bolt",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_38"
     },
     {
       "id": "Light:2102",
@@ -3880,7 +4150,9 @@
         "title": "•Restricted Deployment",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_61"
     },
     {
       "id": "Light:2105",
@@ -3908,7 +4180,9 @@
         "subType": "Lost",
         "title": "Return Of A Jedi",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_107"
     },
     {
       "id": "Light:2110",
@@ -3935,7 +4209,9 @@
         "lore": "Spies and informants gave Rebels vital data to plan strategic turnabouts, create local insurgencies, and hamper Imperial activities.",
         "title": "Revolution",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_62"
     },
     {
       "id": "Light:2141",
@@ -3965,7 +4241,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Rycar Ryjerd (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_63"
     },
     {
       "id": "Light:2157",
@@ -3995,7 +4273,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Saitorr Kal Fas (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_64"
     },
     {
       "id": "Light:2161",
@@ -4035,7 +4315,9 @@
         "type": "Vehicle",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Sandcrawler (Light) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_150"
     },
     {
       "id": "Light:2180",
@@ -4063,7 +4345,9 @@
         "subType": "Used",
         "title": "Scomp Link Access",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_108"
     },
     {
       "id": "Light:2217",
@@ -4091,7 +4375,9 @@
         "subType": "Used",
         "title": "Sense",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_109"
     },
     {
       "id": "Light:2250",
@@ -4132,7 +4418,9 @@
         "title": "•••Shistavanen Wolfman",
         "type": "Character",
         "uniqueness": "***"
-      }
+      },
+      "set": "1",
+      "gempId": "1_30"
     },
     {
       "id": "Light:2277",
@@ -4161,7 +4449,9 @@
         "title": "•Skywalkers",
         "type": "Interrupt",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_110"
     },
     {
       "id": "Light:2297",
@@ -4193,7 +4483,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Solo Han (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_111"
     },
     {
       "id": "Light:2307",
@@ -4232,7 +4524,9 @@
         "type": "Vehicle",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/SoroSuub V-35 Landspeeder (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_151"
     },
     {
       "id": "Light:2319",
@@ -4264,7 +4558,9 @@
         "uniqueness": "***",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Spaceport Speeders (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_112"
     },
     {
       "id": "Light:2325",
@@ -4295,7 +4591,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Special Modifications (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_65"
     },
     {
       "id": "Light:2385",
@@ -4323,7 +4621,9 @@
         "subType": "Lost",
         "title": "Surprise Assault",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_113"
     },
     {
       "id": "Light:2400",
@@ -4354,7 +4654,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tagge Seeker (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_160"
     },
     {
       "id": "Light:2412",
@@ -4387,7 +4689,9 @@
         "title": "•••Talz",
         "type": "Character",
         "uniqueness": "***"
-      }
+      },
+      "set": "1",
+      "gempId": "1_31"
     },
     {
       "id": "Light:2423",
@@ -4414,7 +4718,9 @@
         "lore": "Specially designed for use on Rebel starfighters. Assists pilots on torpedo runs. Automatically locks on pre-programmed target points.",
         "title": "Targeting Computer",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_39"
     },
     {
       "id": "Light:2426",
@@ -4445,7 +4751,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tarkin Seeker (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_161"
     },
     {
       "id": "Light:2430",
@@ -4481,7 +4789,9 @@
         "title": "•Tatooine",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_127"
     },
     {
       "id": "Light:2435",
@@ -4508,7 +4818,9 @@
         "lore": "Survival gear, food and tools are stored in small compartments. Made from bantha hide. Used by Luke and other Tatooine inhabitants.",
         "title": "Tatooine Utility Belt",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_40"
     },
     {
       "id": "Light:2440",
@@ -4545,7 +4857,9 @@
         "title": "•Tatooine: Cantina",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_128"
     },
     {
       "id": "Light:2447",
@@ -4586,7 +4900,9 @@
         "title": "•Tatooine: Docking Bay 94",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_129"
     },
     {
       "id": "Light:2448",
@@ -4623,7 +4939,9 @@
         "title": "•Tatooine: Dune Sea",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_130"
     },
     {
       "id": "Light:2455",
@@ -4660,7 +4978,9 @@
         "title": "•Tatooine: Jawa Camp",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_131"
     },
     {
       "id": "Light:2462",
@@ -4702,7 +5022,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tatooine Lars Moisture Farm (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_132"
     },
     {
       "id": "Light:2466",
@@ -4739,7 +5061,9 @@
         "title": "•Tatooine: Mos Eisley",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_133"
     },
     {
       "id": "Light:2471",
@@ -4776,7 +5100,9 @@
         "title": "•Tatooine: Obi-Wan's Hut",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_134"
     },
     {
       "id": "Light:2509",
@@ -4804,7 +5130,9 @@
         "subType": "Lost",
         "title": "Thank The Maker",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_114"
     },
     {
       "id": "Light:2514",
@@ -4832,7 +5160,9 @@
         "subType": "Used",
         "title": "The Bith Shuffle",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_115"
     },
     {
       "id": "Light:2531",
@@ -4860,7 +5190,9 @@
         "subType": "Lost",
         "title": "The Force Is Strong With This One",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_116"
     },
     {
       "id": "Light:2570",
@@ -4891,7 +5223,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/This Is All Your Fault (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_117"
     },
     {
       "id": "Light:2610",
@@ -4919,7 +5253,9 @@
         "subType": "Automated",
         "title": "Timer Mine",
         "type": "Weapon"
-      }
+      },
+      "set": "1",
+      "gempId": "1_162"
     },
     {
       "id": "Light:2625",
@@ -4946,7 +5282,9 @@
         "lore": "Expert traffic controllers coordinate launches faster than automated launch systems. Rebel bases scramble fighters quickly during Imperial attacks.",
         "title": "Traffic Control",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_66"
     },
     {
       "id": "Light:2646",
@@ -4975,7 +5313,9 @@
         "title": "•Tusken Breath Mask",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_67"
     },
     {
       "id": "Light:2689",
@@ -5003,7 +5343,9 @@
         "subType": "Used",
         "title": "Utinni!",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_118"
     },
     {
       "id": "Light:2705",
@@ -5030,7 +5372,9 @@
         "lore": "Essential for life on desert planets. Condenses water vapor from atmosphere. Has purification filters and coolant tanks. Protects against drought and harsh conditions.",
         "title": "Vaporator",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_41"
     },
     {
       "id": "Light:2740",
@@ -5062,7 +5406,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Warriors Courage (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_119"
     },
     {
       "id": "Light:2785",
@@ -5100,7 +5446,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/WED-9-M1 Bantha Droid (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_32"
     },
     {
       "id": "Light:2764",
@@ -5128,7 +5476,9 @@
         "subType": "Used",
         "title": "We're Doomed",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_120"
     },
     {
       "id": "Light:2811",
@@ -5168,7 +5518,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Wioslea (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_33"
     },
     {
       "id": "Light:2838",
@@ -5213,7 +5565,9 @@
         "subType": "Starfighter: X-Wing",
         "title": "X-wing",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_146"
     },
     {
       "id": "Light:2907",
@@ -5258,7 +5612,9 @@
         "subType": "Starfighter: Y-Wing",
         "title": "Y-wing",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_147"
     },
     {
       "id": "Light:2849",
@@ -5294,7 +5650,9 @@
         "title": "•Yavin 4",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_135"
     },
     {
       "id": "Light:2853",
@@ -5335,7 +5693,9 @@
         "title": "•Yavin 4: Docking Bay",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_136"
     },
     {
       "id": "Light:2855",
@@ -5372,7 +5732,9 @@
         "title": "•Yavin 4: Jungle",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_137"
     },
     {
       "id": "Light:2858",
@@ -5409,7 +5771,9 @@
         "title": "•Yavin 4: Massassi Throne Room",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_138"
     },
     {
       "id": "Light:2859",
@@ -5448,7 +5812,9 @@
         "title": "•Yavin 4: Massassi War Room",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_139"
     },
     {
       "id": "Light:2860",
@@ -5476,7 +5842,9 @@
         "title": "•Yavin Sentry",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_68"
     },
     {
       "id": "Light:2863",
@@ -5505,7 +5873,9 @@
         "title": "•Yerka Mig",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_69"
     },
     {
       "id": "Dark:12",
@@ -5547,7 +5917,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/5D6-RA-7 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_163"
     },
     {
       "id": "Dark:22",
@@ -5578,7 +5950,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/A Disturbance In The Force (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_208"
     },
     {
       "id": "Dark:60",
@@ -5629,7 +6003,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Admiral Motti (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_164",
+      "personas": [
+        "Motti"
+      ]
     },
     {
       "id": "Dark:79",
@@ -5665,7 +6044,9 @@
         "title": "•Alderaan",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_281"
     },
     {
       "id": "Dark:94",
@@ -5693,7 +6074,9 @@
         "subType": "Used",
         "title": "Alter",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_234"
     },
     {
       "id": "Dark:146",
@@ -5728,7 +6111,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Assault Rifle (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_311"
     },
     {
       "id": "Dark:190",
@@ -5758,7 +6143,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Baniss Keeg (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_209"
     },
     {
       "id": "Dark:191",
@@ -5794,7 +6181,10 @@
         "subType": "Creature",
         "title": "Bantha",
         "type": "Vehicle"
-      }
+      },
+      "set": "1",
+      "gempId": "1_307",
+      "explanationDe": "Ein Kreaturenfahrzeug mit Ability ½ und Maneuver 2. An einem Außen-Site erhält ein anwesender Tusken Raider durch den Bantha zusätzliche Power. Als Fahrzeugziel verteidigt er sich mit Maneuver."
     },
     {
       "id": "Dark:247",
@@ -5833,7 +6223,12 @@
         "title": "•Black 2",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_299",
+      "personas": [
+        "Black 2"
+      ]
     },
     {
       "id": "Dark:249",
@@ -5872,7 +6267,12 @@
         "title": "•Black 3",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_300",
+      "personas": [
+        "Black 3"
+      ]
     },
     {
       "id": "Dark:253",
@@ -5900,7 +6300,9 @@
         "title": "•Blast Door Controls",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_210"
     },
     {
       "id": "Dark:262",
@@ -5930,7 +6332,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Blaster Rack (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_211"
     },
     {
       "id": "Dark:264",
@@ -5965,7 +6369,10 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Blaster Rifle (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_312",
+      "explanationDe": "Für 2 Force auf einen eigenen Warrior ausspielen. Ein Schuss kostet 2 Force. Für den Treffervergleich zählt die gezogene Waffen-Destiny plus 1."
     },
     {
       "id": "Dark:266",
@@ -5995,7 +6402,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Blaster Scope (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_199"
     },
     {
       "id": "Dark:303",
@@ -6029,7 +6438,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Boosted TIE Cannon (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_313"
     },
     {
       "id": "Dark:304",
@@ -6057,7 +6468,9 @@
         "subType": "Used",
         "title": "Boring Conversation Anyway",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_235"
     },
     {
       "id": "Dark:347",
@@ -6084,7 +6497,9 @@
         "lore": "Hand-held device that commands restraining bolt. Each caller can be keyed to a specific bolt. Used throughout the galaxy. Also called 'owners.'",
         "title": "Caller",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_200"
     },
     {
       "id": "Dark:391",
@@ -6112,7 +6527,9 @@
         "subType": "Lost",
         "title": "Charming To The Last",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_236"
     },
     {
       "id": "Dark:406",
@@ -6153,7 +6570,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Chief Bast (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_165"
     },
     {
       "id": "Dark:467",
@@ -6181,7 +6600,9 @@
         "subType": "Lost",
         "title": "Collateral Damage",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_237"
     },
     {
       "id": "Dark:478",
@@ -6223,7 +6644,12 @@
         "title": "•Colonel Wullf Yularen",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_166",
+      "personas": [
+        "Yularen"
+      ]
     },
     {
       "id": "Dark:489",
@@ -6250,7 +6676,9 @@
         "lore": "Hand-held communication device. Military comlinks have scrambling and variable frequency programming for secure communication during battles or emergencies.",
         "title": "Comlink",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_201"
     },
     {
       "id": "Dark:502",
@@ -6296,7 +6724,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Commander Praji (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_167",
+      "personas": [
+        "Praji"
+      ]
     },
     {
       "id": "Dark:575",
@@ -6324,7 +6757,9 @@
         "subType": "Lost",
         "title": "Counter Assault",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_238"
     },
     {
       "id": "Dark:607",
@@ -6363,7 +6798,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dantooine (Dark) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_282"
     },
     {
       "id": "Dark:613",
@@ -6392,7 +6829,9 @@
         "title": "•Dark Collaboration",
         "type": "Interrupt",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_239"
     },
     {
       "id": "Dark:619",
@@ -6423,7 +6862,9 @@
         "uniqueness": "***",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dark Hours (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_212"
     },
     {
       "id": "Dark:620",
@@ -6457,7 +6898,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dark Jedi Lightsaber (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_314"
     },
     {
       "id": "Dark:621",
@@ -6485,7 +6928,9 @@
         "subType": "Lost",
         "title": "Dark Jedi Presence",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_240"
     },
     {
       "id": "Dark:622",
@@ -6513,7 +6958,9 @@
         "subType": "Used",
         "title": "Dark Maneuvers",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_241"
     },
     {
       "id": "Dark:634",
@@ -6559,7 +7006,13 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Darth Vader (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_168",
+      "personas": [
+        "Vader"
+      ],
+      "explanationDe": "Vader erhöht jeden tatsächlichen Dark-Side-Battle-Destiny-Draw seiner Schlacht um 1. In derselben Schlacht ist er gegen Attrition unter 5 immun."
     },
     {
       "id": "Dark:643",
@@ -6600,7 +7053,9 @@
         "title": "•Dathcha",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_169"
     },
     {
       "id": "Dark:649",
@@ -6628,7 +7083,9 @@
         "subType": "Lost",
         "title": "Dead Jawa",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_242"
     },
     {
       "id": "Dark:665",
@@ -6656,7 +7113,9 @@
         "title": "•Death Star Sentry",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_213"
     },
     {
       "id": "Dark:668",
@@ -6697,7 +7156,9 @@
         "subType": "Imperial",
         "title": "Death Star Trooper",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_170"
     },
     {
       "id": "Dark:669",
@@ -6736,7 +7197,9 @@
         "title": "•Death Star: Central Core",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_283"
     },
     {
       "id": "Dark:673",
@@ -6776,7 +7239,9 @@
         "title": "•Death Star: Detention Block Corridor",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_284"
     },
     {
       "id": "Dark:675",
@@ -6817,7 +7282,9 @@
         "title": "•Death Star: Docking Bay 327",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_285"
     },
     {
       "id": "Dark:678",
@@ -6856,7 +7323,9 @@
         "title": "•Death Star: Level 4 Military Corridor",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_286"
     },
     {
       "id": "Dark:682",
@@ -6895,7 +7364,9 @@
         "title": "•Death Star: War Room",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_287"
     },
     {
       "id": "Dark:723",
@@ -6942,7 +7413,9 @@
         "title": "•Devastator",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_301"
     },
     {
       "id": "Dark:734",
@@ -6972,7 +7445,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Disarmed (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_214"
     },
     {
       "id": "Dark:741",
@@ -7018,7 +7493,9 @@
         "title": "•Djas Puhr",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_171"
     },
     {
       "id": "Dark:768",
@@ -7064,7 +7541,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Dr. Evazan (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_172"
     },
     {
       "id": "Dark:777",
@@ -7094,7 +7573,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Droid Detector (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_202"
     },
     {
       "id": "Dark:790",
@@ -7137,7 +7618,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/DS-61-2 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_173",
+      "personas": [
+        "DS-61-2"
+      ]
     },
     {
       "id": "Dark:791",
@@ -7183,7 +7669,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/DS-61-3 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_174",
+      "personas": [
+        "DS-61-3"
+      ]
     },
     {
       "id": "Dark:816",
@@ -7223,7 +7714,10 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/EG-6 (Eegee-Six) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_175",
+      "explanationDe": "EG-6 hat den Sonderwert Destiny 0. Wird er als Dark-Side-Battle-Destiny gezogen, kann sein Kartentext die anwesende Dark Power einmal pro Schlacht verdoppeln."
     },
     {
       "id": "Dark:824",
@@ -7254,7 +7748,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Elis Helrot (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_243"
     },
     {
       "id": "Dark:830",
@@ -7285,7 +7781,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Emergency Deployment (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_244"
     },
     {
       "id": "Dark:888",
@@ -7316,7 +7814,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Evacuate (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_245"
     },
     {
       "id": "Dark:914",
@@ -7344,7 +7844,9 @@
         "title": "•Expand The Empire",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_215"
     },
     {
       "id": "Dark:932",
@@ -7374,7 +7876,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Fear Will Keep Them In Line (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_216"
     },
     {
       "id": "Dark:934",
@@ -7420,7 +7924,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Feltipern Trevagg (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_176"
     },
     {
       "id": "Dark:993",
@@ -7448,7 +7954,9 @@
         "subType": "Lost",
         "title": "Full Scale Alert",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_246"
     },
     {
       "id": "Dark:996",
@@ -7478,7 +7986,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Fusion Generator Supply Tanks (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_203"
     },
     {
       "id": "Dark:1002",
@@ -7509,7 +8019,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Gaderffii Stick (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_315"
     },
     {
       "id": "Dark:1011",
@@ -7545,7 +8057,12 @@
         "title": "•Garindan",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_177",
+      "personas": [
+        "Garindan"
+      ]
     },
     {
       "id": "Dark:1027",
@@ -7590,7 +8107,9 @@
         "title": "•General Tagge",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_178"
     },
     {
       "id": "Dark:1061",
@@ -7640,7 +8159,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Grand Moff Tarkin (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_179",
+      "personas": [
+        "Tarkin"
+      ]
     },
     {
       "id": "Dark:1064",
@@ -7671,7 +8195,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Gravel Storm (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_247"
     },
     {
       "id": "Dark:1096",
@@ -7702,7 +8228,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Han Seeker (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_316"
     },
     {
       "id": "Dark:1208",
@@ -7732,7 +8260,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/I Find Your Lack of Faith Disturbing (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_217"
     },
     {
       "id": "Dark:1215",
@@ -7760,7 +8290,9 @@
         "subType": "Lost",
         "title": "I Have You Now",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_248"
     },
     {
       "id": "Dark:1263",
@@ -7788,7 +8320,9 @@
         "subType": "Used",
         "title": "Imperial Barrier",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_249"
     },
     {
       "id": "Dark:1264",
@@ -7823,7 +8357,10 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Imperial Blaster (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_317",
+      "explanationDe": "Für 1 Force auf einen eigenen Warrior ausspielen und für 1 Force feuern. Die Waffen-Destiny muss größer sein als der Verteidigungswert des Ziels."
     },
     {
       "id": "Dark:1265",
@@ -7851,7 +8388,9 @@
         "subType": "Used",
         "title": "Imperial Code Cylinder",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_250"
     },
     {
       "id": "Dark:1279",
@@ -7891,7 +8430,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Imperial Pilot (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_180"
     },
     {
       "id": "Dark:1282",
@@ -7922,7 +8463,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Imperial Reinforcements (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_251"
     },
     {
       "id": "Dark:1286",
@@ -7962,7 +8505,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Imperial Trooper Guard (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_181"
     },
     {
       "id": "Dark:1291",
@@ -8008,7 +8553,9 @@
         "subType": "Capital: Imperial-Class Star Destroyer",
         "title": "Imperial-Class Star Destroyer",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_302"
     },
     {
       "id": "Dark:1327",
@@ -8043,7 +8590,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ion Cannon (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_318"
     },
     {
       "id": "Dark:1338",
@@ -8071,7 +8620,9 @@
         "subType": "Lost",
         "title": "It's Worse",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_252"
     },
     {
       "id": "Dark:1237",
@@ -8102,7 +8653,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ive Got A Problem Here (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_253"
     },
     {
       "id": "Dark:1238",
@@ -8132,7 +8685,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ive Lost Artoo (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_218"
     },
     {
       "id": "Dark:1372",
@@ -8168,7 +8723,9 @@
         "subType": "Alien",
         "title": "Jawa",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_182"
     },
     {
       "id": "Dark:1378",
@@ -8196,7 +8753,9 @@
         "title": "•Jawa Pack",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_219"
     },
     {
       "id": "Dark:1401",
@@ -8225,7 +8784,9 @@
         "title": "•Juri Juice",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_220"
     },
     {
       "id": "Dark:1426",
@@ -8264,7 +8825,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Kessel (Dark) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_288"
     },
     {
       "id": "Dark:1430",
@@ -8294,7 +8857,9 @@
         "type": "Effect",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ket Maliss (errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_221"
     },
     {
       "id": "Dark:1440",
@@ -8328,7 +8893,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Kintan Strider (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_254"
     },
     {
       "id": "Dark:1445",
@@ -8364,7 +8931,9 @@
         "title": "•Kitik Keed'kak",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_183"
     },
     {
       "id": "Dark:1460",
@@ -8402,7 +8971,9 @@
         "title": "•Labria",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_184"
     },
     {
       "id": "Dark:1479",
@@ -8433,7 +9004,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Laser Projector (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_319"
     },
     {
       "id": "Dark:1480",
@@ -8462,7 +9035,9 @@
         "title": "•Lateral Damage",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_222"
     },
     {
       "id": "Dark:1539",
@@ -8503,7 +9078,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Lieutenant Tanbris (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_185"
     },
     {
       "id": "Dark:1547",
@@ -8539,7 +9116,9 @@
         "subType": "Transport",
         "title": "Lift Tube",
         "type": "Vehicle"
-      }
+      },
+      "set": "1",
+      "gempId": "1_308"
     },
     {
       "id": "Dark:1551",
@@ -8574,7 +9153,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Light Repeating Blaster Rifle (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_320"
     },
     {
       "id": "Dark:1555",
@@ -8606,7 +9187,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Limited Resources (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_255"
     },
     {
       "id": "Dark:1557",
@@ -8643,7 +9226,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/LIN-V8M (Elleyein-Veeateemm) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_186"
     },
     {
       "id": "Dark:1565",
@@ -8674,7 +9259,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Local Trouble (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_256"
     },
     {
       "id": "Dark:1576",
@@ -8706,7 +9293,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Lone Pilot (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_257"
     },
     {
       "id": "Dark:1578",
@@ -8738,7 +9327,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Lone Warrior (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_258"
     },
     {
       "id": "Dark:1579",
@@ -8766,7 +9357,9 @@
         "subType": "Lost",
         "title": "Look Sir, Droids",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_259"
     },
     {
       "id": "Dark:1592",
@@ -8797,7 +9390,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Luke Seeker (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_321"
     },
     {
       "id": "Dark:1599",
@@ -8826,7 +9421,9 @@
         "title": "•Luke? Luuuuke!",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_223"
     },
     {
       "id": "Dark:1617",
@@ -8853,7 +9450,9 @@
         "lore": "Electrobinocular view. Readouts list object's true and relative azimuth, elevation and range. Built-in night vision.",
         "title": "Macroscan",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_224"
     },
     {
       "id": "Dark:1613",
@@ -8892,7 +9491,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Miiyoom Onith (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_187"
     },
     {
       "id": "Dark:1688",
@@ -8923,7 +9524,9 @@
         "title": "•Molator",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_225"
     },
     {
       "id": "Dark:1691",
@@ -8955,7 +9558,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Moment Of Triumph (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_260"
     },
     {
       "id": "Dark:1709",
@@ -8992,7 +9597,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/MSE-6 Mouse Droid (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_188"
     },
     {
       "id": "Dark:1720",
@@ -9030,7 +9637,9 @@
         "title": "•Myo",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_189"
     },
     {
       "id": "Dark:1767",
@@ -9063,6 +9672,12 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Nevar Yalnal (Errata)/image.png",
         "printableSlipType": "ERRATA"
+      },
+      "set": "1",
+      "gempId": "1_261",
+      "preErrata": {
+        "sourceId": 20016,
+        "gametext": "If both players have a spy at same site, draw destiny. Add 2 if opponent's spy is Undercover. Opponent's spy is lost if destiny > 2."
       }
     },
     {
@@ -9093,7 +9708,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Observation Holocam (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_204"
     },
     {
       "id": "Dark:1831",
@@ -9121,7 +9738,9 @@
         "subType": "Used",
         "title": "Ommni Box",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_262"
     },
     {
       "id": "Dark:1857",
@@ -9150,7 +9769,9 @@
         "title": "•Organa's Ceremonial Necklace",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_226"
     },
     {
       "id": "Dark:1880",
@@ -9178,7 +9799,9 @@
         "subType": "Lost",
         "title": "Overload",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_263"
     },
     {
       "id": "Dark:1904",
@@ -9206,7 +9829,9 @@
         "subType": "Lost",
         "title": "Physical Choke",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_264"
     },
     {
       "id": "Dark:1922",
@@ -9253,7 +9878,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ponda Baba (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_190"
     },
     {
       "id": "Dark:1932",
@@ -9284,7 +9911,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Precise Attack (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_265"
     },
     {
       "id": "Dark:1939",
@@ -9312,7 +9941,9 @@
         "title": "••Presence Of The Force",
         "type": "Effect",
         "uniqueness": "**"
-      }
+      },
+      "set": "1",
+      "gempId": "1_227"
     },
     {
       "id": "Dark:1958",
@@ -9351,7 +9982,9 @@
         "title": "•Prophetess",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_191"
     },
     {
       "id": "Dark:1989",
@@ -9393,7 +10026,9 @@
         "subType": "Droid",
         "title": "R1-G4 (Arone-Geefour)",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_192"
     },
     {
       "id": "Dark:2001",
@@ -9433,7 +10068,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/R4-M9 (Arfour-Emmnine) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_193"
     },
     {
       "id": "Dark:2029",
@@ -9460,7 +10097,9 @@
         "lore": "The Death Star has many terminals coupled to the main reactor for power distribution throughout the immense space station.",
         "title": "Reactor Terminal",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_228"
     },
     {
       "id": "Dark:2099",
@@ -9487,7 +10126,9 @@
         "lore": "Affixed to droid's special recessed socket by using a fusion welder. Bolts can override a droid's circuits, freezing it in place if the droid tries to disobey orders.",
         "title": "Restraining Bolt",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_205"
     },
     {
       "id": "Dark:2160",
@@ -9527,7 +10168,9 @@
         "type": "Vehicle",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Sandcrawler (Dark) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_309"
     },
     {
       "id": "Dark:2176",
@@ -9555,7 +10198,9 @@
         "subType": "Used",
         "title": "Scanning Crew",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_266"
     },
     {
       "id": "Dark:2214",
@@ -9584,7 +10229,9 @@
         "title": "•Send A Detachment Down",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_229"
     },
     {
       "id": "Dark:2216",
@@ -9612,7 +10259,9 @@
         "subType": "Used",
         "title": "Sense",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_267"
     },
     {
       "id": "Dark:2242",
@@ -9640,7 +10289,9 @@
         "subType": "Lost",
         "title": "Set For Stun",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_268"
     },
     {
       "id": "Dark:2355",
@@ -9681,7 +10332,9 @@
         "subType": "Imperial",
         "title": "Stormtrooper",
         "type": "Character"
-      }
+      },
+      "set": "1",
+      "gempId": "1_194"
     },
     {
       "id": "Dark:2357",
@@ -9711,7 +10364,9 @@
         "type": "Device",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Stormtrooper Backpack (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_206"
     },
     {
       "id": "Dark:2360",
@@ -9738,7 +10393,9 @@
         "lore": "Standard Imperial issue for stormtroopers. Contains grappling hook, rope, and other miscellaneous emergency tools. Rebels have been known to steal and use them.",
         "title": "Stormtrooper Utility Belt",
         "type": "Device"
-      }
+      },
+      "set": "1",
+      "gempId": "1_207"
     },
     {
       "id": "Dark:2373",
@@ -9765,7 +10422,9 @@
         "lore": "When the twin suns of Tatooine set. 'Sand People or worse' become a threat, and battles are more dangerous. On Hoth, temperatures drop to deadly extremes.",
         "title": "Sunsdown",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_230"
     },
     {
       "id": "Dark:2397",
@@ -9794,7 +10453,9 @@
         "title": "•Tactical Re-Call",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_231"
     },
     {
       "id": "Dark:2406",
@@ -9822,7 +10483,9 @@
         "subType": "Lost",
         "title": "Takeel",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_269"
     },
     {
       "id": "Dark:2410",
@@ -9853,7 +10516,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tallon Roll (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_270"
     },
     {
       "id": "Dark:2429",
@@ -9889,7 +10554,9 @@
         "title": "•Tatooine",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_289"
     },
     {
       "id": "Dark:2439",
@@ -9926,7 +10593,9 @@
         "title": "•Tatooine: Cantina",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_290"
     },
     {
       "id": "Dark:2446",
@@ -9967,7 +10636,9 @@
         "title": "•Tatooine: Docking Bay 94",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_291"
     },
     {
       "id": "Dark:2454",
@@ -10004,7 +10675,9 @@
         "title": "•Tatooine: Jawa Camp",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_292"
     },
     {
       "id": "Dark:2458",
@@ -10041,7 +10714,9 @@
         "title": "•Tatooine: Jundland Wastes",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_293"
     },
     {
       "id": "Dark:2461",
@@ -10080,7 +10755,9 @@
         "title": "•Tatooine: Lars' Moisture Farm",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_294"
     },
     {
       "id": "Dark:2465",
@@ -10117,7 +10794,9 @@
         "title": "•Tatooine: Mos Eisley",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_295"
     },
     {
       "id": "Dark:2517",
@@ -10148,7 +10827,9 @@
         "type": "Interrupt",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/The Circle Is Now Complete (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_271"
     },
     {
       "id": "Dark:2528",
@@ -10176,7 +10857,9 @@
         "subType": "Lost",
         "title": "The Empire's Back",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_272"
     },
     {
       "id": "Dark:2595",
@@ -10219,7 +10902,9 @@
         "subType": "Starfighter: TIE Advanced x1",
         "title": "TIE Advanced x1",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_303"
     },
     {
       "id": "Dark:2600",
@@ -10262,7 +10947,9 @@
         "subType": "Starfighter: TIE/LN",
         "title": "TIE Fighter",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_304"
     },
     {
       "id": "Dark:2602",
@@ -10305,7 +10992,9 @@
         "subType": "Starfighter: TIE/SR",
         "title": "TIE Scout",
         "type": "Starship"
-      }
+      },
+      "set": "1",
+      "gempId": "1_305"
     },
     {
       "id": "Dark:2609",
@@ -10333,7 +11022,9 @@
         "subType": "Automated",
         "title": "Timer Mine",
         "type": "Weapon"
-      }
+      },
+      "set": "1",
+      "gempId": "1_322"
     },
     {
       "id": "Dark:2613",
@@ -10379,7 +11070,9 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tonnika Sisters (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_195"
     },
     {
       "id": "Dark:2632",
@@ -10407,7 +11100,9 @@
         "subType": "Used",
         "title": "Trinto Duaba",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_273"
     },
     {
       "id": "Dark:2634",
@@ -10435,7 +11130,9 @@
         "subType": "Lost",
         "title": "Trooper Charge",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_274"
     },
     {
       "id": "Dark:2644",
@@ -10469,7 +11166,9 @@
         "type": "Weapon",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Turbolaser Battery (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_323"
     },
     {
       "id": "Dark:2648",
@@ -10506,7 +11205,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Tusken Raider (Premiere) (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_196"
     },
     {
       "id": "Dark:2650",
@@ -10534,7 +11235,9 @@
         "subType": "Lost",
         "title": "Tusken Scavengers",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_275"
     },
     {
       "id": "Dark:2660",
@@ -10573,7 +11276,9 @@
         "type": "Vehicle",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Ubrikkian 9000 Z001 (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_310"
     },
     {
       "id": "Dark:2688",
@@ -10601,7 +11306,9 @@
         "subType": "Used",
         "title": "Utinni!",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_276"
     },
     {
       "id": "Dark:2700",
@@ -10643,7 +11350,12 @@
         "title": "•Vader's Custom TIE",
         "type": "Starship",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_306",
+      "personas": [
+        "Vader's Custom TIE"
+      ]
     },
     {
       "id": "Dark:2701",
@@ -10672,7 +11384,9 @@
         "title": "•Vader's Eye",
         "type": "Interrupt",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_277"
     },
     {
       "id": "Dark:2702",
@@ -10707,7 +11421,12 @@
         "uniqueness": "*",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/Vaders Lightsaber (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_324",
+      "personas": [
+        "Vader's Lightsaber"
+      ]
     },
     {
       "id": "Dark:2783",
@@ -10744,7 +11463,9 @@
         "type": "Character",
         "printableSlipUrl": "https://res.starwarsccg.org/vkit/cards/standard/WED15-1662 Treadwell Droid (Errata)/image.png",
         "printableSlipType": "ERRATA"
-      }
+      },
+      "set": "1",
+      "gempId": "1_197"
     },
     {
       "id": "Dark:2762",
@@ -10772,7 +11493,9 @@
         "subType": "Lost",
         "title": "We're All Gonna Be A Lot Thinner!",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_278"
     },
     {
       "id": "Dark:2833",
@@ -10800,7 +11523,9 @@
         "title": "•Wrong Turn",
         "type": "Effect",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_232"
     },
     {
       "id": "Dark:2834",
@@ -10833,7 +11558,12 @@
         "title": "•Wuher",
         "type": "Character",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_198",
+      "personas": [
+        "Wuher"
+      ]
     },
     {
       "id": "Dark:2848",
@@ -10869,7 +11599,9 @@
         "title": "•Yavin 4",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_296"
     },
     {
       "id": "Dark:2852",
@@ -10910,7 +11642,9 @@
         "title": "•Yavin 4: Docking Bay",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_297"
     },
     {
       "id": "Dark:2854",
@@ -10947,7 +11681,9 @@
         "title": "•Yavin 4: Jungle",
         "type": "Location",
         "uniqueness": "*"
-      }
+      },
+      "set": "1",
+      "gempId": "1_298"
     },
     {
       "id": "Dark:2884",
@@ -10975,7 +11711,9 @@
         "subType": "Lost",
         "title": "You Overestimate Their Chances",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_279"
     },
     {
       "id": "Dark:2897",
@@ -11002,7 +11740,9 @@
         "lore": "'With this blast shield down, I can't even see. How am I supposed to fight?'",
         "title": "Your Eyes Can Deceive You",
         "type": "Effect"
-      }
+      },
+      "set": "1",
+      "gempId": "1_233"
     },
     {
       "id": "Dark:2901",
@@ -11030,7 +11770,9 @@
         "subType": "Lost",
         "title": "Your Powers Are Weak, Old Man",
         "type": "Interrupt"
-      }
+      },
+      "set": "1",
+      "gempId": "1_280"
     }
   ]
 }
