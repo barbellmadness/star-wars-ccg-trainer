@@ -30,7 +30,7 @@ button:disabled{opacity:.35}
 .log{max-height:170px;overflow:auto;white-space:pre-line}
 a{color:#b6d8ff}
 .brand-header{display:flex;justify-content:center;align-items:center;padding:4px 0}
-.brand-header img{width:min(380px,75vw);height:56px;object-fit:contain;filter:drop-shadow(0 4px 14px #f3cf7a38)}
+.brand-header img{width:min(380px,75vw);height:72px;object-fit:contain;filter:drop-shadow(0 4px 14px #f3cf7a38)}
 .playmat-shell{border:1px solid #657a93;border-radius:16px;padding:8px;background:radial-gradient(ellipse at 50% 100%,#233a55 0%,#101c2d 52%,#090f1b);box-shadow:inset 0 0 28px #02050cbf,0 0 19px #799bc427}
 .playmat-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 8px}
 .playmat{display:flex;align-items:stretch;gap:12px;width:max-content;min-width:100%}
@@ -42,12 +42,19 @@ a{color:#b6d8ff}
 .playmat-zone .cards{display:grid;grid-template-columns:repeat(2,minmax(0,68px));align-content:start;overflow:visible;min-height:58px;gap:6px;padding:4px 2px}
 .playmat-zone .cards:empty{min-height:0;padding:0}
 .playmat-zone .card > button:not(.card-face){width:100%;margin-top:3px;padding:4px 3px;font-size:10px;overflow-wrap:anywhere}
+.playmat-stack{display:grid;grid-template-rows:repeat(var(--stack-layers),var(--stack-peek)) auto;--stack-peek:clamp(12px,calc(84px / var(--stack-layers)),17px);padding-inline-start:5px;isolation:isolate}
+.playmat-stack>.card-face{position:relative;align-self:start;min-width:0}
+.playmat-stack>.stack-layer{transform:translateX(-5px)}
+.playmat-stack>.stack-layer:focus-visible{z-index:1}
+.stack-layer .card-face-placeholder{place-items:start center;padding:1px;font-size:9px}
+.zone-totals{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px;padding-top:4px;border-top:1px solid #b8c9da45;color:#d8e5f4;font-size:11px;font-variant-numeric:tabular-nums}
 .playmat-location{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center;overflow-wrap:anywhere}
 .playmat-location > div,.playmat-location button{max-width:100%}
 .playmat-location img{display:block;width:168px;max-width:100%;height:120px;object-fit:contain;border:2px solid #c9af70;border-radius:7px;background:#07101c;box-shadow:0 7px 20px #0009}
 .playmat-location .location-fallback{width:168px;max-width:100%;min-height:86px;border:2px dashed #667c94;border-radius:7px;display:grid;place-items:center;text-align:center;padding:12px;color:#b9c9d9}
 .playmat-location .location-name{font-size:12px;line-height:1.2;text-align:center;max-width:min(176px,100%)}
 .playmat-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}.playmat-actions button{padding:6px;font-size:11px}
+.playmat-location .movement-trigger{padding:6px 9px;font-size:12px}
 .playmat-zone .zone-name{font-size:10px;letter-spacing:.12em;color:#b8c9da}
 .playmat-column.empty-location .playmat-location{opacity:.7}
 .playmat-location .location-art-button{border:0;background:transparent;padding:0;cursor:zoom-in;display:block;line-height:0;max-width:100%}
@@ -144,7 +151,14 @@ a{color:#b6d8ff}
 #starterDeckCards{max-height:min(55vh,28rem);overflow:auto;margin:12px 0 0;padding-inline-start:24px}
 #starterDeckCards li{padding-block:4px}
 html{scrollbar-gutter:stable}
-html:has(#cardInspector[open],#battleAnalysis[open]){overflow:hidden}
+html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overflow:hidden}
+#movementDialog[open]{display:flex;flex-direction:column;gap:10px;overflow:hidden}
+#movementOptions{min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px;overflow-wrap:anywhere}
+#movementOptions details{padding:7px;border:1px solid #526782;border-radius:7px;margin-bottom:5px}
+#movementOptions summary{cursor:pointer;padding:3px}
+#movementOptions form,.movement-choices{display:grid;gap:5px;padding-top:7px}
+.movement-choices button{text-align:left;padding:5px 8px}
+.movement-status{margin:0}
 #cardInspector{--dialog-width:52rem}
 #cardInspector[open]{display:flex;flex-direction:column;gap:12px;overflow:hidden}
 #cardInspectorBody{min-height:0;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
@@ -181,12 +195,13 @@ html:has(#cardInspector[open],#battleAnalysis[open]){overflow:hidden}
 @media(max-width:650px){main{padding:9px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:140px}.playmat-location img{height:100px}}
 </style>
 <main>
-  <header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header>
+  <header class="brand-header"><img src="https://gemp.starwarsccg.org/gemp-swccg/epic-duel/logo.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header>
   <div class="panel game-toolbar">
     <div class="game-options">
       <label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label>
       <button id="start" disabled>Neue Partie</button>
       <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
+      <button id="endGame" type="button" hidden></button>
       <label><input id="autoBot" type="checkbox"> Bot automatisch spielen lassen</label>
       <div class="starter-deck-actions">
         <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
@@ -205,7 +220,10 @@ html:has(#cardInspector[open],#battleAnalysis[open]){overflow:hidden}
   <dialog id="battleAnalysis" class="game-dialog" aria-labelledby="battleTitle">
     <header class="dialog-header">
       <div><h2 id="battleTitle" tabindex="-1" autofocus>Kampf</h2><p id="battlePriority" role="status"></p></div>
-      <label><input id="autoBotBattle" type="checkbox"> Bot automatisch</label>
+      <div class="dialog-controls">
+        <label><input id="autoBotBattle" type="checkbox"> Bot automatisch</label>
+        <button id="endBattleGame" type="button"></button>
+      </div>
     </header>
     <div id="battleContent">
       <div id="battleDetails"></div>
@@ -298,8 +316,17 @@ html:has(#cardInspector[open],#battleAnalysis[open]){overflow:hidden}
   </header>
   <div id="cardInspectorBody" tabindex="0"></div>
 </dialog>
+<dialog id="movementDialog" class="game-dialog" aria-labelledby="movementTitle">
+  <header class="dialog-header">
+    <h2 id="movementTitle"></h2>
+    <form method="dialog"><button autofocus>Schließen</button></form>
+  </header>
+  <div id="movementOptions"></div>
+  <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
+</dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
+const trainerVersion='2.1.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -469,16 +496,15 @@ function renderSetup(){
   :'Lege die gewählten Startorte aus und ziehe die Starthände.';
 }
 
-const crewLabels={pilot:'Pilot',driver:'Fahrer',passenger:'Passagier',astromech:'Astromech',cargo:'Fracht',hangar:'Hangar'};
+const crewLabels={pilot:'Pilot',driver:'Fahrer',passenger:'Passagier',astromech:'Astromech',cargo:'Fracht',hangar:'Hangar',seeker:'Seeker'};
 function submitTransportGroup(form,action){
  const chosen=action.kind==='transitGroup'?
   [...form.querySelectorAll('input:checked')].map(input=>Number(input.value)):
   [...form.querySelectorAll('select')].filter(input=>input.value).flatMap(input=>
    [Number(input.dataset.ship),Number(input.dataset.index),input.value]);
- if(!chosen.length||!dispatchUI({...action,args:[...action.args,...chosen]})){
-  form.querySelector('[role="status"]').textContent=chosen.length?
-   'Diese Auswahl ist nicht möglich. Prüfe die freien Plätze und die Phase.':'Wähle mindestens eine Karte.';
- }
+ const status=form.querySelector('[role="status"]');
+ if(chosen.length)playMovement({...action,args:[...action.args,...chosen]},status);
+ else status.textContent='Wähle mindestens eine Karte.';
  return false;
 }
 
@@ -497,16 +523,53 @@ function transportGroupMarkup(option){
   +'<button type="submit">'+(transit?'Transit ausführen':'Transfer ausführen')+'</button><p class="hint" role="status"></p></form></details>';
 }
 
-function movementPanel(i,available){
- const options=available.filter(option=>option.from===i&&['move','transitGroup','dockGroup','transport'].includes(option.kind)
+function locationMovementOptions(i,available){
+ return available.filter(option=>option.from===i&&['move','transitGroup','dockGroup','transport'].includes(option.kind)
   &&(option.args[0]!=='deployAboard'||option.args[3]===selected));
- const label=option=>{
-  if(option.kind==='move')return option.name+' → '+state.locations[option.to].name+' ('+option.movementKind+', '+option.cost+' Force)';
+}
+
+function movementTrigger(i,available){
+ const options=locationMovementOptions(i,available),count=options.length;
+ const label=state.phase===4||options.some(option=>option.kind==='move')?'Bewegen':'Besatzung';
+ return count?'<button id="movementTrigger'+i+'" class="movement-trigger" type="button" aria-haspopup="dialog" aria-label="'
+  +escapeHTML(label+' · '+state.locations[i].name+' · '+count+' Optionen')+'" onclick="openMovement('+i+')">'+label+' ('+count+')</button>':'';
+}
+
+function openMovement(i){
+ if(!state?.locations[i])return;
+ const options=locationMovementOptions(i,legalActions(state,'Light'));
+ if(!options.length)return;
+ const units=new Map(),groups=[];
+ for(const option of options){
+  if(option.choices){groups.push(transportGroupMarkup(option));continue;}
+  const card=option.card;
+  if(!units.has(card))units.set(card,[]);
   const role=crewLabels[option.args[5]];
-  const destination=option.args[0]==='shuttleDown'?state.locations[option.to].name:option.carrier.name;
-  return option.label+' · '+option.card.name+' → '+destination+(role?' · '+role:'')+' ('+option.cost+' Force)';
- };
- return options.length?'<div>'+options.map(option=>option.choices?transportGroupMarkup(option):ruleButton(option,label(option))).join('')+'</div>':'';
+  const label=option.kind==='move'?state.locations[option.to].name+' · '+option.movementKind:
+   option.label+' · '+(option.args[0]==='shuttleDown'?state.locations[option.to].name:option.carrier.name)+(role?' · '+role:'');
+  units.get(card).push(ruleButton(option,label+' ('+option.cost+' Force)','playMovement'));
+ }
+ el('movementTitle').textContent=(state.phase===4||options.some(option=>option.kind==='move')?'Bewegung':'Besatzung')+' · '+state.locations[i].name;
+ const body=el('movementOptions');
+ body.innerHTML=[...units].map(([card,choices])=>'<details'+(units.size===1?' open':'')+'><summary>'
+  +escapeHTML(card.name)+' · '+choices.length+'</summary><div class="movement-choices">'+choices.join('')+'</div></details>').join('')+groups.join('');
+ el('movementStatus').hidden=true;
+ const dialog=el('movementDialog');
+ dialog.dataset.slot=i;
+ dialog.showModal();
+ body.scrollTop=0;
+}
+
+function playMovement(action,status=el('movementStatus')){
+ if(!dispatchUI(action)){
+  status.textContent='Diese Aktion ist nicht mehr möglich.';
+  status.hidden=false;
+  return false;
+ }
+ const dialog=el('movementDialog');
+ dialog.close();
+ if(!el('battleAnalysis').open)(el('movementTrigger'+dialog.dataset.slot)??el('step')).focus({preventScroll:true});
+ return true;
 }
 
 function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}
@@ -698,8 +761,7 @@ function showCardWithStats(card,actions=''){
   if(Number.isFinite(card[field])||['special','unknown'].includes(card.values?.[field]?.kind))stats.push([label,field]);
  }
  const type=[card.type,card.subType].filter(Boolean).join(' · ');
- const loadout=[...(card.weapons??[]),...(card.attachments??[])].map(item=>item.name).concat(
-  (card.occupants??[]).map(({card:occupant,role})=>(crewLabels[role]??role)+' · '+occupant.name));
+ const loadout=cardLoadout(card).map(({card,role,crew})=>crew?role+' · '+card.name:card.name);
  const details=(type?'<p class="hint">'+escapeHTML(type)+'</p>':'')
   +'<p>'+stats.map(([label,field])=>label+' '+displayCardValue(card,field)).join(' · ')+'</p>'
   +(card.ionDamage?'<p>Ionenschaden · Verteidigung 0, Hyperspeed 0</p>':'')
@@ -782,14 +844,44 @@ function closeCard(){
  inspectedLostSide=null;
 }
 
+function cardLoadout(card){
+ return [
+  ...(card.weapons??[]).map(card=>({card,role:'Waffe'})),
+  ...(card.attachments??[]).map(card=>({card,role:'Ausrüstung'})),
+  ...(card.occupants??[]).map(({card,role})=>({card,role:crewLabels[role]??role,crew:true}))
+ ];
+}
+
+function stackedCards(card){
+ return cardLoadout(card).flatMap(entry=>[entry,...stackedCards(entry.card)]);
+}
+
+function inspectStackLayer(side,site,host,index){
+ if(!state)return;
+ const card=PremiereGame.zones(state,side).board?.[site]?.[host];
+ const layer=card&&stackedCards(card)[index];
+ if(layer)showCardWithStats(layer.card);
+}
+
+function smallCardArt(card,placeholder='Bild fehlt'){
+ const image=card.image?'<img loading="lazy" src="'+escapeHTML(card.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
+ return image+'<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">'+escapeHTML(placeholder)+'</span>';
+}
+
 function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
  const isSelected=clickable&&selected===idx;
- const image=c.image?'<img loading="lazy" src="'+escapeHTML(c.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
- const fallback='<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">Bild fehlt</span>';
  const equip=equipAction?ruleButton(equipAction,'Ausrüsten ('+equipAction.cost+' Force)'):'';
- return '<div class="card'+(isSelected?' chosen':'')+'"><button class="card-face" type="button"'
+ const face='<button class="card-face" type="button"'
   +(clickable?' id="handCard'+idx+'"':'')+' aria-haspopup="dialog" aria-label="'+escapeHTML(c.name)+' ansehen'+(isSelected?' (ausgewählt)':'')
-  +'" onclick="inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">'+image+fallback+'</button>'+equip+'</div>';
+  +'" onclick="inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">'+smallCardArt(c)+'</button>';
+ const loadout=zone==='field'?stackedCards(c):[];
+ const layers=loadout.map(({card,role},index)=>{
+  const label=escapeHTML(role+' · '+card.name);
+  return '<button class="card-face stack-layer" type="button" aria-haspopup="dialog" title="'+label+'" aria-label="'+label
+   +' ansehen" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role)+'</button>';
+ }).join('');
+ const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
+ return '<div class="card'+(isSelected?' chosen':'')+'">'+art+equip+'</div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
@@ -816,9 +908,18 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
   +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
- const zone=(side,cards)=>'<div class="playmat-zone '+(side==='Dark'?'dark-zone':'light-zone')+'"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span><div class="cards">'+cards.map((c,j)=>mini(c,j,false,side,'field',i,side==='Light'?equipActions.get(j)??null:null)).join('')+'</div></div>';
+ const totals=loc?battleTotals(i):null,stat=value=>Number.isFinite(value)?value.toLocaleString('de-DE'):'?';
+ const zone=(side,cards)=>{
+  const key=side.toLowerCase();
+  return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span><div class="cards">'
+   +cards.map((card,index)=>mini(card,index,false,side,'field',i,side==='Light'?equipActions.get(index)??null:null)).join('')+'</div>'
+   +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
+ };
+ const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
+ const actions=(state.phase!==4||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'">'+zone('Dark',dark)
- +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div><div class="playmat-actions">'+ruleButton(findOffer(available,'deploy',selected,i),'Ausspielen')+ruleButton(findOffer(available,'battle',i),'Battle (1 Force)')+extra+'</div>'+movementPanel(i,available)+'</div>'
+ +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
+ +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
  +zone('Light',light)+'</div>';
 }
 
@@ -940,7 +1041,7 @@ function runBotStep(action){
 const autoBotKey='swccg.v2.autoBot';
 let autoBotTimer=null;
 const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state&&!state.gameWinner&&
- !el('cardInspector').open&&!el('starterDeckDialog').open;
+ !el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open;
 
 function automaticBotAction(){
  if(!automaticBot())return null;
@@ -979,10 +1080,12 @@ function setAutoBot(enabled){
 
 presentGame=()=>{
  if(replayingGame)return;
+ el('endGame').hidden=!currentGame()||!!state?.gameWinner;
  if(shownGame!==currentGame()){
   selected=-1;
   shownGame=currentGame();
   closeCard();
+  if(el('movementDialog').open)el('movementDialog').close();
  }
  if(setupDecks)renderSetup();
  else if(state){
@@ -996,7 +1099,7 @@ presentGame=()=>{
 
 const saveKey='swccg.v2.autosave';
 const saveVersion=1;
-let starterDeckDefinition, activeSave, resumeCandidate, lastSavedValue=null, replayingGame=false;
+let starterDeckDefinition, activeSave, resumeCandidate, lastSavedValue=null, activeSaveStored=false, replayingGame=false;
 
 function saveStatus(message){
  const status=el('gameSaveStatus');
@@ -1030,6 +1133,7 @@ function saveActiveGame(){
   const value=JSON.stringify({...activeSave,revision,randomState});
   localStorage.setItem(saveKey,value);
   lastSavedValue=value;
+  activeSaveStored=true;
   saveStatus('Partie automatisch gespeichert');
  }catch{
   saveStatus('Automatisches Speichern im Browser fehlgeschlagen.');
@@ -1045,6 +1149,7 @@ function recordGameCommand(command){
 function startNewGame(seed,trainingBattle=false){
  if(!start(seed,true,trainingBattle))return false;
  activeSave={version:saveVersion,cardRevision:REVISION,seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
+ activeSaveStored=false;
  resumeCandidate=null;
  el('resumeGame').hidden=true;
  return true;
@@ -1072,6 +1177,7 @@ function resumeGameFromUI(){
   replayingGame=false;
  }
  activeSave=saved;
+ activeSaveStored=true;
  resumeCandidate=null;
  el('resumeGame').hidden=true;
  el('gameSeed').value=String(saved.seed);
@@ -1086,6 +1192,45 @@ function startFromUI(){
  if(!input.validity.valid){input.reportValidity();return;}
  if(lastSavedValue!==null&&!confirm('Neue Partie starten? Der bisherige Spielstand wird ersetzt.'))return;
  if(startNewGame(input.value?Number(input.value):undefined,el('trainingBattle').checked))saveActiveGame();
+}
+
+function endGameFromUI(){
+ if(!currentGame()||state?.gameWinner||!confirm('Laufende Partie beenden und ihren lokalen Spielstand löschen?'))return false;
+ let otherSave=false,removed=false;
+ try{
+  if(activeSaveStored){
+   if(localStorage.getItem(saveKey)===lastSavedValue){
+    localStorage.removeItem(saveKey);
+    lastSavedValue=null;
+    removed=true;
+   }else otherSave=true;
+  }
+ }catch{
+  const message='Der lokale Spielstand konnte nicht gelöscht werden.';
+  saveStatus(message);
+  if(el('battleAnalysis').open)el('battlePriority').textContent=message;
+  return false;
+ }
+ activeSave=null;
+ activeSaveStored=false;
+ resumeCandidate=otherSave?readSavedGame():null;
+ state=setupDecks=battleSession=null;
+ presentGame();
+ el('setup').style.display='none';
+ el('gameTable').hidden=true;
+ el('controlPanel').style.display='none';
+ el('outOfPlay').hidden=true;
+ el('phaseHelp').hidden=true;
+ el('forceControls').hidden=true;
+ el('step').disabled=true;
+ el('stats').textContent='';
+ el('gameMessage').hidden=false;
+ el('instruction').textContent='Partie beendet';
+ el('hint').textContent='Du kannst eine neue Partie starten.';
+ el('resumeGame').hidden=!resumeCandidate;
+ saveStatus(otherSave?'Der Autosave wurde in einem anderen Tab geändert.':removed?'Lokaler Spielstand gelöscht':'');
+ el('start').focus({preventScroll:true});
+ return true;
 }
 
 async function readLocalJson(path){
@@ -1146,6 +1291,10 @@ async function load(){try{
 
 el('auditBtn').onclick=auditData;el('start').onclick=startFromUI;
 el('resumeGame').onclick=resumeGameFromUI;
+for(const id of ['endGame','endBattleGame']){
+ el(id).textContent='Partie beenden · v'+trainerVersion;
+ el(id).onclick=endGameFromUI;
+}
 el('viewLightDeck').onclick=()=>showStarterDeck('light');
 el('viewDarkDeck').onclick=()=>showStarterDeck('dark');
 el('showBotHand').onchange=()=>{if(!el('showBotHand').checked)closeCard();render()};
@@ -1155,6 +1304,7 @@ el('autoBot').onchange=()=>setAutoBot(el('autoBot').checked);
 el('autoBotBattle').onchange=()=>setAutoBot(el('autoBotBattle').checked);
 el('cardInspector').onclose=scheduleAutomaticBot;
 el('starterDeckDialog').onclose=scheduleAutomaticBot;
+el('movementDialog').onclose=scheduleAutomaticBot;
 el('battleAnalysis').oncancel=event=>{if(!closeBattle())event.preventDefault();};
 load();
 </script></html>

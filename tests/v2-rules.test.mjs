@@ -18,7 +18,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  let timerId=0;
  const document={getElementById(id){
   if(!elements.has(id))elements.set(id,{
-   value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
+   value:'',checked:true,style:{},dataset:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
    showModal(){this.open=true;},close(){this.open=false;},focus(){},
   });
   return elements.get(id);
@@ -750,9 +750,12 @@ test('hand and field cards use image buttons, with hand selection and field stat
  const field=run('renderPlaymatColumn(state.locations[0],0)');
  assert.match(field,/class="location-name">[^<]+/);
  assert.match(field,/aria-label="Test Ship ansehen" onclick="inspectCard\('Light',0,'field',0\)"/);
- assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|Test Weapon|Test Pilot/);
+ assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|>Test (?:Weapon|Pilot)</);
+ assert.match(field,/class="playmat-stack"[^>]+>.*aria-label="Waffe · Test Weapon ansehen".*aria-label="Pilot · Test Pilot ansehen"/);
  assert.equal(elements.get('selectInspectorCard').hidden,true);
  assert.match(elements.get('cardInspectorBody').innerHTML,/Ionenschaden.*Besatzung und Ausrüstung.*Test Weapon.*Pilot · Test Pilot/);
+ run("inspectStackLayer('Light',0,0,1)");
+ assert.equal(elements.get('cardInspectorTitle').textContent,'Test Pilot');
 });
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
@@ -1084,7 +1087,10 @@ test('deployment respects single and multiple Premiere uniqueness dots',async()=
 test('hyperspeed uses parsec distance, requires a nav computer, and costs one regular move',async()=>{
  const {run,elements}=await craftHarness();
  run("state.phase=4;state.light[5]=[ship];render()");
- assert.match(elements.get('board').innerHTML,/Tatooine \(Hyperspeed, 1 Force\)/);
+ assert.match(elements.get('board').innerHTML,/id="movementTrigger5"/);
+ assert.doesNotMatch(elements.get('board').innerHTML,/Hyperspeed, 1 Force|Hyperspeed \(1 Force\)/);
+ run('openMovement(5)');
+ assert.match(elements.get('movementOptions').innerHTML,/Tatooine · Hyperspeed \(1 Force\)/);
  assert.equal(run('moveCharacter(5,0,1)'),false);
  assert.equal(run('moveCharacter(5,0,2)'),false);
  run('ship.navComputer=false');
@@ -1571,7 +1577,7 @@ test('a seed and the recorded action choices reproduce setup and both sides’ z
 
 function autosaveStorage(){
  const values=new Map();
- return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+ return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
 }
 
 test('starter decks replay complete matches with legal decisions and conserve all card instances',async()=>{
@@ -1644,6 +1650,18 @@ function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
+
+test('ending the active game preserves an autosave changed by another tab',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ startSavedGame(run);
+ const key=run('saveKey'),otherSave=JSON.stringify({...JSON.parse(storage.getItem(key)),seed:4});
+ storage.setItem(key,otherSave);
+ assert.equal(run("el('endGame').onclick()"),true);
+ assert.equal(storage.getItem(key),otherSave);
+ assert.equal(run('currentGame()'),undefined);
+ assert.equal(run("el('resumeGame').hidden"),false);
+});
 
 test('autosave restores a partially completed bot turn and keeps the original starter decks',async()=>{
  const storage=autosaveStorage();
@@ -2140,6 +2158,11 @@ test('starfighters deploy with a manual pilot as one paid action and use the mat
  assert.equal(run(`state.hand.length===0&&state.light[0][0]===red&&red.occupants[0].card===biggs&&
   craftStats(red,0).power===5&&craftStats(red,0).maneuver===5&&craftStats(red,0).ability===biggs.ability`),true);
  assert.equal(run("PremiereLocations.aboard(state,biggs,red)&&!PremiereLocations.present(state,biggs,0)"),true);
+ run('state.dark[0]=[tie];state.dark[2]=[bantha]');
+ const field=run('renderPlaymatColumn(state.locations[0],0)');
+ assert.match(field,/dark-zone.*?Power <b>1<\/b>.*?Ability <b>1<\/b>/);
+ assert.match(run('renderPlaymatColumn(state.locations[2],2)'),/dark-zone.*?Power <b>1<\/b>.*?Ability <b>0,5<\/b>/);
+ assert.match(field,/light-zone.*?aria-label="Pilot · [^"]*Biggs Darklighter ansehen".*?Power <b>5<\/b>.*?Ability <b>2<\/b>/);
 });
 
 test('a parked unpiloted fighter cannot take off until an eligible pilot boards',async()=>{
@@ -2186,7 +2209,11 @@ test('selected units transit together, leaving unselected cards and their moveme
  assert.equal(run("requestAction('transitGroup','Light',[2,5,0,0])"),false);
  assert.equal(run("requestAction('transitGroup','Light',[2,5,0,99])"),false);
  assert.equal(run('state.light[2].length===3&&state.used.length===0'),true);
- assert.equal(run("requestAction('transitGroup','Light',[2,5,0,2])"),true);
+ run(`openMovement(2);
+  const status={};
+  const form={querySelector:()=>status,querySelectorAll:()=>[{value:'0'},{value:'2'}]};
+  submitTransportGroup(form,transit);`);
+ assert.equal(run("el('movementDialog').open"),false);
  assert.equal(run("state.light[2].length===1&&state.light[2][0]===b&&state.light[5].length===2&&state.light[5][0]===a&&state.light[5][1]===c&&a.weapons[0]===blaster"),true);
  assert.equal(run("state.used.length===1&&state.movedThisTurn.includes(a)&&state.movedThisTurn.includes(c)&&!state.movedThisTurn.includes(b)"),true);
 });

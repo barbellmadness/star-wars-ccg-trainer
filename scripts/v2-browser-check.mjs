@@ -99,13 +99,40 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await page.locator('#pilesDark').textContent(), /Lost Pile verdeckt/);
 
     await page.evaluate(() => {
-      const slot = state.locations.findIndex(isSite);
       const card = id => ({...catalog.find(card => card.id === id)});
-      state.phase = 3;
-      state.light[slot] = [{...card('Light:2052'), weapons: [card('Light:259')]}];
-      state.dark[slot] = [card('Dark:2355')];
+      state.phase = 4;
+      state.locations = ['Light:2447', 'Light:2448', 'Light:2440'].map(card);
+      state.locationOrder = [0, 1, 2];
+      state.light = [[], [{...card('Light:2052'), weapons: [card('Light:259')]}, card('Light:2040')], []];
+      state.dark = [[], [{...card('Dark:2355'), weapons: [card('Dark:1264')]}], []];
       presentGame();
     });
+    const originColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Dune Sea'});
+    assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 3');
+    assert.equal(await originColumn.locator('.dark-zone .zone-totals').textContent(), 'Power 1 Ability 1');
+    assert.ok(await originColumn.locator('.light-zone .playmat-stack').evaluate(stack => {
+      const weapon = stack.firstElementChild.getBoundingClientRect();
+      const host = stack.lastElementChild.getBoundingClientRect();
+      const neighbor = stack.parentElement.nextElementSibling.getBoundingClientRect();
+      return weapon.top < host.top && weapon.bottom > host.top && host.right <= neighbor.left;
+    }));
+    await originColumn.getByRole('button', {name: 'Waffe · Blaster ansehen'}).click({position: {x: 8, y: 5}});
+    assert.ok(await page.getByRole('dialog', {name: 'Blaster', exact: true}).isVisible());
+    await page.keyboard.press('Escape');
+
+    const moveTrigger = originColumn.getByRole('button', {name: /Bewegen.*4 Optionen/});
+    assert.equal(await originColumn.locator('.playmat-location button').count(), 2);
+    await moveTrigger.click();
+    const movement = page.getByRole('dialog', {name: /Bewegung.*Tatooine: Dune Sea/});
+    assert.ok(await movement.isVisible());
+    await movement.locator('summary').filter({hasText: 'Rebel Pilot'}).click();
+    await movement.getByRole('button', {name: /Tatooine: Docking Bay 94 · Landspeed \(1 Force\)/}).click();
+    assert.equal(await movement.isVisible(), false);
+    assert.ok(await page.locator('.playmat-column').filter({hasText: 'Tatooine: Docking Bay 94'})
+      .getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).isVisible());
+    assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 1');
+    await page.evaluate(() => { state.phase = 3; presentGame(); });
+
     await page.getByRole('button', {name: 'Battle (1 Force)', exact: true}).and(page.locator(':enabled')).first().click();
     const battle = page.getByRole('dialog', {name: /Bodenkampf/});
     assert.ok(await battle.isVisible());
@@ -118,6 +145,21 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await battle.getByRole('button', {name: 'Light verzichtet'}).waitFor();
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
+
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.1.0'});
+    page.once('dialog', dialog => dialog.dismiss());
+    await endBattle.click();
+    assert.ok(await battle.isVisible());
+    assert.ok(await page.evaluate(() => Boolean(localStorage.getItem(saveKey))));
+    page.once('dialog', dialog => dialog.accept());
+    await endBattle.click();
+    assert.equal(await battle.isVisible(), false);
+    assert.equal(await page.locator('#gameTable').isVisible(), false);
+    assert.equal(await page.locator('#instruction').textContent(), 'Partie beendet');
+    assert.equal(await page.evaluate(() => localStorage.getItem(saveKey)), null);
+    await page.reload();
+    await page.waitForFunction(() => !document.querySelector('#start').disabled);
+    assert.equal(await page.locator('#resumeGame').isVisible(), false);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
