@@ -95,6 +95,12 @@ const PremiereLocations = (() => {
       ? opposite(side) : side;
   }
 
+  function ruleAt(state, slot, side, event) {
+    const registry = typeof PremiereCardRules === 'undefined' ? require('./premiere-card-rules.js') : PremiereCardRules;
+    const printed = printedSide(state, slot, side);
+    return registry.effects(state.locations[slot], event).find(rule => rule.printedSide === printed);
+  }
+
   function icons(state, slot, side) {
     const card = state.locations[slot];
     const printed = card?.icons?.[printedSide(state, slot, side).toLowerCase()];
@@ -111,17 +117,11 @@ const PremiereLocations = (() => {
       system(card) && region(card) === region(site) ? effectsAt(state, index).filter(effect => effect.nightfall) : []);
   }
 
-  const transit = new Map([
-    ['Light:676', [1, 1]], ['Dark:675', [2, 0]], ['Light:2447', [1, 2]],
-    ['Dark:2446', [2, 1]], ['Light:2853', [0, 2]], ['Dark:2852', [1, 1]]
-  ]);
-
   function conditions(state, slot, side) {
     const card = state.locations[slot], tags = card?.locationTags ?? [];
-    const cost = transit.get(card?.id);
+    const transit = ruleAt(state, slot, side, 'dockingTransit');
     return {interior: tags.includes('Interior'), exterior: tags.includes('Exterior'),
-      scompLink: tags.includes('Scomp Link'), dockingBay: !!cost,
-      transitCost: cost?.[printedSide(state, slot, side) === 'Light' ? 0 : 1] ?? null,
+      scompLink: tags.includes('Scomp Link'), dockingBay: !!transit, transitCost: transit?.cost ?? null,
       night: !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
   }
 
@@ -140,8 +140,6 @@ const PremiereLocations = (() => {
     return {count, unknown};
   }
 
-  const lightDrain = new Set(['Light:672', 'Light:680', 'Light:1427', 'Dark:669', 'Dark:673', 'Dark:678']);
-  const darkDrain = new Set(['Light:80', 'Light:608', 'Light:2471', 'Light:2855', 'Light:2858', 'Dark:2458', 'Dark:2461']);
   const lightsabers = new Set(['Light:1386', 'Light:1813', 'Dark:620', 'Dark:2702']);
 
   function drain(state, side, slot, ability) {
@@ -153,10 +151,11 @@ const PremiereLocations = (() => {
     if (effects.some(effect => effect.drainForbiddenFor === side)) return null;
     const base = icons(state, slot, opposing);
     if (base === null) return null;
-    const printed = printedSide(state, slot, side);
-    let modifier = (printed === 'Light' ? lightDrain : darkDrain).has(location.id) ? 1 : 0;
-    if (printed === 'Dark' && location.id === 'Dark:79') {
-      modifier += state.locations.filter((card, index) => card && !system(card) && region(card) === 'Death Star' && control(state, side, index, ability) === true).length;
+    let modifier = ruleAt(state, slot, side, 'forceDrain')?.amount ?? 0;
+    const controlledSiteBonus = ruleAt(state, slot, side, 'controlSiteDrain');
+    if (controlledSiteBonus) {
+      modifier += state.locations.filter((card, index) => card && !system(card) && region(card) === controlledSiteBonus.region &&
+        control(state, side, index, ability) === true).length;
     }
     modifier += effects.reduce((sum, effect) => sum + (effect.drainModifier?.[side] ?? 0), 0);
     const present = presentCards(state, side, slot);
@@ -168,7 +167,7 @@ const PremiereLocations = (() => {
   }
 
   return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
-    findEntry: find, nightEffectsAt, occupy: presence, present, presentCards, printedSide};
+    findEntry: find, nightEffectsAt, occupy: presence, present, presentCards, printedSide, ruleAt};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereLocations;

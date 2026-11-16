@@ -41,7 +41,15 @@ function confirmedPresence(side,i){return state?PremiereLocations.presence(state
 function drainPlan(side,i){
  if(!state||state.gameWinner||state.pendingForceLoss||state.phase!==1||state.activeSide!==side||
     state.drainedSitesThisTurn?.includes(i)||battleSession||PremiereGame.responseWindow(state.game))return null;
- return PremiereLocations.drain(state,side,i,cardAbility);
+ const plan=PremiereLocations.drain(state,side,i,cardAbility);
+ if(!plan||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<4)return plan;
+ const participants=PremiereLocations.entries(state,side).filter(({card,slot,unavailable})=>
+  slot===i&&!unavailable&&PremiereUnits.active(card)&&['Character','Vehicle','Starship','Weapon','Device'].includes(card.type))
+  .map(entry=>entry.card);
+ participants.push(...(state.locationWeapons?.[i]??[]).filter(card=>(card.controller??card.side)===side));
+ participants.push(...PremiereLocations.effectsAt(state,i).flatMap(effect=>effect.siteDevice&&effect.card.side===side?[effect.card]:[]));
+ if(participants.some(card=>state.drainedCardsThisTurn?.includes(card)))return null;
+ return {...plan,participants};
 }
 function drainAmount(plan,bonus=0){return Math.max(0,plan.base+plan.modifier+Math.min(bonus,plan.optional))}
 function forceDrainValue(side,i){const plan=drainPlan(side,i);return plan?drainAmount(plan):null}
@@ -95,6 +103,7 @@ function initiateForceDrain(side,i,bonus=0){
  const plan=drainPlan(side,i);
  if(!plan||!Number.isInteger(bonus)||bonus<0||bonus>plan.optional)return false;
  (state.drainedSitesThisTurn??=[]).push(i);
+ if(plan.participants)(state.drainedCardsThisTurn??=[]).push(...plan.participants);
  log(side+' initiiert einen Force Drain bei '+state.locations[i].name+' ('+drainAmount(plan,bonus)+' Force).');
  if(!openReactWindow('drain',side,i,bonus))resolveForceDrain(side,i,bonus);
  return true;
@@ -157,7 +166,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=3;
+const latestCardRulesVersion=4;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -208,12 +217,13 @@ function finishSetup(){
  // Only the final picks leave the decks. Set-aside cards return to the shuffle.
  const deck=PremiereGame.shuffle(setup.light.cards.filter((card,index)=>index!==lightChoice?.index),setup.game);
  const botDeck=PremiereGame.shuffle(setup.dark.cards.filter((card,index)=>index!==darkChoice?.index),setup.game);
- state=PremiereGame.createState(setup.game,deck,botDeck,locations,initialLocationOrder(locations));
+ const firstSide=activeCardRules(lightChoice?.card,'firstTurn').length?'Light':'Dark';
+ state=PremiereGame.createState(setup.game,deck,botDeck,locations,initialLocationOrder(locations),firstSide);
  state.trainingBattle=setup.trainingBattle;
  registerDuelTiming();
  setupDecks=null;
- log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. Dark Side beginnt.');
- botBegin();
+ log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. '+firstSide+' Side beginnt.');
+ if(firstSide==='Dark')botBegin();
  checkpoint('turn:start',()=>checkpoint('phase:start',()=>{}));
  return true;
 }
@@ -304,16 +314,15 @@ function travelOptions(card,side,from,to,react=false){
  if(!react&&state.phase===1){
   const names=[locationTitle(origin),locationTitle(destination)].sort();
   const mos=locationTitle(origin)==='tatooine: mos eisley'?from:to;
-  const mosCard=state.locations[mos];
   return names[0]==='tatooine: cantina'&&names[1]==='tatooine: mos eisley'&&character&&
-   mosCard.id==='Light:2466'&&PremiereLocations.printedSide(state,mos,side)==='Light'?[{kind:'Mos Eisley',cost:0}]:[];
+   PremiereLocations.ruleAt(state,mos,side,'cantinaMove')?[{kind:'Mos Eisley',cost:0}]:[];
  }
  if(!react&&state.phase===4&&!PremiereUnits.tube(card)&&!PremiereUnits.crawler(card)&&
   PremiereLocations.conditions(state,from,side).dockingBay&&PremiereLocations.conditions(state,to,side).dockingBay){
   options.push({kind:'Docking-Bay-Transit',cost:PremiereLocations.conditions(state,from,side).transitCost});
  }
- if(!react&&state.phase===4&&origin.id==='Dark:678'&&sitePlanet(destination)==='death star'&&character&&
-    /^Imperial$/i.test(card.subType??'')&&PremiereLocations.printedSide(state,from,side)==='Dark'){
+ if(!react&&state.phase===4&&sitePlanet(destination)==='death star'&&character&&/^Imperial$/i.test(card.subType??'')&&
+    PremiereLocations.ruleAt(state,from,side,'militaryCorridorMove')){
   options.push({kind:'Militärkorridor',cost:0});
  }
  return options;
@@ -727,19 +736,16 @@ function canPayBoardDeploy(c,side,cost){
 function hasDeployPresence(side,loc){
  const index=state.locations.indexOf(loc);
  const ownIcons=index>=0?PremiereLocations.icons(state,index,side):loc.icons?.[side.toLowerCase()];
- if(index>=0&&loc.id==='Light:680'&&PremiereLocations.printedSide(state,index,side)==='Light')return true;
+ if(index>=0&&PremiereLocations.ruleAt(state,index,side,'deployWithoutIcons'))return true;
  return (Number.isFinite(ownIcons)&&ownIcons>=1)||(index>=0&&confirmedPresence(side,index)===true);
 }
 
 function characterDeployCost(card,site,side){
  if(!isSite(site)||(!hasDeployPresence(side,site)&&!isSpyCharacter(card)))return null;
  if(!characterLocationAllowed(card,site))return null;
- const printed=PremiereLocations.printedSide(state,state.locations.indexOf(site),side);
- const name=locationTitle(card);
- let discount=0;
- if(printed==='Light'&&site.id==='Light:2462'&&['beru lars','luke skywalker'].includes(name))discount=1;
- if(printed==='Light'&&site.id==='Light:2471'&&name==='obi-wan kenobi')discount=3;
  const slot=state.locations.indexOf(site);
+ const deployRule=PremiereLocations.ruleAt(state,slot,side,'characterDeploy');
+ const discount=deployRule?.names.includes(locationTitle(card))?deployRule.amount:0;
  const droidTax=isDroid(card)?PremiereLocations.presentCards(state,PremiereGame.otherSide(side),slot)
   .filter(unit=>unit.id==='Dark:12'&&!PremiereUnits.textSuppressed(unit)).length:0;
  return Math.max(0,crewDeployCost(card,side,site)-discount+droidTax);
@@ -786,14 +792,12 @@ function craftDeployCost(card,loc,side,pilot=null){
  const bay=PremiereUnits.fighter(card)&&PremiereLocations.conditions(state,slot,side).dockingBay;
  if(!bay&&(!isPlanetSystem(loc)||(permanentPilotAbility(card)===null&&!pilot)))return null;
  if(pilot&&!PremiereUnits.accepts(card,pilot,'pilot'))return null;
- const capital=/^Capital\b/i.test(card.subType||'');
- let discount=0;
- const printed=PremiereLocations.printedSide(state,slot,side);
- if(printed==='Light'&&loc.id==='Light:608')discount=capital?2:1;
- if(printed==='Dark'&&loc.id==='Dark:1426'){
+ const deployRule=PremiereLocations.ruleAt(state,slot,side,'shipDeploy');
+ let discount=(PremiereUnits.capital(card)?deployRule?.capitalDiscount:deployRule?.fighterDiscount)??0;
+ if(deployRule?.tarkinDiscount){
   const board=PremiereGame.zones(state,side).board?.[slot]??[];
   const tarkinAboard=board.some(ship=>ship.type==='Starship'&&ship.occupants?.some(({card})=>locationTitle(card)==='grand moff tarkin'));
-  discount=tarkinAboard?2:1;
+  if(tarkinAboard)discount=deployRule.tarkinDiscount;
  }
  if(card.id==='Dark:2600'&&state.dark[state.locations.indexOf(loc)]?.some(c=>
   c.type==='Starship'&&/^Capital\b/i.test(c.subType||'')&&/\bImperial\b/i.test(c.subType)))discount++;
@@ -803,9 +807,9 @@ function craftDeployCost(card,loc,side,pilot=null){
 const jawaCosts=new Map([['Light:1373',1],['Dark:1372',1],['Dark:643',2]]);
 function jawaDeployPayment(card,loc,side){
  if(!isSite(loc)||sitePlanet(loc)!=='tatooine'||!hasDeployPresence(side,loc))return null;
- const slot=state.locations.indexOf(loc),printed=PremiereLocations.printedSide(state,slot,side);
- if((loc.id==='Light:2455'&&printed==='Light')||(loc.id==='Dark:2454'&&printed==='Dark')){
-  const sandcrawler=loc.id==='Light:2455'&&PremiereGame.sides.some(player=>
+ const slot=state.locations.indexOf(loc),deployRule=PremiereLocations.ruleAt(state,slot,side,'jawaDeploy');
+ if(deployRule){
+  const sandcrawler=deployRule.freeWithCrawler&&PremiereGame.sides.some(player=>
    PremiereLocations.presentCards(state,player,slot).some(unit=>/Sandcrawler/i.test(unit.name??'')));
   return {own:sandcrawler?0:1,opposing:0};
  }
@@ -2069,14 +2073,22 @@ function battleTotals(i){
  const cards=(side,present)=>present.filter(card=>card.type!=='Weapon'&&card.type!=='Device'&&
   PremiereUnits.active(card)&&(!battleSession?.segmented||battleSession.site!==i||battleSession.participants[side].includes(card)));
  const power=(cards,side,present)=>{
-  const slot=state.locations[i],printed=PremiereLocations.printedSide(state,i,side);
-  const alone=cards.length===1&&((slot?.id==='Light:2855'&&printed==='Light'&&cards[0].subType==='Rebel')||
-   (slot?.id==='Dark:2854'&&printed==='Dark'&&cards[0].subType==='Imperial'));
+  const jungle=cards.reduce((total,card)=>total+jungleBonus(card,side,i,cards),0);
   return cards.reduce((n,c)=>n+(['Starship','Vehicle'].includes(c.type)?craftStats(c,i).power:(c.power??0))+cardPowerModifier(c,side,i,present),
-   (alone?2:0)+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
+   jungle+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
  };
  const light=cards('Light',lightPresent),dark=cards('Dark',darkPresent);
  return {lightPower:power(light,'Light',lightPresent),darkPower:power(dark,'Dark',darkPresent),lightAbility:ability(light),darkAbility:ability(dark)};
+}
+
+function jungleBonus(card,side,slot,participants){
+ const rule=PremiereLocations.ruleAt(state,slot,side,'aloneInJungle');
+ if(!rule||card.subType!==rule.subtype||!PremiereUnits.active(card))return 0;
+ const legacy=(currentGame()?.cardRulesVersion??latestCardRulesVersion)<rule.since;
+ const alone=legacy?participants.length===1:PremiereLocations.entries(state,side).every(entry=>
+  entry.slot!==slot||entry.card===card||entry.unavailable||!PremiereUnits.active(entry.card)||
+  (entry.card.type!=='Character'&&!(cardAbility(entry.card)>0)));
+ return alone?rule.amount:0;
 }
 
 function fleetPowerAtSite(side,slot){
@@ -2185,7 +2197,9 @@ function minimumBattleDestinyAbility(side,siteIndex){
  const loc=state?.locations?.[siteIndex];
  if(!loc||!isLoc(loc))return 4;
  for(const clause of String(loc.gametext||'').matchAll(/(?:^|[.!?]\s+)(Light|Dark):\s*Total ability of (\d+) or more required for you to draw battle destiny here(?:[.!?]|$)/gi)){
-  if(clause[1].toLowerCase()===PremiereLocations.printedSide(state,siteIndex,side).toLowerCase())return Number(clause[2]);
+  if(clause[1].toLowerCase()===PremiereLocations.printedSide(state,siteIndex,side).toLowerCase()){
+   return PremiereLocations.ruleAt(state,siteIndex,side,'minimumBattleAbility')?.amount??Number(clause[2]);
+  }
  }
  return 4;
 }
@@ -2616,9 +2630,7 @@ function shootWeapon(side,shot,complete){
  const slot=shot.targetSlot??x.site,opponent=PremiereGame.otherSide(side);
  PremiereGame.moveTop(force,used,shot.cost);
  markWeaponFired(shot);
- const loc=state.locations[shot.from];
- const printed=PremiereLocations.printedSide(state,shot.from,side);
- const sourceBonus=printed==='Dark'&&['Dark:673','Dark:2461','Light:2462'].includes(loc?.id)?1:0;
+ const sourceBonus=PremiereLocations.ruleAt(state,shot.from,side,'weaponDestiny')?.amount??0;
  drawDestinySeries(side,'weapon',shot.draws,sourceBonus,draws=>{
   const valid=draws.filter(draw=>!draw.cancelled);
   const sum=PremiereBattle.total(draws),total=valid.length&&sum!==null?Math.max(0,sum+shot.bonus):null;
@@ -2813,9 +2825,7 @@ function battleImmunity(side,card){
      !PremiereUnits.textSuppressed(entry.card)))limit=Math.max(limit,3);
  }
  if(card.id==='Dark:12'&&rules.night&&!PremiereUnits.textSuppressed(card))return Infinity;
- const printed=PremiereLocations.printedSide(state,x.site,side);
- if(members.length===1&&((site.id==='Light:2855'&&printed==='Light'&&card.subType==='Rebel')||
-    (site.id==='Dark:2854'&&printed==='Dark'&&card.subType==='Imperial')))return Infinity;
+ if(jungleBonus(card,side,x.site,members))return Infinity;
  const attachments=card.attachments??[];
  if(attachments.some(effect=>effect.id==='Light:1810'))limit=Math.max(limit,5);
  if(site.locationTags?.includes('Planet')&&attachments.some(device=>device.id==='Dark:2357'))limit=Math.max(limit,3);
@@ -3065,8 +3075,7 @@ function reactOptions(side, window){
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
   if(state.reactedThisTurn?.includes(card)||(card.occupants??[]).some(entry=>state.reactedThisTurn?.includes(entry.card)))return [];
-  const destination=state.locations[window.site];
-  const dantooine=card.type==='Starship'&&destination?.id==='Dark:607'&&PremiereLocations.printedSide(state,window.site,side)==='Dark';
+  const dantooine=card.type==='Starship'&&PremiereLocations.ruleAt(state,window.site,side,'shipReact');
   if(!dantooine&&!['Light:2250','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
   return travelOptions(card,side,from,window.site,true).filter(option=>option.cost<=force.length)
    .map(option=>({from,index,card,cost:option.cost,movement:option.kind}));

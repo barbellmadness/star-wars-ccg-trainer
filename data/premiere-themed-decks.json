@@ -4,7 +4,7 @@
     "Light": [
       {
         "theme": { "id": "massassi-widerstand", "name": "Massassi-Widerstand", "description": "Dodonna und Rebel Troopers sichern die Yavin-4-Sites. Y-Wings unterstützen sie aus dem Orbit." },
-        "startingLocations": ["Light:2859", "Light:2855", "Light:2853"],
+        "startingLocations": ["Light:2859", "Light:2855", "Light:2853", "Light:2858"],
         "cards": [
           { "id": "Light:95", "count": 1 },
           { "id": "Light:259", "count": 3 },
