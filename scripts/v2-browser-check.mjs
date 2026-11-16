@@ -122,15 +122,22 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.evaluate(() => {
       const card = id => ({...catalog.find(card => card.id === id)});
       state.phase = 4;
-      state.locations = ['Light:2447', 'Light:2448', 'Light:2440'].map(card);
-      state.locationOrder = [0, 1, 2];
-      state.light = [[], [{...card('Light:2052'), weapons: [card('Light:259')]}, card('Light:2040'), card('Light:2040')], []];
-      state.dark = [[], [{...card('Dark:2355'), weapons: [card('Dark:1264')]}], []];
+      state.locations = ['Light:2447', 'Light:2448', 'Light:2440', 'Light:2430'].map(card);
+      state.locationOrder = [0, 1, 2, 3];
+      state.light = [[], [{...card('Light:2052'), weapons: [card('Light:259')]}, card('Light:2040'), card('Light:2040')], [], []];
+      state.dark = [[], [{...card('Dark:2355'), weapons: [card('Dark:1264')]}], [], []];
+      state.locationEffects = {3: [{card: card('Light:1778'), nightfall: true}, {card: card('Dark:2373'), nightfall: true}]};
       state.force.push({name: 'Bewegungs-Force'}, {name: 'Bewegungs-Force'});
       presentGame();
     });
     const originColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Dune Sea'});
     const destinationColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Docking Bay 94'});
+    const night = originColumn.locator('.location-night');
+    assert.equal(await night.textContent(), 'Nacht aktiv · Nightfall + Sunsdown');
+    assert.ok(await night.isVisible());
+    assert.equal(await page.locator('#playmatLocation3 .location-night').count(), 0);
+    await page.evaluate(() => { state.locationEffects = {}; presentGame(); });
+    assert.equal(await night.count(), 0);
     assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 5');
     assert.equal(await originColumn.locator('.dark-zone .zone-totals').textContent(), 'Power 1 Ability 1');
     for (const side of ['light', 'dark']) {
@@ -234,7 +241,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.12.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.12.1'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
