@@ -16,6 +16,8 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 ## 7. Kartentexte für alle Kartentypen
 
+Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. Erste registrierte Regeln betreffen freie Deploys, Ortswerte, Flottenboni, Ausrüstung, Presence Of The Force und Death Star Plans. Die Abdeckungsanzeige führt die übrigen Regeln weiter als offen oder teilweise umgesetzt.
+
 - [ ] Pro Karten-ID einen Eintrag mit Regelquelle, gültigem Text, einzelnen Effekten, Ereignis, Kosten, Zielen, Dauer, Ablauf und Testreferenzen führen. Dieselbe Karte kann mehrere offene und bereits ausführbare Abschnitte haben.
 - [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. War Rooms und andere im Code verstreute Regeln in das Register überführen.
 - [ ] Charakterfähigkeiten für Einsatzbeschränkungen, Merkmale, Droiden, Spione, Nachtbedingungen, Pilotboni, Zielwahl, Forfeit und passende Kombinationen vervollständigen. Vader und Tarkin sowie weitere häufige Karten der Starterdecks gezielt testen.

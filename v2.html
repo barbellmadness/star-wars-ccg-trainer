@@ -337,9 +337,9 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.4.0';
+const trainerVersion='2.5.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -391,7 +391,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const window=PremiereGame.responseWindow(state.game);
  if(window){
-  const title=window.kind==='destiny'?'Destiny':['interrupt','lostPileEffect'].includes(window.kind)?window.card.name
+  const title=window.kind==='destiny'?'Destiny':['interrupt','lostPileEffect','locationEffect'].includes(window.kind)?window.card.name
    :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
   const loc=state.locations[window.site];
   box.innerHTML='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>';
@@ -425,7 +425,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.innerHTML='';box.style.display='none';return;
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
- const equipment=available.filter(option=>['weaponEffect','moveSeeker'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const rack=state.blasterRack;
@@ -642,7 +642,13 @@ function closeMovement(){
 
 function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}
 
-function showEffectCoverage(){const v=effectCoverage();el('effectCoverage').textContent='Premiere-Karten gesamt: '+v.total+'\nOhne Kartentext: '+v.withoutText.length+'\nTeilweise implementiert: '+v.partial.length+'\nKartentexte ohne geprüfte automatische Implementierung: '+v.unimplemented.length+'\n\nOFFENE KARTEN (ID · Name · Themen):\n'+v.unimplemented.map(c=>c.id+' · '+c.name+' · '+(cardEffectFlags(c).join(', ')||'sonstige Regel')).join('\n')+'\n\nHinweis: Eine Schlüsselwortsuche ist keine Regelausführung. Der Trainer darf für diese Karten keine vollständige Originalregel-Konformität behaupten.'}
+function showEffectCoverage(){
+ const coverage=effectCoverage();
+ el('effectCoverage').textContent='Premiere-Karten gesamt · '+coverage.total+'\nVollständig umgesetzt · '+coverage.complete.length
+  +'\nTeilweise umgesetzt · '+coverage.partial.length+'\nOffen · '+coverage.unimplemented.length+'\nOhne Kartentext · '+coverage.withoutText.length
+  +'\n\nTEILWEISE UMGESETZTE KARTEN\n'+coverage.partial.map(card=>card.id+' · '+card.name+' · '+cardEffectStatus(card)).join('\n')
+  +'\n\nOFFENE KARTEN\n'+coverage.unimplemented.map(card=>card.id+' · '+card.name+' · '+(cardEffectFlags(card).join(', ')||'sonstige Regel')).join('\n');
+}
 
 function play(idx,i){return dispatchUI(PremiereGame.offer(currentGame(),'Light','deploy',[idx,i]))}
 function equipSelectedWeapon(site,host){return dispatchUI(PremiereGame.offer(currentGame(),'Light','equip',[selected,site,host]))}
@@ -867,13 +873,13 @@ function playInspectorEffect(action){
 
 function effectInspectorMarkup(card,index){
  const title='<h3>Effect ausspielen</h3>';
- const supported=isLostPileEffect(card)||card.id==='Light:2110';
+ const supported=isLostPileEffect(card)||card.id==='Light:2110'||locationEffectRule(card);
  if(!supported)return title+'<p class="hint">Dieser Effect ist in V2 noch nicht spielbar.</p>';
  const options=legalActions(state,'Light').filter(option=>option.args[0]===index&&
-  ['deployLostPileEffect','revolution'].includes(option.kind));
+  ['deployLostPileEffect','revolution','deployLocationEffect'].includes(option.kind));
  if(options.length)return title+'<div class="inspector-effect-actions">'+options.map(option=>{
   const label=option.kind==='deployLostPileEffect'?option.target+' Side Lost Pile verdecken (0 Force)':
-   state.locations[option.args[1]].name+' · Force-Icons und Spieltext vertauschen ('+option.cost+' Force)';
+   option.label??(state.locations[option.args[1]].name+' · Force-Icons und Spieltext vertauschen ('+option.cost+' Force)');
   return ruleButton(option,label,'playInspectorEffect');
  }).join('')+'</div>';
  let reason='In deiner Ausspielen-Phase kannst du hier das Ziel wählen.';
@@ -1008,10 +1014,12 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
+ const devices=available.filter(option=>option.kind==='deployDevice'&&option.args[0]===selected&&option.args[1]===i)
+  .map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
  const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+piloted
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
-  +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')
+  +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+devices
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const totals=loc?battleTotals(i):null,stat=value=>Number.isFinite(value)?value.toLocaleString('de-DE'):'?';
  const zone=(side,cards)=>{
@@ -1224,7 +1232,8 @@ function readSavedGame(){
   if(lastSavedValue===null)return null;
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
-     !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'){
+     !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
+     (saved.cardRulesVersion!==undefined&&![0,1].includes(saved.cardRulesVersion))){
    throw new Error('Unbekannter Spielstand');
   }
   return saved;
@@ -1260,7 +1269,8 @@ function recordGameCommand(command){
 
 function startNewGame(seed,trainingBattle=false){
  if(!start(seed,true,trainingBattle))return false;
- activeSave={version:saveVersion,cardRevision:REVISION,seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
+ activeSave={version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,
+  seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
  activeSaveStored=false;
  resumeCandidate=null;
  el('resumeGame').hidden=true;
@@ -1274,7 +1284,7 @@ function resumeGameFromUI(){
  replayingGame=true;
  try {
   const decks=readStarterDecks(saved.decks,catalog);
-  if(!start(saved.seed,true,saved.trainingBattle,decks))throw new Error('Ungültiger Spielstart');
+  if(!start(saved.seed,true,saved.trainingBattle,decks,saved.cardRulesVersion??0))throw new Error('Ungültiger Spielstart');
   for(const command of saved.commands){
    const accepted=command.type==='bot'?botNextStep(command.repeatPhase===true,command.adaptive===true):
     command.type==='action'&&requestAction(command.kind,command.side,command.args);
