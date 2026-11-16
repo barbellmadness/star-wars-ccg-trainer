@@ -28,7 +28,7 @@
 #stats{font-size:12px;color:#b7c9e1;margin-top:6px}
 .table-view{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .table-view[hidden]{display:none}
-.table-view .player-hand{display:grid;grid-template-columns:minmax(0,1fr) clamp(7rem,24vw,9rem);gap:10px;min-width:0;margin:0;padding:8px 10px}
+.table-view .player-hand{display:grid;grid-template-columns:minmax(0,1fr) clamp(7rem,14vw,9rem) minmax(19rem,22rem);gap:10px;min-width:0;margin:0;padding:8px 10px}
 .player-hand .cards{padding:4px 0}
 .player-hand .card{flex-basis:76px;padding:4px}
 .player-hand .card img{display:block;height:82px}
@@ -47,6 +47,23 @@
 .phase-display li[aria-current="step"]{background:#f2d078;color:#151e2b;font-weight:800}
 .dark-hand{border-color:#af6073}
 .light-hand{border-color:#a18b5b}
+.deck-pile-area{align-self:center;min-width:0;margin:0;color:#c5d4e8;font-size:12px}
+.deck-pile-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px}
+.deck-pile-summary .life-force{color:#f2d078}
+.pile-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr);text-align:center}
+.pile-slot{display:grid;place-content:center;min-height:45px;padding:3px;border:1px dashed #859bb6;border-radius:6px;font-size:11px}
+.pile-slot strong{font-size:17px;color:#e7edf9}
+.pile-forward,.pile-draw,.pile-return{font-size:10px;font-weight:700}
+.pile-forward{display:grid;align-content:center;gap:1px}
+.pile-forward span,.pile-draw span{color:#e7edf9;font-size:16px;line-height:1}
+.pile-return{position:relative;grid-column:1/-1;min-height:10px;margin:10px 11% 0;color:#dbbc72;border:1px solid currentColor;border-bottom:0;border-radius:5px 5px 0 0;line-height:1.1}
+.pile-return span{display:inline-block;padding:0 4px;background:#111c2d;transform:translateY(-60%)}
+.pile-return::after{content:"";position:absolute;left:-4px;bottom:-1px;border-inline:3px solid transparent;border-top:5px solid currentColor}
+.pile-draw{grid-column:2/5;padding-top:3px}
+@media(max-width:920px){
+ .table-view .player-hand{grid-template-columns:minmax(0,1fr) clamp(7rem,24vw,9rem)}
+ .deck-pile-area{grid-column:1/-1;width:min(100%,22rem)}
+}
 .start-location-options{display:flex;overflow-x:auto;gap:12px;padding:10px 0}
 .start-location-option{flex:0 0 150px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px}
 .start-location-option img{width:120px;height:165px;object-fit:contain}
@@ -107,6 +124,7 @@ html:has(#cardInspector[open]){overflow:hidden}
         <p id="turnStatusDark" role="status"></p>
         <ol id="phaseListDark" role="list"></ol>
       </aside>
+      <figure class="deck-pile-area" id="pilesDark" aria-label="Kartenstapel der Dark Side"></figure>
     </div>
     <div class="playmat-shell">
       <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
@@ -123,6 +141,7 @@ html:has(#cardInspector[open]){overflow:hidden}
         <p id="turnStatusLight" role="status"></p>
         <ol id="phaseListLight" role="list"></ol>
       </aside>
+      <figure class="deck-pile-area" id="pilesLight" aria-label="Kartenstapel der Light Side"></figure>
     </div>
   </section>
   <details class="panel" id="phaseHelp" hidden>
@@ -552,6 +571,17 @@ function renderPhaseTracks(view){
  }
 }
 
+function renderDeckPiles(side,player){
+ const slot=(label,count)=>'<div class="pile-slot">'+label+' <strong>'+count+'</strong></div>';
+ const lifeForce=PremiereGame.lifeForce(state,side);
+ el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
+  +'</strong></span><span>Lost Pile <strong>'+player.lost.length+'</strong></span></figcaption>'
+  +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
+  +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
+  +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
+  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>';
+}
+
 function render(){
  if(!state)return;
  const available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light'),light=view.players.Light,dark=view.players.Dark;
@@ -562,9 +592,10 @@ function render(){
  el('nightConditions').disabled=!night;
  el('nightConditions').onchange=night?()=>dispatchUI(night):null;
  el('stats').textContent='Force-Generierung: Light '+forceFromLocations('Light').count+' / Dark '+forceFromLocations('Dark').count
-  +' · Runde '+view.turn+' · Seed '+(state.game?.seed??'–')+' · Reserve '+light.reserveCount+' · Force '+light.forceCount+' · Used '+light.usedCount
-  +' · Lost '+light.lost.length+' · Bot Reserve '+dark.reserveCount+' · Bot Force '+dark.forceCount+' · Bot Used '+dark.usedCount+' · Bot Lost '+dark.lost.length;
+  +' · Runde '+view.turn+' · Seed '+(state.game?.seed??'–');
  renderPhaseTracks(view);
+ renderDeckPiles('Dark',dark);
+ renderDeckPiles('Light',light);
  el('gameMessage').hidden=!view.winner;
  if(view.winner){
   el('instruction').textContent=view.winner==='Simultaneous'?'Spielende – beide Life Forces gleichzeitig aufgebraucht':'Spielende – '+view.winner+' Side gewinnt';
