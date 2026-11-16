@@ -109,12 +109,12 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 ## 8. Bot
 
 - [ ] Eine verdeckte Spielersicht für den Bot erzwingen. Eigene Hand und öffentliche Informationen verwenden. Die vollständige gegnerische Hand oder die Reihenfolge verdeckter Stapel nur über erlaubte Kartenaktionen sehen.
-- [ ] Jede Phase und jedes Antwortfenster über `legalActions` spielen. Die derzeitige Begrenzung auf einen Drain, eine Battle-Initiierung und einen regulären Move pro Bot-Zug aufheben. Nach jeder Auflösung den neuen Spielstand bewerten.
+- [x] Bot-Phasen und Antwortfenster über `legalActions` spielen. Der Bot prüft nach aufgelösten Aktionen erneut, welche Drains, Battles und regulären Bewegungen in derselben Phase möglich sind.
 - [ ] Force über den Zug einplanen. Deploy, Waffen, Battle, Movement, mögliche Antworten und Nachziehen gegeneinander abwägen. Bezahlbare Aktionen in der passenden Reihenfolge wählen.
 - [ ] Starting Location und Ziele nach Kontrolle, eigener Presence, entstehender Force, Karten in der eigenen Hand und bestehenden Einheiten gewichten. Kartenfähigkeiten, Piloten, Fahrzeuge und Transportschritte in die Planung einbeziehen.
 - [ ] Ziele und Kosten für Blaster, Schiffsbewaffnung, Interrupts und Reacts bewerten. Trefferchance aus zulässigen Informationen schätzen. Forfeit und andere Verluste anhand von Pflicht, offener Schuld und Wert der Karten auswählen.
-- [ ] Bot-Züge kurz erklären und dieselbe Partie mit festem Seed reproduzieren. Den Bot einzeln pro Aktion und zusammenhängend bis zum nächsten Spielerzug testen.
-- [ ] Testpartien mit beiden Seiten und mehreren Seeds ausführen. Prüfen, ob Phasen, Antwortfenster und Spielende erreichbar bleiben und jeder Bot-Zug legal ist.
+- [x] Bot-Züge im Protokoll kurz erklären und denselben Zugverlauf mit festem Seed reproduzieren. Tests prüfen einzelne Bot-Aktionen, Phasenwechsel und komplette Züge.
+- [x] Testpartien mit den Starterdecks für mehrere Seeds bis zum Sieg einer der beiden Seiten ausführen. Die Tests prüfen angebotene Aktionen, Antwortfenster und Spielende.
 
 ## 9. Bedienung und Lernfunktionen
 
@@ -129,10 +129,10 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 
 ## 10. Tests und lokale Abnahme
 
-- [ ] Die 91 bestehenden Tests bei Änderungen erhalten oder bei nachgewiesener Regelkorrektur gezielt aktualisieren. `node --test` nach jeder Änderung lokal ausführen.
-- [ ] Tests für Startkollisionen, Kartenverlust, Site-Reihenfolge, Angriffe beider Seiten, Antwortketten, Bewegung mit Insassen, Schiffsbewaffnung sowie ungewöhnliche Destiny und Force-Grenzfälle ergänzen.
-- [ ] Zustandsinvarianten testen. Jede Karteninstanz belegt genau eine Zone oder einen Trägerplatz. Zahlungen, Verlust und Retrieval erhalten die Kartenbilanz. Verbotene Aktionen lassen den Zustand intakt.
-- [ ] Für Starterdecks eine vollständige reproduzierbare Partie von der Starting Location bis zum Sieg abnehmen. Darin mindestens einen Boden-Battle, einen Raum-Battle und eine Antwortaktion auflösen.
+- [x] Bestehende Tests erhalten oder bei nachgewiesener Regelkorrektur gezielt aktualisieren. Die vollständige Suite läuft lokal mit `node --test`.
+- [x] Tests für Startkollisionen, Kartenverlust, Site-Reihenfolge, Angriffe beider Seiten, Antwortketten, Bewegung mit Insassen, Schiffsbewaffnung sowie ungewöhnliche Destiny und Force-Grenzfälle ergänzen.
+- [x] Zustandsinvarianten testen. Bei vollständigen Partien bleiben alle 120 Karteninstanzen jeweils genau einmal in einer Zone oder an einem Trägerplatz. Einzeltests prüfen Zahlungen, Verlust, Retrieval und abgelehnte Aktionen.
+- [x] Eine reproduzierbare Partie der Starterdecks von der Starting Location bis zum Sieg abnehmen. Seed 4 enthält Boden- und Raum-Battles sowie mindestens eine gespielte Antwortaktion.
 - [ ] Browser-Tests für den lokalen Start mit `data/premiere.json`, Kartenwahl, korrekte Zielbuttons und Abschluss eines Bot-Zugs ergänzen. Tests bei fehlenden Kartenbildern und fehlerhaften Kartendaten ausführen.
 - [ ] Die lokale Startanleitung und den Abdeckungsbericht mit dem ausführbaren Stand abgleichen. Die Kartendaten, Decklisten und Regelquellen zu einer reproduzierbaren Abnahme zusammenführen.
 

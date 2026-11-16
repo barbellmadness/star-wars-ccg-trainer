@@ -783,11 +783,11 @@ function render(){
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
  el('botNext').disabled=!botStep;
  el('botNext').onclick=botStep?()=>{
-  if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id&&botNextStep())recordGameCommand({type:'bot'});
+  if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id&&botNextStep())recordGameCommand({type:'bot',repeatPhase:true});
  }:null;
  el('botTurnPanel').style.display=state.botTurn&&!view.winner?'flex':'none';
  if(state.botTurn)el('botStepText').textContent='Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
-  +' · Nächste Aktion: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
+  +' · Nächster Abschnitt: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
  el('board').innerHTML=renderPlaymat(available,view);
  el('hand').innerHTML=light.hand.map((card,index)=>mini(card,index,true,'Light','hand')).join('');
  const showBotHand=el('showBotHand').checked;
@@ -879,7 +879,7 @@ function resumeGameFromUI(){
   const decks=readStarterDecks(saved.decks,catalog);
   if(!start(saved.seed,true,saved.trainingBattle,decks))throw new Error('Ungültiger Spielstart');
   for(const command of saved.commands){
-   const accepted=command.type==='bot'?botNextStep():command.type==='action'&&requestAction(command.kind,command.side,command.args);
+   const accepted=command.type==='bot'?botNextStep(command.repeatPhase===true):command.type==='action'&&requestAction(command.kind,command.side,command.args);
    if(!accepted)throw new Error('Ungültige Spielaktion');
   }
   if(currentGame().revision!==saved.revision||currentGame().randomState!==saved.randomState)throw new Error('Abweichender Spielstand');

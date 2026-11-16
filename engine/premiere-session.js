@@ -1362,7 +1362,7 @@ function botPlan(){return ['activate','control','deploy','battle','move','draw',
 
 function botBegin(){state.botTurn={steps:botPlan(),index:0};botSay('Dark Side beginnt ihren sichtbaren Lernzug. Klicke auf „Nächste Bot-Aktion zeigen“.')}
 
-function botNextStep(){
+function botNextStep(repeatPhase=true){
  if(!state?.botTurn||state.gameWinner)return false;
  const window=PremiereGame.responseWindow(state.game);
  if(window||state.game?.timing.pending||state.automatedPending)return performAction(legalActions(state,'Dark')[0]);
@@ -1370,20 +1370,18 @@ function botNextStep(){
  const deferred=state.botTurn.decision;
  const action=deferred?{kind:deferred}:state.botTurn.steps[state.botTurn.index];
  if(!deferred&&action?.kind==='deploy'&&state.phase===1&&botDrain())return true;
+ if(repeatPhase&&!deferred){
+  const continued=action?.kind==='move'&&state.phase===3?botBattle():
+   action?.kind==='draw'&&state.phase===4?botMove():false;
+  if(continued){publishGame();return true;}
+ }
  if(!action||!requestAction(deferred?'botDecision':'botStep','Dark',[action.kind]))return false;
  if(state.game?.timing.pending||state.automatedPending)return true;
  const available=legalActions(state,'Dark');
  if(action.kind==='move'){
-  const choice=available.filter(x=>x.kind==='move').sort((a,b)=>botMoveScore(b)-botMoveScore(a))[0];
-  if(!choice||botMoveScore(choice)<=0)botSay('Move: Bot passt, keine vorteilhafte legale Bewegung mit 1 Force.');
-  else if(performAction(choice))botSay('Move: Bot bewegt '+choice.name+' für '+choice.cost+' Force zu '+state.locations[choice.to].name+' ('+choice.movementKind+').');
+  if(!botMove(available))botSay('Move: Bot passt, keine vorteilhafte bezahlbare Bewegung.');
  }else if(action.kind==='battle'){
-  const choices=available.filter(x=>x.kind==='battle');
-  choices.sort((a,b)=>{const x=battleTotals(a.args[0]),y=battleTotals(b.args[0]);return (y.darkPower-y.lightPower)-(x.darkPower-x.lightPower)});
-  if(choices.length&&performAction(choices[0])){
-   botSay('Battle: Bot initiiert einen Kampf bei '+state.locations[choices[0].args[0]].name+' für 1 Force. Dark Side hat die erste Aktion in jedem Kampfsegment.');
-   botDestinyDecision();
-  }else botSay('Battle: Kein legaler Kampf mit Presence beider Seiten und 1 Force verfügbar.');
+  if(!botBattle(available))botSay('Battle: Kein legaler Kampf mit Presence beider Seiten und 1 Force verfügbar.');
  }else if(action.kind==='draw'){
   const choice=available.find(x=>x.kind==='draw');
   const drawn=choice&&performAction(choice)?1:0;
@@ -1402,6 +1400,23 @@ function botNextStep(){
   botSay(actions.length?'Deploy: '+actions.join('; ')+'.':'Deploy: Bot passt.');
  }
  publishGame();
+ return true;
+}
+function botMove(available=legalActions(state,'Dark')){
+ const choice=available.filter(x=>x.kind==='move').sort((a,b)=>botMoveScore(b)-botMoveScore(a))[0];
+ if(!choice||botMoveScore(choice)<=0||!performAction(choice))return false;
+ botSay('Move: Bot bewegt '+choice.name+' für '+choice.cost+' Force zu '+state.locations[choice.to].name+' ('+choice.movementKind+').');
+ return true;
+}
+function botBattle(available=legalActions(state,'Dark')){
+ const score=option=>{
+  const totals=battleTotals(option.args[0]);
+  return totals.darkPower-totals.lightPower;
+ };
+ const choice=available.filter(x=>x.kind==='battle').sort((a,b)=>score(b)-score(a))[0];
+ if(!choice||!performAction(choice))return false;
+ botSay('Battle: Bot initiiert einen Kampf bei '+state.locations[choice.args[0]].name+' für 1 Force. Dark Side hat die erste Aktion in jedem Kampfsegment.');
+ botDestinyDecision();
  return true;
 }
 function botDrain(){

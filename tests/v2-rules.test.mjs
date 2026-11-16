@@ -1539,6 +1539,72 @@ function autosaveStorage(){
  return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
 }
 
+test('starter decks replay complete matches with legal decisions and conserve all card instances',async()=>{
+ const {run}=await premiereHarness();
+ run(`presentGame=()=>{};
+ function inventory(){
+  const roots=[...state.locations.filter(Boolean),...Object.values(state.convertedLocations??{}).flat(),
+   ...Object.values(state.locationWeapons??{}).flat(),
+   ...Object.values(state.locationEffects??{}).flat().map(effect=>effect.card),
+   ...[...(state.buriedMines??[]),...(state.lostPileEffects??[])].map(effect=>effect.card)];
+  if(state.blasterRack)roots.push(state.blasterRack.card,...state.blasterRack.weapons);
+  for(const side of PremiereGame.sides){
+   const {deck,hand,force,used,lost,board}=PremiereGame.zones(state,side);
+   roots.push(...deck,...hand,...force,...used,...lost,...board.flat());
+  }
+  function walk(card){
+   return [card.instanceId,...[...(card.weapons??[]),...(card.attachments??[]),
+    ...(card.occupants??[]).map(entry=>entry.card)].flatMap(walk)];
+  }
+  return roots.flatMap(walk);
+ }
+ function playMatch(seed){
+  start(seed);
+  const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
+  choose();
+  while(setupDecks.revealed.collision){retryStartingLocations();choose();}
+  beginStartingGame();
+  const summary={seed,ground:false,space:false,responses:0,reactions:0,botActions:0,validated:0};
+  for(let step=0;step<1600&&!state.gameWinner;step++){
+   if(!PremiereGame.responseWindow(state.game)&&!battleSession&&!state.game.timing.pending){
+    const ids=inventory();
+    if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Card balance at '+seed+'/'+step);
+    summary.validated++;
+   }
+   const light=legalActions(state,'Light'),dark=legalActions(state,'Dark');
+   const response=PremiereGame.responseWindow(state.game);
+   if(response)summary.responses++;
+   if(battleSession)summary[isSystem(state.locations[battleSession.site])?'space':'ground']=true;
+   if(dark.some(action=>['botStep','botDecision'].includes(action.kind))&&
+      !state.pendingForceLoss&&!battleSession&&!response&&!state.game.timing.pending&&!state.automatedPending){
+    if(!botNextStep())throw Error('Bot refused a step at '+seed+'/'+step);
+    summary.botActions++;
+    continue;
+   }
+   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger',
+    'fireWeapon','battleEffect','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage','loseForce',
+    'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance'];
+   const options=light.length?light:dark;
+   let action;
+   if(!light.length&&battleSession?.weaponTurn==='Dark')action=botWeaponAction();
+   if(!light.length&&battleSession?.damage?.priority==='Dark')action=botDamageAction();
+   action??=preferred.map(kind=>kind==='activate'?options.filter(action=>action.kind===kind).at(-1):
+    options.find(action=>action.kind===kind)).find(Boolean);
+   if(!action||!performAction(action))throw Error('Unresolved '+(action?.kind??options.map(option=>option.kind))+' at '+seed+'/'+step+' phase '+state.phase);
+   if(['react','reactDeploy','interruptResponse'].includes(action.kind))summary.reactions++;
+  }
+  const ids=inventory();
+  if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Final card balance at '+seed);
+  return {...summary,winner:state.gameWinner,turn:state.turn,trace:JSON.stringify(state.game.actions)};
+ }`);
+ const matches=[4,7,9].map(seed=>JSON.parse(run(`JSON.stringify(playMatch(${seed}))`)));
+ assert.ok(matches.every(match=>match.winner&&match.botActions>0&&match.validated>0));
+ assert.deepEqual(new Set(matches.map(match=>match.winner)),new Set(['Light','Dark']));
+ assert.ok(matches.some(match=>match.ground&&match.space&&match.reactions>0),
+  JSON.stringify(matches.map(({trace,...match})=>match)));
+ assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches[0]);
+});
+
 function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
@@ -1877,6 +1943,44 @@ test('the bot makes another legal drain after Light pays the previous one',()=>{
  assert.equal(run("requestAction('loseForce','Light',['hand',0])&&requestAction('loseForce','Light',['force'])"),true);
  assert.equal(run('botNextStep()&&state.pendingForceLoss.locationIndex===0&&state.phase===1'),true);
  assert.equal(run("requestAction('loseForce','Light',['deck'])&&botNextStep()&&state.phase===2"),true);
+});
+
+test('the bot reevaluates distinct battle sites before leaving the Battle phase',()=>{
+ const {run}=reactHarness();
+ run(`state.locations.forEach((_,slot)=>{
+  state.light[slot]=[{name:'Rebel '+slot,type:'Character',ability:1,power:1,forfeit:1}];
+  state.dark[slot]=[{name:'Imperial '+slot,type:'Character',ability:1,power:1,forfeit:1}];
+ });
+ state.phase=2;state.botForce=[{name:'Battle cost 1'},{name:'Battle cost 2'}];
+ state.botTurn={steps:botPlan(),index:3};
+ function finishBattle(){
+  for(let step=0;step<24&&battleSession;step++){
+   const pass=PremiereGame.sides.flatMap(side=>legalActions(state,side)).find(action=>
+    ['passResponse','passWeapons','skipDestiny','passDamage'].includes(action.kind));
+   if(!pass||!performAction(pass))return false;
+  }
+  return !battleSession;
+ }`);
+ assert.equal(run('botNextStep()&&state.phase===3&&battleSession.site===0'),true);
+ assert.equal(run('finishBattle()'),true);
+ assert.equal(run('botNextStep()&&state.phase===3&&battleSession.site===1'),true);
+ assert.equal(run('finishBattle()'),true);
+ assert.equal(run('botNextStep()&&state.phase===4&&state.battledSitesThisTurn.join()=== "0,1"'),true);
+});
+
+test('each move reevaluates the available cards and legacy replay can leave the phase after one',()=>{
+ for(const repeatPhase of [false,true]){
+  const {run}=reactHarness();
+  run(`state.phase=3;state.light=[[],[]];
+   state.locations[1].icons.light=2;
+   state.dark=[[{name:'First',type:'Character',ability:1},{name:'Second',type:'Character',ability:1}],[]];
+   state.botForce=[{name:'Move 1'},{name:'Move 2'}];state.botTurn={steps:botPlan(),index:4};`);
+  assert.equal(run('botNextStep()&&state.phase===4&&state.dark[1].length===1'),true);
+  assert.equal(run(`botNextStep(${repeatPhase})`),true);
+  assert.equal(run('state.phase'),repeatPhase?4:5);
+  assert.equal(run('state.dark[1].length'),repeatPhase?2:1);
+  if(repeatPhase)assert.equal(run('botNextStep()&&state.phase===5&&state.movedThisTurn.length===2'),true);
+ }
 });
 
 test('lightsabers offer an optional bonus, and a forbidden location offers no drain',()=>{
