@@ -632,3 +632,21 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
  run("state.phase=4");
  assert.equal(run("recordBattleWeaponHit('Light',0)"),false);
 });
+
+test('Playmat uses official card image URLs for locations and accessible fallback',()=>{
+ const {run}=harness();
+ assert.match(html,/<header class="brand-header"><img[^>]+alt="Star Wars Customizable Card Game Logo"/);
+ assert.match(html,/id="board" class="playmat"/);
+ assert.match(run("locationCardVisual({name:'Hoth: Echo Base',image:'https://res.starwarsccg.org/cards/example.gif'})"),/src="https:\/\/res.starwarsccg.org\/cards\/example.gif"/);
+ assert.match(run("locationCardVisual({name:'Unknown',image:null})"),/kein Kartenbild/);
+ assert.match(run("locationCardVisual(null)"),/Freier Location-Platz/);
+});
+test('Playmat places Dark above location art and Light below and retains actions',()=>{
+ const {run}=harness();
+ run("state={phase:0,locations:[{name:'Hoth: Echo Base',image:'https://res.starwarsccg.org/cards/example.gif'}],light:[[{name:'Rebel'}]],dark:[[{name:'Trooper'}]],hand:[],force:[],botTurn:null};");
+ const content=run("renderPlaymatColumn(state.locations[0],0)");
+ assert.ok(content.indexOf('DARK · 1')<content.indexOf('Location-Karte: Hoth: Echo Base'));
+ assert.ok(content.indexOf('Location-Karte: Hoth: Echo Base')<content.indexOf('LIGHT · 1'));
+ assert.match(content,/onclick="play\(/);
+ assert.match(content,/onclick="battleAnalysis\(/);
+});
