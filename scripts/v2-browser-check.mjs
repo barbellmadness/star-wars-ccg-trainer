@@ -108,8 +108,15 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       presentGame();
     });
     const originColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Dune Sea'});
+    const destinationColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Docking Bay 94'});
     assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 3');
     assert.equal(await originColumn.locator('.dark-zone .zone-totals').textContent(), 'Power 1 Ability 1');
+    for (const side of ['light', 'dark']) {
+      const zone = originColumn.locator('.' + side + '-zone');
+      assert.ok(await zone.getByRole('img', {name: 'Presence · ja'}).isVisible());
+      assert.ok(await zone.getByRole('img', {name: 'Control · nein'}).isVisible());
+    }
+    assert.ok(await destinationColumn.locator('.light-zone').getByRole('img', {name: 'Presence · nein'}).isVisible());
     assert.ok(await originColumn.locator('.light-zone .playmat-stack').evaluate(stack => {
       const weapon = stack.firstElementChild.getBoundingClientRect();
       const host = stack.lastElementChild.getBoundingClientRect();
@@ -128,10 +135,16 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await movement.locator('summary').filter({hasText: 'Rebel Pilot'}).click();
     await movement.getByRole('button', {name: /Tatooine: Docking Bay 94 · Landspeed \(1 Force\)/}).click();
     assert.equal(await movement.isVisible(), false);
-    assert.ok(await page.locator('.playmat-column').filter({hasText: 'Tatooine: Docking Bay 94'})
-      .getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).isVisible());
+    assert.ok(await destinationColumn.getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).isVisible());
+    assert.ok(await destinationColumn.locator('.light-zone').getByRole('img', {name: 'Control · ja'}).isVisible());
     assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 1');
-    await page.evaluate(() => { state.phase = 3; presentGame(); });
+    await page.evaluate(() => {
+      state.phase = 3;
+      state.dark[1][0].weapons = [];
+      state.force.push({name: 'Test Force'}, {name: 'Test Force'});
+      state.deck.push({name: 'Test Destiny', destiny: 6});
+      presentGame();
+    });
 
     await page.getByRole('button', {name: 'Battle (1 Force)', exact: true}).and(page.locator(':enabled')).first().click();
     const battle = page.getByRole('dialog', {name: /Bodenkampf/});
@@ -141,12 +154,20 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Waffen');
     await page.keyboard.press('Escape');
     assert.ok(await battle.isVisible());
+    await battle.getByRole('button', {name: /^Blaster → Stormtrooper/}).click();
+    assert.match(await battle.locator('.battle-side.dark').textContent(), /Getroffen/);
+    await battle.getByRole('button', {name: 'Playmat ansehen'}).click();
+    assert.equal(await battle.isVisible(), false);
+    assert.ok(await originColumn.getByRole('button', {name: 'Stormtrooper ansehen · Getroffen'}).isVisible());
+    assert.equal(await destinationColumn.locator('.is-hit').count(), 0);
+    await page.getByRole('button', {name: 'Zurück zum Kampf'}).click();
+    assert.ok(await battle.isVisible());
     await battle.getByRole('button', {name: 'Im Waffen-Segment passen'}).click();
     await battle.getByRole('button', {name: 'Light verzichtet'}).waitFor();
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.1.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.2.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
