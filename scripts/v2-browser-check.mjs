@@ -103,13 +103,14 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       state.phase = 4;
       state.locations = ['Light:2447', 'Light:2448', 'Light:2440'].map(card);
       state.locationOrder = [0, 1, 2];
-      state.light = [[], [{...card('Light:2052'), weapons: [card('Light:259')]}, card('Light:2040')], []];
+      state.light = [[], [{...card('Light:2052'), weapons: [card('Light:259')]}, card('Light:2040'), card('Light:2040')], []];
       state.dark = [[], [{...card('Dark:2355'), weapons: [card('Dark:1264')]}], []];
+      state.force.push({name: 'Bewegungs-Force'}, {name: 'Bewegungs-Force'});
       presentGame();
     });
     const originColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Dune Sea'});
     const destinationColumn = page.locator('.playmat-column').filter({hasText: 'Tatooine: Docking Bay 94'});
-    assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 3');
+    assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 5');
     assert.equal(await originColumn.locator('.dark-zone .zone-totals').textContent(), 'Power 1 Ability 1');
     for (const side of ['light', 'dark']) {
       const zone = originColumn.locator('.' + side + '-zone');
@@ -127,15 +128,20 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.ok(await page.getByRole('dialog', {name: 'Blaster', exact: true}).isVisible());
     await page.keyboard.press('Escape');
 
-    const moveTrigger = originColumn.getByRole('button', {name: /Bewegen.*4 Optionen/});
+    const moveTrigger = originColumn.getByRole('button', {name: /Bewegen.*6 Optionen/});
     assert.equal(await originColumn.locator('.playmat-location button').count(), 2);
     await moveTrigger.click();
     const movement = page.getByRole('dialog', {name: /Bewegung.*Tatooine: Dune Sea/});
     assert.ok(await movement.isVisible());
-    await movement.locator('summary').filter({hasText: 'Rebel Pilot'}).click();
-    await movement.getByRole('button', {name: /Tatooine: Docking Bay 94 · Landspeed \(1 Force\)/}).click();
+    const fromForce = await page.evaluate(() => state.force.length);
+    const pilots = movement.getByRole('group', {name: 'Karten auswählen'}).getByRole('checkbox', {name: /Rebel Pilot · Karte/});
+    await pilots.nth(0).check();
+    assert.equal(await movement.getByRole('button', {name: /Force gesamt/}).count(), 0);
+    await pilots.nth(1).check();
+    await movement.getByRole('button', {name: /Tatooine: Docking Bay 94 · 2 Force gesamt/}).click();
     assert.equal(await movement.isVisible(), false);
-    assert.ok(await destinationColumn.getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).isVisible());
+    assert.equal(await destinationColumn.getByRole('button', {name: 'Rebel Pilot ansehen', exact: true}).count(), 2);
+    assert.equal(await page.evaluate(() => state.force.length), fromForce - 2);
     assert.ok(await destinationColumn.locator('.light-zone').getByRole('img', {name: 'Control · ja'}).isVisible());
     assert.equal(await originColumn.locator('.light-zone .zone-totals').textContent(), 'Power 1 Ability 1');
     assert.equal(await page.locator('.playmat-drain-actions').count(), 0);
@@ -181,7 +187,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.3.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.4.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

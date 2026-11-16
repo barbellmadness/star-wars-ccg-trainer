@@ -167,6 +167,8 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 #movementOptions summary{cursor:pointer;padding:3px}
 #movementOptions form,.movement-choices{display:grid;gap:5px;padding-top:7px}
 .movement-choices button{text-align:left;padding:5px 8px}
+.group-move-units{display:grid;gap:4px;margin:0;padding:6px 8px;border:1px solid #526782;border-radius:5px}
+.group-move-units label{padding:3px 0}
 .movement-status{margin:0}
 #cardInspector{--dialog-width:52rem}
 #cardInspector[open]{display:flex;flex-direction:column;gap:12px;overflow:hidden}
@@ -337,7 +339,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.3.0';
+const trainerVersion='2.4.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -532,6 +534,64 @@ function locationMovementOptions(i,available){
   &&(option.args[0]!=='deployAboard'||option.args[3]===selected));
 }
 
+function groupMoveOptions(slot,available){
+ return state?.phase===4?available.filter(option=>option.kind==='move'&&option.from===slot&&option.movementKind!=='Docking-Bay-Transit'):[];
+}
+
+function groupMoveMarkup(slot,available){
+ const units=new Map(groupMoveOptions(slot,available).map(move=>[move.index,move.card]));
+ if(units.size<2)return '';
+ const cards=[...units.values()];
+ const choices=[...units].map(([index,card])=>'<label><input type="checkbox" name="unit" value="'+index+'"> '
+  +escapeHTML(card.name)+(cards.filter(unit=>unit.name===card.name).length>1?' · Karte '+(index+1):'')+'</label>');
+ return '<details open><summary>Mehrere Karten bewegen</summary><form data-slot="'+slot+'" onchange="updateGroupMoveTargets(this)"'
+  +' onsubmit="return submitGroupMove(this,event.submitter)"><fieldset class="group-move-units"><legend>Karten auswählen</legend>'
+  +choices.join('')+'</fieldset><div class="movement-choices"></div><p class="hint movement-status" role="status">Wähle mindestens zwei Karten.</p></form></details>';
+}
+
+function groupMovePlans(slot,indices){
+ if(indices.length<2)return [];
+ const moves=groupMoveOptions(slot,legalActions(state,'Light'));
+ const destinations=new Set(moves.filter(move=>move.index===indices[0]).map(move=>move.to));
+ return [...destinations].flatMap(to=>{
+  const plan=indices.map(index=>moves.filter(move=>move.to===to&&move.index===index).sort((a,b)=>a.cost-b.cost)[0]);
+  if(plan.some(move=>!move))return [];
+  const cost=plan.reduce((sum,move)=>sum+move.cost,0);
+  return cost<=state.force.length?[{to,cost,moves:plan}]:[];
+ });
+}
+
+function selectedMovementUnits(form){
+ return [...form.querySelectorAll('input[name="unit"]:checked')].map(input=>Number(input.value));
+}
+
+function updateGroupMoveTargets(form){
+ const units=selectedMovementUnits(form),plans=groupMovePlans(Number(form.dataset.slot),units);
+ form.querySelector('.movement-choices').innerHTML=plans.map(({to,cost})=>'<button type="submit" value="'+to+'">'
+  +escapeHTML(state.locations[to].name)+' · '+cost+' Force gesamt</button>').join('');
+ form.querySelector('[role="status"]').textContent=units.length<2?'Wähle mindestens zwei Karten.':plans.length?'':
+  'Kein gemeinsames Ziel mit der verfügbaren Force.';
+}
+
+function submitGroupMove(form,button){
+ const slot=Number(form.dataset.slot),to=Number(button?.value);
+ const plan=groupMovePlans(slot,selectedMovementUnits(form)).find(plan=>plan.to===to);
+ if(!plan){updateGroupMoveTargets(form);return false;}
+ let moved=0;
+ for(const move of plan.moves){
+  const offer=groupMoveOptions(slot,legalActions(state,'Light')).find(option=>option.card===move.card&&option.to===to&&
+   option.movementKind===move.movementKind&&option.cost===move.cost);
+  if(!offer||!dispatchUI(offer))break;
+  moved++;
+ }
+ if(moved!==plan.moves.length){
+  log('Sammelbewegung angehalten. '+moved+' von '+plan.moves.length+' Karten bewegt.');
+  presentGame();
+ }
+ closeMovement();
+ return false;
+}
+
 function movementTrigger(i,available){
  const options=locationMovementOptions(i,available),count=options.length;
  const label=state.phase===4||options.some(option=>option.kind==='move')?'Bewegen':'Besatzung';
@@ -555,7 +615,7 @@ function openMovement(i){
  }
  el('movementTitle').textContent=(state.phase===4||options.some(option=>option.kind==='move')?'Bewegung':'Besatzung')+' · '+state.locations[i].name;
  const body=el('movementOptions');
- body.innerHTML=[...units].map(([card,choices])=>'<details'+(units.size===1?' open':'')+'><summary>'
+ body.innerHTML=groupMoveMarkup(i,options)+[...units].map(([card,choices])=>'<details'+(units.size===1?' open':'')+'><summary>'
   +escapeHTML(card.name)+' · '+choices.length+'</summary><div class="movement-choices">'+choices.join('')+'</div></details>').join('')+groups.join('');
  el('movementStatus').hidden=true;
  const dialog=el('movementDialog');
@@ -570,10 +630,14 @@ function playMovement(action,status=el('movementStatus')){
   status.hidden=false;
   return false;
  }
+ closeMovement();
+ return true;
+}
+
+function closeMovement(){
  const dialog=el('movementDialog');
  dialog.close();
  if(!el('battleAnalysis').open)(el('movementTrigger'+dialog.dataset.slot)??el('step')).focus({preventScroll:true});
- return true;
 }
 
 function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}

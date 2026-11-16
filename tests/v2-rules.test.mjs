@@ -2243,6 +2243,25 @@ test('selected units transit together, leaving unselected cards and their moveme
  assert.equal(run("state.used.length===1&&state.movedThisTurn.includes(a)&&state.movedThisTurn.includes(c)&&!state.movedThisTurn.includes(b)"),true);
 });
 
+test('group movement offers affordable shared destinations and pauses when a mine opens a decision',async()=>{
+ const {run}=await craftHarness();
+ run(`const first=card('Light:2052'),second=card('Light:2040'),mine=card('Dark:2609');
+  setupDecks=null;state.game=PremiereGame.actionState(119,0);state.phase=4;state.light[2]=[first,second];
+  state.buriedMines=[{side:'Dark',slot:3,card:mine}];state.botDeck=[{name:'Mine Destiny',destiny:1}];
+  state.force=forcePile().slice(0,1);`);
+ assert.equal(run('groupMovePlans(2,[0,1]).length'),0);
+ run('state.force=forcePile().slice(0,2);state.light[2][1]=ship');
+ assert.ok(run("groupMoveOptions(2,legalActions(state,'Light')).some(move=>move.card===ship&&move.movementKind==='Starten')"));
+ assert.equal(run('groupMovePlans(2,[0,1]).length'),0);
+ run(`state.light[2][1]=second;
+  openMovement(2);
+  const form={dataset:{slot:'2'},querySelectorAll:()=>[{value:'0'},{value:'1'}]};
+  submitGroupMove(form,{value:'3'});`);
+ assert.ok(run("state.light[3].includes(first)&&state.light[2].includes(second)&&state.used.length===1&&state.automatedPending?.kind==='mine'"));
+ assert.equal(run("el('movementDialog').open"),false);
+ assert.ok(run("state.log.some(message=>message.includes('1 von 2 Karten bewegt'))"));
+});
+
 test('shuttling to a capital ship, a docked transfer and cargo survival respect roles and timing',async()=>{
  const {run}=await craftHarness();
  run(`const big=card('Light:530'),other=card('Light:1677'),han=card('Light:1098'),cargo=card('Light:2161');
