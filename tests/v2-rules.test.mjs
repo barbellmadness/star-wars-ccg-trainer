@@ -1135,7 +1135,7 @@ test('card rule registry returns source, active text and test references across 
    entry.effects.every(rule=>rule.test&&rule.event&&rule.targets&&rule.expires&&Number.isInteger(rule.cost));
  })`));
  assert.ok(run("effectCoverage().complete.some(card=>card.id==='Light:2052')"));
- assert.ok(run("effectCoverage().unimplemented.some(card=>card.id==='Light:1429')"));
+ assert.ok(run("effectCoverage().unimplemented.some(card=>card.id==='Dark:1480')"));
 });
 
 test('registered location effects add icons once and can be canceled by Alter',async()=>{
@@ -1182,6 +1182,124 @@ test('Death Star Plans tracks the chosen droid, rejects the docking bay and retr
  assert.equal(run('state.locationEffects[0].length'),0);
  assert.equal(run('state.lost.length===1&&state.lost[0]===plans&&state.deck.length===1'),true);
  assert.ok(run("state.used.some(card=>card.name==='Lost A')&&state.used.some(card=>card.name==='Lost C')"));
+});
+
+async function kesselHarness(pilotId='Light:305'){
+ const fixture=await craftHarness();
+ fixture.run(`const runner=card('${pilotId}'),falcon=card('Light:1677'),mission=card('Light:1429');
+  setupDecks=null;state.game=PremiereGame.actionState(112,4);state.hand=[mission];
+  state.light[0]=[falcon];PremiereUnits.add(falcon,runner,'pilot','Light');
+  const runOffer=()=>legalActions(state,'Light').find(action=>action.kind==='deployLocationEffect');`);
+ return fixture;
+}
+
+test('Kessel Run tracks BoShek and fixes retrieval at the original Parsec distance',async()=>{
+ const {run,elements}=await kesselHarness();
+ assert.ok(run("runOffer().target===runner&&runOffer().distance===3"));
+ run("inspectCard('Light',0,'hand',0)");
+ assert.match(elements.get('cardInspectorBody').innerHTML,/BoShek.*Dantooine.*Kessel.*3 Force zurückholen/);
+ assert.ok(run('performAction(runOffer())'));
+ run("state.phase=4;state.botDeck=[{name:'Safe destiny',destiny:2}];state.lost=forcePile();");
+ assert.ok(run("requestAction('move','Light',[0,0,1,'Hyperspeed'])"));
+ assert.ok(run("state.locationEffects[1][0].reachedKessel&&state.botUsed.at(-1).name==='Safe destiny'"));
+ run('state.locations[0]={...dantooine,parsec:3};state.movedThisTurn=[]');
+ assert.ok(run("requestAction('move','Light',[1,0,0,'Hyperspeed'])"));
+ assert.ok(run('state.locationEffects[1].length===0&&state.lost.length===3&&state.lost.at(-1)===mission&&state.light[0][0]===falcon'));
+});
+
+test('Kessel Run tracks target legality, control, a zero draw and an empty Reserve Deck',async()=>{
+ const blocked=await kesselHarness('Light:1098');
+ const {run}=blocked;
+ run('state.dark[1]=[tie]');
+ assert.equal(run('runOffer()'),undefined);
+ run('state.dark[1]=[]');
+ assert.ok(run('performAction(runOffer())'));
+ run("state.phase=4;state.activeSide='Dark';state.botTurn={steps:[],index:0};state.dark[6]=[scout]");
+ assert.ok(run("requestAction('move','Dark',[6,0,1,'Hyperspeed'])"));
+ assert.ok(run('state.locationEffects[1].length===0&&state.lost.includes(mission)'));
+
+ const invalid=await kesselHarness('Light:239');
+ assert.equal(invalid.run('runOffer()'),undefined);
+ for(const succeeds of [false,true]){
+  const attempt=await kesselHarness();
+  assert.ok(attempt.run('performAction(runOffer())'));
+  attempt.run(`state.phase=4;state.botDeck=${succeeds?'[]':"[{name:'Zero',destiny:0}]"}`);
+  assert.ok(attempt.run("requestAction('move','Light',[0,0,1,'Hyperspeed'])"));
+  assert.equal(attempt.run('state.light[1].includes(falcon)'),succeeds);
+  assert.equal(attempt.run('state.lost.includes(mission)'),!succeeds);
+ }
+});
+
+test('registered character stat rules respect same site, physical presence and faction',async()=>{
+ const {run}=await craftHarness();
+ run(`const beru=card('Light:221'),owen=card('Light:1883'),dodonna=card('Light:1021'),leia=card('Light:1495'),rebel=card('Light:2052'),
+  bast=card('Dark:406'),yularen=card('Dark:478'),motti=card('Dark:60'),fivedesix=card('Dark:12'),tagge=card('Dark:1027'),
+  dsTrooper=card('Dark:668'),dathcha=card('Dark:643');state.locations[3]=card('Light:2853');state.locations[4]=card('Dark:675');
+  state.light[2]=[beru,owen];state.light[3]=[dodonna,rebel];state.light[4]=[leia,{...rebel}];
+  state.dark[2]=[bast,card('Dark:1061'),fivedesix,motti,tagge,dsTrooper,card('Dark:2355'),dathcha];state.dark[3]=[yularen];
+  battleSession={site:2};`);
+ assert.equal(run("cardPowerModifier(owen,'Light',2)"),2);
+ assert.equal(run("battleForfeitValue(beru,'Light')-beru.forfeit"),2);
+ assert.equal(run("cardPowerModifier(bast,'Dark',2)"),1);
+ assert.equal(run("cardPowerModifier(fivedesix,'Dark',2)"),1);
+ assert.equal(run("cardPowerModifier(yularen,'Dark',3)"),1);
+ assert.equal(run("battleForfeitValue(tagge,'Dark')-tagge.forfeit"),2);
+ assert.equal(run("cardPowerModifier(dsTrooper,'Dark',2)"),-1);
+ assert.equal(run("cardPowerModifier(dathcha,'Dark',2)"),0);
+ assert.equal(run("cardPowerModifier(dathcha,'Dark',4)"),2);
+ assert.equal(run("cardPowerModifier(rebel,'Light',3)"),1);
+ assert.equal(run("cardPowerModifier(dodonna,'Light',3)"),0);
+ assert.equal(run("cardPowerModifier(state.light[4][1],'Light',4)"),1);
+ run('state.light[2].shift();state.dark[2].splice(1,1)');
+ assert.equal(run("cardPowerModifier(owen,'Light',2)"),0);
+ assert.equal(run("cardPowerModifier(bast,'Dark',2)"),0);
+});
+
+test('Tusken Raiders count present non-unique copies and Alderaan reduces opposing destiny',async()=>{
+ const {run}=await craftHarness();
+ run("state.dark[2]=[tusken];state.locations[0]=alderaan");
+ assert.equal(run('battleTotals(2).darkPower'),1);
+ run("state.dark[2].push(card('Dark:2648'),card('Dark:2648'),card('Dark:2648'))");
+ assert.equal(run('battleTotals(2).darkPower'),10);
+ assert.equal(run("alderaanBattleDestinyPenalty('Dark',0)"),1);
+ assert.equal(run("alderaanBattleDestinyPenalty('Light',0)"),0);
+ run("state.locationEffects={0:[{card:card('Light:2110')}]} ");
+ assert.equal(run("alderaanBattleDestinyPenalty('Dark',0)"),0);
+ assert.equal(run("alderaanBattleDestinyPenalty('Light',0)"),1);
+});
+
+test('Comlink equips a character and opens a paid Deploy-React from an adjacent site',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(113,1);state.activeSide='Dark';
+  const carrier=card('Dark:1027'),comlink=card('Dark:489'),reinforcement=card('Dark:2355');
+  state.dark[2]=[carrier];state.dark[6]=[tie];state.botHand=[comlink,reinforcement,card('Dark:2355')];
+  state.locationOrder=[2,3,4,6,5,1,0];state.light[3]=[card('Light:2052')];`);
+ assert.equal(run("requestAction('deployDevice','Dark',[0,6,0])"),false);
+ assert.equal(run("requestAction('deployDevice','Dark',[0,2,0])"),true);
+ assert.ok(run('carrier.attachments[0]===comlink&&state.botForce.length===4'));
+ run("state.phase=1;state.activeSide='Light'");
+ assert.ok(run("requestAction('drain','Light',[3])&&PremiereGame.responseWindow(state.game).kind==='drain'"));
+ assert.ok(run("requestAction('reactDeploy','Dark',[0,-1])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"));
+ assert.deepEqual(JSON.parse(run('JSON.stringify({deployed:state.dark[3].includes(reinforcement),loss:state.pendingForceLoss??null,force:state.botForce.length})')),
+  {deployed:true,loss:null,force:3});
+ assert.equal(run("reactDeployOptions('Dark',{kind:'drain',side:'Light',site:3}).length"),0);
+ run("PremiereGame.resetTurn(state,'Light')");
+ assert.ok(run("reactDeployOptions('Dark',{kind:'drain',side:'Light',site:3}).length>0"));
+});
+
+test('Alter restores a rotated location and can also cancel a pending Revolution',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(114,2);const revolution=card('Light:2110');
+  state.hand=[revolution];state.botHand=[];state.locations[3]={...dunes,icons:{light:1,dark:3}};
+  state.dark[3]=[card('Dark:1061')];state.botDeck=[{name:'Low destiny',destiny:1}];`);
+ assert.ok(run("requestAction('revolution','Light',[0,3])&&PremiereLocations.icons(state,3,'Light')===3"));
+ run("state.botHand=[card('Dark:94')]");
+ assert.ok(run("requestAction('alterLocationEffect','Dark',[0,3,0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"));
+ assert.ok(run("PremiereLocations.icons(state,3,'Light')===1&&state.lost.includes(revolution)"));
+ run("state.hand=[card('Light:2110')];state.force=forcePile();state.botHand=[card('Dark:94')];state.botDeck=[{name:'Low destiny',destiny:1}]");
+ assert.ok(run("requestAction('revolution','Light',[0,3])&&PremiereGame.responseWindow(state.game).kind==='locationEffect'"));
+ assert.ok(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"));
+ assert.ok(run("PremiereLocations.icons(state,3,'Light')===1&&state.force.length===2&&state.game.responses.length===0"));
 });
 
 test('learning decks contain planet systems, exterior sites, piloted starships and a Dark Bantha',async()=>{
@@ -1736,7 +1854,7 @@ test('starter decks replay complete matches with legal decisions and conserve al
   }
   return roots.flatMap(walk);
  }
- function playMatch(seed,cardRulesVersion=1){
+ function playMatch(seed,cardRulesVersion=latestCardRulesVersion){
   start(seed,true,false,starterDecks,cardRulesVersion,cardRulesVersion===0?0:1);
   const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
   choose();
@@ -1796,7 +1914,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,1);
+ assert.equal(saved.cardRulesVersion,2);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

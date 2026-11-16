@@ -15,7 +15,7 @@ const PremiereLocations = (() => {
     function visit(card, slot, carriers = [], blocked = false) {
       if (!card) return;
       const unavailable = blocked || inactive(card);
-      result.push({card, slot, carriers, unavailable});
+      result.push({card, side, slot, carriers, unavailable});
       for (const occupant of card.occupants ?? []) visit(occupant.card, slot, [card, ...carriers], unavailable);
       for (const attachment of [...(card.weapons ?? []), ...(card.attachments ?? [])]){
         visit(attachment, slot, carriers, unavailable);
