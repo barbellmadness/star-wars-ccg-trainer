@@ -1089,6 +1089,83 @@ test('registered fleet power counts only ships at a controlled related system',a
  assert.equal(run('fleetPowerAtSite("Dark",2)'),0);
 });
 
+test('registered location text follows printed sides even after Revolution',async()=>{
+ const {run}=await craftHarness();
+ run(`const locationRules=side=>PremiereLocations.conditions(state,2,side);
+  state.locations[2]=card('Dark:675');`);
+ assert.equal(run("locationRules('Dark').transitCost"),0);
+ assert.equal(run("locationRules('Light').transitCost"),2);
+ run(`state.locationEffects={2:[{card:card('Light:2110')}]};
+  state.locations[3]=card('Light:2462');state.locations[4]=card('Light:680');`);
+ assert.equal(run("locationRules('Dark').transitCost"),2);
+ assert.equal(run("locationRules('Light').transitCost"),0);
+ assert.equal(run("PremiereLocations.ruleAt(state,3,'Dark','weaponDestiny').amount"),1);
+ assert.equal(run("PremiereLocations.ruleAt(state,3,'Light','weaponDestiny')"),undefined);
+ assert.equal(run("hasDeployPresence('Light',state.locations[4])"),true);
+ assert.equal(run("hasDeployPresence('Dark',state.locations[4])"),false);
+ assert.equal(run("characterDeployCost(card('Light:1593'),state.locations[3],'Light')"),2);
+ assert.equal(run("characterDeployCost(card('Light:1021'),state.locations[3],'Light')"),3);
+});
+
+test('Massassi Throne Room starts the Light turn only when chosen under the new rules',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`const decks={light:deckChoices.light.find(({deck})=>deck.theme?.id==='massassi-widerstand').deck,dark:starterDecks.dark};
+  function setupLocation(id,version){
+   start(7,true,false,decks,version);
+   const index=startingLocationChoices(setupDecks.light).find(option=>option.card.id===id).index;
+   return chooseStart(index)&&beginStartingGame();
+  }`);
+ assert.equal(run("setupLocation('Light:2858',4)"),true);
+ assert.equal(run("state.activeSide==='Light'&&!state.botTurn&&state.hand.length===8&&state.botHand.length===8"),true);
+ assert.match(elements.get('log').textContent,/Light Side beginnt/);
+ assert.equal(run("requestAction('activate','Light',[1])"),true);
+ assert.equal(run("setupLocation('Light:2858',3)"),true);
+ assert.equal(run("state.activeSide==='Dark'&&!!state.botTurn"),true);
+ assert.equal(run("setupLocation('Light:2859',4)"),true);
+ assert.equal(run("state.activeSide==='Dark'&&!!state.botTurn"),true);
+});
+
+test('Jungle bonuses require an active character alone at the site',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(124,1);
+  const rebel=card('Light:2052'),trooper=card('Dark:2355'),droid=card('Light:2'),speeder=card('Light:2307');
+  state.locations[2]=card('Light:2855');state.light[2]=[rebel,speeder];state.dark[2]=[trooper];`);
+ assert.equal(run("battleTotals(2).lightPower===rebel.power+2"),true);
+ assert.equal(run("battleTotals(2).darkPower===trooper.power"),true);
+ run("PremiereUnits.add(speeder,droid,'passenger','Light');speeder.enclosed=true");
+ assert.equal(run("battleTotals(2).lightPower===rebel.power"),true);
+ run("droid.inactive=true;state.phase=3");
+ assert.equal(run("requestAction('battle','Light',[2])&&battleImmunity('Light',rebel)===Infinity"),true);
+ run("battleSession=null;state.locations[2]=card('Dark:2854')");
+ assert.equal(run("battleTotals(2).darkPower===trooper.power+2"),true);
+ assert.equal(run("battleTotals(2).lightPower===rebel.power"),true);
+});
+
+test('starships react to the printed side of Dantooine with an affordable legal route',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(125,1);
+  state.locations[0]=card('Dark:607');state.dark[6]=[scout];state.light[0]=[card('Light:2907')];
+  state.phase=1;const drain={kind:'drain',side:'Light',site:0};`);
+ assert.equal(run("reactOptions('Dark',drain).some(choice=>choice.card===scout&&choice.cost===1)"),true);
+ run("state.locationEffects={0:[{card:card('Light:2110')}]};");
+ assert.equal(run("reactOptions('Dark',drain).length"),0);
+});
+
+test('a character moving from Mos Eisley to the Cantina cannot participate in a second drain that turn',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(126,1);
+  const luke=card('Light:1593'),rebel=card('Light:2052');
+  state.locations[2]=card('Light:2466');state.light[2]=[luke];state.light[4]=[rebel];
+  state.phase=1;state.botHand=[];state.botDeck=forcePile();`);
+ assert.equal(run("requestAction('drain','Light',[2])"),true);
+ assert.equal(run("state.drainedCardsThisTurn.includes(luke)&&forceDrainValue('Light',4)===2"),true);
+ assert.equal(run("requestAction('move','Light',[2,0,4,'Mos Eisley'])"),true);
+ assert.equal(run("confirmedPresence('Light',4)&&forceDrainValue('Light',4)===null"),true);
+ assert.equal(run("requestAction('drain','Light',[4])"),false);
+ run("PremiereGame.resetTurn(state,'Light');state.phase=1");
+ assert.equal(run("forceDrainValue('Light',4)"),2);
+});
+
 test('Vader and Tarkin apply their printed pilot bonuses',async()=>{
  const {run}=await craftHarness();
  run(`const vader=card('Dark:634'),tarkin=card('Dark:1061'),custom=card('Dark:2700'),destroyer=card('Dark:1291');
@@ -2042,7 +2119,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,3);
+ assert.equal(saved.cardRulesVersion,4);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

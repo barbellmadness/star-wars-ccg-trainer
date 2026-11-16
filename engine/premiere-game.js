@@ -1,7 +1,7 @@
 const PremiereGame = (() => {
   const sides = ['Light', 'Dark'];
   const otherSide = side => side === 'Light' ? 'Dark' : 'Light';
-  const turnMarkers = ['movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn',
+  const turnMarkers = ['movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn', 'drainedCardsThisTurn',
     'battledSitesThisTurn', 'battledCardsThisTurn', 'weaponUsersThisTurn', 'weaponUsesThisTurn', 'reactedThisTurn', 'cancelledReactTitles', 'comlinkUsedBy'];
 
   function actionState(id, seed) {
@@ -32,14 +32,14 @@ const PremiereGame = (() => {
       instanceId: `${side}:${index + 1}`, owner: side})), setAside: new Set()};
   }
 
-  function createState(game, deck, botDeck, locations, locationOrder) {
-    const state = {game, turn: 1, phase: 0, activeSide: 'Dark', activated: false,
+  function createState(game, deck, botDeck, locations, locationOrder, firstSide = 'Dark') {
+    const state = {game, turn: 1, phase: 0, activeSide: firstSide, activated: false,
       deck, botDeck, hand: [], botHand: [], locations, locationOrder, convertedLocations: {}, locationEffects: {},
       light: locations.map(() => []), dark: locations.map(() => []),
       force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [], lostPileEffects: [],
       log: [], botReason: 'Bot wartet.', botHistory: [], botTurn: null,
       pendingForceLoss: null, gameWinner: null, nightConditions: false};
-    resetTurn(state, 'Dark');
+    resetTurn(state, firstSide);
     for (let i = 0; i < 8; i++) {
       moveTop(deck, state.hand);
       moveTop(botDeck, state.botHand);

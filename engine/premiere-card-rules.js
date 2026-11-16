@@ -10,6 +10,68 @@ const PremiereCardRules = (() => {
     continuous(event, summary, targets, 'registered Premiere locations', { printedSide, amount, legacy });
   const characterStat = (event, amount, summary, options) => continuous(event, summary, 'character at a site',
     'registered character stat rules', { amount, since: 2, ...options });
+  const printed = (printedSide, event, summary, fields = {}, test = 'registered location text follows printed sides') =>
+    continuous(event, summary, 'active side of location', test, { printedSide, legacy: true, ...fields });
+  const drain = side => printed(side, 'forceDrain', 'Wer diese Seite kontrolliert, erhält beim Force Drain hier +1.', { amount: 1 });
+  const weaponDestiny = printed('Dark', 'weaponDestiny', 'Jeder eigene Waffen-Destiny-Draw von hier erhält +1.', { amount: 1 });
+  const minimumSix = side => printed(side, 'minimumBattleAbility', 'Für reguläre Battle Destiny ist hier mindestens Ability 6 erforderlich.', { amount: 6 });
+
+  for (const [id, light, dark] of [
+    ['Light:676', 1, 1], ['Dark:675', 2, 0], ['Light:2447', 1, 2],
+    ['Dark:2446', 2, 1], ['Light:2853', 0, 2], ['Dark:2852', 1, 1],
+  ]) {
+    register([id], [['Light', light], ['Dark', dark]].map(([side, cost]) =>
+      printed(side, 'dockingTransit', 'Docking-Bay-Transit von dieser Seite kostet ' + cost + ' Force.', { cost })), true);
+  }
+  register(['Light:608'], [
+    printed('Light', 'shipDeploy', 'Capital Starships werden hier für 2 Force weniger und Starfighters für 1 Force weniger ausgespielt.',
+      { fighterDiscount: 1, capitalDiscount: 2 }),
+    drain('Dark'),
+  ], true);
+  register(['Dark:607'], [
+    printed('Dark', 'shipReact', 'Eigene Starships können sich als React hierher bewegen.', {}, 'starships react to the printed side of Dantooine'),
+  ], true);
+  register(['Dark:79'], [
+    printed('Dark', 'controlSiteDrain', 'Beim Force Drain hier zählt jede kontrollierte Death-Star-Site als +1.', { region: 'Death Star' }),
+  ], true);
+  register(['Light:672', 'Dark:669'], [drain('Light')]);
+  register(['Light:680'], [
+    printed('Light', 'deployWithoutIcons', 'Diese Seite darf hier ohne eigene Presence oder Force-Icons ausspielen.'),
+    drain('Light'),
+  ], true);
+  register(['Dark:673'], [weaponDestiny, drain('Light')], true);
+  register(['Dark:2461'], [weaponDestiny, drain('Dark')], true);
+  register(['Dark:678'], [
+    printed('Dark', 'militaryCorridorMove', 'Imperials dürfen in ihrer Move Phase frei von hier zu einer Death-Star-Site ziehen.'),
+    drain('Light'),
+  ], true);
+  register(['Light:2448'], [minimumSix('Dark')], true);
+  register(['Light:2455'], [
+    printed('Light', 'jawaDeploy', 'Deine Jawas kosten hier 1 eigene Force, bei anwesendem Sandcrawler sind sie frei.', { freeWithCrawler: true }),
+  ], true);
+  register(['Light:2462'], [
+    printed('Light', 'characterDeploy', 'Beru Lars und Luke Skywalker werden hier für 1 Force weniger ausgespielt.',
+      { names: ['beru lars','luke skywalker'], amount: 1 }),
+    weaponDestiny,
+  ], true);
+  register(['Light:2466'], [
+    printed('Light', 'cantinaMove', 'In deiner Control Phase kannst du frei zwischen Mos Eisley und der Cantina ziehen.'),
+  ], true);
+  register(['Light:2471'], [
+    printed('Light', 'characterDeploy', 'Obi-Wan Kenobi wird hier für 3 Force weniger ausgespielt.', { names: ['obi-wan kenobi'], amount: 3 }),
+    drain('Dark'),
+  ], true);
+  register(['Light:2858'], [
+    printed('Light', 'firstTurn', 'Wählt Light diese Location als Starting Location, beginnt Light Side.',
+      { since: 4 }, 'Massassi Throne Room starts the Light turn'),
+    drain('Dark'),
+  ], true);
+  for (const [id, side, subtype] of [['Light:2855', 'Light', 'Rebel'], ['Dark:2854', 'Dark', 'Imperial']]) {
+    const effects = [printed(side, 'aloneInJungle', 'Ein alleiniger ' + subtype + ' erhält hier im Battle Power +2 und ist immun gegen Attrition.',
+      { subtype, amount: 2, since: 4 }, 'Jungle bonuses require an active character alone at the site')];
+    if (side === 'Light') effects.push(drain('Dark'));
+    register([id], effects, true);
+  }
 
   register(['Light:2440'], [
     atLocation('Light', 'power', 'alien', 1, 'Light-Aliens erhalten am Ort Power +1.'),
@@ -22,10 +84,13 @@ const PremiereCardRules = (() => {
   register(['Dark:2454'], [
     atLocation('Light', 'power', 'jawa', -1, 'Light-Jawas erhalten am Ort Power −1.'),
     atLocation('Light', 'forfeit', 'jawa', -1, 'Light-Jawas erhalten am Ort Forfeit −1.', true),
-  ]);
+    printed('Dark', 'jawaDeploy', 'Deine Jawas kosten hier 1 eigene Force.'),
+  ], true);
   register(['Dark:2458'], [
     atLocation('Dark', 'forfeit', 'tusken', 1, 'Dark-Tusken Raiders erhalten am Ort Forfeit +1.', true),
-  ]);
+    drain('Dark'),
+    minimumSix('Light'),
+  ], true);
   register(['Dark:2465'], [
     atLocation('Dark', 'power', 'underworld', 1, 'Dark-Spione, Diebe, Kopfgeldjäger und Schmuggler erhalten Power +1.'),
     atLocation('Dark', 'forfeit', 'underworld', 1, 'Dieselben Charaktere erhalten Forfeit +1.'),
@@ -174,14 +239,20 @@ const PremiereCardRules = (() => {
     continuous('kesselSmuggler', 'BoShek darf einen Kessel Run anstelle eines Schmugglers fliegen. Seine Pilot-Power und gedruckte Attrition-Immunität gelten daneben.',
       'BoShek aboard a starship', 'Kessel Run tracks', { since: 2 }),
   ]);
-  register(['Dark:1426', 'Light:1427'], [
-    continuous('blockKesselRun', 'Wer die Seite mit diesem Ortswortlaut kontrolliert, verhindert oder hebt Kessel Run auf.',
-      'Kessel Run at Kessel', 'Kessel Run tracks', { printedSide: 'Dark', since: 2 }),
-  ]);
+  const blockKesselRun = continuous('blockKesselRun', 'Wer die Seite mit diesem Ortswortlaut kontrolliert, verhindert oder hebt Kessel Run auf.',
+    'Kessel Run at Kessel', 'Kessel Run tracks', { printedSide: 'Dark', since: 2 });
+  register(['Light:1427'], [drain('Light'), blockKesselRun], true);
+  register(['Dark:1426'], [
+    printed('Dark', 'shipDeploy', 'Eigene Schiffe kosten 1 Force weniger. Mit Tarkin an Bord eines Schiffs hier sind es 2 Force weniger.',
+      { fighterDiscount: 1, capitalDiscount: 1, tarkinDiscount: 2 }),
+    minimumSix('Light'),
+    blockKesselRun,
+  ], true);
   register(['Light:80'], [
     continuous('opponentBattleDestiny', 'Die Light-Seite von Alderaan zieht von jedem gegnerischen Battle-Destiny-Draw 1 ab.',
       'opponent at Alderaan', 'Alderaan reduces opposing destiny', { printedSide: 'Light', amount: -1, legacy: true }),
-  ]);
+    drain('Dark'),
+  ], true);
 
   function entry(card) {
     const definition = cards.get(card.id);
