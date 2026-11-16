@@ -17,14 +17,15 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 2. Gemeinsame Spielengine und Aktionsreihenfolge
 
-- [ ] Den Spielzustand aus `v2.html` in testbare Module extrahieren. Karteninstanzen eindeutig identifizieren und Zonenwechsel von Rendering, Lernhinweisen und Bot-Auswahl entkoppeln.
-- [ ] `legalActions(state, side)` für alle sechs Phasen, Setup, Battle und Antwortfenster einführen. UI und Bot wählen aus demselben Angebot. Bei der Ausführung Ziele, Seite, Phase und Kosten erneut prüfen.
-- [ ] Eine Aktion mit ihren Kosten, Zielwahlen, Antworten und der Auflösung als zusammenhängenden Zustandsübergang modellieren. Mehrfachklicks, veraltete Auswahl, fehlende Ziele und unterbrochene Aktionen testen.
-- [ ] Aktionspriorität, Passen, optionale und verpflichtende Trigger sowie Antwortfenster abbilden. Das umfasst Aktionen im gegnerischen Zug, Reacts, Unterbrechen, Aufheben und die Reihenfolge bei mehreren gleichzeitigen Effekten.
-- [ ] Zeitgrenzen wie einmal pro Zug, Battle oder Partie sowie Beginn und Ende einer Phase zentral verwalten. Ablauf und Rücksetzung temporärer Effekte testen.
-- [ ] Pro Seite öffentliche und verdeckte Informationen aus dem Zustand ableiten. Kartenreihenfolge in Reserve Deck, Force Pile und Used Pile schützen und nur bei erlaubter Aktion aufdecken oder durchsuchen.
-- [ ] Zufall und Mischen über einen Seed steuerbar machen. Gleiche Decklisten, Seed und Aktionen müssen denselben Partieverlauf ergeben.
-- [ ] Nach Spielende weitere Regelaktionen sperren. Sieg, mögliche Gleichzeitigkeit von Verlusten sowie den Zeitpunkt der Life-Force-Prüfung am Ende mehrstufiger Aktionen nach Regelquelle absichern.
+- [x] Der Zustand, Karteninstanzen und Zonenwechsel liegen in den Spielmodulen. V2 rendert über einen Rückruf, der Bot wählt angebotene Aktionen.
+- [x] `legalActions(state, side)` deckt die sechs Phasen, Setup, Battle und Antwortfenster für den implementierten Kartenumfang ab. Die Ausführung prüft das Angebot mit aktuellem Zustand erneut.
+- [x] Kosten, Ziele, Antworten und Auflösung über versionierte Aktionen verknüpfen. Tests decken Mehrfachklicks, veraltete Angebote, fehlende Ziele und unterbrochene Aktionen ab.
+- [x] Priorität und Passen, optionale und verpflichtende Trigger sowie verschachtelte Antworten abbilden. Wolfman und Bantha können als React antworten. Sense und Alter sind für die entsprechenden Antworten im Stapel umgesetzt. Weitere Kartenfähigkeiten folgen in den Kartentyp-Abschnitten.
+- [x] Zeitgrenzen für Phase, Turn, Battle und Partie zentral verwalten. Tests prüfen den Ablauf temporärer Effekte und die Reihenfolge gleichzeitiger Trigger.
+- [x] Pro Seite öffentliche und verdeckte Informationen ableiten. Handkarten des Bots sind standardmäßig verdeckt, Life-Force-Stapel erscheinen mit Kartenzahl. Karten werden bei einer Regelaktion wie Destiny oder Force-Verlust sichtbar.
+- [x] Ein Partie-Seed steuert die Startortwahl des Bots und beide Mischvorgänge. Ein Test spielt die protokollierten Aktionen erneut ab und vergleicht Zonenreihenfolge und Spielfeld.
+- [x] Nach einem regulären Sieg weitere Regelaktionen sperren. Die Engine wertet Life Force nach vollständiger Verlustzahlung aus und erkennt gleichzeitige Erschöpfung.
+- [ ] Für die gleichzeitige vollständige Erschöpfung beider Life Forces eine Premiere-Regelentscheidung zur Wertung belegen. V2 beendet und sperrt die Partie in diesem Fall mit einer eigenen Anzeige.
 
 ## 3. Locations, Presence und Force
 
