@@ -5,6 +5,7 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 ## Aktueller Stand
 - `index.html`: eigenständig lauffähige **Übungs-Alpha** mit einfacher Bot-Logik.
 - `v2.html` lädt den lokalen Premiere-Datensatz mit 324 Karten. Die Lernpartie unterstützt unter anderem Force-Verwaltung, Charaktere, ausgewählte Blaster, Banthas und Raumschiffe mit permanenten Piloten.
+- [`data/premiere-starter-decks.json`](data/premiere-starter-decks.json) enthält die beiden festen Lern-Decks mit je 60 Karten und jeweils drei Starting Locations. Im Startbildschirm lassen sich die Stückzahlen und der Stand der Karteneffekte ansehen. Nach der Wahl der Startorte werden die verbleibenden Karten gemischt und es werden je acht Karten gezogen.
 - Die Lernpartie deckt einen Teil der Premiere-Regeln und Kartentexte ab. Die Kartenprüfung in V2 zeigt die Abdeckung. Kartenbilder werden von den im Datensatz hinterlegten URLs geladen.
 
 ## Lokal testen
@@ -26,7 +27,7 @@ Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen 
 1. Verifizierten Premiere-Datensatz aus autorisierter Quelle importieren und auf 162 Karten pro Seite prüfen.
 2. Originalwerte und Texte ohne erfundene Fallbacks anzeigen.
 3. Regelengine auf Grundlage des Premiere-Regelbuchs aufbauen und testen.
-4. Zwei regelkonforme 60-Karten-Decks und Bot implementieren.
+4. Die Karteneffekte der beiden festen Starterdecks und die zugehörigen Bot-Entscheidungen vervollständigen.
 5. Erst nach rechtlicher Prüfung Bilder öffentlich ausliefern.
 
 ## Veröffentlichung
