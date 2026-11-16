@@ -22,12 +22,54 @@
 .location-inspector-card img{width:min(310px,100%);max-height:440px;object-fit:contain;border:2px solid #cbb377;border-radius:8px}
 .location-inspector-details{min-width:180px;flex:1}
 .location-icon-pips{font-size:12px;color:#ead69a}
+.table-view{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.table-view .player-hand{min-width:0;margin:0}
+.dark-hand{border-color:#af6073}
+.light-hand{border-color:#a18b5b}
 .start-location-options{display:flex;overflow-x:auto;gap:12px;padding:10px 0}
 .start-location-option{flex:0 0 150px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px}
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
+.starter-deck-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+#starterDeckDialog{width:min(34rem,calc(100% - 2rem));max-height:calc(100% - 2rem);padding:16px;color:#e7edf9;background:#111c2d;border:1px solid #a18b5b;border-radius:12px}
+#starterDeckDialog::backdrop{background:#060b15cc}
+.starter-deck-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#starterDeckCards{max-height:min(55vh,28rem);overflow:auto;margin:12px 0 0;padding-inline-start:24px}
+#starterDeckCards li{padding-block:4px}
 @media(max-width:650px){main{padding:9px}.playmat-shell{padding:8px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:130px;height:179px}.playmat{min-height:440px}}
-</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label> <button id="start" disabled>Neue Partie</button> <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p><div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div><h2>Spielbrett · Playmat</h2><div class="playmat-shell"><p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p><div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div></div><div class="panel"><h2>Deine Hand · Light Side</h2><div id="hand" class="cards"></div></div><div class="panel"><h2>Bot-Hand · Dark Side</h2><label><input id="showBotHand" type="checkbox" onchange="render()"> Handkarten im Lernmodus offen anzeigen</label><p id="botHandCount" class="hint"></p><div id="botHand" class="cards"></div><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div></main><script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
+</style><main><header class="brand-header"><img src="https://github.com/swccgpc.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header><p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p><div class="panel"><label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label> <button id="start" disabled>Neue Partie</button> <label><input id="trainingBattle" type="checkbox"> Battle-Lernübung mit manuellen Reglern</label> <button id="step">Nächste Phase</button><div id="stats"></div></div><div id="phases" class="phases"></div><div class="panel"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div><div class="panel"><h2>Starting Locations & Force</h2><p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p>
+<div class="starter-deck-actions">
+  <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
+  <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
+</div>
+<div id="setup" class="panel" style="display:none"><div id="setupOptions"></div></div><div id="forceControls" class="panel" style="display:none"></div><div id="controlPanel" class="panel" style="display:none"></div><button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre></div><section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section><section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section><div class="panel"><h2>Umgebungsbedingungen für Kartenfähigkeiten</h2><label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label><p class="hint">Nur ausdrücklich hinterlegte und geprüfte Karteneffekte werden automatisch angewendet. Andere Kartentexte bleiben manuell.</p></div>
+<section class="table-view" aria-label="Spieltisch">
+  <div class="panel player-hand dark-hand">
+    <h2>Bot-Hand · Dark Side</h2>
+    <label><input id="showBotHand" type="checkbox" onchange="render()"> Handkarten im Lernmodus offen anzeigen</label>
+    <p id="botHandCount" class="hint"></p>
+    <div id="botHand" class="cards"></div>
+  </div>
+  <div class="playmat-shell">
+    <h2>Spielbrett · Playmat</h2>
+    <p class="hint">Dark Side oben, Light Side unten. Zusammengehörige Sites und Systeme stehen in Gruppen. Wähle zum Auslegen einer Location einen der angebotenen Plätze.</p>
+    <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
+  </div>
+  <div class="panel player-hand light-hand">
+    <h2>Deine Hand · Light Side</h2>
+    <div id="hand" class="cards"></div>
+  </div>
+</section>
+<div class="panel"><p id="botReason" class="hint"></p><div id="botTurnPanel" class="panel" style="display:none"><h2>Bot-Zug Schritt für Schritt</h2><p id="botStepText"></p><button id="botNext">Nächste Bot-Aktion zeigen</button></div><h2>Letzte Bot-Aktionen</h2><div id="botHistory" class="log"></div></div><div class="panel"><h2>Spielprotokoll</h2><div id="log" class="log"></div></div>
+</main>
+<dialog id="starterDeckDialog" aria-labelledby="starterDeckTitle">
+  <header class="starter-deck-header">
+    <h2 id="starterDeckTitle"></h2>
+    <form method="dialog"><button autofocus>Schließen</button></form>
+  </header>
+  <ul id="starterDeckCards" tabindex="0"></ul>
+</dialog>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -124,18 +166,18 @@ function startingLocationMarkup(card){
   +'<span>'+name+' · Icons '+card.icons.light+'/'+card.icons.dark+'</span>';
 }
 
-function renderStarterDeckLists(){
- const sections=['light','dark'].map(side=>{
-  const deck=starterDecks[side],counts=new Map();
-  for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
-  const items=[...counts].map(([card,count])=>{
-   const status=cardEffectStatus(card);
-   const coverage=status.startsWith('OFFEN:')?' · Kartentext offen':status.startsWith('TEILWEISE:')?' · teilweise umgesetzt':'';
-   return '<li>'+count+' × '+escapeHTML(card.name)+coverage+'</li>';
-  }).join('');
-  return '<h3>'+(side==='light'?'Light':'Dark')+' Side ('+deck.cards.length+' Karten)</h3><ul>'+items+'</ul>';
- });
- return '<details><summary>Starterdecklisten und Kartenabdeckung</summary>'+sections.join('')+'</details>';
+function showStarterDeck(side){
+ const deck=starterDecks[side],counts=new Map();
+ for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
+ el('starterDeckTitle').textContent=(side==='light'?'Light':'Dark')+' Side Deck · '+deck.cards.length+' Karten';
+ const list=el('starterDeckCards');
+ list.innerHTML=[...counts].map(([card,count])=>{
+  const status=cardEffectStatus(card);
+  const coverage=status.startsWith('OFFEN:')?' · Kartentext offen':status.startsWith('TEILWEISE:')?' · teilweise umgesetzt':'';
+  return '<li>'+count+' × '+escapeHTML(card.name)+coverage+'</li>';
+ }).join('');
+ el('starterDeckDialog').showModal();
+ list.scrollTop=0;
 }
 
 function renderSetup(){
@@ -158,7 +200,7 @@ function renderSetup(){
   const realChoice=available.some(option=>option.card);
   el('setupOptions').innerHTML='<p>'+(realChoice?'Wähle deine Starting Location.':'Du hast keinen verfügbaren Startort mehr.')+'</p><div class="start-location-options">'
    +available.map(option=>'<button class="start-location-option" '+ruleClick(option)+'>'+(option.card?startingLocationMarkup(option.card):'Startorte aufdecken')+'</button>').join('')
-   +'</div>'+renderStarterDeckLists();
+   +'</div>';
   el('instruction').textContent=realChoice?'Starting Location auswählen':'Startorte aufdecken';
   el('hint').textContent='Die Auswahl des Bots bleibt bis zum Aufdecken verdeckt.';
   return;
@@ -475,7 +517,9 @@ async function load(){try{
  starterDecks=readStarterDecks(deckLists,cards);
  catalog=cards;
  el('start').disabled=false;
- auditData();showEffectCoverage();start();
+ auditData();start();
+ el('viewLightDeck').disabled=false;
+ el('viewDarkDeck').disabled=false;
  }catch(e){
   starterDecks=null;
   el('start').disabled=true;
@@ -484,6 +528,8 @@ async function load(){try{
  }}
 
 el('auditBtn').onclick=auditData;el('start').onclick=startFromUI;
+el('viewLightDeck').onclick=()=>showStarterDeck('light');
+el('viewDarkDeck').onclick=()=>showStarterDeck('dark');
 el('showBotHand').onchange=()=>{if(!el('showBotHand').checked)closeCard();render()};
 load();
 </script></html>
