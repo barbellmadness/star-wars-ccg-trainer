@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const html=readFileSync(new URL('../v2.html',import.meta.url),'utf8');
 const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.meta.url),'utf8');
+const gameScript=readFileSync(new URL('../engine/premiere-game.js',import.meta.url),'utf8');
+const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness(){
@@ -11,6 +13,8 @@ function harness(){
  const document={getElementById(id){if(!elements.has(id))elements.set(id,{value:'',checked:true,style:{},innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(id)}};
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
  vm.runInContext(cardDataScript,context);
+ vm.runInContext(gameScript,context);
+ vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
  return {run,elements};
@@ -230,15 +234,15 @@ test('spies ignore local Force-icon and presence requirement but still pay deplo
 });
 test('bot considers only legal Dark deployments and can use spies',()=>{
  const {run}=harness();
- run("state={locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{light:1,dark:0}},{name:'Hoth: B',type:'Location',subType:'Site',icons:{light:0,dark:2}}],force:[{}],botForce:[{}],light:[[],[]],dark:[[],[]],botHand:[{name:'Stormtrooper',side:'Dark',type:'Character',deploy:1}]};");
- assert.equal(run("botBoardDeployOptions().length"),1);
- assert.equal(run("botBoardDeployOptions()[0].siteIndex"),1);
+ run("state={phase:2,activeSide:'Dark',locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{light:1,dark:0}},{name:'Hoth: B',type:'Location',subType:'Site',icons:{light:0,dark:2}}],force:[{}],botForce:[{}],light:[[],[]],dark:[[],[]],botHand:[{name:'Stormtrooper',side:'Dark',type:'Character',deploy:1}]};const deployOptions=()=>legalActions(state,'Dark').filter(option=>option.kind==='deploy');");
+ assert.equal(run("deployOptions().length"),1);
+ assert.equal(run("deployOptions()[0].args[1]"),1);
  run("state.locations[1].icons.dark=0");
- assert.equal(run("botBoardDeployOptions().length"),0);
+ assert.equal(run("deployOptions().length"),0);
  run("state.botHand[0].characteristics=['spy']");
- assert.equal(run("botBoardDeployOptions().length"),2);
+ assert.equal(run("deployOptions().length"),2);
  run("state.botForce=[]");
- assert.equal(run("botBoardDeployOptions().length"),0);
+ assert.equal(run("deployOptions().length"),0);
 });
 test('character cannot deploy directly to a system even with own icons',()=>{
  const {run}=harness();
@@ -733,8 +737,8 @@ test('the bot commits a concealed start and both locations are revealed before s
 
 async function startingCollisionHarness(lists){
  const {run,elements}=await premiereHarness(lists);
- // Choose the first available bot location each round without changing the host Math object.
- run('Math=Object.create(Math);Math.random=()=>0;start()');
+ // Seed 0 chooses the first available bot location on both contested rounds.
+ run('start(0)');
  return {run,elements};
 }
 
@@ -791,7 +795,7 @@ for(const sideWithoutStart of ['Light','Dark','both']){
   if(sideWithoutStart==='Dark'){
    assert.equal(run('chooseStart(startingLocationChoices(setupDecks.light)[0].index)'),true);
   }else{
-   assert.match(elements.get('setupOptions').innerHTML,/chooseStart\(null\)/);
+   assert.match(elements.get('setupOptions').innerHTML,/&quot;kind&quot;:&quot;chooseStart&quot;.*&quot;args&quot;:\[null\]/);
    assert.equal(run('chooseStart(null)'),true);
   }
   assert.match(elements.get('setupOptions').innerHTML,/Kein Startort verfügbar/);
@@ -851,8 +855,8 @@ function weaponBattleHarness(initiator='Light'){
 test('Light equips a blaster through the playmat only on an eligible warrior and it moves with its host',()=>{
  const {run}=weaponBattleHarness();
  run('select(0)');
- assert.match(run('renderPlaymatColumn(state.locations[0],0)'),/equipSelectedWeapon\(0,0\)/);
- assert.doesNotMatch(run('renderPlaymatColumn(state.locations[0],0)'),/equipSelectedWeapon\(0,1\)/);
+ assert.match(run('renderPlaymatColumn(state.locations[0],0)'),/&quot;kind&quot;:&quot;equip&quot;[^>]*&quot;args&quot;:\[0,0,0\]/);
+ assert.doesNotMatch(run('renderPlaymatColumn(state.locations[0],0)'),/&quot;kind&quot;:&quot;equip&quot;[^>]*&quot;args&quot;:\[0,0,1\]/);
  assert.equal(run("deployWeaponFor('Dark',0,0,0)"),false);
  assert.equal(run("deployWeaponFor('Light',0,0,1)"),false);
  assert.equal(run("deployWeaponFor('Light',0,1,0)"),false);
@@ -873,7 +877,7 @@ test('battle alternates weapon actions, hit warriors can return fire, and attach
  const {run,elements}=weaponBattleHarness();
  run('rebel.weapons=[rifle];trooper.weapons=[blaster];state.phase=3;');
  assert.equal(run('battleAnalysis(0)'),true);
- assert.match(elements.get('battleControls').innerHTML,/fireBattleWeapon\('Light',0,0,0\)/);
+ assert.match(elements.get('battleControls').innerHTML,/&quot;kind&quot;:&quot;fireWeapon&quot;[^>]*&quot;args&quot;:\[0,0,0\]/);
  assert.doesNotMatch(elements.get('battleControls').innerHTML,/Light Battle Destiny ziehen/);
  assert.equal(run("fireBattleWeapon('Dark',0,0,0)"),false);
  assert.equal(run("fireBattleWeapon('Light',0,0,9)"),false);
@@ -883,7 +887,7 @@ test('battle alternates weapon actions, hit warriors can return fire, and attach
  assert.equal(run("fireBattleWeapon('Light',0,0,0)"),true);
  assert.equal(run("battleSession.weaponHits.Dark.includes(0)&&state.used.at(-1).name==='Weapon draw'"),true);
  assert.equal(run("battleTotals(0).darkPower===3&&battleSession.darkCard===null"),true);
- assert.match(elements.get('battleControls').innerHTML,/botWeaponDecision\(\)/);
+ assert.match(elements.get('battleControls').innerHTML,/&quot;kind&quot;:&quot;fireWeapon&quot;[^>]*&quot;side&quot;:&quot;Dark&quot;[^>]*>Waffenaktion des Bots zeigen/);
  assert.equal(run('botWeaponDecision()'),true);
  assert.equal(run("battleSession.weaponHits.Light.includes(0)&&state.botUsed.at(-1).name==='Bot weapon draw'"),true);
  assert.equal(run('state.force.length===2&&state.botForce.length===4'),true);
@@ -1043,8 +1047,8 @@ test('Playmat places Dark above location art and Light below and retains actions
  const content=run("renderPlaymatColumn(state.locations[0],0)");
  assert.ok(content.indexOf('DARK · 1')<content.indexOf('Location-Karte: Hoth: Echo Base'));
  assert.ok(content.indexOf('Location-Karte: Hoth: Echo Base')<content.indexOf('LIGHT · 1'));
- assert.match(content,/onclick="play\(/);
- assert.match(content,/onclick="battleAnalysis\(/);
+ assert.match(content,/<button disabled>Ausspielen<\/button>/);
+ assert.match(content,/<button disabled>Battle \(1 Force\)<\/button>/);
 });
 
 test('location art opens a detailed card inspector without changing game state',()=>{
@@ -1112,7 +1116,7 @@ test('Location deploy rejects duplicate titles, invalid insertion positions and 
 
 test('starting locations use their geographic order while keeping the original location references',async()=>{
  const {run,elements}=await premiereHarness();
- run('Math=Object.create(Math);Math.random=()=>0.4;start()');
+ run('start(1)');
  run('chooseStart(setupDecks.light.startingIndices[1]);beginStartingGame()');
  assert.equal(run("state.locations[0].id==='Light:2448'&&state.locations[1].id==='Dark:2446'"),true);
  assert.equal(run('boardLocationOrder().join()'),'1,0');
@@ -1141,9 +1145,9 @@ test('Tatooine insertion preserves the spaceport block, offers exterior gaps and
  assert.equal(run("locationDeployPositions('Light',0).join()"),'3,4');
  assert.equal(run("deployLocationFromHand('Light',0,2)"),false);
  const board=elements.get('board').innerHTML;
- assert.match(board,/onclick="playLocation\(0,3\)"/);
- assert.match(board,/onclick="playLocation\(0,4\)"/);
- assert.doesNotMatch(board,/onclick="playLocation\(0,2\)"/);
+ assert.match(board,/&quot;kind&quot;:&quot;deployLocation&quot;[^>]*&quot;args&quot;:\[0,3\]/);
+ assert.match(board,/&quot;kind&quot;:&quot;deployLocation&quot;[^>]*&quot;args&quot;:\[0,4\]/);
+ assert.doesNotMatch(board,/&quot;kind&quot;:&quot;deployLocation&quot;[^>]*&quot;args&quot;:\[0,2\]/);
 
  run('playLocation(0,3)');
  assert.equal(run('boardLocationOrder().join()'),'3,4,5,6,2,0,1');
@@ -1168,4 +1172,172 @@ test('the bot inserts Death Star and Yavin 4 sites using the same legal order',a
  assert.equal(run('adjacentSites(4,3)&&adjacentSites(2,5)&&adjacentSites(5,6)'),true);
  assert.equal(run('adjacentSites(3,2)||adjacentSites(6,1)'),false);
  assert.equal(run('state.botForce.length'),5);
+});
+
+test('a seed and the recorded action choices reproduce setup and both sides’ zone order',async()=>{
+ const {run}=await premiereHarness();
+ run(`start(1);
+  chooseStart(startingLocationChoices(setupDecks.light)[1].index);
+  beginStartingGame();
+  for(let i=0;i<7;i++)botNextStep();
+  requestAction('activate','Light',[1]);
+  requestAction('advance','Light');
+  const recorded=state.game.actions.slice();
+  const snapshot=()=>JSON.stringify([state.phase,state.activeSide,state.locations,state.light,state.dark,
+   state.deck,state.botDeck,state.force,state.botForce,state.hand,state.botHand,state.used,state.botUsed,state.game.randomState]);
+  const original=snapshot();
+  start(1,false);`);
+ assert.equal(run('recorded.every(action=>requestAction(action.kind,action.side,action.args,false))'),true);
+ assert.equal(run('snapshot()===original'),true);
+ assert.equal(run(`new Set([...state.deck,...state.botDeck,...state.force,...state.botForce,...state.hand,...state.botHand,
+  ...state.used,...state.botUsed,...state.lost,...state.botLost,...state.locations.filter(Boolean),...state.light.flat(),...state.dark.flat()]
+  .flatMap(card=>[card,...(card.weapons??[])]).map(card=>card.instanceId)).size`),120);
+});
+
+test('the public view omits opponent hands and all Life Force order, including in setup',async()=>{
+ const {run,elements}=await premiereHarness();
+ run('start(1)');
+ assert.equal(run('PremiereGame.setupView(setupDecks,"Light").revealed'),null);
+ assert.equal(run('"darkChoice" in PremiereGame.setupView(setupDecks,"Light")'),false);
+ run('chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ elements.get('showBotHand').checked=false;
+ run('render()');
+ assert.match(elements.get('botHand').innerHTML,/Verdeckt/);
+ assert.equal(run(`PremiereGame.sides.every(side=>{
+  const view=PremiereGame.playerView(state,side),own=view.players[side],opponent=view.players[PremiereGame.otherSide(side)];
+  return own.hand.length===8&&opponent.handCount===8&&!('hand' in opponent)&&
+   [own,opponent].every(piles=>['deck','force','used'].every(zone=>!(zone in piles)));
+ })`),true);
+ run(`const copy=PremiereGame.playerView(state,'Light');copy.players.Light.hand[0].name='changed';`);
+ assert.equal(run("state.hand[0].name==='changed'"),false);
+});
+
+test('UI action versions reject duplicate clicks, wrong-side targets and unaffordable options',()=>{
+ const {run}=weaponBattleHarness();
+ run(`state.game=PremiereGame.actionState(12,1);select(0);
+  const equip=findOffer(legalActions(state,'Light'),'equip',0,0,0);`);
+ assert.equal(run("performAction({...equip,side:'Dark'})"),false);
+ assert.equal(run('performAction({...equip,args:[0,0,9]})'),false);
+ assert.equal(run('performAction({...equip,gameId:11})'),false);
+ assert.equal(run('dispatchUI(equip)'),true);
+ assert.equal(run('dispatchUI(equip)'),false);
+ assert.equal(run('state.used.length===2&&state.game.actions.length===1'),true);
+ run(`state.hand=[rifle];const second=findOffer(legalActions(state,'Light'),'equip',0,0,0);state.force=[];`);
+ assert.equal(run('performAction(second)'),false);
+ assert.equal(run('state.hand[0]===rifle&&state.used.length===2'),true);
+});
+
+function reactHarness(){
+ const session=harness();
+ session.run(`const nearby={name:'Hoth: Exterior A',type:'Location',subType:'Site',locationTags:['Planet','Exterior'],icons:{light:1,dark:1}};
+  const target={...nearby,name:'Hoth: Exterior B'};
+  const wolfman={name:'Shistavanen Wolfman',id:'Light:2250',instanceId:'Light:9',type:'Character',deploy:2,ability:2};
+  const imperial={name:'Imperial',type:'Character',ability:3};
+  state=PremiereGame.createState(PremiereGame.actionState(21,1),[],[],[nearby,target],[0,1]);
+  state.phase=1;state.botTurn={steps:[],index:0};
+  state.light[0].push(wolfman);state.dark[1].push(imperial);
+  state.force.push({name:'React cost'});state.deck.push({name:'Life L'});
+  state.botDeck.push({name:'Life D',destiny:4},{name:'Sense Destiny',destiny:2});`);
+ return session;
+}
+
+test('a Wolfman can pay once and react in the opposing turn to cancel an unresolved Force Drain',()=>{
+ const {run,elements}=reactHarness();
+ assert.equal(run("requestAction('drain','Dark',[1])"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster.*Shistavanen Wolfman/);
+ assert.equal(run("requestAction('passResponse','Dark')"),false);
+ assert.equal(run("requestAction('draw','Light')"),false);
+ assert.equal(run("requestAction('react','Light',[0,0])"),true);
+ assert.equal(run("state.light[0][0]===wolfman&&state.used[0].name==='React cost'"),true);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run('state.light[1][0]===wolfman&&state.pendingForceLoss===null&&state.game.responses.length===0'),true);
+ assert.equal(run("PremiereGame.wasUsed(state.game,'turn','react:Light:9')"),true);
+ assert.equal(run("requestAction('drain','Dark',[1])"),false);
+});
+
+test('Sense can interrupt a paid React, and Alter can cancel the pending Sense in stack order',()=>{
+ for(const counter of [false,true]){
+  const {run}=reactHarness();
+  run(`state.botHand.push({id:'Dark:2216',name:'Sense'});
+   if(${counter})state.hand.push({id:'Light:95',name:'Alter'});`);
+  assert.equal(run(`requestAction('drain','Dark',[1])&&requestAction('react','Light',[0,0])&&
+   requestAction('interruptResponse','Dark',[0])`),true);
+  if(counter){
+   assert.equal(run(`requestAction('interruptResponse','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')`),true);
+   assert.equal(run("state.botLost[0].name==='Sense'&&state.used[1].name==='Alter'&&state.botDeck.length===2"),true);
+  }
+  assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+  if(counter)assert.equal(run('state.light[1][0]===wolfman&&state.pendingForceLoss===null'),true);
+  else {
+   assert.equal(run('state.light[0][0]===wolfman&&state.used.length===1'),true);
+   assert.equal(run("state.botUsed.map(card=>card.name).join()"),'Sense Destiny,Sense');
+   assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+   assert.equal(run("state.pendingForceLoss.payer"),'Light');
+  }
+ }
+});
+
+test('phase checkpoints give the active side the order of mandatory triggers and then alternate optional priority',()=>{
+ const {run}=reactHarness();
+ run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;state.activated=true;
+  const observed=[];
+  function register(id,side,mandatory,scope,event){PremiereGame.registerTrigger(state.game,{id,side,mandatory,scope,event,once:true,label:id,resolve(){observed.push(id)}})}
+  register('first','Light',true,'phase','phase:end');
+  register('second','Dark',true,'phase','phase:end');
+  register('optional','Dark',false,'game','phase:end');
+  register('entry','Light',true,'turn','phase:start');`);
+ assert.equal(run("requestAction('advance','Light')&&state.phase===0"),true);
+ assert.equal(run("legalActions(state,'Light').map(x=>x.label).join()"),'first,second');
+ assert.equal(run("requestAction('timingTrigger','Dark',['second'])"),false);
+ assert.equal(run("requestAction('timingTrigger','Light',[null])"),false);
+ assert.equal(run("requestAction('timingTrigger','Light',['second'])&&requestAction('timingTrigger','Light',['first'])"),true);
+ assert.equal(run("requestAction('timingTrigger','Light',[null])"),true);
+ assert.equal(run("requestAction('timingTrigger','Dark',['optional'])&&state.phase===1"),true);
+ assert.equal(run("requestAction('timingTrigger','Light',['entry'])"),true);
+ assert.equal(run('observed.join()'),'second,first,optional,entry');
+ assert.equal(run("state.game.timing.effects.map(x=>x.id).join()"),'optional,entry');
+ assert.equal(run("PremiereGame.wasUsed(state.game,'game','optional')&&PremiereGame.wasUsed(state.game,'turn','entry')"),true);
+ assert.equal(run("PremiereGame.useOnce(state.game,'battle','shot')&&!PremiereGame.useOnce(state.game,'battle','shot')"),true);
+ assert.equal(run("PremiereGame.expire(state.game,'battle');PremiereGame.useOnce(state.game,'battle','shot')"),true);
+ assert.equal(run("PremiereGame.resetTurn(state,'Dark');!PremiereGame.wasUsed(state.game,'turn','entry')&&PremiereGame.wasUsed(state.game,'game','optional')"),true);
+});
+
+test('Life Force is evaluated after the complete loss payment and locks both sides',()=>{
+ const {run}=reactHarness();
+ run(`state.light[0]=[];state.force=[];state.deck=[{name:'Last Life Force'}];
+  state.locations[1].icons.light=2;state.hand=[{name:'Last hand card'}];
+  const drain=legalActions(state,'Dark').find(x=>x.kind==='drain');`);
+ assert.equal(run('performAction(drain)'),true);
+ assert.equal(run("requestAction('loseForce','Light',['deck'])"),true);
+ assert.equal(run('state.gameWinner'),null);
+ assert.equal(run('state.pendingForceLoss.remaining'),1);
+ assert.equal(run("requestAction('loseForce','Light',['hand',0])"),true);
+ assert.equal(run('state.gameWinner'),'Dark');
+ assert.equal(run("legalActions(state,'Dark').length+legalActions(state,'Light').length"),0);
+ assert.equal(run('performAction(drain)'),false);
+});
+
+test('the opponent gets the next optional priority when there is an eligible phase action',()=>{
+ const {run}=reactHarness();
+ run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;
+  PremiereGame.registerTrigger(state.game,{id:'dark-option',side:'Dark',event:'phase:priority',scope:'phase',label:'Dark option',
+   resolve(){state.botReason='resolved'}});`);
+ assert.equal(run("requestAction('activate','Light',[0])"),true);
+ assert.equal(run("legalActions(state,'Light').length"),0);
+ assert.equal(run("legalActions(state,'Dark').map(option=>option.label).join()"),'Dark option,Passen');
+ assert.equal(run("requestAction('advance','Light')"),false);
+ assert.equal(run("requestAction('timingTrigger','Dark',['dark-option'])&&state.botReason==='resolved'"),true);
+ assert.equal(run("requestAction('advance','Light')&&state.phase===1"),true);
+});
+
+test('one mandatory callback can deplete both sides before the engine determines an outcome',()=>{
+ const {run}=reactHarness();
+ run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;state.activated=true;state.force=[];
+  state.botDeck.length=1;
+  PremiereGame.registerTrigger(state.game,{id:'both-lose',side:'Dark',mandatory:true,event:'phase:end',scope:'phase',label:'Both lose',
+   resolve(){PremiereGame.moveTop(state.deck,state.lost);PremiereGame.moveTop(state.botDeck,state.botLost)}});`);
+ assert.equal(run("requestAction('advance','Light')&&state.gameWinner===null"),true);
+ assert.equal(run("requestAction('timingTrigger','Light',['both-lose'])"),true);
+ assert.equal(run('state.gameWinner'),'Simultaneous');
+ assert.equal(run("legalActions(state,'Dark').length+legalActions(state,'Light').length"),0);
 });
