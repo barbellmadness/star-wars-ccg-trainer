@@ -270,6 +270,7 @@ const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-I
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 let selected=-1, shownGame, inspectedLostSide=null;
+let localPrintTexts=new Map();
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action){
@@ -356,6 +357,7 @@ function auditData(){
  el('audit').textContent='Premiere Limited · Revision '+REVISION+'\n'
   +report.cards.Light+' Light + '+report.cards.Dark+' Dark · '+report.errata.length+' Errata mit Korrekturslip\n'
   +report.cardsWithPrintScan+' Druckscans · '+report.transcribedPrintTexts+' verifizierte Drucktranskriptionen · '+report.preErrataTexts+' verknüpfte Vor-Errata-Textfassung\n'
+  +(localPrintTexts.size?localPrintTexts.size+' zusätzliche Drucktexte aus der lokalen Sichtprüfung\n':'')
   +'Starterdecks: '+report.decks.Light.cards+' Light / '+report.decks.Dark.cards+' Dark. Prüfbericht: node scripts/import_premiere.mjs --report';
 }
 
@@ -531,7 +533,11 @@ function cardTextDetails(card){
  const texts=card.texts??{};
  const block=(label,value)=>'<h3>'+label+'</h3><p style="white-space:pre-wrap">'+escapeHTML(value)+'</p>';
  const slip=card.errataSymbol?'<p><a href="'+escapeHTML(card.images.slip)+'" target="_blank" rel="noopener">Korrekturslip · '+escapeHTML(card.errataSymbol)+'</a></p>':'';
- const print=texts.print?block('Drucktext',texts.print):card.images?.print?'<p class="hint">Drucktext im Kartenscan · Transkription offen</p>':'';
+ const printText=texts.print??localPrintTexts.get(card.id);
+ const print=typeof printText==='string'?block('Drucktext',printText)
+  :printText?'<h3>Drucktext</h3>'+['Light','Dark'].map(side=>'<p style="white-space:pre-wrap"><b>'+side
+   +' Side</b><br>'+escapeHTML(printText[side]||'Feld im Scan leer')+'</p>').join('')
+  :card.images?.print?'<p class="hint">Drucktext im Kartenscan · Transkription offen</p>':'';
  return block('Aktiver Spieltext',(texts.active??card.gametext)||'Kein Spieltext vorhanden')+slip+print
   +(texts.preErrata?block('Verknüpfte Vor-Errata-Fassung',texts.preErrata):'')
   +(texts.lore?block('Lore',texts.lore):'')
@@ -881,6 +887,30 @@ async function readLocalJson(path){
  return response.json();
 }
 
+async function loadLocalPrintTexts(cards){
+ if(!['127.0.0.1','localhost'].includes(globalThis.location?.hostname))return new Map();
+ let report;
+ try{
+  report=await readLocalJson('local-print-texts.json');
+ }catch{
+  return new Map();
+ }
+ if(report?.schema!==1||!Array.isArray(report.cards))return new Map();
+ const byId=new Map(cards.map(card=>[card.id,card]));
+ const verified=new Map();
+ for(const entry of report.cards){
+  const card=byId.get(entry?.id);
+  if(!card?.images.print||card.texts.print!==null||entry.status!=='sight'||entry.scanUrl!==card.images.print)continue;
+  const value=entry.printText;
+  if(card.type==='Location'){
+   if(typeof value?.Light==='string'&&typeof value?.Dark==='string')verified.set(card.id,value);
+  }else if(typeof value==='string'&&value.trim()){
+   verified.set(card.id,value);
+  }
+ }
+ return verified;
+}
+
 async function load(){try{
  const [payload,deckLists]=await Promise.all([
   readLocalJson('data/premiere.json'),
@@ -888,6 +918,7 @@ async function load(){try{
  ]);
  const cards=readCatalog(payload);
  starterDecks=readStarterDecks(deckLists,cards);
+ localPrintTexts=await loadLocalPrintTexts(cards);
  starterDeckDefinition=deckLists;
  catalog=cards;
  el('start').disabled=false;

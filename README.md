@@ -10,13 +10,15 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 - Die Playmat gruppiert Sites und Systeme. Wähle beim Ausspielen einer Location einen angebotenen Einfügeplatz. Regulärer Landspeed folgt den benachbarten Sites innerhalb derselben Gruppe. [Spielregeln zur Location-Anordnung, Anhang E](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=181)
 
 ## Lokal testen
-Starte im Repository einen lokalen HTTP-Server und öffne [V2 im Browser](http://127.0.0.1:8000/v2.html).
+Starte im Repository den lokalen V2-Server und öffne [V2 im Browser](http://127.0.0.1:8000/v2.html).
 
 ```powershell
-python -m http.server 8000 --bind 127.0.0.1
+node scripts/serve-v2-local.mjs
 ```
 
 Die vollständige vorhandene Testsuite läuft in einem Terminal mit `node --test` (Node.js 22 oder neuer).
+
+Der Server liest die private Prüfdatei aus dem benachbarten Ordner `Star Wars CCG Premiere - Drucktexte lokal`. Bei einem anderen Speicherort gib den vollständigen Pfad zu `premiere-drucktexte-lokal.json` als Argument an. Die Datei bleibt außerhalb des Repositorys. Das Karten-Popup zeigt sichtgeprüfte Drucktexte getrennt vom aktiven Spieltext. Ohne Prüfdatei verwendet V2 die im Katalog vorhandenen Drucktexte.
 
 ## Premiere Kartenbasis
 

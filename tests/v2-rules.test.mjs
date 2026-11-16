@@ -667,9 +667,15 @@ const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-dec
 async function premiereHarness(deckLists=starterLists,browser){
  const {run,elements}=harness(browser);
  const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
+ run('globalThis.location={hostname:'+JSON.stringify(browser?.hostname??'')+'};');
  run(`fetch=async path=>{
   if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
   if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
+  if(path==='local-print-texts.json'){
+   globalThis.requestedLocalPrints=true;
+   const report=${JSON.stringify(browser?.localPrintReport??null)};
+   if(report)return {ok:true,json:async()=>report};
+  }
   return {ok:false,status:404};
  }`);
  await run('load()');
@@ -690,6 +696,29 @@ test('the card inspector separates rules text, print scan, lore, German notes an
  assert.match(elements.get('cardInspectorBody').innerHTML,/Aktiver Spieltext.*Verknüpfte Vor-Errata-Fassung/);
  run("closeCard();el('showBotHand').checked=false;inspectCard('Dark',0,'hand')");
  assert.equal(elements.get('cardInspector').open,false);
+});
+
+test('the local inspector uses scan-matched print text and keeps both location sides separate',async()=>{
+ const localPrintReport={schema:1,cards:[
+  {id:'Light:2',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Light/large/2x3kpr.gif',printText:'Printed < text'},
+  {id:'Light:672',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Light/large/deathstardetentionblockcontrolroom.gif',
+   printText:{Light:'Printed Light Side text',Dark:''}},
+  {id:'Dark:816',status:'sight',scanUrl:'https://res.starwarsccg.org/cards/Premiere-Dark/large/wrong-scan.gif',printText:'Wrong scan'},
+ ]};
+ const {run,elements}=await premiereHarness(starterLists,{hostname:'127.0.0.1',localPrintReport});
+ assert.equal(run('localPrintTexts.size'),2);
+ run(`state={hand:[catalog.find(card=>card.id==='Light:2')],botHand:[catalog.find(card=>card.id==='Dark:816')]};inspectCard('Light',0,'hand')`);
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/Aktiver Spieltext.*<h3>Drucktext<\/h3><p[^>]*>Printed &lt; text/);
+ assert.equal(run('state.hand[0].texts.print'),null);
+ run(`showCardWithStats(catalog.find(card=>card.id==='Light:672'))`);
+ assert.match(body.innerHTML,/<h3>Drucktext<\/h3>.*Light Side<\/b><br>Printed Light Side text.*Dark Side<\/b><br>Feld im Scan leer/);
+ run(`inspectCard('Dark',0,'hand')`);
+ assert.match(body.innerHTML,/Drucktext im Kartenscan · Transkription offen/);
+
+ const publicPage=await premiereHarness(starterLists,{hostname:'example.com',localPrintReport});
+ assert.equal(publicPage.run('globalThis.requestedLocalPrints'),undefined);
+ assert.equal(publicPage.run('localPrintTexts.size'),0);
 });
 
 test('hand and field cards use image buttons, with hand selection and field status available in the inspector',async()=>{
