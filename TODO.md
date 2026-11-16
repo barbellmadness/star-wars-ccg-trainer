@@ -6,12 +6,13 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 
 ## 1. Regelstand, Daten und Starterdecks
 
-- [ ] Die Premiere Limited von 1995 als Kartenbasis dokumentieren. Für jede später veröffentlichte Klarstellung und jede verwendete Errata festhalten, ob und warum sie in diesem Trainer gilt. Printtext und aktiven Regeltext getrennt erfassen. [Regelwerke des Players Committee](https://www.starwarsccg.org/rules/) · [Offizielle Premiere-Kartenliste](https://res.starwarsccg.org/cardlists/PremiereType.html)
-- [ ] Den lokalen Import an eine nachvollziehbare Quellrevision binden und einen Prüfbericht erzeugen. 162 Karten pro Seite, 324 eindeutige IDs, Edition und Kartenseite prüfen. Den versionierten Snapshot erst nach erfolgreicher Validierung ersetzen.
-- [ ] Kartentyp, Untertyp, Persona, Merkmale, Einzigartigkeit, Force-Icons, Innen- und Außenbereiche, Parsec, Pilot-, Warrior- und Nav-Computer-Icons sowie alle spielrelevanten Werte typisiert laden. Fehlende, unbekannte und gedruckte Sonderwerte unterscheiden.
-- [ ] Die 139 im Snapshot als Errata markierten Einträge gegen den gewählten Regelstand prüfen. Originaltext, Lore, Bildversion und deutsche Erklärung als eigene Felder führen.
+- [x] Premiere Limited von 1995 als Kartenbasis festgelegt. Angewandte Klarstellungen und die Trennung zwischen Druckfassung und aktivem Referenztext stehen im [Regelstand](PREMIERE-REGELSTAND.md).
+- [x] Import an eine Quellrevision und SHA-256 gebunden. Edition, Seite, 162 Karten pro Seite, 324 eindeutige IDs und Decklisten werden vor dem atomaren Ersetzen geprüft. Der Importer erzeugt auf Anfrage einen Prüfbericht.
+- [x] Kartentyp, Untertyp, Personas, Merkmale, Einzigartigkeit, Force-Icons, Innen- und Außenbereiche, Parsec, Pilot-, Warrior- und Nav-Computer-Icons sowie Spielwerte typisiert laden. Fehlende, unbekannte und gedruckte Sonderwerte unterscheiden.
+- [x] Bei allen 139 Errata-Markierungen die Korrekturslips zuordnen und die Verwendung des aktiven Referenztexts dokumentieren. Printtext, Lore, Bildversion und deutsche Erklärung haben getrennte Felder. Die verknüpfte Vor-Errata-Fassung von Nevar Yalnal ist gesondert erfasst.
+- [ ] Die Drucktexte anhand der 324 verlinkten Scans transkribieren und überprüfen. Der Wortlaut des Originaldrucks bleibt bis zur Prüfung ein eigenes offenes Feld.
 - [x] Zwei feste, überprüfbare Premiere-Decklisten mit je 60 Karten und gültigen Starting Locations in [`data/premiere-starter-decks.json`](data/premiere-starter-decks.json) versionieren. V2 verwendet diese Listen für jede neue Lernpartie.
-- [ ] Decklisten auf Kartenzahl, Seite, Edition, regelrelevante Kopien und verfügbare Mechaniken prüfen. Für Lern-Decks mit noch offenen Effekten die betroffenen Karten vor Spielbeginn anzeigen.
+- [x] Decklisten bei Import, Start und Tests auf Kartenzahl, Seite, Edition, Stückzahlen und ausspielbare Kartentypen prüfen. Offene und teilweise umgesetzte Kartentexte erscheinen vor Spielbeginn.
 - [x] Starting Locations verdeckt wählen und gleichzeitig aufdecken. Bei gleichem Ortsnamen erneut wählen und beiseitegelegte Karten vor dem Mischen zurücknehmen. Ohne verfügbare Auswahl startet die betroffene Seite ohne eigenen Startort. Acht Karten ziehen und Dark Side beginnen lassen.
 
 ## 2. Gemeinsame Spielengine und Aktionsreihenfolge
