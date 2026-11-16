@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;font:15px system-ui;color:#e7edf9;background:radial-gradient(ellipse at top,#1c304e,#060b15 75%)}main{max-width:1180px;margin:auto;padding:16px}h1{color:#f2d078;letter-spacing:.13em}h2{font-size:17px;color:#f2d078}.panel{border:1px solid #52617b;border-radius:12px;background:#111c2ddd;padding:14px;margin:12px 0}button{padding:10px 13px;border:1px solid #a18b5b;background:#273b55;color:white;border-radius:8px;cursor:pointer}button:disabled{opacity:.35}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.site{border:1px solid #5a708c;border-radius:10px;padding:10px;background:#1b2a40}.cards{display:flex;gap:7px;overflow:auto;min-height:80px;padding:7px 0}.card{flex:0 0 95px;background:#273d59;border:1px solid #8197b0;border-radius:7px;padding:5px;cursor:pointer;font-size:11px}.card img{width:100%;aspect-ratio:5/7;object-fit:contain}.card.chosen{outline:3px solid #f4d27b}.hint{color:#b7c9e1}.log{max-height:170px;overflow:auto;white-space:pre-line}a{color:#b6d8ff}@media(max-width:650px){.card{flex-basis:80px}}.brand-header{display:flex;justify-content:center;align-items:center;padding:4px 0}.brand-header img{width:min(380px,75vw);height:56px;object-fit:contain;filter:drop-shadow(0 4px 14px #0009)}
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;font:15px system-ui;color:#e7edf9;background:radial-gradient(ellipse at top,#1c304e,#060b15 75%)}main{max-width:1500px;margin:auto;padding:16px}h1{color:#f2d078;letter-spacing:.13em}h2{font-size:17px;color:#f2d078}.panel{border:1px solid #52617b;border-radius:12px;background:#111c2ddd;padding:14px;margin:12px 0}button{padding:10px 13px;border:1px solid #a18b5b;background:#273b55;color:white;border-radius:8px;cursor:pointer}button:disabled{opacity:.35}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.site{border:1px solid #5a708c;border-radius:10px;padding:10px;background:#1b2a40}.cards{display:flex;gap:7px;overflow:auto;min-height:80px;padding:7px 0}.card{flex:0 0 95px;background:#273d59;border:1px solid #8197b0;border-radius:7px;padding:5px;cursor:pointer;font-size:11px}.card img{width:100%;aspect-ratio:5/7;object-fit:contain}.card.chosen{outline:3px solid #f4d27b}.hint{color:#b7c9e1}.log{max-height:170px;overflow:auto;white-space:pre-line}a{color:#b6d8ff}@media(max-width:650px){.card{flex-basis:80px}}.brand-header{display:flex;justify-content:center;align-items:center;padding:4px 0}.brand-header img{width:min(380px,75vw);height:56px;object-fit:contain;filter:drop-shadow(0 4px 14px #0009)}
 .playmat-shell{border:1px solid #52617b;border-radius:16px;padding:8px;background:linear-gradient(135deg,#0b1724,#12283a 50%,#0b1724);box-shadow:inset 0 0 45px #0008}
 .playmat-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 8px}
 .playmat{display:flex;align-items:stretch;gap:12px;width:max-content;min-width:100%}
@@ -26,8 +26,24 @@
 .trainer-options{margin:10px 0}
 #gameSeed{width:8em}
 #stats{font-size:12px;color:#b7c9e1;margin-top:6px}
-.table-view{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.table-view{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"dark" "board" "light" "bot" "info";gap:8px}
 .table-view[hidden]{display:none}
+.table-view .dark-hand{grid-area:dark}
+.table-view .light-hand{grid-area:light}
+.table-view .playmat-shell{grid-area:board;min-width:0;align-self:start}
+.table-bot{grid-area:bot}
+.table-info{grid-area:info}
+.table-sidebar{min-width:0;align-self:start;display:grid;gap:8px}
+.table-sidebar .panel{margin:0;padding:10px}
+.table-sidebar h2{margin:0 0 8px;font-size:15px}
+.table-sidebar .hint{margin:0;font-size:13px;line-height:1.4}
+.table-sidebar .log{max-height:clamp(9rem,30dvh,20rem);overscroll-behavior-y:contain;overflow-wrap:anywhere;font-size:12px;line-height:1.45}
+@media(min-width:640px) and (max-width:999px){
+ .table-view{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"dark dark" "board board" "light light" "bot info"}
+}
+@media(min-width:1000px){
+ .table-view{grid-template-columns:clamp(10.5rem,17vw,15rem) minmax(0,1fr) clamp(12rem,18vw,17rem);grid-template-areas:"dark dark dark" "bot board info" "light light light"}
+}
 .table-view .player-hand{display:grid;grid-template-columns:minmax(0,1fr) clamp(7rem,14vw,9rem) minmax(19rem,22rem);gap:10px;min-width:0;margin:0;padding:8px 10px}
 .player-hand .cards{padding:4px 0}
 .player-hand .card{flex-basis:76px;padding:4px}
@@ -48,6 +64,12 @@
 .dark-hand{border-color:#af6073}
 .light-hand{border-color:#a18b5b}
 .deck-pile-area{align-self:center;min-width:0;margin:0;color:#c5d4e8;font-size:12px}
+.deck-pile-diagram{margin:0}
+.deck-pile-controls{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #52617b}
+.pile-action{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.deck-pile-controls input{width:3.75rem}
+.deck-pile-controls button{padding:5px 8px;font-size:12px}
+.deck-pile-controls .hint{margin:5px 0 0}
 .deck-pile-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px}
 .deck-pile-summary .life-force{color:#f2d078}
 .pile-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr);text-align:center}
@@ -105,7 +127,6 @@ html:has(#cardInspector[open]){overflow:hidden}
     <div id="setupOptions"></div>
   </div>
   <section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section>
-  <div id="forceControls" class="panel game-control" style="display:none"></div>
   <div id="controlPanel" class="panel game-control" style="display:none"></div>
   <section class="table-view" id="gameTable" aria-label="Spieltisch" hidden>
     <div class="panel player-hand dark-hand">
@@ -141,21 +162,28 @@ html:has(#cardInspector[open]){overflow:hidden}
         <p id="turnStatusLight" role="status"></p>
         <ol id="phaseListLight" role="list"></ol>
       </aside>
-      <figure class="deck-pile-area" id="pilesLight" aria-label="Kartenstapel der Light Side"></figure>
+      <div class="deck-pile-area">
+        <div id="forceControls" class="deck-pile-controls" hidden></div>
+        <figure class="deck-pile-diagram" id="pilesLight" aria-label="Kartenstapel der Light Side"></figure>
+      </div>
     </div>
+    <aside class="table-sidebar table-bot" aria-label="Bot-Aktivitäten">
+      <section class="panel">
+        <h2 id="botHistoryTitle">Bot-Aktivitäten</h2>
+        <div id="botHistory" class="log" role="region" aria-labelledby="botHistoryTitle" tabindex="0"></div>
+      </section>
+    </aside>
+    <aside class="table-sidebar table-info" aria-label="Phasenhilfe und Spielprotokoll">
+      <section class="panel" id="phaseHelp" hidden>
+        <h2>Hilfe zur aktuellen Phase</h2>
+        <p id="phaseHelpText" class="hint"></p>
+      </section>
+      <section class="panel">
+        <h2 id="gameLogTitle">Spielprotokoll</h2>
+        <div id="log" class="log" role="region" aria-labelledby="gameLogTitle" tabindex="0"></div>
+      </section>
+    </aside>
   </section>
-  <details class="panel" id="phaseHelp" hidden>
-    <summary>Hilfe zur aktuellen Phase</summary>
-    <p id="phaseHelpText" class="hint"></p>
-  </details>
-  <details class="panel">
-    <summary>Bot-Aktionen und Spielprotokoll</summary>
-    <p id="botReason" class="hint"></p>
-    <h2>Letzte Bot-Aktionen</h2>
-    <div id="botHistory" class="log"></div>
-    <h2>Spielprotokoll</h2>
-    <div id="log" class="log"></div>
-  </details>
   <details class="panel">
     <summary>Trainer-Optionen und Kartenprüfung</summary>
     <div class="trainer-options">
@@ -298,7 +326,7 @@ function renderSetup(){
  el('gameMessage').hidden=false;
  el('phaseHelp').hidden=true;
  el('setup').style.display='block';
- el('forceControls').style.display='none';
+ el('forceControls').hidden=true;
  el('controlPanel').style.display='none';
  el('botTurnPanel').style.display='none';
  el('step').disabled=true;
@@ -307,7 +335,6 @@ function renderSetup(){
  el('botHand').innerHTML='';
  el('botHandCount').textContent='';
  el('botHistory').textContent='';
- el('botReason').textContent='';
  el('log').textContent='';
  el('stats').textContent='Partie-Seed: '+setup.seed;
  const reveal=setup.revealed;
@@ -608,14 +635,14 @@ function render(){
  el('step').disabled=!step;
  el('step').onclick=step?()=>dispatchUI(step):null;
  const controls=el('forceControls'),activation=available.filter(option=>option.kind==='activate').at(-1),draw=findOffer(available,'draw');
- controls.style.display=activation||draw?'block':'none';
+ controls.hidden=!activation&&!draw;
  if(activation){
   const {gameId,revision}=activation,max=activation.args[0];
-  const generation=forceFromLocations('Light');
-  controls.innerHTML='<b>Force aktivieren</b><p>Force-Generierung: '+generation.count+(generation.unknown?' · '+generation.unknown+' Locations mit unbekannten Icons':'')
-   +' · Reserve '+light.reserveCount+' · Force Pile '+light.forceCount+'</p><input id="activateAmount" type="number" min="0" max="'+max
-   +'" value="'+max+'"><button onclick="activateMe('+gameId+','+revision+')">Force aktivieren</button>';
- }else controls.innerHTML=draw?'<b>Draw Phase</b><p>Force Pile: '+light.forceCount+' Karten.</p>'+ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
+  const {unknown}=forceFromLocations('Light');
+  controls.innerHTML='<div class="pile-action"><label>Anzahl (max. '+max+') <input id="activateAmount" type="number" min="0" max="'+max
+   +'" value="'+max+'"></label><button onclick="activateMe('+gameId+','+revision+')">Force aktivieren</button></div>'
+   +(unknown?'<p class="hint">Unbekannte Force-Icons an '+unknown+' Locations.</p>':'');
+ }else controls.innerHTML=draw?ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
  el('botNext').disabled=!botStep;
  el('botNext').onclick=botStep?()=>{if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id)botNextStep()}:null;
@@ -628,8 +655,7 @@ function render(){
  el('botHandCount').textContent=dark.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
  el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,false,'Dark','hand')).join('')
   :'<div class="card card-back">STAR WARS CCG<br>Verdeckt</div>'.repeat(dark.handCount);
- el('botHistory').textContent=(state.botHistory||[]).join('\n');
- el('botReason').textContent=state.botReason;
+ el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
  el('log').textContent=state.log.join('\n');
 }
 
