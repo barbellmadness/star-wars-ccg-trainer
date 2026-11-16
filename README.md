@@ -4,12 +4,23 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 
 ## Aktueller Stand
 - `index.html`: eigenständig lauffähige **Übungs-Alpha** mit einfacher Bot-Logik.
-- Noch **keine** originalgetreue Premiere-Engine. Namen sind beispielhaft; Power- und Destiny-Werte sind Demo-Werte, keine verifizierten Originaldaten.
-- Noch keine 324-Karten-Datenbank oder Originalbilder integriert.
-- Die deutsche Erklärung zeigt den Demo-Status, nicht den Originalkartentext.
+- `v2.html` lädt den lokalen Premiere-Datensatz mit 324 Karten. Die Lernpartie unterstützt unter anderem Force-Verwaltung, Charaktere, ausgewählte Blaster, Banthas und Raumschiffe mit permanenten Piloten.
+- Die Lernpartie deckt einen Teil der Premiere-Regeln und Kartentexte ab. Die Kartenprüfung in V2 zeigt die Abdeckung. Kartenbilder werden von den im Datensatz hinterlegten URLs geladen.
 
 ## Lokal testen
-`index.html` im Browser öffnen oder per lokalem Webserver bereitstellen.
+Starte im Repository einen lokalen HTTP-Server und öffne [V2 im Browser](http://127.0.0.1:8000/v2.html).
+
+```powershell
+python -m http.server 8000 --bind 127.0.0.1
+```
+
+Die vollständige vorhandene Testsuite läuft in einem Terminal mit `node --test` (Node.js 22 oder neuer).
+
+## Entwicklung
+
+Entwickle und teste lokal. Ausgangspunkt ist `automation/multi-deploy-growing-sites-20261116-0740` oder ein darauf aufbauender Entwicklungsbranch. Prüfe den aktiven Branch und den Arbeitsbaum mit `git status --short --branch --untracked-files=all` vor Arbeitsbeginn und erneut vor einem Abruf oder Branchwechsel.
+
+Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen `node --test` aus und halte Commit, Testergebnis und offene Fehler im Pull Request fest. Pushe den Entwicklungsbranch ohne Force und verwende Pull Requests für Änderungen an der Basis.
 
 ## Nächste Arbeitsschritte
 1. Verifizierten Premiere-Datensatz aus autorisierter Quelle importieren und auf 162 Karten pro Seite prüfen.

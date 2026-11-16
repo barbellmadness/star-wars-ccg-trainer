@@ -222,14 +222,14 @@ test('spies ignore local Force-icon and presence requirement but still pay deplo
 test('bot considers only legal Dark deployments and can use spies',()=>{
  const {run}=harness();
  run("state={locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{light:1,dark:0}},{name:'Hoth: B',type:'Location',subType:'Site',icons:{light:0,dark:2}}],force:[{}],botForce:[{}],light:[[],[]],dark:[[],[]],botHand:[{name:'Stormtrooper',side:'Dark',type:'Character',deploy:1}]};");
- assert.equal(run("botCharacterDeployOptions().length"),1);
- assert.equal(run("botCharacterDeployOptions()[0].siteIndex"),1);
+ assert.equal(run("botBoardDeployOptions().length"),1);
+ assert.equal(run("botBoardDeployOptions()[0].siteIndex"),1);
  run("state.locations[1].icons.dark=0");
- assert.equal(run("botCharacterDeployOptions().length"),0);
+ assert.equal(run("botBoardDeployOptions().length"),0);
  run("state.botHand[0].characteristics=['spy']");
- assert.equal(run("botCharacterDeployOptions().length"),2);
+ assert.equal(run("botBoardDeployOptions().length"),2);
  run("state.botForce=[]");
- assert.equal(run("botCharacterDeployOptions().length"),0);
+ assert.equal(run("botBoardDeployOptions().length"),0);
 });
 test('character cannot deploy directly to a system even with own icons',()=>{
  const {run}=harness();
@@ -285,6 +285,8 @@ test('unneeded extra forfeits are refused when all debts already satisfied',()=>
 test('Dark side character uses one Force to move to adjacent site and cannot move twice',()=>{
  const {run}=harness();
  run("render=()=>{};const trooper={name:'Stormtrooper',type:'Character',deploy:1,ability:1};state={phase:0,activeSide:'Dark',botTurn:{steps:[],index:0},locations:[{name:'Tatooine: A',type:'Location',subType:'Site',icons:{light:0}},{name:'Tatooine: B',type:'Location',subType:'Site',icons:{light:2}}],light:[[],[]],dark:[[trooper],[]],botForce:[{id:'one'}],botUsed:[],movedThisTurn:[],log:[]};");
+ assert.equal(run("movementOptionsFor('Dark').length"),0);
+ run("state.phase=4");
  assert.equal(run("movementOptionsFor('Dark').length"),1);
  assert.equal(run("moveCharacterFor('Dark',0,0,1)"),true);
  assert.equal(run("state.botForce.length"),0);
@@ -430,15 +432,14 @@ test('all immune cards survive attrition without forfeit but battle damage remai
 });
 
 
-test('Premiere site text raises battle destiny threshold only for the named side',()=>{
+test('Premiere location text raises battle destiny threshold only for the named side',()=>{
  const {run}=harness();
  run("state={locations:[{id:'Light:2448',name:'Tatooine: Dune Sea',type:'Location',subType:'Site',gametext:'Light: Blank. Dark: Total ability of 6 or more required for you to draw battle destiny here.'},{id:'Dark:2458',name:'Tatooine: Jundland Wastes',type:'Location',subType:'Site',gametext:'Dark: Your Tusken Raiders are forfeit +1. Light: Total ability of 6 or more required for you to draw battle destiny here.'},{id:'Dark:1426',name:'Kessel',type:'Location',subType:'System',gametext:'Dark: Blank. Light: Total ability of 6 or more required for you to draw battle destiny here.'},{name:'Hoth: A',type:'Location',subType:'Site',gametext:'Dark: Blank.'}]};");
  assert.equal(run("minimumBattleDestinyAbility('Dark',0)"),6);
  assert.equal(run("minimumBattleDestinyAbility('Light',0)"),4);
  assert.equal(run("minimumBattleDestinyAbility('Light',1)"),6);
  assert.equal(run("minimumBattleDestinyAbility('Dark',1)"),4);
- // Space battles at systems are not modeled by the current trainer.
- assert.equal(run("minimumBattleDestinyAbility('Light',2)"),4);
+ assert.equal(run("minimumBattleDestinyAbility('Light',2)"),6);
  assert.equal(run("minimumBattleDestinyAbility('Dark',3)"),4);
 });
 test('Dark bot must skip destiny at Dune Sea with ability 4 despite having Force',()=>{
@@ -633,11 +634,16 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
  assert.equal(run("recordBattleWeaponHit('Light',0)"),false);
 });
 
-test('Premiere snapshot loads four supported blasters into the learning decks with independent card copies',async()=>{
- const {run}=harness();
+async function premiereHarness(){
+ const {run,elements}=harness();
  const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
  run(`fetch=async()=>({ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})})`);
  await run('load()');
+ return {run,elements};
+}
+
+test('Premiere snapshot loads four supported blasters into the learning decks with independent card copies',async()=>{
+ const {run}=await premiereHarness();
  assert.equal(run("catalog.find(c=>c.name==='Rebel Trooper').warrior"),true);
  assert.deepEqual(JSON.parse(run('JSON.stringify(catalog.filter(basicWeaponRule).map(c=>c.id))')),['Light:259','Light:265','Dark:264','Dark:1264']);
  for(const side of ['Light','Dark']){
@@ -731,6 +737,122 @@ test('an empty Reserve Deck cannot hit and does not refund the weapon action',()
  assert.equal(run('battleSession.weaponHits.Dark.length===0&&state.used.length===3&&state.force.length===2'),true);
  assert.equal(run('botWeaponDecision()'),true);
  assert.equal(run("fireBattleWeapon('Light',0,1,0)"),false);
+});
+
+async function craftHarness(){
+ const {run,elements}=await premiereHarness();
+ run(`
+ const card=id=>({...catalog.find(c=>c.id===id)});
+ const ship=card('Light:2838'), scout=card('Dark:2602'), tie=card('Dark:2600');
+ const bantha=card('Dark:191'), tusken=card('Dark:2648');
+ const dantooine=card('Light:608'), kessel=card('Dark:1426'), alderaan=card('Light:80'), tatooine=card('Light:2430');
+ const dock=card('Light:2447'), dunes=card('Light:2448'), cantina=card('Light:2440');
+ const forcePile=()=>Array.from({length:5},(_,i)=>({name:'Force '+i}));
+ state={turn:1,phase:2,activeSide:'Light',botTurn:null,locations:[dantooine,kessel,dock,dunes,cantina,alderaan,tatooine],
+  light:[[],[],[],[],[],[],[]],dark:[[],[],[],[],[],[],[]],hand:[ship],botHand:[scout,bantha],
+  deck:[card('Light:259')],botDeck:[card('Dark:1264')],
+  force:forcePile(),botForce:forcePile(),used:[],botUsed:[],lost:[],botLost:[],log:[],botHistory:[],battledSitesThisTurn:[]};`);
+ return {run,elements};
+}
+
+test('learning decks contain planet systems, exterior sites, piloted starships and a Dark Bantha',async()=>{
+ const {run}=await craftHarness();
+ for(const side of ['Light','Dark']){
+  run(`var craftTestDeck=makeDeck('${side}')`);
+  assert.equal(run('craftTestDeck.length'),60);
+  assert.equal(run('craftTestDeck.filter(isPlanetSystem).length'),4);
+  assert.equal(run('craftTestDeck.filter(isExteriorPlanetSite).length'),2);
+  assert.equal(run('craftTestDeck.filter(isSupportedCraft).length'),6);
+  assert.equal(run('craftTestDeck.some(c=>c.type===\'Starship\'&&cardAbility(c)===1)'),true);
+  assert.equal(run('craftTestDeck.some(isBantha)'),side==='Dark');
+ }
+});
+
+test('ship deployment pays actual costs at a valid system and requires a supported pilot and friendly presence',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run("boardDeployCost(ship,dock,'Light')"),null);
+ assert.equal(run("boardDeployCost(card('Light:1677'),dantooine,'Light')"),null);
+ assert.equal(run("boardDeployCost(scout,dantooine,'Dark')"),null);
+ assert.equal(run("boardDeployCost(card('Light:530'),dantooine,'Light')"),2);
+ assert.equal(run("boardDeployCost(tie,kessel,'Dark')"),0);
+ run("state.dark[6].push(card('Dark:1291'))");
+ assert.equal(run("boardDeployCost(tie,tatooine,'Dark')"),0);
+ run('play(0,0)');
+ assert.equal(run('state.light[0].includes(ship)&&state.force.length===4&&state.used.length===1'),true);
+ assert.equal(run("confirmedPresence('Light',0)"),true);
+});
+
+test('deployment respects single and multiple Premiere uniqueness dots',async()=>{
+ const {run}=await craftHarness();
+ run("const devastator=card('Dark:723'), talz=card('Light:2412');state.botForce=forcePile().concat(forcePile());");
+ assert.equal(run("boardDeployCost(devastator,kessel,'Dark')"),7);
+ run('state.dark[1].push({...devastator});state.light[2].push({...talz},{...talz})');
+ assert.equal(run("boardDeployCost(devastator,kessel,'Dark')"),null);
+ assert.notEqual(run("boardDeployCost(talz,dock,'Light')"),null);
+ run('state.light[2].push({...talz})');
+ assert.equal(run("boardDeployCost(talz,dock,'Light')"),null);
+});
+
+test('hyperspeed uses parsec distance, requires a nav computer, and costs one regular move',async()=>{
+ const {run,elements}=await craftHarness();
+ run("state.phase=4;state.light[5]=[ship];render()");
+ assert.match(elements.get('board').innerHTML,/Tatooine \(Hyperspeed, 1 Force\)/);
+ assert.equal(run('moveCharacter(5,0,1)'),false);
+ assert.equal(run('moveCharacter(5,0,2)'),false);
+ run('ship.navComputer=false');
+ assert.equal(run('moveCharacter(5,0,6)'),false);
+ run('ship.navComputer=true');
+ assert.equal(run('moveCharacter(5,0,6)'),true);
+ assert.equal(run('moveCharacter(6,0,0)'),false);
+ assert.equal(run('state.light[6][0]===ship&&state.force.length===4&&state.used.length===1'),true);
+});
+
+test('the bot deploys ships and Banthas and chooses legal Hyperspeed in its Move phase',async()=>{
+ const {run}=await craftHarness();
+ run("state.activeSide='Dark';state.botTurn={steps:[{kind:'move'}],index:0}");
+ assert.match(run('botDeployPhase().join(";")'),/Raumschiff TIE Scout .*Kessel.*Fahrzeug Bantha .*Docking Bay/);
+ assert.equal(run('state.dark[1][0]===scout&&state.dark[2][0]===bantha&&state.botForce.length===3'),true);
+ run('botNextStep()');
+ assert.equal(run('state.dark[6][0]===scout&&state.botForce.length===2'),true);
+});
+
+test('a Bantha has half ability, boosts Tusken power outdoors and cannot move into an interior-only site',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run("boardDeployCost(bantha,cantina,'Dark')"),null);
+ assert.equal(run("boardDeployCost(bantha,kessel,'Dark')"),null);
+ run('state.dark[2]=[bantha]');
+ assert.equal(run('cardAbility(bantha)'),0.5);
+ assert.equal(run("confirmedPresence('Dark',2)"),false);
+ run('state.dark[2].push(tusken);state.phase=4;state.activeSide="Dark";state.botTurn={steps:[],index:0}');
+ assert.equal(run('battleTotals(2).darkPower'),3);
+ assert.equal(run("moveCharacterFor('Dark',2,0,3)"),true);
+ assert.equal(run('battleTotals(2).darkPower'),1);
+ assert.equal(run('regularMoveKind(bantha,3,4)'),null);
+});
+
+test('the Bantha defends against Blasters with maneuver rather than ability',async()=>{
+ const {run}=await craftHarness();
+ run(`const light=card('Light:2052');light.weapons=[card('Light:259')];
+  state.light[2]=[light];state.dark[2]=[bantha,tusken];state.phase=3;
+  state.deck=[{name:'Destiny 2',destiny:2}];battleAnalysis(2);`);
+ assert.equal(run("fireBattleWeapon('Light',0,0,0)"),true);
+ assert.equal(run('battleSession.weaponHits.Dark.length'),0);
+ assert.match(run('state.log[0]'),/Verteidigung 2.*kein Treffer/);
+});
+
+test('space battles use permanent-pilot ability and apply the system Battle Destiny rules',async()=>{
+ const {run}=await craftHarness();
+ run('state.light[1]=[ship,{...ship},{...ship},{...ship}];state.dark[1]=[scout];state.phase=3;battleAnalysis(1)');
+ assert.equal(run('battleTotals(1).lightAbility'),4);
+ assert.equal(run("minimumBattleDestinyAbility('Light',1)"),6);
+ assert.equal(run("minimumBattleDestinyAbility('Dark',1)"),4);
+ run("battleDestiny('Light')");
+ assert.equal(run('battleSession.lightCard'),null);
+ run(`battleSession=null;state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.light[5]=[ship];state.dark[5]=[scout,{...scout},{...scout},{...scout}];
+  state.botDeck=[{name:'Destination draw',destiny:0}];initiateBattleFor('Dark',5);botDestinyDecision()`);
+ assert.equal(run('battleSession.darkDestiny'),0);
+ assert.equal(run("state.log.some(entry=>entry.includes('Alderaan reduziert'))"),true);
 });
 
 test('Playmat uses official card image URLs for locations and accessible fallback',()=>{
