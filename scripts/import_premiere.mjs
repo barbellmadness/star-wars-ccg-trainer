@@ -3,9 +3,10 @@ import {readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import premiere from '../engine/premiere-data.js';
 
-const {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, buildAudit} = premiere;
+const {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readThemedDecks, buildAudit} = premiere;
 const snapshotPath = new URL('../data/premiere.json', import.meta.url);
 const deckPath = new URL('../data/premiere-starter-decks.json', import.meta.url);
+const themesPath = new URL('../data/premiere-themed-decks.json', import.meta.url);
 const notesPath = new URL('../data/premiere-card-notes.json', import.meta.url);
 const SHA256 = {
   'Light.json': 'bff27dcde1cad712c6fce6f3fddc17d062bf25ade60a2720ccc5977adcb38c32',
@@ -113,12 +114,14 @@ async function main(args) {
   }
   const [mode] = args;
   const downloads = mode === undefined || mode === '--verify-source';
-  const [snapshot, definition] = await Promise.all([
+  const [snapshot, definition, themeDefinitions] = await Promise.all([
     downloads ? Promise.all([downloadInputs(), readJson(notesPath)]).then(([inputs, notes]) => buildSnapshot(inputs, notes)) : readJson(snapshotPath),
-    readJson(deckPath)
+    readJson(deckPath),
+    readJson(themesPath)
   ]);
   const catalog = readCatalog(snapshot);
   const decks = readStarterDecks(definition, catalog);
+  const themes = readThemedDecks(themeDefinitions, catalog);
   const audit = buildAudit(catalog, decks);
   if (mode === '--report') {
     process.stdout.write(serialize({inputsSha256: SHA256, ...audit}));
@@ -134,7 +137,7 @@ async function main(args) {
     throw new Error('Der versionierte Snapshot weicht vom reproduzierten Quelldatensatz ab.');
   }
   if (mode === undefined) await replaceSnapshot(snapshot);
-  console.log(`Premiere ${REVISION}: 162 Light + 162 Dark, 2 × 60 Deckkarten, ${audit.errata.length} Errata-Einträge geprüft.`);
+  console.log(`Premiere ${REVISION}: 162 Light + 162 Dark, ${2 + themes.light.length + themes.dark.length} Decks à 60 Karten, ${audit.errata.length} Errata-Einträge geprüft.`);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

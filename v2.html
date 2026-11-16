@@ -159,7 +159,9 @@ a{color:#b6d8ff}
 .start-location-option{flex:0 0 150px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px}
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
-.starter-deck-actions{display:flex;flex-wrap:wrap;gap:8px}
+.starter-deck-actions{display:flex;flex-wrap:wrap;gap:6px 12px}
+.starter-deck-choice{display:flex;flex-wrap:wrap;align-items:center;gap:5px;max-width:100%}
+.starter-deck-choice select{max-width:min(100%,17rem);padding:5px 7px;color:inherit;background:#141e2e;border:1px solid #657795;border-radius:6px}
 .game-dialog{width:min(var(--dialog-width,34rem),calc(100% - 2rem));max-height:calc(100dvh - 2rem);padding:16px;color:#e7edf9;background:#111c2d;border:1px solid #a18b5b;border-radius:12px}
 .game-dialog::backdrop{background:#060b15cc}
 .dialog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
@@ -223,9 +225,17 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
       <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
       <button id="endGame" type="button" hidden></button>
       <label><input id="autoBot" type="checkbox"> Bot automatisch spielen lassen</label>
-      <div class="starter-deck-actions">
-        <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
-        <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
+      <div class="starter-deck-actions" role="group" aria-label="Decks für eine neue Partie">
+        <div class="starter-deck-choice">
+          <label for="selectLightDeck">Light Side</label>
+          <select id="selectLightDeck" disabled></select>
+          <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
+        </div>
+        <div class="starter-deck-choice">
+          <label for="selectDarkDeck">Dark Side</label>
+          <select id="selectDarkDeck" disabled></select>
+          <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
+        </div>
       </div>
     </div>
     <div id="stats"></div>
@@ -327,6 +337,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
     <h2 id="starterDeckTitle"></h2>
     <form method="dialog"><button autofocus>Schließen</button></form>
   </header>
+  <p id="starterDeckDescription" class="hint" hidden></p>
   <ul id="starterDeckCards" tabindex="0"></ul>
 </dialog>
 <dialog id="cardInspector" class="game-dialog" aria-labelledby="cardInspectorTitle">
@@ -349,7 +360,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.9.0';
+const trainerVersion='2.10.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -474,10 +485,24 @@ function startingLocationMarkup(card){
   +'<span>'+name+' · Icons '+card.icons.light+'/'+card.icons.dark+'</span>';
 }
 
+const sideName={light:'Light',dark:'Dark'};
+const deckSelector=side=>el('select'+sideName[side]+'Deck');
+const deckId=deck=>deck?.theme?.id??'starter';
+function selectedDeck(side){
+ const options=deckChoices[side];
+ return options.find(({deck})=>deckId(deck)===deckSelector(side).value)??options[0];
+}
+
 function showStarterDeck(side){
- const deck=(currentGame()?.starterDecks??starterDecks)[side],counts=new Map();
+ const {deck:selected}=selectedDeck(side);
+ const active=currentGame()?.starterDecks?.[side];
+ const deck=active&&deckId(active)===deckId(selected)?active:selected;
+ const counts=new Map();
  for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
- el('starterDeckTitle').textContent=(side==='light'?'Light':'Dark')+' Side Deck · '+deck.cards.length+' Karten';
+ el('starterDeckTitle').textContent=(deck.theme?.name??sideName[side]+' Side Deck')+' · '+deck.cards.length+' Karten';
+ const description=el('starterDeckDescription');
+ description.hidden=!deck.theme;
+ description.textContent=deck.theme?.description??'';
  const list=el('starterDeckCards');
  list.innerHTML=[...counts].map(([card,count])=>{
   const status=cardEffectStatus(card);
@@ -1264,7 +1289,7 @@ presentGame=()=>{
 
 const saveKey='swccg.v2.autosave';
 const saveVersion=1;
-let starterDeckDefinition, activeSave, resumeCandidate, lastSavedValue=null, activeSaveStored=false, replayingGame=false;
+let deckChoices, activeSave, resumeCandidate, lastSavedValue=null, activeSaveStored=false, replayingGame=false;
 
 function saveStatus(message){
  const status=el('gameSaveStatus');
@@ -1314,13 +1339,20 @@ function recordGameCommand(command){
 }
 
 function startNewGame(seed,trainingBattle=false){
- if(!start(seed,true,trainingBattle))return false;
+ const light=selectedDeck('light'),dark=selectedDeck('dark');
+ if(!start(seed,true,trainingBattle,{light:light.deck,dark:dark.deck}))return false;
  activeSave={version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
-  seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
+  seed:currentGame().seed,trainingBattle,decks:{schema:1,decks:{Light:light.definition,Dark:dark.definition}},commands:[]};
  activeSaveStored=false;
  resumeCandidate=null;
  el('resumeGame').hidden=true;
  return true;
+}
+
+function previewStartingLocations(){
+ if(!setupDecks||!activeSave||activeSave.commands.length)return;
+ const stored=activeSaveStored;
+ if(startNewGame(activeSave.seed,activeSave.trainingBattle)&&stored)saveActiveGame();
 }
 
 function resumeGameFromUI(){
@@ -1351,6 +1383,10 @@ function resumeGameFromUI(){
  el('resumeGame').hidden=true;
  el('gameSeed').value=String(saved.seed);
  el('trainingBattle').checked=saved.trainingBattle;
+ for(const side of Object.keys(sideName)){
+  const id=deckId(currentGame().starterDecks[side]);
+  deckSelector(side).value=deckChoices[side].some(({deck})=>deckId(deck)===id)?id:'starter';
+ }
  saveStatus('Gespeicherte Partie fortgesetzt');
  presentGame();
  return true;
@@ -1434,14 +1470,25 @@ async function loadLocalPrintTexts(cards){
 }
 
 async function load(){try{
- const [payload,deckLists]=await Promise.all([
+ const [payload,deckLists,themedLists]=await Promise.all([
   readLocalJson('data/premiere.json'),
-  readLocalJson('data/premiere-starter-decks.json')
+  readLocalJson('data/premiere-starter-decks.json'),
+  readLocalJson('data/premiere-themed-decks.json')
  ]);
  const cards=readCatalog(payload);
  starterDecks=readStarterDecks(deckLists,cards);
+ const themes=PremiereData.readThemedDecks(themedLists,cards);
  localPrintTexts=await loadLocalPrintTexts(cards);
- starterDeckDefinition=deckLists;
+ deckChoices=Object.fromEntries(Object.keys(sideName).map(side=>[side,[
+  {deck:starterDecks[side],definition:deckLists.decks[sideName[side]]},...themes[side]
+ ]]));
+ for(const side of Object.keys(sideName)){
+  const selector=deckSelector(side);
+  selector.innerHTML=deckChoices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deck.theme?.name??'Premiere-Starterdeck')+'</option>').join('');
+  selector.value='starter';
+  selector.disabled=false;
+  selector.onchange=previewStartingLocations;
+ }
  catalog=cards;
  el('start').disabled=false;
  auditData();
@@ -1455,7 +1502,7 @@ async function load(){try{
  }catch(e){
   starterDecks=null;
   el('start').disabled=true;
-  el('instruction').textContent='Premiere-Kartendaten oder Starterdecks nicht bereit';
+  el('instruction').textContent='Premiere-Kartendaten oder Decklisten nicht bereit';
   el('hint').textContent=e.message;
  }}
 

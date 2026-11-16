@@ -672,6 +672,7 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
 });
 
 const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
+const themedLists=readFileSync(new URL('../data/premiere-themed-decks.json',import.meta.url),'utf8');
 
 async function premiereHarness(deckLists=starterLists,browser){
  const fixture=harness(browser);
@@ -681,6 +682,7 @@ async function premiereHarness(deckLists=starterLists,browser){
  run(`fetch=async path=>{
   if(path==='data/premiere.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})};
   if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
+  if(path==='data/premiere-themed-decks.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(themedLists)})};
   if(path==='local-print-texts.json'){
    globalThis.requestedLocalPrints=true;
    const report=${JSON.stringify(browser?.localPrintReport??null)};
@@ -1908,6 +1910,34 @@ function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
+
+test('selected theme decks set the starting locations and are saved, replayed and previewed',async()=>{
+ const storage=autosaveStorage();
+ const {run,elements}=await premiereHarness(starterLists,{storage});
+ assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,5);
+ assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,5);
+ run("el('selectLightDeck').value='falcon-kessel';el('selectLightDeck').onchange();el('viewLightDeck').onclick()");
+ assert.match(elements.get('starterDeckTitle').textContent,/Kessel Run · 60 Karten/);
+ assert.match(elements.get('starterDeckCards').innerHTML,/4 × •Millennium Falcon/);
+ run("el('selectDarkDeck').value='imperiale-garnison';el('selectDarkDeck').onchange()");
+ assert.match(elements.get('setupOptions').innerHTML,/Tatooine: Docking Bay 94.*Dantooine.*Yavin 4/);
+ startSavedGame(run,19);
+ assert.equal(run("act('chooseStart','Light',[setupDecks.light.startingIndices[0]])&&act('beginGame')"),true);
+ assert.equal(run("state.locations[0].id"),'Light:2447');
+ assert.match(run("state.locations[1].name"),/Death Star:/);
+ const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
+ assert.equal(saved.decks.decks.Light.theme.id,'falcon-kessel');
+ assert.equal(saved.decks.decks.Dark.theme.id,'imperiale-garnison');
+ const zones="JSON.stringify([state.locations,state.deck,state.botDeck,state.hand,state.botHand])";
+ const original=run(zones);
+ run("el('selectDarkDeck').value='blockade-von-kessel';el('selectDarkDeck').onchange()");
+ assert.equal(run(zones),original);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run("el('resumeGame').onclick()"),true);
+ assert.equal(reload.run(zones),original);
+ assert.equal(reload.elements.get('selectLightDeck').value,'falcon-kessel');
+ assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-garnison');
+});
 
 test('legacy autosaves resume without applying new registered card rules retroactively',async()=>{
  const storage=autosaveStorage();

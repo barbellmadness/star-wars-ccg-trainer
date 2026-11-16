@@ -19,6 +19,18 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       ? route.continue() : route.abort());
     await page.goto(origin + '/v2.html');
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
+    const lightDeck = page.getByLabel('Light Side', {exact: true});
+    const darkDeck = page.getByLabel('Dark Side', {exact: true});
+    assert.equal(await lightDeck.locator('option').count(), 5);
+    assert.equal(await darkDeck.locator('option').count(), 5);
+    await lightDeck.selectOption('massassi-widerstand');
+    await darkDeck.selectOption('schwarze-staffel');
+    await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
+    const theme = page.getByRole('dialog', {name: 'Massassi-Widerstand · 60 Karten'});
+    assert.match(await theme.textContent(), /Dodonna.*Rebel Trooper/s);
+    await page.keyboard.press('Escape');
+    await lightDeck.selectOption('starter');
+    await darkDeck.selectOption('starter');
     await page.locator('#gameSeed').fill('4');
     await page.locator('#start').click();
     await page.locator('#setupOptions button.start-location-option').nth(1).click();
@@ -222,7 +234,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.9.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.10.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -239,7 +251,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#instruction').textContent.includes('Kartendaten oder Starterdecks nicht bereit'));
+    await page.waitForFunction(() => document.querySelector('#instruction').textContent.includes('Kartendaten oder Decklisten nicht bereit'));
     assert.equal(await page.locator('#start').isDisabled(), true);
     assert.deepEqual(errors, []);
   } finally {

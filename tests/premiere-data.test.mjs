@@ -7,7 +7,7 @@ import {buildSnapshot} from '../scripts/import_premiere.mjs';
 const json = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
 const snapshot = json('premiere.json');
 const definitions = json('premiere-starter-decks.json');
-const {readCatalog, readStarterDecks, buildAudit, readCardValue} = premiere;
+const {readCatalog, readStarterDecks, readThemedDecks, buildAudit, readCardValue} = premiere;
 
 test('the checked-in catalog and starter decks validate against the pinned edition', () => {
   const catalog = readCatalog(snapshot);
@@ -46,6 +46,27 @@ test('linked print text is kept separate and the audit lists the remaining scans
   const redOne = catalog.find(card => card.id === 'Light:2057');
   assert.match(redOne.texts.print, /Must have pilot aboard/);
   assert.doesNotMatch(redOne.texts.active, /Must have pilot aboard/);
+});
+
+test('both sides have four distinct, valid 60-card themed decks with playable starting locations', () => {
+  const catalog = readCatalog(snapshot);
+  const definitions = json('premiere-themed-decks.json');
+  const sets = readThemedDecks(definitions, catalog);
+  for (const side of ['light', 'dark']) {
+    assert.equal(sets[side].length, 4);
+    const lineups = sets[side].map(({deck}) => deck.cards.map(card => card.id).sort().join(','));
+    assert.equal(new Set(lineups).size, 4);
+    for (const {deck, definition} of sets[side]) {
+      assert.equal(deck.cards.length, 60);
+      assert.deepEqual([...new Set(deck.startingIndices.map(index => deck.cards[index].id))], definition.startingLocations);
+      assert.ok(deck.cards.every(card => card.side.toLowerCase() === side && card.set === '1'));
+    }
+  }
+  const invalid = structuredClone(definitions);
+  invalid.decks.Light[0].startingLocations = [];
+  assert.throws(() => readThemedDecks(invalid, catalog), /mindestens eine Starting Location/);
+  invalid.decks.Light[0] = structuredClone(invalid.decks.Light[1]);
+  assert.throws(() => readThemedDecks(invalid, catalog), /eindeutige IDs/);
 });
 
 test('typed cards distinguish missing, unknown, printed special and numeric values', () => {
