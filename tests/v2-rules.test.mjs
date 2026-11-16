@@ -14,7 +14,13 @@ const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness(){
  const elements=new Map();
- const document={getElementById(id){if(!elements.has(id))elements.set(id,{value:'',checked:true,style:{},innerHTML:'',textContent:'',scrollIntoView(){}});return elements.get(id)}};
+ const document={getElementById(id){
+  if(!elements.has(id))elements.set(id,{
+   value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,
+   showModal(){this.open=true;},close(){this.open=false;},
+  });
+  return elements.get(id);
+ }};
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
@@ -671,12 +677,18 @@ async function premiereHarness(deckLists=starterLists){
 
 test('the card inspector separates rules text, print scan, lore, German notes and special values',async()=>{
  const {run,elements}=await premiereHarness();
+ assert.match(html,/<dialog id="cardInspector"[^>]+aria-labelledby="cardInspectorTitle">/);
+ assert.equal(elements.get('cardInspector').open,false);
  run(`state={botHand:[catalog.find(card=>card.id==='Dark:816'),catalog.find(card=>card.id==='Dark:1767')]};inspectCard('Dark',0,'hand')`);
+ assert.equal(elements.get('cardInspector').open,true);
+ assert.equal(elements.get('cardInspectorTitle').textContent,run("state.botHand[0].name"));
  const eg6=elements.get('cardInspectorBody').innerHTML;
  assert.match(eg6,/Destiny \* \(Sonderwert\)/);
  assert.match(eg6,/Aktiver Spieltext.*Korrekturslip.*Drucktext im Kartenscan.*Lore.*Deutsche Erklärung/);
  run("inspectCard('Dark',1,'hand')");
  assert.match(elements.get('cardInspectorBody').innerHTML,/Aktiver Spieltext.*Verknüpfte Vor-Errata-Fassung/);
+ run("closeCard();el('showBotHand').checked=false;inspectCard('Dark',0,'hand')");
+ assert.equal(elements.get('cardInspector').open,false);
 });
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
@@ -707,10 +719,8 @@ test('fixed starter lists load 60 cards per side and each new game gets independ
 test('starter deck buttons open only the selected 60-card list on demand',async()=>{
  const {run,elements}=await premiereHarness();
  const dialog=run("el('starterDeckDialog')");
- dialog.open=false;
- dialog.showModal=()=>{dialog.open=true;};
  const list=run("el('starterDeckCards')");
- assert.match(html,/<dialog id="starterDeckDialog" aria-labelledby="starterDeckTitle">/);
+ assert.match(html,/<dialog id="starterDeckDialog"[^>]+aria-labelledby="starterDeckTitle">/);
  assert.match(html,/<form method="dialog"><button autofocus>Schließen<\/button><\/form>/);
  assert.equal(list.innerHTML,'');
  assert.equal(elements.has('effectCoverage'),false);
@@ -1126,11 +1136,14 @@ test('location art opens a detailed card inspector without changing game state',
  const markup=run("renderPlaymatColumn(state.locations[0],0)");
  assert.match(markup,/onclick="inspectLocation\(0\)"/);
  assert.equal(run("inspectLocation(0)"),true);
- assert.match(elements.get('cardInspectorBody').innerHTML,/Tatooine: Mos Eisley/);
+ assert.equal(elements.get('cardInspector').open,true);
+ assert.equal(elements.get('cardInspectorTitle').textContent,'Tatooine: Mos Eisley');
  assert.match(elements.get('cardInspectorBody').innerHTML,/Force-Icons · Light 1 \/ Dark 2/);
  assert.match(elements.get('cardInspectorBody').innerHTML,/Some location effect/);
  assert.equal(run("state.locations[0].name"),'Tatooine: Mos Eisley');
+ run('closeCard()');
  assert.equal(run("inspectLocation(9)"),false);
+ assert.equal(elements.get('cardInspector').open,false);
 });
 test('initial location choices include original image thumbnails',async()=>{
  const {elements}=await premiereHarness();

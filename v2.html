@@ -19,9 +19,6 @@
 .playmat-column.empty-location .playmat-location{opacity:.7}
 .playmat-location .location-art-button{border:0;background:transparent;padding:0;cursor:zoom-in;display:block;line-height:0;max-width:100%}
 .playmat-location .location-art-button:focus-visible{outline:3px solid #f2d078;outline-offset:4px}
-.location-inspector-card{display:flex;gap:18px;align-items:start;flex-wrap:wrap}
-.location-inspector-card img{width:min(310px,100%);max-height:440px;object-fit:contain;border:2px solid #cbb377;border-radius:8px}
-.location-inspector-details{min-width:180px;flex:1}
 .location-icon-pips{font-size:12px;color:#ead69a}
 .game-toolbar,.game-control{margin:8px 0;padding:8px 10px}
 .game-options,.trainer-options,.bot-turn-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -55,11 +52,21 @@
 .start-location-option img{width:120px;height:165px;object-fit:contain}
 .start-location-option span{font-size:12px;line-height:1.25;text-align:center}
 .starter-deck-actions{display:flex;flex-wrap:wrap;gap:8px}
-#starterDeckDialog{width:min(34rem,calc(100% - 2rem));max-height:calc(100% - 2rem);padding:16px;color:#e7edf9;background:#111c2d;border:1px solid #a18b5b;border-radius:12px}
-#starterDeckDialog::backdrop{background:#060b15cc}
-.starter-deck-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.game-dialog{width:min(var(--dialog-width,34rem),calc(100% - 2rem));max-height:calc(100dvh - 2rem);padding:16px;color:#e7edf9;background:#111c2d;border:1px solid #a18b5b;border-radius:12px}
+.game-dialog::backdrop{background:#060b15cc}
+.dialog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.dialog-header h2{margin:0;overflow-wrap:anywhere}
 #starterDeckCards{max-height:min(55vh,28rem);overflow:auto;margin:12px 0 0;padding-inline-start:24px}
 #starterDeckCards li{padding-block:4px}
+html{scrollbar-gutter:stable}
+html:has(#cardInspector[open]){overflow:hidden}
+#cardInspector{--dialog-width:52rem}
+#cardInspector[open]{display:flex;flex-direction:column;gap:12px;overflow:hidden}
+#cardInspectorBody{min-height:0;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
+.card-inspector-content{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);align-items:start;gap:16px}
+.card-inspector-content img{display:block;width:100%;max-height:min(440px,54dvh);object-fit:contain}
+.card-inspector-copy>p:first-child{margin-top:0}
+@media(max-width:650px){.card-inspector-content{grid-template-columns:minmax(0,1fr)}.card-inspector-content img{justify-self:center;max-width:20rem}}
 @media(max-width:650px){main{padding:9px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img{width:105px;height:144px}}
 </style>
 <main>
@@ -81,7 +88,6 @@
     <div id="setupOptions"></div>
   </div>
   <section class="panel" id="battleAnalysis" style="display:none;border-color:#d5b56c"><h2>Battle</h2><div id="battleDetails"></div><div id="battleControls"></div><button onclick="closeBattle()">Schließen</button></section>
-  <section class="panel" id="cardInspector" style="display:none;border-color:#a48b57"><h2>Karte im Detail</h2><div id="cardInspectorBody"></div><button onclick="closeCard()">Schließen</button></section>
   <div id="forceControls" class="panel game-control" style="display:none"></div>
   <div id="controlPanel" class="panel game-control" style="display:none"></div>
   <section class="table-view" id="gameTable" aria-label="Spieltisch" hidden>
@@ -142,12 +148,19 @@
     <p class="hint">V2 Starter · Technischer Lern-Prototyp. Noch <b>keine</b> vollständige Originalregel-Implementierung. Viele Kartenfähigkeiten, Waffen und Sonderregeln fehlen weiterhin.</p><p><a href="index.html">Zur bisherigen Alpha</a></p>
   </details>
 </main>
-<dialog id="starterDeckDialog" aria-labelledby="starterDeckTitle">
-  <header class="starter-deck-header">
+<dialog id="starterDeckDialog" class="game-dialog" aria-labelledby="starterDeckTitle">
+  <header class="dialog-header">
     <h2 id="starterDeckTitle"></h2>
     <form method="dialog"><button autofocus>Schließen</button></form>
   </header>
   <ul id="starterDeckCards" tabindex="0"></ul>
+</dialog>
+<dialog id="cardInspector" class="game-dialog" aria-labelledby="cardInspectorTitle">
+  <header class="dialog-header">
+    <h2 id="cardInspectorTitle"></h2>
+    <form method="dialog"><button autofocus>Schließen</button></form>
+  </header>
+  <div id="cardInspectorBody" tabindex="0"></div>
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
@@ -427,6 +440,16 @@ function displayCardValue(card,field){
  return escapeHTML((field==='ability'?cardAbility(card):card[field])??'–');
 }
 
+function showCardDetails(card,details){
+ const dialog=el('cardInspector'),body=el('cardInspectorBody');
+ el('cardInspectorTitle').textContent=card.name;
+ const image=card.image?'<img src="'+escapeHTML(card.image)+'" alt="Kartenscan: '+escapeHTML(card.name)+'">'
+  :'<p class="hint">Kein Kartenbild verfügbar</p>';
+ body.innerHTML='<div class="card-inspector-content">'+image+'<div class="card-inspector-copy">'+details+cardTextDetails(card)+'</div></div>';
+ if(!dialog.open)dialog.showModal();
+ body.scrollTop=0;
+}
+
 function inspectCard(side,i,zone,site){
  if(!state)return;
  if(zone==='hand'&&side==='Dark'&&!el('showBotHand').checked)return;
@@ -436,12 +459,7 @@ function inspectCard(side,i,zone,site){
  for(const [label,field] of [['Landspeed','landspeed'],['Hyperspeed','hyperspeed'],['Maneuver','maneuver'],['Armor','armor']]){
   if(Number.isFinite(card[field])||['special','unknown'].includes(card.values?.[field]?.kind))stats.push([label,field]);
  }
- el('cardInspector').style.display='block';
- el('cardInspectorBody').innerHTML='<div class="location-inspector-card">'
-  +(card.image?'<img src="'+escapeHTML(card.image)+'" alt="Kartenscan">':'')
-  +'<div class="location-inspector-details"><h2>'+escapeHTML(card.name)+'</h2><p>'
-  +stats.map(([label,field])=>label+' '+displayCardValue(card,field)).join(' · ')+'</p>'+cardTextDetails(card)+'</div></div>';
- el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'});
+ showCardDetails(card,'<p>'+stats.map(([label,field])=>label+' '+displayCardValue(card,field)).join(' · ')+'</p>');
 }
 
 function inspectLocation(i){
@@ -454,14 +472,16 @@ function inspectLocation(i){
  const transit=conditions.dockingBay?'<p>Docking-Bay-Transit · Light '+conditions.transitCost+' / Dark '+PremiereLocations.conditions(state,i,'Dark').transitCost+' Force</p>':'';
  const effects=PremiereLocations.effectsAt(state,i).map(effect=>escapeHTML(effect.card.name));
  const previous=state.convertedLocations?.[i]?.map(card=>escapeHTML(card.name+' · '+card.side))??[];
- el('cardInspector').style.display='block';
- el('cardInspectorBody').innerHTML='<div class="location-inspector-card">'+(c.image?'<img src="'+escapeHTML(c.image)+'" alt="Location-Karte: '+escapeHTML(c.name)+'">':'<div class="location-fallback">Kein Kartenbild</div>')+'<div class="location-inspector-details"><h2>'+escapeHTML(c.name)+'</h2><p class="location-icon-pips">Force-Icons · Light '+icons[0]+' / Dark '+icons[1]+'</p><p>'+escapeHTML(c.subType||c.type||'Location')+(c.side?' · '+escapeHTML(c.side):'')+(flags.length?' · '+flags.join(' · '):'')+'</p>'+transit
-  +(effects.length?'<p>Effects am Ort · '+effects.join(', ')+'</p>':'')+(previous.length?'<p>Darunter · '+previous.join(', ')+'</p>':'')+cardTextDetails(c)+'</div></div>';
- el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'});
+ showCardDetails(c,'<p class="location-icon-pips">Force-Icons · Light '+icons[0]+' / Dark '+icons[1]+'</p><p>'
+  +escapeHTML(c.subType||c.type||'Location')+(c.side?' · '+escapeHTML(c.side):'')+(flags.length?' · '+flags.join(' · '):'')+'</p>'+transit
+  +(effects.length?'<p>Effects am Ort · '+effects.join(', ')+'</p>':'')+(previous.length?'<p>Darunter · '+previous.join(', ')+'</p>':''));
  return true;
 }
 
-function closeCard(){el('cardInspector').style.display='none'}
+function closeCard(){
+ const dialog=el('cardInspector');
+ if(dialog.open)dialog.close();
+}
 
 function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
  const loadout=[...(c.weapons??[]),...(c.attachments??[])].map(weapon=>'<div>'+escapeHTML(weapon.name)+'</div>').join('')+
@@ -470,7 +490,7 @@ function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
   (c.tableSide?'<div>Auf der '+escapeHTML(c.tableSide)+' Side</div>':'');
  const equip=equipAction?ruleButton(equipAction,'Ausrüsten ('+equipAction.cost+' Force)'):'';
  const selection='onclick="select('+idx+','+currentGame()?.id+','+currentGame()?.revision+')"';
- return '<div class="card '+(clickable&&selected===idx?'chosen':'')+'" '+(clickable?selection:'')+'>'+(c.image?'<img loading="lazy" src="'+escapeHTML(c.image)+'" alt="">':'')+'<b>'+escapeHTML(c.name)+'</b><div>'+escapeHTML(c.type)+'</div>'+status+loadout+equip+'<button onclick="event.stopPropagation();inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">Details</button></div>';
+ return '<div class="card '+(clickable&&selected===idx?'chosen':'')+'" '+(clickable?selection:'')+'>'+(c.image?'<img loading="lazy" src="'+escapeHTML(c.image)+'" alt="">':'')+'<b>'+escapeHTML(c.name)+'</b><div>'+escapeHTML(c.type)+'</div>'+status+loadout+equip+'<button aria-haspopup="dialog" onclick="event.stopPropagation();inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">Details</button></div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
@@ -499,7 +519,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const zone=(side,cards)=>'<div class="playmat-zone '+(side==='Dark'?'dark-zone':'light-zone')+'"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span><div class="cards">'+cards.map((c,j)=>mini(c,j,false,side,'field',i,side==='Light'?equipActions.get(j)??null:null)).join('')+'</div></div>';
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'">'+zone('Dark',dark)
- +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div><div class="playmat-actions">'+ruleButton(findOffer(available,'deploy',selected,i),'Ausspielen')+ruleButton(findOffer(available,'battle',i),'Battle (1 Force)')+extra+'</div>'+movementPanel(i,available)+'</div>'
+ +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div><div class="playmat-actions">'+ruleButton(findOffer(available,'deploy',selected,i),'Ausspielen')+ruleButton(findOffer(available,'battle',i),'Battle (1 Force)')+extra+'</div>'+movementPanel(i,available)+'</div>'
  +zone('Light',light)+'</div>';
 }
 
