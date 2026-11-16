@@ -86,9 +86,30 @@ async function replaceSnapshot(snapshot) {
   }
 }
 
+async function verifyScanLinks(catalog) {
+  const concurrency = 4;
+  const failures = [];
+  await Promise.all(Array.from({length: concurrency}, async (_, offset) => {
+    for (let index = offset; index < catalog.length; index += concurrency) {
+      const {id, name, images} = catalog[index];
+      const url = images.print;
+      try {
+        if (!url) throw new Error('Scan-Link fehlt');
+        const response = await fetch(url, {method: 'HEAD', signal: AbortSignal.timeout(15_000)});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.headers.get('content-type')?.startsWith('image/')) throw new Error('Antwort liefert kein Bild');
+      } catch (error) {
+        failures.push({id, name, url, reason: error.message});
+      }
+    }
+  }));
+  failures.sort((a, b) => a.id.localeCompare(b.id));
+  return {checked: catalog.length, reachable: catalog.length - failures.length, failures};
+}
+
 async function main(args) {
-  if (args.length > 1 || (args.length && !['--check', '--report', '--verify-source'].includes(args[0]))) {
-    throw new Error('Aufruf: node scripts/import_premiere.mjs [--check | --report | --verify-source]');
+  if (args.length > 1 || (args.length && !['--check', '--report', '--verify-source', '--verify-scans'].includes(args[0]))) {
+    throw new Error('Aufruf: node scripts/import_premiere.mjs [--check | --report | --verify-source | --verify-scans]');
   }
   const [mode] = args;
   const downloads = mode === undefined || mode === '--verify-source';
@@ -101,6 +122,12 @@ async function main(args) {
   const audit = buildAudit(catalog, decks);
   if (mode === '--report') {
     process.stdout.write(serialize({inputsSha256: SHA256, ...audit}));
+    return;
+  }
+  if (mode === '--verify-scans') {
+    const report = await verifyScanLinks(catalog);
+    process.stdout.write(serialize(report));
+    if (report.failures.length) process.exitCode = 1;
     return;
   }
   if (mode === '--verify-source' && serialize(snapshot) !== serialize(await readJson(snapshotPath))) {

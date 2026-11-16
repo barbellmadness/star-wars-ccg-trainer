@@ -199,6 +199,9 @@ const PremiereData = (() => {
       cards: Object.fromEntries(SIDES.map(side => [side, catalog.filter(card => card.side === side).length])),
       cardsWithPrintScan: catalog.filter(card => card.images.print).length,
       transcribedPrintTexts: catalog.filter(card => card.texts.print !== null).length,
+      openPrintTexts: catalog.filter(card => card.texts.print === null).map(card => ({
+        id: card.id, name: card.name, printScan: card.images.print
+      })),
       preErrataTexts: catalog.filter(card => card.texts.preErrata !== null).length,
       values: Object.fromEntries(VALUE_FIELDS.map(field => {
         const counts = {number: 0, missing: 0, special: 0, unknown: 0};
