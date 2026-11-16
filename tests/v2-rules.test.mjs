@@ -1130,6 +1130,34 @@ test('the hand phase lists follow the current turn through setup, play and game 
  assert.equal(elements.get('gameTable').hidden,true);
 });
 
+test('both playmat pile diagrams show their own counts and follow card movement',async()=>{
+ const {run,elements}=await premiereHarness();
+ const diagram=side=>elements.get('piles'+side).innerHTML;
+ const assertPiles=(side,reserve,force,used,lost,life)=>{
+  const markup=diagram(side);
+  for(const [label,count] of [['Reserve Deck',reserve],['Force Pile',force],['Used Pile',used],['Lost Pile',lost],['Life Force',life]]){
+   assert.ok(markup.includes(label+' <strong>'+count+'</strong>'),label+' count for '+side);
+  }
+ };
+ run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ assertPiles('Dark',51,0,0,0,51);
+ assertPiles('Light',51,0,0,0,51);
+ assert.match(diagram('Light'),/Am Zugende unter das Reserve Deck.*Reserve Deck <strong.*Aktivieren.*→.*Force Pile.*Ausgeben.*→.*Used Pile.*↓.*Auf die Hand ziehen/);
+
+ const activation=run("forceFromLocations('Dark').count");
+ run('botNextStep()');
+ assertPiles('Dark',51-activation,activation,0,0,51);
+ assertPiles('Light',51,0,0,0,51);
+ run("for(let i=0;i<6;i++)botNextStep();requestAction('activate','Light',[1])");
+ assertPiles('Light',50,1,0,0,51);
+ run('PremiereGame.moveTop(state.force,state.used);render()');
+ assertPiles('Light',50,0,1,0,51);
+ run('recirculateBoth();render()');
+ assertPiles('Light',51,0,0,0,51);
+ run('PremiereGame.moveTop(state.deck,state.lost);render()');
+ assertPiles('Light',50,0,0,1,50);
+});
+
 test('location art opens a detailed card inspector without changing game state',()=>{
  const {run,elements}=harness();
  run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',image:'https://res.starwarsccg.org/cards/test.gif',icons:{light:1,dark:2},gametext:'Some location effect'}],light:[[]],dark:[[]],phase:0,hand:[],force:[],botTurn:null};");
