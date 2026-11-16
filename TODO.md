@@ -127,7 +127,7 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 - [ ] Eine geführte Partie mit fester Starthand und erklärten Entscheidungen bauen. Drei Übungen für Force und Deploy, Boden-Battle mit Waffen sowie Fahrzeug- und Raumbewegung bereitstellen.
 - [ ] Hinweise und Undo auf den Lernmodus beschränken. Undo muss auf bereits aufgedeckte Informationen, abgeschlossene Zufallsziehungen und die Speicherung des Seeds Rücksicht nehmen.
 - [ ] Neustart, Spielende und Auswertung mit nachvollziehbarem Aktionsprotokoll gestalten. Wiederholbare Szenarien über Deckliste, Seed und Aktionen starten können.
-- [ ] Desktop-Bedienung, schmale Fenster, Tastatursteuerung, Fokus, Beschriftungen und Kontraste im echten Browser prüfen.
+- [x] Desktop und ein 390-Pixel-Fenster in Chrome prüfen. Der Browser-Test deckt das Playmat-Layout, Kartenöffnung mit Enter, Fokus nach Escape, Dialogkontrast und Kartenbeschriftungen ab.
 
 ## 10. Tests und lokale Abnahme
 
@@ -135,8 +135,8 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 - [x] Tests für Startkollisionen, Kartenverlust, Site-Reihenfolge, Angriffe beider Seiten, Antwortketten, Bewegung mit Insassen, Schiffsbewaffnung sowie ungewöhnliche Destiny und Force-Grenzfälle ergänzen.
 - [x] Zustandsinvarianten testen. Bei vollständigen Partien bleiben alle 120 Karteninstanzen jeweils genau einmal in einer Zone oder an einem Trägerplatz. Einzeltests prüfen Zahlungen, Verlust, Retrieval und abgelehnte Aktionen.
 - [x] Eine reproduzierbare Partie der Starterdecks von der Starting Location bis zum Sieg abnehmen. Seed 4 enthält Boden- und Raum-Battles sowie mindestens eine gespielte Antwortaktion.
-- [ ] Browser-Tests für den lokalen Start mit `data/premiere.json`, Kartenwahl, korrekte Zielbuttons und Abschluss eines Bot-Zugs ergänzen. Tests bei fehlenden Kartenbildern und fehlerhaften Kartendaten ausführen.
-- [ ] Die lokale Startanleitung und den Abdeckungsbericht mit dem ausführbaren Stand abgleichen. Die Kartendaten, Decklisten und Regelquellen zu einer reproduzierbaren Abnahme zusammenführen.
+- [x] Den lokalen Start, Kartenwahl, gültige Zielbuttons und einen vollständigen Bot-Zug in Chrome testen. Fehlende Bilder lassen den Spieltext lesbar. Fehlerhafte Kartendaten lassen den Partiestart gesperrt.
+- [x] Reproduzierbare lokale Abnahme in der README dokumentieren. Katalogprüfung, feste Test-Seeds, Browser-Test, aktuelle Abdeckungsanzeige und Regelquellen sind dort verknüpft.
 
 ## Reihenfolge für die nächsten Entwicklungsbranches
 

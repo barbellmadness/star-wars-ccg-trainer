@@ -1,0 +1,11 @@
+{
+  "name": "star-wars-ccg-trainer",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "test:browser": "node --test scripts/v2-browser-check.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.65.1"
+  }
+}
