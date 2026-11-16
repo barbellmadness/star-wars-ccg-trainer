@@ -116,6 +116,7 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 - [ ] Eine verdeckte Spielersicht für den Bot erzwingen. Eigene Hand und öffentliche Informationen verwenden. Die vollständige gegnerische Hand oder die Reihenfolge verdeckter Stapel nur über erlaubte Kartenaktionen sehen.
 - [x] Bot-Phasen und Antwortfenster über `legalActions` spielen. Der Bot prüft nach aufgelösten Aktionen erneut, welche Drains, Battles und regulären Bewegungen in derselben Phase möglich sind.
 - [ ] Force über den Zug einplanen. Deploy, Waffen, Battle, Movement, mögliche Antworten und Nachziehen gegeneinander abwägen. Bezahlbare Aktionen in der passenden Reihenfolge wählen.
+- [x] Der Bot greift bei einem geschätzten Vorteil aus Power, Battle Destiny und sichtbaren Waffen an. Beim Nachziehen berücksichtigt er die eigene Hand, Presence und verbleibende Life Force.
 - [ ] Starting Location und Ziele nach Kontrolle, eigener Presence, entstehender Force, Karten in der eigenen Hand und bestehenden Einheiten gewichten. Kartenfähigkeiten, Piloten, Fahrzeuge und Transportschritte in die Planung einbeziehen.
 - [ ] Ziele und Kosten für Blaster, Schiffsbewaffnung, Interrupts und Reacts bewerten. Trefferchance aus zulässigen Informationen schätzen. Forfeit und andere Verluste anhand von Pflicht, offener Schuld und Wert der Karten auswählen.
 - [x] Bot-Züge im Protokoll kurz erklären und denselben Zugverlauf mit festem Seed reproduzieren. Tests prüfen einzelne Bot-Aktionen, Phasenwechsel und komplette Züge.
@@ -125,6 +126,7 @@ Die Zahlen geben die Anzeige von V2 auf `2ae7324` wieder. Die Anzeige erfasst ei
 
 - [ ] Sites und Systeme nach Spielregeln auf der Playmat darstellen. Karten an Bord, Anhänge, Treffer, aktivierte Bedingungen, Presence und Control am betroffenen Ort sichtbar machen.
 - [ ] Am ausgewählten Objekt nur gültige Aktionen und Ziele anbieten. Kosten, Ursprung der Regel, ausstehende Auswahl und den Grund für eine gesperrte Aktion verständlich anzeigen.
+- [x] Unterstützte Effects lassen sich im Karten-Popup mit ihren gültigen Zielen und Kosten ausspielen. Das Popup erklärt die benötigte Phase oder fehlende Force.
 - [ ] Stapel und verdeckte Karten regelgerecht darstellen. Optionale Offenlegung der Bot-Hand als ausdrückliche Lernoption mit eigener Anzeige führen. Inspektor und Protokoll nach derselben Sicht filtern.
 - [ ] Karteninspektor für alle 324 Karten vervollständigen. Originalbild, englischer Spieltext, deutsche Erklärung, Auslösezeitpunkt, Beispiel und Stand der Umsetzung anzeigen. Bei Bildfehlern Kartennamen und Spieltext lesbar halten.
 - [ ] Eine geführte Partie mit fester Starthand und erklärten Entscheidungen bauen. Drei Übungen für Force und Deploy, Boden-Battle mit Waffen sowie Fahrzeug- und Raumbewegung bereitstellen.

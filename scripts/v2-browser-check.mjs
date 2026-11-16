@@ -77,6 +77,26 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.ok(await page.locator('.location-art-button').first().getAttribute('aria-label'));
     assert.deepEqual(errors, []);
 
+    await page.locator('#gameSeed').fill('0');
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#start').click();
+    await page.locator('#setupOptions button.start-location-option').nth(1).click();
+    await page.getByRole('button', {name: 'Partie beginnen'}).click();
+    for (let step = 0; step < 18 && await page.locator('#botTurnPanel').isVisible(); step++) {
+      await page.locator('#botNext').click();
+    }
+    await page.getByRole('button', {name: /Eyes In The Dark ansehen/}).click();
+    const effect = page.getByRole('dialog', {name: /Eyes In The Dark/});
+    assert.match(await effect.textContent(), /In deiner Ausspielen-Phase/);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', {name: 'Force aktivieren'}).click();
+    await page.locator('#step').click();
+    await page.locator('#step').click();
+    await page.getByRole('button', {name: 'Eyes In The Dark ansehen', exact: false}).click();
+    await effect.getByRole('button', {name: 'Dark Side Lost Pile verdecken (0 Force)'}).click();
+    assert.equal(await effect.isVisible(), false);
+    assert.match(await page.locator('#pilesDark').textContent(), /Lost Pile verdeckt/);
+
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#instruction').textContent.includes('Kartendaten oder Starterdecks nicht bereit'));

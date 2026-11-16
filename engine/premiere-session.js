@@ -1414,7 +1414,7 @@ function botPlan(){return ['activate','control','deploy','battle','move','draw',
 
 function botBegin(){state.botTurn={steps:botPlan(),index:0};botSay('Dark Side beginnt ihren sichtbaren Lernzug. Klicke auf „Nächste Bot-Aktion zeigen“.')}
 
-function botNextStep(repeatPhase=true){
+function botNextStep(repeatPhase=true,adaptive=true){
  if(!state?.botTurn||state.gameWinner)return false;
  const window=PremiereGame.responseWindow(state.game);
  if(window||state.game?.timing.pending||state.automatedPending)return performAction(legalActions(state,'Dark')[0]);
@@ -1425,7 +1425,7 @@ function botNextStep(repeatPhase=true){
  const action=deferred?{kind:deferred}:state.botTurn.steps[state.botTurn.index];
  if(!deferred&&action?.kind==='deploy'&&state.phase===1&&botDrain())return true;
  if(repeatPhase&&!deferred){
-  const continued=action?.kind==='move'&&state.phase===3?botBattle():
+  const continued=action?.kind==='move'&&state.phase===3?botBattle(legalActions(state,'Dark'),adaptive):
    action?.kind==='draw'&&state.phase===4?botMove():false;
   if(continued){publishGame();return true;}
  }
@@ -1435,11 +1435,16 @@ function botNextStep(repeatPhase=true){
  if(action.kind==='move'){
   if(!botMove(available))botSay('Move: Bot passt, keine vorteilhafte bezahlbare Bewegung.');
  }else if(action.kind==='battle'){
-  if(!botBattle(available))botSay('Battle: Kein legaler Kampf mit Presence beider Seiten und 1 Force verfügbar.');
+  if(!botBattle(available,adaptive))botSay(adaptive&&available.some(option=>option.kind==='battle')?
+   'Battle: Bot passt. Nach Power, erwarteter Battle Destiny und sichtbaren Waffen fehlt ein Vorteil.':
+   'Battle: Kein legaler Kampf mit Presence beider Seiten und 1 Force verfügbar.');
  }else if(action.kind==='draw'){
-  const choice=available.find(x=>x.kind==='draw');
-  const drawn=choice&&performAction(choice)?1:0;
-  botSay('Draw Phase: Bot zieht '+drawn+' Karte aus seiner Force Pile. Seine Hand enthält jetzt '+state.botHand.length+' Karten.');
+  if(adaptive)botDraw();
+  else{
+   const choice=available.find(x=>x.kind==='draw');
+   const drawn=choice&&performAction(choice)?1:0;
+   botSay('Draw Phase: Bot zieht '+drawn+' Karte aus seiner Force Pile. Seine Hand enthält jetzt '+state.botHand.length+' Karten.');
+  }
  }else if(action.kind==='activate'){
   const choice=available.filter(x=>x.kind==='activate').at(-1);
   if(choice&&performAction(choice))botSay('Activate: Bot aktiviert '+choice.args[0]+' Force. Jetzt verfügbar: '+state.botForce.length+'.');
@@ -1462,16 +1467,71 @@ function botMove(available=legalActions(state,'Dark')){
  botSay('Move: Bot bewegt '+choice.name+' für '+choice.cost+' Force zu '+state.locations[choice.to].name+' ('+choice.movementKind+').');
  return true;
 }
-function botBattle(available=legalActions(state,'Dark')){
- const score=option=>{
-  const totals=battleTotals(option.args[0]);
-  return totals.darkPower-totals.lightPower;
- };
- const choice=available.filter(x=>x.kind==='battle').sort((a,b)=>score(b)-score(a))[0];
- if(!choice||!performAction(choice))return false;
+const estimatedDestiny=2.5;
+
+function botWeaponPressure(side,slot){
+ const opponent=PremiereGame.otherSide(side);
+ const {force,deck}=PremiereGame.zones(state,side);
+ const budget=(force?.length??0)-(side==='Dark'?1:0);
+ if(!deck?.length||budget<0)return 0;
+ const targets=PremiereLocations.presentCards(state,opponent,slot).filter(PremiereUnits.active);
+ const hosts=PremiereLocations.presentCards(state,side,slot).filter(PremiereUnits.active);
+ let pressure=0;
+ for(const host of hosts){
+  if(PremiereWeapons.disarmed(host)||(host.type==='Starship'&&!craftStats(host,slot).powered))continue;
+  for(const weapon of host.weapons??[]){
+   if(!PremiereUnits.canUseWeapon(state,host,weapon))continue;
+   for(const target of targets){
+    const defense=PremiereWeapons.defense(target,cardAbility(target),craftStats(target,slot));
+    const shot=PremiereWeapons.shot(weapon,host,target,cardAbility(host),defense);
+    if(!shot||shot.cost>budget||shot.effect==='block')continue;
+    const margin=estimatedDestiny*Math.min(shot.draws,deck.length)+shot.bonus-defense;
+    pressure=Math.max(pressure,margin>0?1.5:margin>=-1?0.5:0);
+   }
+  }
+ }
+ return pressure;
+}
+
+function botBattleEstimate(slot,adaptive){
+ const {darkPower,lightPower,darkAbility,lightAbility}=battleTotals(slot);
+ if(!adaptive)return darkPower-lightPower;
+ const darkDraws=Math.min(state.botDeck?.length??0,battleDestinyDrawCount('Dark',slot,darkAbility,'Dark')??0);
+ const lightDraws=Math.min(state.deck?.length??0,battleDestinyDrawCount('Light',slot,lightAbility,'Dark')??0);
+ return darkPower-lightPower+darkDraws*(estimatedDestiny+printedBattleDestinyBonus('Dark',slot))-lightDraws*estimatedDestiny+
+  botWeaponPressure('Dark',slot)-botWeaponPressure('Light',slot);
+}
+
+function botBattle(available,adaptive){
+ const best=available.filter(option=>option.kind==='battle')
+  .map(option=>({option,margin:botBattleEstimate(option.args[0],adaptive)}))
+  .sort((a,b)=>b.margin-a.margin)[0];
+ if(!best||(adaptive&&best.margin<1))return false;
+ const choice=best.option;
+ if(!performAction(choice))return false;
  botSay('Battle: Bot initiiert einen Kampf bei '+state.locations[choice.args[0]].name+' für 1 Force. Dark Side hat die erste Aktion in jedem Kampfsegment.');
  botDestinyDecision();
  return true;
+}
+
+function botDraw(){
+ const {hand,force}=PremiereGame.zones(state,'Dark');
+ const hasPresence=state.locations.some((location,slot)=>location&&confirmedPresence('Dark',slot)===true);
+ const hasReinforcement=hand.some(card=>
+  (isDeployableCharacter(card)&&cardAbility(card)>0)||(card.type==='Starship'&&permanentPilotAbility(card)!==null));
+ const handGoal=hasPresence?(hasReinforcement?3:4):5;
+ const needed=Math.max(handGoal-hand.length,(!hasPresence&&!hasReinforcement)?2:0);
+ const lifeReserve=!hasPresence&&!hasReinforcement?1:2;
+ const maxDraw=Math.max(0,Math.min(needed,force.length,lifeForceRemaining('Dark')-lifeReserve));
+ let drawn=0;
+ while(drawn<maxDraw){
+  const draw=legalActions(state,'Dark').find(option=>option.kind==='draw');
+  if(!draw||!performAction(draw))break;
+  drawn++;
+ }
+ const count=drawn===1?'1 Karte':drawn+' Karten';
+ if(drawn)botSay('Draw Phase: Bot zieht '+count+(hasPresence?' für seine Hand.':' für den Wiederaufbau.')+' Hand: '+hand.length+' Karten.');
+ else botSay('Draw Phase: Bot behält seine Force. '+(needed>0?'Force Pile oder Life Force begrenzen das Nachziehen.':'Die Hand ist ausreichend gefüllt.'));
 }
 function botDrain(){
  const choice=legalActions(state,'Dark').filter(x=>x.kind==='drain').sort((a,b)=>b.amount-a.amount)[0];
@@ -1643,9 +1703,9 @@ function printedBattleDestiny(card){
 // Two printed Premiere War Room effects grant an additional battle destiny
 // to the side that initiated battle here. These are actual Reserve Deck draws.
 
-function printedWarRoomExtraBattleDestiny(side,siteIndex){
- const x=battleSession,loc=state?.locations?.[siteIndex];
- if(!x||x.initiator!==side||!isSite(loc))return 0;
+function printedWarRoomExtraBattleDestiny(side,siteIndex,initiator=battleSession?.initiator){
+ const loc=state?.locations?.[siteIndex];
+ if(initiator!==side||!isSite(loc))return 0;
  if(!['Dark:682','Light:2859'].includes(loc.id))return 0;
  const text=String(loc.gametext||'');
  const printed=PremiereLocations.printedSide(state,siteIndex,side);
@@ -1762,7 +1822,7 @@ function scheduleBattleDestiny(side,purpose,count){
  else (battleSession.additionalDestinies??=[]).push({side,purpose,count});
 }
 
-function battleDestinyDrawCount(side,siteIndex,ability){
+function battleDestinyDrawCount(side,siteIndex,ability,initiator=battleSession?.initiator){
  if(!Number.isFinite(ability))return null; // Unknown ability cannot justify an assumed draw.
  const required=minimumBattleDestinyAbility(side,siteIndex);
  const own=PremiereGame.zones(state,side).board?.[siteIndex]??[];
@@ -1770,7 +1830,7 @@ function battleDestinyDrawCount(side,siteIndex,ability){
  const backup=own.some(ship=>craftStats(ship,siteIndex).powered&&ship.occupants?.some(entry=>entry.role==='pilot'&&
   entry.card.id===matching.get(ship.id)&&PremiereUnits.active(entry.card)));
  const regular=ability>=required||backup?1:0;
- return regular+printedWarRoomExtraBattleDestiny(side,siteIndex)+(battleSession?.extraDraws?.[side]??0);
+ return regular+printedWarRoomExtraBattleDestiny(side,siteIndex,initiator)+(battleSession?.extraDraws?.[side]??0);
 }
 
 function drawDestinySeries(side,kind,count,modifier,complete){

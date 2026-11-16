@@ -1321,6 +1321,32 @@ test('Alter can uncover a pile after Eyes In The Dark is on the table',async()=>
  assert.equal(run('state.lost.includes(eyes)&&state.lostPileEffects.length===0'),true);
 });
 
+test('a Light Effect in hand shows legal targets in the popup and plays through the normal action path',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ run("state.phase=1;inspectCard('Light',0,'hand')");
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/In deiner Ausspielen-Phase/);
+ assert.doesNotMatch(body.innerHTML,/Side Lost Pile verdecken/);
+ run("state.phase=2;inspectCard('Light',0,'hand')");
+ assert.match(body.innerHTML,/Light Side Lost Pile verdecken \(0 Force\).*Dark Side Lost Pile verdecken \(0 Force\)/);
+ assert.equal(elements.get('selectInspectorCard').hidden,true);
+ run("playInspectorEffect(legalActions(state,'Light').find(action=>action.kind==='deployLostPileEffect'&&action.target==='Dark'))");
+ assert.equal(elements.get('cardInspector').open,false);
+ assert.equal(run("state.hand.length===0&&PremiereGame.lostPileFaceDown(state,'Dark')"),true);
+});
+
+test('an unsupported Effect or an unaffordable Revolution shows why the card cannot be played',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ run(`state.hand=[catalog.find(card=>card.id==='Light:2110'),{id:'test-effect',type:'Effect',name:'Untested'}];
+  state.force=[{name:'Force'}];inspectCard('Light',0,'hand');`);
+ const body=elements.get('cardInspectorBody');
+ assert.match(body.innerHTML,/Revolution braucht 3 Force\. Du hast 1/);
+ run("inspectCard('Light',1,'hand')");
+ assert.match(body.innerHTML,/Effect ist in V2 noch nicht spielbar/);
+ run("state.force.push({name:'Force'},{name:'Force'});inspectCard('Light',0,'hand')");
+ assert.match(body.innerHTML,/Force-Icons und Spieltext vertauschen \(3 Force\)/);
+});
+
 test('Alter must draw below the highest ability to stop Eyes In The Dark from deploying',async()=>{
  for(const destiny of [1,4]){
   const {run,elements}=await eyesInTheDarkHarness();
@@ -1985,14 +2011,16 @@ test('the bot reevaluates distinct battle sites before leaving the Battle phase'
  const {run}=reactHarness();
  run(`state.locations.forEach((_,slot)=>{
   state.light[slot]=[{name:'Rebel '+slot,type:'Character',ability:1,power:1,forfeit:1}];
-  state.dark[slot]=[{name:'Imperial '+slot,type:'Character',ability:1,power:1,forfeit:1}];
+  state.dark[slot]=[{name:'Imperial '+slot,type:'Character',ability:1,power:2,forfeit:1}];
  });
+ state.hand=[{name:'First damage'},{name:'Second damage'}];
  state.phase=2;state.botForce=[{name:'Battle cost 1'},{name:'Battle cost 2'}];
  state.botTurn={steps:botPlan(),index:3};
  function finishBattle(){
   for(let step=0;step<24&&battleSession;step++){
    const pass=PremiereGame.sides.flatMap(side=>legalActions(state,side)).find(action=>
-    ['passResponse','passWeapons','skipDestiny','passDamage'].includes(action.kind));
+    ['passResponse','passWeapons','skipDestiny','passDamage'].includes(action.kind)||
+    (action.kind==='battleForceLoss'&&action.args[0]==='hand'));
    if(!pass||!performAction(pass))return false;
   }
   return !battleSession;
@@ -2004,6 +2032,30 @@ test('the bot reevaluates distinct battle sites before leaving the Battle phase'
  assert.equal(run('botNextStep()&&state.phase===4&&state.battledSitesThisTurn.join()=== "0,1"'),true);
 });
 
+test('the bot skips a legal battle when the opponent is favored after estimated Destiny',()=>{
+ const {run}=reactHarness();
+ run(`state.phase=2;state.botTurn={steps:botPlan(),index:3};state.botForce=[{name:'Battle cost'}];
+  state.light[0]=[{name:'Rebel',type:'Character',ability:4,power:4}];
+  state.dark=[[{name:'Imperial',type:'Character',ability:2,power:5}],[]];`);
+ assert.equal(run("botNextStep()&&state.phase===3&&!battleSession&&state.botForce.length===1"),true);
+ assert.match(run('state.botHistory[0]'),/fehlt ein Vorteil/);
+ assert.equal(run("legalActions(state,'Dark').some(action=>action.kind==='battle')"),true);
+ assert.equal(run("botNextStep()&&state.phase===4&&!battleSession"),true);
+});
+
+test('the bot draws several cards to rebuild, preserves its last Life Force and can replay a one-card turn',()=>{
+ for(const [adaptive,count,forceCount] of [[true,5,6],[true,2,3],[false,1,6]]){
+  const {run}=reactHarness();
+  run(`state.activeSide='Dark';state.dark=[[],[]];state.phase=4;state.botTurn={steps:botPlan(),index:5};
+   state.botDeck=[];state.botHand=[];state.botUsed=[];
+   state.botForce=Array.from({length:${forceCount}},(_,index)=>({name:'Force '+index}));`);
+  assert.equal(run(`botNextStep(true,${adaptive})`),true);
+  assert.equal(run('state.botHand.length'),count);
+  assert.equal(run('state.botForce.length'),forceCount-count);
+  assert.equal(run('state.gameWinner'),null);
+  assert.equal(run("state.game.actions.filter(action=>action.kind==='draw').length"),count);
+ }
+});
 test('each move reevaluates the available cards and legacy replay can leave the phase after one',()=>{
  for(const repeatPhase of [false,true]){
   const {run}=reactHarness();
