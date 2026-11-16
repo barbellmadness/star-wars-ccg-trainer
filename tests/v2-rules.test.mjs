@@ -313,7 +313,7 @@ test('movement options reject wrong side, wrong phase and insufficient Force',()
 
 test('Dark bot schedules a Move phase and moves toward opponent Force icons',()=>{
  const {run}=harness();
- assert.equal(run("botPlan().map(s=>s.kind).join(',')"),'activate,control,deploy,move,draw,finish');
+ assert.equal(run("botPlan().map(s=>s.kind).join(',')"),'activate,control,deploy,battle,move,draw,finish');
  run("render=()=>{};const trooper={name:'Trooper',type:'Character',deploy:1,ability:1};state={turn:2,phase:0,activeSide:'Dark',botTurn:{steps:[{kind:'move'}],index:0},locations:[{name:'Tatooine: A',type:'Location',subType:'Site',icons:{light:0,dark:1}},{name:'Tatooine: B',type:'Location',subType:'Site',icons:{light:2,dark:0}}],light:[[],[]],dark:[[trooper],[]],botForce:[{id:'force'}],botUsed:[],movedThisTurn:[],botHistory:[],log:[]};");
  run("botNextStep()");
  assert.equal(run("state.dark[1][0].name"),'Trooper');
@@ -528,4 +528,74 @@ test('Two entitled draws with only one Reserve card draw only once and never inv
  assert.equal(run("battleSession.lightDrawCards.length"),1);
  assert.equal(run("state.used.length"),1);
  assert.equal(run("state.deck.length"),0);
+});
+
+test('Dark bot can initiate exactly one battle at a site for 1 Force',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,activeSide:'Dark',botTurn:{steps:[],index:0},locations:[{name:'Hoth: A'}],light:[[{ability:2,power:3}]],dark:[[{ability:4,power:5}]],force:[],used:[],botForce:[{id:'one'},{id:'two'}],botUsed:[],battledSitesThisTurn:[],log:[]};");
+ assert.equal(run("canInitiateBattleFor('Dark',0)"),true);
+ assert.equal(run("initiateBattleFor('Dark',0)"),true);
+ assert.equal(run("state.botForce.length"),1);
+ assert.equal(run("state.botUsed[0].id"),'two');
+ assert.equal(run("battleSession.initiator"),'Dark');
+ assert.equal(run("state.battledSitesThisTurn.includes(0)"),true);
+ assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
+});
+test('Dark bot battle step follows deploy and draws destiny before human Light side',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={turn:2,phase:2,activeSide:'Dark',botTurn:{steps:[{kind:'battle'},{kind:'move'}],index:0},locations:[{name:'Hoth: A',type:'Location',subType:'Site'}],light:[[{name:'Rebel',ability:4,power:3,forfeit:3}]],dark:[[{name:'Trooper',ability:4,power:4,forfeit:4}]],force:[],used:[],deck:[{name:'Light destiny',destiny:2}],botDeck:[{name:'Dark destiny',destiny:3}],botForce:[{name:'Payment'}],botUsed:[],battledSitesThisTurn:[],log:[],botHistory:[]};");
+ run("botNextStep()");
+ assert.equal(run("state.phase"),3);
+ assert.equal(run("battleSession.initiator"),'Dark');
+ assert.equal(run("battleSession.darkDestiny"),3);
+ assert.equal(run("battleSession.lightCard"),null);
+ assert.equal(run("state.botUsed.length"),2);
+ assert.equal(run("state.botTurn.index"),1);
+ run("botNextStep()");
+ assert.equal(run("state.botTurn.index"),1);
+ run("battleDestiny('Light')");
+ assert.equal(run("battleSession.lightDestiny"),2);
+});
+test('battle destiny is always drawn by the initiator first',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Hoth: A',type:'Location',subType:'Site'}],light:[[{ability:4,power:2,forfeit:2}]],dark:[[{ability:4,power:2,forfeit:2}]],deck:[{name:'L',destiny:5}],botDeck:[{name:'D',destiny:2}],used:[],botUsed:[],log:[]};battleSession={site:0,initiator:'Dark',lightCard:null,darkCard:null,lightDestiny:null,darkDestiny:null,lightLoss:[],darkLoss:[],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Light')");
+ assert.equal(run("state.deck.length"),1);
+ assert.equal(run("battleSession.lightCard"),null);
+ run("botDestinyDecision()");
+ assert.equal(run("battleSession.darkDestiny"),2);
+ run("battleDestiny('Light')");
+ assert.equal(run("battleSession.lightDestiny"),5);
+ assert.equal(run("state.used.length"),1);
+});
+test('Dark bot selects mandatory nonimmune forfeit while preserving immune Vader',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{name:'Rebel',ability:4,power:10,forfeit:7}]],dark:[[{name:'Vader',ability:6,power:6,forfeit:8,gametext:'Immune to attrition < 5.'},{name:'Trooper',ability:1,power:2,forfeit:2}]],log:[]};battleSession={site:0,initiator:'Dark',lightCard:{name:'Draw'},darkCard:{name:'Freiwillig verzichtet'},lightDestiny:4,darkDestiny:0,lightLoss:[],darkLoss:[],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,botForfeitsPending:true};");
+ assert.equal(run("botChooseForfeits()"),true);
+ assert.equal(run("battleSession.darkLoss.join(',')"),'1');
+ assert.equal(run("battleSession.botForfeitsPending"),false);
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+});
+test('Dark bot cannot battle without Force, confirmed presence, or correct phase',()=>{
+ const {run}=harness();
+ run("render=()=>{};state={turn:1,phase:3,activeSide:'Dark',botTurn:{steps:[{kind:'battle'}],index:0},locations:[{name:'Hoth: A'}],light:[[{ability:4,power:2}]],dark:[[{ability:4,power:2}]],botForce:[],botUsed:[],battledSitesThisTurn:[],log:[],botHistory:[]};");
+ assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
+ run("state.botForce=[{id:'f'}];state.dark[0][0].ability=null");
+ assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
+ run("state.dark[0][0].ability=4;state.phase=2");
+ assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
+ // The bot advances its own phase to Battle; unresolved presence must still prevent initiation.
+ run("state.dark[0][0].ability=null;botNextStep()");
+ assert.equal(run("state.botForce.length"),1);
+ assert.equal(run("battleSession"),null);
+ assert.equal(run("state.botTurn.index"),1);
+});
+
+test('initiated battles cannot be abandoned before paying attrition and damage',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,activeSide:'Light',botTurn:null,locations:[{name:'Hoth: A'}],light:[[{ability:4,power:3}]],dark:[[{ability:1,power:2}]],force:[{id:'f'}],used:[],battledSitesThisTurn:[],log:[]};");
+ assert.equal(run("battleAnalysis(0)"),true);
+ assert.equal(run("closeBattle()"),false);
+ assert.equal(run("battleSession.initiator"),'Light');
+ assert.equal(run("state.used.length"),1);
 });
