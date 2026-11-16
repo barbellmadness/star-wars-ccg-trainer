@@ -331,3 +331,59 @@ test('Dark bot does not spend Force when no legal adjacent destination exists',(
  assert.equal(run("state.botForce.length"),1);
  assert.equal(run("state.botUsed.length"),0);
 });
+
+test('droids count as zero ability, cannot create presence, and do not block allied known ability',()=>{
+ const {run}=harness();
+ run("const bot={id:'Dark:816',name:'EG-6',type:'Character',subType:'Droid',ability:null,power:0};state={locations:[{name:'Tatooine: Cantina',type:'Location',subType:'Site'}],light:[[]],dark:[[bot]]};");
+ assert.equal(run("cardAbility(state.dark[0][0])"),0);
+ assert.equal(run("confirmedPresence('Dark',0)"),false);
+ assert.equal(run("battleTotals(0).darkAbility"),0);
+ run("state.dark[0].push({name:'Officer',type:'Character',subType:'Imperial',ability:4,power:2})");
+ assert.equal(run("confirmedPresence('Dark',0)"),true);
+ assert.equal(run("battleTotals(0).darkAbility"),4);
+});
+test('unknown non-droid ability remains unknown when no known presence or destiny threshold exists',()=>{
+ const {run}=harness();
+ run("state={locations:[{name:'Hoth: Site',type:'Location',subType:'Site'}],light:[[{name:'Unknown',type:'Character',subType:'Alien',ability:null,power:2}]],dark:[[]]};");
+ assert.equal(run("cardAbility(state.light[0][0])"),null);
+ assert.equal(run("confirmedPresence('Light',0)"),null);
+ assert.equal(run("battleTotals(0).lightAbility"),null);
+ run("state.light[0].push({name:'Rebel',type:'Character',ability:4,power:2})");
+ assert.equal(run("confirmedPresence('Light',0)"),true);
+ assert.equal(run("battleTotals(0).lightAbility"),4);
+});
+test('EG-6 boosts friendly non-power droids present, but not itself, power droids or enemies',()=>{
+ const {run}=harness();
+ run("const eg={id:'Dark:816',name:'EG-6',type:'Character',subType:'Droid',power:0,extraText:['Power Droid'],gametext:'Adds 1 to power of each of your droids present, except power droids.'};const astromech={name:'R1',type:'Character',subType:'Droid',power:2};const otherPower={name:'Power Droid',type:'Character',subType:'Droid',power:3,extraText:['Power Droid']};const lightDroid={name:'R2',type:'Character',subType:'Droid',power:1};state={locations:[{name:'Tatooine: A',type:'Location',subType:'Site'}],light:[[lightDroid]],dark:[[eg,astromech,otherPower]]};");
+ assert.equal(run("cardPowerModifier(state.dark[0][1],'Dark',0)"),1);
+ assert.equal(run("cardPowerModifier(state.dark[0][0],'Dark',0)"),0);
+ assert.equal(run("cardPowerModifier(state.dark[0][2],'Dark',0)"),0);
+ assert.equal(run("cardPowerModifier(state.light[0][0],'Light',0)"),0);
+ assert.equal(run("battleTotals(0).darkPower"),6);
+ run("state.dark[0].push(state.dark[0][0])");
+ assert.equal(run("cardPowerModifier(state.dark[0][1],'Dark',0)"),2);
+});
+test('starred EG-6 destiny is explicitly zero, locations are zero, unknown non-locations stay unknown',()=>{
+ const {run}=harness();
+ assert.equal(run("printedBattleDestiny({id:'Dark:816',type:'Character',destiny:NaN,gametext:'*Destiny equals zero'})"),0);
+ assert.equal(run("printedBattleDestiny({type:'Location',subType:'Site',destiny:null})"),0);
+ assert.equal(run("printedBattleDestiny({type:'Character',destiny:null})"),null);
+ assert.equal(run("printedBattleDestiny({type:'Character',destiny:3})"),3);
+});
+test('EG-6 battle destiny doubles underdog Dark present power once, not battle destiny',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Tatooine: A',type:'Location',subType:'Site'}],light:[[{name:'Rebel',type:'Character',ability:4,power:5}]],dark:[[{name:'Trooper',type:'Character',ability:4,power:3}]],deck:[],used:[],botDeck:[{id:'Dark:816',name:'EG-6',destiny:NaN,gametext:'*Destiny equals zero, but if drawn as a battle destiny where you have less power than opponent, your total power present is doubled (once per battle).'}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Dark')");
+ assert.equal(run("battleSession.darkDestiny"),0);
+ assert.equal(run("battleSession.darkPowerDoubled"),true);
+ assert.equal(run("battleDamagePreview().darkTotal"),6);
+ assert.equal(run("battleDamagePreview().lightDamage"),1);
+ assert.equal(run("state.botUsed.length"),1);
+});
+test('EG-6 destiny does not double Dark power if already tied or stronger',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{name:'Tatooine: A',type:'Location',subType:'Site'}],light:[[{name:'Rebel',type:'Character',ability:4,power:3}]],dark:[[{name:'Trooper',type:'Character',ability:4,power:3}]],deck:[],used:[],botDeck:[{id:'Dark:816',name:'EG-6',destiny:NaN,gametext:'*Destiny equals zero, but if drawn as a battle destiny where you have less power than opponent, your total power present is doubled (once per battle).'}],botUsed:[],log:[]};battleSession={site:0,lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Dark')");
+ assert.equal(run("battleSession.darkPowerDoubled"),undefined);
+ assert.equal(run("battleDamagePreview().darkTotal"),3);
+});
