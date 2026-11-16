@@ -360,7 +360,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.10.0';
+const trainerVersion='2.11.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -459,12 +459,13 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.innerHTML='';box.style.display='none';return;
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const rack=state.blasterRack;
  const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
- const extra=[retrieval,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
+ const extra=[retrieval,shuffle,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
 
@@ -801,7 +802,7 @@ function renderBattle(){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
@@ -986,7 +987,7 @@ function inspectLocation(i){
  const previous=state.convertedLocations?.[i]?.map(card=>escapeHTML(card.name+' · '+card.side))??[];
  showCardDetails(c,'<p class="location-icon-pips">Force-Icons · Light '+icons[0]+' / Dark '+icons[1]+'</p><p>'
   +escapeHTML(c.subType||c.type||'Location')+(c.side?' · '+escapeHTML(c.side):'')+(flags.length?' · '+flags.join(' · '):'')+'</p>'+transit
-  +(effects.length?'<p>Effects am Ort · '+effects.join(', ')+'</p>':'')+(previous.length?'<p>Darunter · '+previous.join(', ')+'</p>':''));
+  +(effects.length?'<p>Ausgelegte Karten am Ort · '+effects.join(', ')+'</p>':'')+(previous.length?'<p>Darunter · '+previous.join(', ')+'</p>':''));
  return true;
 }
 
@@ -1079,15 +1080,16 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
- const devices=available.filter(option=>option.kind==='deployDevice'&&option.args[0]===selected&&option.args[1]===i)
-  .map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
+ const deviceActions=available.filter(option=>option.kind==='deviceAction'?option.site===i:
+  ['deployDevice','deployBolt'].includes(option.kind)&&option.args[0]===selected&&option.args[1]===i)
+  .map(option=>ruleButton(option,option.label??(option.host.name+' ausrüsten ('+option.cost+' Force)'))).join('');
  const locationEffects=available.filter(option=>option.kind==='deployLocationEffect'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.distance!==undefined?option.target.name+' · '+option.distance+' Force zurückholen':
    option.target?option.target.name+' als Ziel':option.card.name+' ausspielen')).join('');
  const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
  const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+locationEffects+piloted
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
-  +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+devices
+  +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+deviceActions
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const totals=loc?battleTotals(i):null,stat=value=>Number.isFinite(value)?value.toLocaleString('de-DE'):'?';
  const zone=(side,cards)=>{
@@ -1303,7 +1305,7 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1,latestCardRulesVersion].includes(saved.cardRulesVersion))||
+     (saved.cardRulesVersion!==undefined&&![0,1,2,latestCardRulesVersion].includes(saved.cardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }

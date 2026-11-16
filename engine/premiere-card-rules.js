@@ -42,7 +42,7 @@ const PremiereCardRules = (() => {
         'registered Premiere locations', { printedSide, amount: -1 }),
       continuous('extraBattleDestiny', 'Die Seite mit diesem Ortswortlaut erhält beim Initiieren hier einen zusätzlichen Battle-Destiny-Draw.',
         'battle-initiator', 'War Room', { printedSide: printedSide === 'Dark' ? 'Light' : 'Dark', amount: 1, duration: 'battle', expires: 'battle end' }),
-    ]);
+    ], true);
   }
 
   for (const [id, ally] of [['Light:2052', 'Rebel'], ['Dark:2355', 'Imperial']]) {
@@ -76,6 +76,20 @@ const PremiereCardRules = (() => {
   register(['Dark:1027'], [
     characterStat('characterForfeit', 1, 'Tagge erhält an einer Site Forfeit +1 je anwesendem Imperial Trooper.', { eachPresent: 'imperial-trooper' }),
   ], true);
+  register(['Dark:634'], [
+    continuous('battleDestiny', 'In einem Battle gibt Vader jedem eigenen Battle-Destiny-Draw +1.', 'own battle destiny',
+      'Vader increases each Dark battle destiny', { amount: 1, legacy: true }),
+    continuous('pilotPower', 'Vader erhöht die Power des pilotierten Schiffs um 3. In seiner Custom TIE gibt er stattdessen Power +4 und Maneuver +3.',
+      'piloted starship', 'Vader and Tarkin apply their printed pilot bonuses', { amount: 3 }),
+    continuous('attritionImmunity', 'Vader ist immun gegen Attrition unter 5.', 'Vader', 'immune Vader still requires vulnerable Trooper forfeit', { below: 5 }),
+  ], true);
+  register(['Dark:1061'], [
+    continuous('pilotPower', 'Tarkin erhöht die Power des pilotierten Schiffs um 2.', 'piloted starship',
+      'Vader and Tarkin apply their printed pilot bonuses', { amount: 2 }),
+    { event: 'cancelBattleDraw', summary: 'Ist Tarkin mit Vader am selben Battle beteiligt, kann er einmal pro Battle einen gegnerischen Destiny-Draw aufheben.',
+      cost: 0, targets: 'just drawn opposing destiny in battle', duration: 'instant', expires: 'after cancellation',
+      test: 'Tarkin with Vader cancels', legacy: true },
+  ], true);
   register(['Light:1021'], [
     characterStat('rebelAura', 1, 'Mit Dodonna an einer Yavin-4-Site anwesende Rebels erhalten Power +1.', { region: 'yavin 4' }),
   ]);
@@ -98,6 +112,44 @@ const PremiereCardRules = (() => {
     continuous('device', 'Comlink kostet beim Deploy 1 Force und eröffnet Deploy-React-Optionen am Ort des Trägers oder an einer Nachbar-Site.',
       'character', 'Comlink equips', { cost: 1, since: 2, deployReact: true }),
   ]);
+  for (const [id, targets] of [['Light:348', 'rebel-or-jawa'], ['Dark:347', 'imperial-or-jawa']]) {
+    register([id], [
+      continuous('device', 'Caller wird an einen eigenen berechtigten Träger angelegt.', targets, 'Caller steals', { since: 3 }),
+      { event: 'stealDroid', summary: 'In deiner Control Phase kannst du einen gegnerischen Droiden mit Restraining Bolt an derselben Site übernehmen. Der Bolt geht auf die Hand seines Besitzers.',
+        targets: 'opposing restrained droid at same site', cost: 0, duration: 'permanent', expires: 'when control changes', test: 'Caller steals', since: 3 },
+    ]);
+  }
+  register(['Light:2100', 'Dark:2099'], [
+    continuous('restrainDroid', 'Kostet keine Force. Wird an einen Droiden an einer Site angelegt und sperrt dessen Bewegung und Kartentext.', 'droid at site',
+      'Restraining Bolt blocks', { since: 3 }),
+    { event: 'transferBolt', summary: 'In deiner Deploy Phase kannst du den Bolt kostenlos an einen anderen Droiden an derselben Site übertragen.',
+      targets: 'another droid at same site', cost: 0, duration: 'instant', expires: 'after transfer', test: 'Restraining Bolt blocks', since: 3 },
+  ]);
+  register(['Dark:777'], [
+    continuous('locationEffect', 'Der unbewegliche Droid Detector sperrt Droiden-Deploy an einer Innen-Site. Ab dem folgenden Zug gehen dort anwesende Droiden jeweils am Zugende verloren.',
+      'interior site', 'Droid Detector bars', { since: 3, siteDevice: 'droid-detector', requiredTag: 'Interior' }),
+  ], true);
+  register(['Light:1778', 'Dark:2373'], [
+    continuous('locationEffect', 'Legt ein Planetensystem unter Nachtbedingungen für dessen Sites. In Battles dort zählen zusätzliche Destiny-Draws nur zur Power. Spione werden an Nacht-Sites frei ausgespielt.',
+      'planet system', 'Nightfall and Sunsdown', { since: 3, nightfall: true }),
+  ], true);
+
+  for (const [ids, name, directTarget, drawTarget] of [
+    [['Light:2217', 'Dark:2216'], 'Sense', 'Alter', 'Interrupt oder React'],
+    [['Light:95', 'Dark:94'], 'Alter', 'Sense', 'Effect oder Utinni Effect'],
+  ]) {
+    register(ids, [
+      { event: 'counter', mode: 'direct', name, targets: directTarget.toLowerCase(), cost: 0, duration: 'instant', expires: 'after resolution',
+        summary: 'Hebt gerade gespieltes ' + directTarget + ' ohne Destiny auf.', test: 'Sense and Alter offer', since: 3 },
+      { event: 'counter', mode: 'destiny', name, targets: drawTarget, cost: 0, duration: 'instant', expires: 'after resolution',
+        summary: 'Hebt ' + drawTarget + ' auf, wenn Destiny unter der höchsten Ability eines eigenen Charakters auf dem Tisch liegt.',
+        test: 'Sense and Alter offer', since: 3 },
+    ]);
+  }
+  register(['Light:2514', 'Dark:1831'], [
+    { event: 'shufflePile', summary: 'Mische das nicht leere Reserve Deck, den Used Pile oder den Lost Pile einer beliebigen Seite, ohne Karten aufzudecken.',
+      cost: 0, targets: 'Reserve Deck, Used Pile or Lost Pile', duration: 'instant', expires: 'after shuffle', test: 'Pile shuffling', since: 3 },
+  ], true);
   register(['Dark:1939'], [
     continuous('locationEffect', 'Ergänzt je ein Light- und Dark-Force-Icon an einer Location. Mehrere Kopien am selben Ort geben den Bonus einmal.',
       'location', 'registered location effects', { expires: 'when canceled', iconBonus: 1 }),
@@ -113,6 +165,10 @@ const PremiereCardRules = (() => {
   register(['Light:1429'], [
     continuous('locationEffect', 'Ein eigener Schmuggler fliegt von einem anderen System nach Kessel und zurück. Ein gegnerischer Destiny-Draw von 0 kostet das Schiff. Bei Rückkehr wird die beim Ausspielen festgelegte Parsec-Distanz an Force zurückgeholt.',
       'smuggler-aboard-starship', 'Kessel Run tracks', { expires: 'completion, cancellation or target lost', mission: 'kessel-run', since: 2 }),
+  ], true);
+  register(['Light:1870'], [
+    continuous('locationEffect', 'Ein Rebel von Tatooine reist nach Alderaan. Bei Ankunft werden pro eigenem Force-Attuned-Charakter 1 Force und pro Force-Sensitive-Charakter oder Jedi 2 Force zurückgeholt.',
+      'Rebel on Tatooine', 'Our Most Desperate Hour reaches Alderaan', { expires: 'completion, cancellation or target lost', mission: 'desperate-hour', since: 3 }),
   ], true);
   register(['Light:305'], [
     continuous('kesselSmuggler', 'BoShek darf einen Kessel Run anstelle eines Schmugglers fliegen. Seine Pilot-Power und gedruckte Attrition-Immunität gelten daneben.',

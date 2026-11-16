@@ -104,6 +104,13 @@ const PremiereLocations = (() => {
     return Math.max(0, printed + bothSidesBonus + effects.reduce((sum, effect) => sum + (effect.icons?.[side] ?? 0), 0));
   }
 
+  function nightEffectsAt(state, slot) {
+    const site = state.locations[slot];
+    if (!site || system(site)) return [];
+    return state.locations.flatMap((card, index) =>
+      system(card) && region(card) === region(site) ? effectsAt(state, index).filter(effect => effect.nightfall) : []);
+  }
+
   const transit = new Map([
     ['Light:676', [1, 1]], ['Dark:675', [2, 0]], ['Light:2447', [1, 2]],
     ['Dark:2446', [2, 1]], ['Light:2853', [0, 2]], ['Dark:2852', [1, 1]]
@@ -115,7 +122,7 @@ const PremiereLocations = (() => {
     return {interior: tags.includes('Interior'), exterior: tags.includes('Exterior'),
       scompLink: tags.includes('Scomp Link'), dockingBay: !!cost,
       transitCost: cost?.[printedSide(state, slot, side) === 'Light' ? 0 : 1] ?? null,
-      night: state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card))};
+      night: !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
   }
 
   function forceGeneration(state, side) {
@@ -161,7 +168,7 @@ const PremiereLocations = (() => {
   }
 
   return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
-    findEntry: find, occupy: presence, present, presentCards, printedSide};
+    findEntry: find, nightEffectsAt, occupy: presence, present, presentCards, printedSide};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereLocations;

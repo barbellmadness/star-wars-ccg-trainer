@@ -16,16 +16,16 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 ## 7. Kartentexte für alle Kartentypen
 
-Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. Registrierte Regeln umfassen freie Deploys, Orts- und Charakterwerte, Flottenboni, Teile der Ausrüstung, Presence Of The Force, Death Star Plans und Kessel Run. Die Abdeckungsanzeige führt die übrigen Regeln weiter als offen oder teilweise umgesetzt.
+Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. V2.11 führt beide War Rooms, Vader, Tarkin, Droid Detector, Nightfall, Sunsdown, die Alderaan-Mission und die beiden Stapel-Mischinterrupts als umgesetzt. Die Antworten von Sense und Alter, das Anlegen und Übertragen des Restraining Bolt sowie der Kontrollwechsel durch Caller sind im bestehenden Spielablauf spielbar. Die Abdeckungsanzeige führt die offenen Varianten der übrigen Karten weiter auf.
 
 - [ ] Pro Karten-ID einen Eintrag mit Regelquelle, gültigem Text, einzelnen Effekten, Ereignis, Kosten, Zielen, Dauer, Ablauf und Testreferenzen führen. Dieselbe Karte kann mehrere offene und bereits ausführbare Abschnitte haben.
-- [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. War Rooms und andere im Code verstreute Regeln in das Register überführen.
-- [ ] Charakterfähigkeiten für Einsatzbeschränkungen, Merkmale, Droiden, Spione, Nachtbedingungen, Pilotboni, Zielwahl, Forfeit und passende Kombinationen vervollständigen. Vader und Tarkin sowie weitere häufige Karten der Starterdecks gezielt testen.
+- [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. Die übrigen im Code verstreuten Regeln in das Register überführen.
+- [ ] Charakterfähigkeiten für Einsatzbeschränkungen, Merkmale, Droiden, Spione, Nachtbedingungen, Pilotboni, Zielwahl, Forfeit und passende Kombinationen vervollständigen. Häufige Karten der Starterdecks gezielt testen.
 - [ ] Location-Texte beider Seiten vollständig umsetzen. Force-Icons, generierte Force, Drain, Deploy, Presence, Power, Bewegung, Destiny, Kartentrigger und pauschale Einschränkungen durch den jeweiligen Ort verarbeiten.
-- [ ] Devices mit Ausspielen, Trägern, Einsatzkosten, Nutzungsgrenzen, automatischen Effekten und Zielwechseln abbilden. Dazu gehören unter anderem Comlink, Caller, Restraining Bolt und Geräte, die Waffen oder Bewegung verändern.
-- [ ] Weitere Effects mit Aufstellungsziel, Dauer, laufenden Modifikatoren, Triggern, Aufheben und Ablauf umsetzen. Die Ziel- und Ortsverfolgung von Death Star Plans und Kessel Run auf weitere Utinni Effects ausweiten.
-- [ ] Interrupts mit Used- und Lost-Verhalten, Auswahl zwischen gedruckten Optionen, Antwortfenstern, Zielbedingungen und Kosten implementieren. Sense und Alter einschließlich gegenseitiger Antworten als erste vollständige Aktionskette prüfen.
-- [ ] Gemeinsame Karteneffekt-Operationen ergänzen. Suche und Offenlegen, gezielter Stapelwechsel, Mischen, Karten austauschen, Retrieval, Verlust, Out of Play, Schutz, Kontrollwechsel und Aufheben müssen als prüfbare Aktionen verfügbar sein.
+- [ ] Weitere Devices mit Ausspielen, Trägern, Einsatzkosten, Nutzungsgrenzen, automatischen Effekten und Zielwechseln abbilden. Offene Kombinationen umfassen Deploy-React über Comlink und den Kontrollwechsel mit einem bereits vorhandenen einzigartigen Droiden.
+- [ ] Weitere Effects mit Aufstellungsziel, Dauer, laufenden Modifikatoren, Triggern, Aufheben und Ablauf umsetzen. Die Ziel- und Ortsverfolgung von Death Star Plans, Kessel Run und Our Most Desperate Hour auf weitere Utinni Effects ausweiten.
+- [ ] Weitere Interrupts mit Used- und Lost-Verhalten, Auswahl zwischen gedruckten Optionen, Antwortfenstern, Zielbedingungen und Kosten implementieren. Alter und Sense für neue Effect- und Interrupt-Aktionen anbinden.
+- [ ] Weitere Varianten von Suche und Offenlegen, gezieltem Stapelwechsel, Kartentausch, Retrieval, Verlust, Out of Play, Schutz, Kontrollwechsel und Aufheben als prüfbare Aktionen abbilden.
 - [ ] Weitere Kartensonderfälle mit eigenem Ablauf abdecken, etwa Ausrüstung aufheben, einen Weg sperren und geschützte Ziele behandeln.
 - [ ] Die verbleibenden Karteneffekte pro Typ bearbeiten. Mit den Karten der beiden Starterdecks beginnen, dann die übrigen Karten und ihre Kombinationen vervollständigen. Für jede neue Kartenregel einen zulässigen und einen abgelehnten Fall prüfen.
 

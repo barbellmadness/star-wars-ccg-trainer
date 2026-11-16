@@ -6,9 +6,12 @@ const PremiereUnits = (() => {
   const bantha = card => card?.id === 'Dark:191' && card.type === 'Vehicle';
   const crawler = card => ['Light:2161', 'Dark:2160'].includes(card?.id);
   const active = card => !!card && !card.inactive && !card.captured && !card.missing && !card.undercover;
+  const restrainingBolt = card => card?.attachments?.find(item => ['Light:2100', 'Dark:2099'].includes(item.id));
+  const textSuppressed = card => !!card?.gameTextCancelled || !!restrainingBolt(card);
   const name = card => (card.name ?? '').replace(/^[•*]+\s*/, '');
   const rUnit = card => card?.characteristics?.includes('r-unit');
   const driveDroids = new Set(['Light:2000', 'Dark:2001']);
+  const canDrive = card => card.subType !== 'Droid' || (driveDroids.has(card.id) && !textSuppressed(card));
 
   const capacity = new Map([
     ['Light:530', {pilot:3, passenger:4, cargo:1}], ['Light:1045', {shared:2}],
@@ -38,7 +41,7 @@ const PremiereUnits = (() => {
     if (card.type !== 'Character' || (card.id === 'Light:1407' && enclosed(host) && !capital(host)) ||
         (card.id === 'Dark:1989' && fighter(host))) return false;
     if (role === 'pilot') return card.pilot === true;
-    if (role === 'driver') return card.subType !== 'Droid' || driveDroids.has(card.id);
+    if (role === 'driver') return canDrive(card);
     if (role === 'astromech') return rUnit(card);
     return role === 'passenger';
   }
@@ -57,7 +60,7 @@ const PremiereUnits = (() => {
     const occupants = (card.occupants ?? []).filter(({card}) => active(card));
     const pilots = occupants.filter(({role}) => role === 'pilot').map(({card}) => card);
     const motor = card.type === 'Starship' ? permanentAbility !== null || pilots.length > 0
-      : tube(card) || bantha(card) || occupants.some(({role}) => role === 'driver');
+      : tube(card) || bantha(card) || occupants.some(({role,card}) => role === 'driver' && canDrive(card));
     const powered = motor && !landed && active(card) && !card.disabled;
     let power = card.power ?? 0, maneuver = card.maneuver, hyperspeed = card.hyperspeed, landspeed = card.landspeed;
     const ability = permanentAbility ?? 0;
@@ -72,6 +75,7 @@ const PremiereUnits = (() => {
       if (Number.isFinite(hyperspeed) && pilot.id === 'Dark:502' && card.id === 'Dark:723') hyperspeed++;
     }
     if (powered) for (const {card: occupant} of occupants) {
+      if (textSuppressed(occupant)) continue;
       const r2 = occupant.id === 'Light:1995' && fighter(card);
       const r1 = occupant.id === 'Dark:1989' && capital(card);
       const r4 = driveDroids.has(occupant.id) && card.type === 'Vehicle' && !bantha(card);
@@ -138,7 +142,7 @@ const PremiereUnits = (() => {
   }
 
   return {active, accepts, add, bantha, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost,
-    recordWeaponUse, remove, roles, stats, tie, tube, usesMultipleWeapons};
+    recordWeaponUse, remove, restrainingBolt, roles, stats, textSuppressed, tie, tube, usesMultipleWeapons};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereUnits;

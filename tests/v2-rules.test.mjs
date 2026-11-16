@@ -941,7 +941,7 @@ test('starter validation rejects invalid IDs, side, quantities and starting loca
  assertInvalid(deck=>{deck.cards[1].id=deck.cards[0].id},/Doppelter Eintrag/);
  assertInvalid(deck=>{deck.cards[0].count=1.5},/Ungültige Kartenanzahl/);
  assertInvalid(deck=>{deck.cards[0].count=2},/Erwartet sind 60 Karten/);
- assertInvalid(deck=>{deck.cards[0].id='Light:95'},/nicht ausgespielt werden/);
+ assertInvalid(deck=>{deck.cards[0].id='Light:38'},/nicht ausgespielt werden/);
  assertInvalid(deck=>{deck.startingLocations=['Light:2052']},/Ungültige Starting Location/);
  assertInvalid(deck=>{deck.startingLocations=['Light:1427']},/Ungültige Starting Location/);
  assertInvalid(deck=>{deck.startingLocations.push(deck.startingLocations[0])},/unterschiedliche Namen/);
@@ -1089,6 +1089,19 @@ test('registered fleet power counts only ships at a controlled related system',a
  assert.equal(run('fleetPowerAtSite("Dark",2)'),0);
 });
 
+test('Vader and Tarkin apply their printed pilot bonuses',async()=>{
+ const {run}=await craftHarness();
+ run(`const vader=card('Dark:634'),tarkin=card('Dark:1061'),custom=card('Dark:2700'),destroyer=card('Dark:1291');
+  const customPower=custom.power,customManeuver=custom.maneuver;PremiereUnits.add(custom,vader,'pilot','Dark');
+  PremiereUnits.add(destroyer,tarkin,'pilot','Dark');`);
+ assert.equal(run('craftStats(custom,1).power'),run('customPower+4'));
+ assert.equal(run('craftStats(custom,1).maneuver'),run('customManeuver+3'));
+ assert.equal(run('craftStats(destroyer,1).power'),run('destroyer.power+2'));
+ run("custom.occupants=[];PremiereUnits.add(destroyer,vader,'pilot','Dark')");
+ assert.equal(run('craftStats(custom,1).powered'),false);
+ assert.equal(run('craftStats(destroyer,1).power'),run('destroyer.power+5'));
+});
+
 test('registered free deployment requires the qualifying ally or farm',async()=>{
  const {run}=await craftHarness();
  run(`const rebel=card('Light:2052'),owen=card('Light:1883');
@@ -1138,6 +1151,91 @@ test('card rule registry returns source, active text and test references across 
  })`));
  assert.ok(run("effectCoverage().complete.some(card=>card.id==='Light:2052')"));
  assert.ok(run("effectCoverage().unimplemented.some(card=>card.id==='Dark:1480')"));
+});
+
+test('Restraining Bolt blocks movement and active text, and Caller steals from the other side',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(97,8);
+  const rebel=card('Light:2052'),tooex=card('Light:2'),power=card('Dark:816'),droid=card('Dark:2001');
+  const bolt=card('Light:2100'),caller=card('Light:348');
+  state.light[2]=[rebel,tooex];state.dark[2]=[power,droid];state.hand=[caller,bolt];state.force=[];`);
+ assert.equal(run("cardPowerModifier(droid,'Dark',2)"),1);
+ assert.equal(run("requestAction('deployDevice','Light',[0,2,1])"),false);
+ assert.equal(run("requestAction('deployDevice','Light',[0,2,0])"),true);
+ run('select(0)');
+ assert.match(elements.get('board').innerHTML,/Restraining Bolt an .*Eegee-Six.*Dark Side/);
+ assert.equal(run("requestAction('deployBolt','Light',[0,3,1])"),false);
+ assert.equal(run("performAction(legalActions(state,'Light').find(action=>action.kind==='deployBolt'&&action.host===power))"),true);
+ assert.equal(run("state.used.length===0&&cardPowerModifier(droid,'Dark',2)===0"),true);
+ assert.equal(run("travelOptions(power,'Dark',2,3).length"),0);
+ assert.equal(run("requestAction('deviceAction','Light',['stealDroid',1])"),false);
+ assert.equal(run("performAction(legalActions(state,'Light').find(action=>action.kind==='deviceAction'&&action.target.card===droid))"),true);
+ assert.equal(run("!PremiereUnits.restrainingBolt(power)&&PremiereUnits.restrainingBolt(droid)===bolt"),true);
+ assert.equal(run("cardPowerModifier(droid,'Dark',2)"),1);
+ run("state.phase=1;presentGame()");
+ assert.match(elements.get('board').innerHTML,/Caller · .*übernehmen/);
+ assert.equal(run("performAction(legalActions(state,'Light').find(action=>action.kind==='deviceAction'))"),true);
+ assert.equal(run("state.light[2].includes(droid)&&!state.dark[2].includes(droid)&&state.hand[0]===bolt"),true);
+ assert.equal(run("droid.side==='Dark'&&droid.controller==='Light'&&!PremiereUnits.textSuppressed(droid)"),true);
+ assert.equal(run("loseTableCard('Light',2,droid)&&state.botLost.includes(droid)&&!state.lost.includes(droid)"),true);
+});
+
+test('Droid Detector bars droid deploy immediately and removes present droids only from later turns',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(98,8);
+  state.locations[2]=card('Dark:673');const droid=card('Light:2'),other=card('Dark:816');
+  state.light[2]=[droid,card('Light:1593')];state.dark[2]=[other];
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[card('Dark:777')];state.hand=[card('Light:95')];`);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,3])"),false);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,2])"),true);
+ assert.equal(run("!PremiereGame.responseWindow(state.game)&&!legalActions(state,'Light').some(action=>action.kind==='alterLocationEffect')"),true);
+ assert.equal(run("characterLocationAllowed(droid,state.locations[2])"),false);
+ assert.equal(run("characterLocationAllowed(droid,dunes)"),true);
+ assert.equal(run("characterLocationAllowed(state.light[2][1],state.locations[2])"),true);
+ run("endTurn('Dark')");
+ assert.equal(run("state.light[2].includes(droid)&&state.dark[2].includes(other)"),true);
+ run("endTurn('Light')");
+ assert.equal(run("state.lost.includes(droid)&&state.botLost.includes(other)&&state.light[2][0].id==='Light:1593'"),true);
+});
+
+test('Our Most Desperate Hour reaches Alderaan aboard a ship and retrieves Force by character ability',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(102,8);
+  const han=card('Light:1098'),luke=card('Light:1593'),obi=card('Light:1803'),falcon=card('Light:1677');
+  const mission=card('Light:1870');
+  state.light[2]=[han];state.light[3]=[luke,obi];state.dark[2]=[card('Dark:634')];
+  state.hand=[mission];state.force=forcePile();
+  state.lost=Array.from({length:6},(_,i)=>({name:'Lost '+i}));`);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,6,0])"),false);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,5,0])"),true);
+ assert.match(elements.get('log').textContent,/Alderaan.*Han Solo/);
+ run("state.light[2].splice(0,1);PremiereUnits.add(falcon,han,'pilot','Light');state.light[6]=[falcon];state.phase=4");
+ assert.equal(run("requestAction('move','Light',[6,0,5,'Hyperspeed'])"),true);
+ assert.equal(run("state.light[5][0]===falcon&&state.locationEffects[5].length===0&&state.lost.includes(mission)"),true);
+ assert.equal(run("state.used.filter(card=>card.name.startsWith('Lost')).map(card=>card.name).join(',')"),'Lost 5,Lost 4,Lost 3,Lost 2,Lost 1');
+});
+
+test('Nightfall and Sunsdown enable free Spy deployment and Power Destiny limited to related sites',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(109,9);
+  const spy=card('Dark:1011'),nightfall=card('Light:1778'),sunsdown=card('Dark:2373');
+  state.locations[4]=card('Dark:673');state.hand=[nightfall];state.botHand=[sunsdown];
+  state.light[2]=[card('Light:2052')];state.dark[2]=[card('Dark:2355')];`);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,2])"),false);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,6])"),true);
+ assert.equal(run("PremiereLocations.conditions(state,2,'Dark').night"),true);
+ assert.equal(run("PremiereLocations.conditions(state,4,'Dark').night"),false);
+ assert.equal(run("characterDeployCost(spy,dock,'Dark')"),0);
+ assert.equal(run("characterDeployCost(spy,state.locations[4],'Dark')"),run('spy.deploy'));
+ run("state.activeSide='Dark';state.botTurn={steps:[],index:0}");
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,6])"),true);
+ run(`state.phase=3;state.activeSide='Light';state.botTurn=null;
+  state.deck=[{name:'Light Life'},{name:'L power 1',destiny:2},{name:'L power 2',destiny:3}];
+  state.botDeck=[{name:'Dark Life'},{name:'D power 1',destiny:4},{name:'D power 2',destiny:5}];`);
+ assert.equal(run("requestAction('battle','Light',[2])&&requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')"),true);
+ assert.equal(run("battleSession.powerDestiny.Light"),5);
+ assert.equal(run("battleSession.powerDestiny.Dark"),9);
+ assert.equal(run("battleSession.damage.debt.Light.attrition+battleSession.damage.debt.Dark.attrition"),0);
 });
 
 test('registered location effects add icons once and can be canceled by Alter',async()=>{
@@ -1944,7 +2042,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,2);
+ assert.equal(saved.cardRulesVersion,3);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -2150,6 +2248,69 @@ test('Sense can interrupt a paid React, and Alter can cancel the pending Sense i
    assert.equal(run("state.pendingForceLoss.payer"),'Light');
   }
  }
+});
+
+test('Sense and Alter offer the matching modes and resolve from the top of the response stack',()=>{
+ const {run,elements}=reactHarness();
+ run(`state.botHand=[{id:'Dark:2216',name:'Sense'},{id:'Dark:2216',name:'Sense'}];
+  state.hand=[{id:'Light:95',name:'Alter'}];`);
+ assert.equal(run(`requestAction('drain','Dark',[1])&&requestAction('react','Light',[0,0])&&
+  requestAction('interruptResponse','Dark',[0])&&requestAction('interruptResponse','Light',[0])`),true);
+ assert.equal(run("legalActions(state,'Dark').filter(action=>action.kind==='interruptResponse').map(action=>action.counterMode).join(',')"),'direct,destiny');
+ assert.equal(run("requestAction('interruptResponse','Dark',[0,'wrong'])"),false);
+ assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.equal(run("state.lost[0].name==='Alter'&&state.botUsed[0].name==='Sense'&&state.botDeck.length===2"),true);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.botUsed.map(card=>card.name).join(',')"),'Sense,Sense Destiny,Sense');
+ assert.equal(run("state.light[0].includes(wolfman)"),true);
+ assert.match(elements.get('log').textContent,/Destiny 2 gegen Ability 3/);
+});
+
+test('Alter rejects an immune Effect both during deployment and on table',async()=>{
+ const {run}=await eyesInTheDarkHarness();
+ run("state.hand[0]={...eyes,gametext:eyes.gametext+' (Immune to Alter.)'};state.botHand=[catalog.find(card=>card.id==='Dark:94')];state.dark[0].push({type:'Character',name:'Imperial',ability:4})");
+ assert.equal(run("requestAction('deployLostPileEffect','Light',[0,'Dark'])"),true);
+ assert.equal(run("PremiereGame.responseWindow(state.game)"),null);
+ assert.equal(run("requestAction('alterLostPileEffect','Dark',[0,0])"),false);
+ assert.equal(run("state.botHand.length===1&&PremiereGame.lostPileFaceDown(state,'Dark')"),true);
+});
+
+test('Pile shuffling preserves private information and Sense can cancel before the shuffle',async()=>{
+ for(const blocked of [false,true]){
+  const {run,elements}=await craftHarness();
+  run(`setupDecks=null;state.game=PremiereGame.actionState(103,9);
+   const shuffle=card('Light:2514');state.hand=[shuffle];state.force=[];
+   state.botDeck=[{name:'Sentinel Life'},{name:'Sense Destiny',destiny:1}];
+   state.botLost=['Alpha','Bravo','Charlie','Delta'].map(name=>({name}));
+   state.lostPileEffects=[{card:card('Dark:2897'),target:'Dark'}];
+   state.dark[2]=[card('Dark:634')];state.botHand=${blocked}?[card('Dark:2216')]:[];
+   const cards=state.botLost.slice(),previous=state.game.randomState;select(0);`);
+  assert.match(elements.get('controlPanel').innerHTML,/The Bith Shuffle · Dark Lost Pile mischen/);
+  assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Alpha|Bravo|Charlie|Delta/);
+  assert.equal(run("requestAction('shufflePile','Light',[0,'Dark','force'])"),false);
+  assert.equal(run("requestAction('shufflePile','Light',[0,'Light','lost'])"),false);
+  assert.equal(run("requestAction('shufflePile','Light',[0,'Dark','lost'])"),true);
+  if(blocked)assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+  assert.equal(run("state.botLost.every(card=>cards.includes(card))&&state.botLost.length===cards.length"),true);
+  assert.equal(run("state.game.randomState===previous"),blocked);
+  assert.equal(run("state.lost.includes(shuffle)"),blocked);
+  assert.equal(run("state.used.includes(shuffle)"),!blocked);
+ }
+});
+
+test('Sense may answer Sense only with Destiny and an eligible character',()=>{
+ const {run}=reactHarness();
+ run(`state.botHand=[{id:'Dark:2216',name:'Sense'}];state.hand=[{id:'Light:2217',name:'Sense'}];
+  state.deck.push({name:'Equal',destiny:2});`);
+ assert.equal(run(`requestAction('drain','Dark',[1])&&requestAction('react','Light',[0,0])&&
+  requestAction('interruptResponse','Dark',[0])`),true);
+ run("wolfman.ability=0");
+ assert.equal(run("requestAction('interruptResponse','Light',[0])"),false);
+ run("wolfman.ability=2");
+ assert.equal(run("legalActions(state,'Light').filter(action=>action.kind==='interruptResponse').map(action=>action.counterMode).join(',')"),'destiny');
+ assert.equal(run("requestAction('interruptResponse','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("state.used.map(card=>card.name).join(',')"),'React cost,Equal,Sense');
+ assert.equal(run("state.botLost.length===0&&PremiereGame.responseWindow(state.game).side==='Dark'"),true);
 });
 
 test('phase checkpoints give the active side the order of mandatory triggers and then alternate optional priority',()=>{
