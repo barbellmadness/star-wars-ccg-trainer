@@ -143,7 +143,7 @@ const PremiereGame = (() => {
   }
 
   function outcome(state) {
-    if (state.gameWinner || state.pendingForceLoss || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
+    if (state.gameWinner || state.pendingForceLoss || state.pendingReserveSearch || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
     const light = lifeForce(state, 'Light'), dark = lifeForce(state, 'Dark');
     if (!light && !dark) return 'Simultaneous';
     if (!light) return 'Dark';

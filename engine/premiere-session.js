@@ -3,7 +3,7 @@ let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','retrieve','searchReserve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -549,7 +549,7 @@ function cardEffectStatus(c){
  if(isBantha(c))return 'TEILWEISE: Außen-Site, Ability ½, Landspeed, React, Waffenabwehr und Power +1 für anwesende Tusken Raider. Boarding ist offen.';
  if(c.id==='Light:1593')return 'TEILWEISE: Force-Generierung +1 außerhalb von Tatooine-Sites und gedruckte Attrition-Immunität. Pilotenboni sind offen.';
  if(c.id==='Light:2110')return 'TEILWEISE: Vertauscht Force-Icons und die Seiten der implementierten Ortsregeln. Expand The Empire und Aufheben des Effects sind offen.';
- if(lostRetrieval.has(c.id))return 'TEILWEISE: Rückholen der benannten Karten aus dem Lost Pile. Die Suche im Reserve Deck ist offen.';
+ if(lostRetrieval.has(c.id))return 'TEILWEISE: Benannte Karten aus dem Lost Pile zurückholen oder im Reserve Deck suchen, aufdecken und auf die Hand nehmen. Spielen im gegnerischen Zug bleibt offen.';
  if(['Light:2385','Dark:575'].includes(c.id))return 'TEILWEISE: Antwort auf Force Drain mit Destiny-Vergleich und Force Loss.';
  if(permanentPilotAbility(c)!==null)return 'TEILWEISE: System-Deploy, Power und permanente Piloten-Ability. Hyperspeed mit Nav Computer, soweit vorhanden. Boarding, Landen und Schiffsbewaffnung sind offen.';
  if(['Light:608','Dark:1426','Light:80'].includes(c.id))return 'TEILWEISE: Grundlegende Modifikatoren für Deploy oder Battle Destiny im Weltraum. Weitere Kartentexte sind offen.';
@@ -1026,7 +1026,7 @@ function automatedTargets(pending){
 }
 
 function findAutomatedWeapons(){
- if(!state?.game||state.automatedPending||state.gameWinner||state.pendingForceLoss||
+ if(!state?.game||state.automatedPending||state.gameWinner||state.pendingForceLoss||state.pendingReserveSearch||
     state.game.timing.pending||PremiereGame.responseWindow(state.game))return;
  while(state.mineQueue?.length){
   const record=state.mineQueue.shift(),{side,slot,card,actor}=record;
@@ -1232,25 +1232,72 @@ const lostRetrieval = new Map([
  ['Dark:2528',{cost:2,names:['darth vader','grand moff tarkin','admiral motti','general tagge']}]
 ]);
 
-function retrievalOptions(side){
- const {hand,force,lost}=PremiereGame.zones(state,side);
+function namedRetrievalOptions(side){
+ const {hand,force,deck,lost}=PremiereGame.zones(state,side);
  return (hand??[]).flatMap((card,index)=>{
   const rule=lostRetrieval.get(card.id);
   if(!rule||card.side!==side||force.length<rule.cost)return [];
-  return lost.flatMap((target,slot)=>rule.names.includes(locationTitle(target))?
-   [{index,slot,card,target,cost:rule.cost}]:[]);
+  const retrieve=lost.flatMap((target,slot)=>rule.names.includes(locationTitle(target))?
+   [{kind:'retrieve',args:[index,slot],card,target,cost:rule.cost,
+    label:card.name+' · '+target.name+' zurückholen ('+rule.cost+' Force)'}]:[]);
+  const searchCost=rule.cost+2;
+  if(state.game&&deck?.length&&force.length>=searchCost)retrieve.push({
+   kind:'searchReserve',args:[index],card,cost:searchCost,
+   label:card.name+' · Reserve Deck durchsuchen ('+searchCost+' Force)'});
+  return retrieve;
  });
 }
 
-function playRetrieval(side,index,slot){
- const choice=retrievalOptions(side).find(x=>x.index===index&&x.slot===slot);
+function playRetrieval(side,kind,...args){
+ const choice=namedRetrievalOptions(side).find(entry=>entry.kind===kind&&entry.args.every((value,i)=>value===args[i]));
  if(!choice)return false;
- const {hand,force,used,lost}=PremiereGame.zones(state,side);
- const [interrupt]=hand.splice(index,1);
+ const {hand,force,used}=PremiereGame.zones(state,side);
+ hand.splice(args[0],1);
  PremiereGame.moveTop(force,used,choice.cost);
- const retrieved=PremiereGame.retrieveCard(state,side,slot);
- lost.push(interrupt);
- log(side+' spielt '+interrupt.name+' und holt '+retrieved.name+' in die Used Pile.');
+ const frame={...choice,kind:'interrupt',interrupt:'retrieve',side,search:kind==='searchReserve',duringBattle:!!battleSession};
+ log(side+' spielt '+choice.card.name+' ('+choice.cost+' Force).');
+ if(state.game&&interruptResponses(PremiereGame.otherSide(side),frame).length)PremiereGame.openResponse(state.game,frame);
+ else settleRetrieval(frame);
+ return true;
+}
+
+function settleRetrieval(frame){
+ if(!frame.cancelled&&frame.search){
+  state.pendingReserveSearch=frame;
+  return;
+ }
+ if(!frame.cancelled){
+  const {lost}=PremiereGame.zones(state,frame.side);
+  const retrieved=PremiereGame.retrieveCard(state,frame.side,lost.indexOf(frame.target));
+  if(retrieved)log(frame.side+' holt '+retrieved.name+' in die Used Pile.');
+ }
+ loseOwnedCard(frame.card,frame.side);
+ if(frame.duringBattle&&battleSession?.weaponTurn===frame.side)finishWeaponAction(frame.side,false);
+}
+
+function reserveSearchChoices(frame){
+ const {deck}=PremiereGame.zones(state,frame.side);
+ const rule=lostRetrieval.get(frame.card.id);
+ const eligible=deck.filter(card=>rule.names.includes(locationTitle(card)));
+ return eligible.length?eligible.map((card,index)=>({args:[index],card,label:card.name+' aufdecken und auf die Hand nehmen'})):
+  [{args:[null],label:'Suche beenden und mischen'}];
+}
+
+function finishReserveSearch(index){
+ const frame=state.pendingReserveSearch;
+ const choice=reserveSearchChoices(frame).find(option=>option.args[0]===index);
+ if(!choice)return false;
+ const {deck,hand}=PremiereGame.zones(state,frame.side);
+ if(choice.card){
+  hand.push(...deck.splice(deck.indexOf(choice.card),1));
+  log(frame.side+' deckt '+choice.card.name+' auf und nimmt die Karte auf die Hand.');
+ }else log(frame.side+' findet keine passende Karte.');
+ const shuffled=PremiereGame.shuffle(deck,state.game);
+ deck.splice(0,deck.length,...shuffled);
+ log(frame.side+' mischt das Reserve Deck.');
+ state.pendingReserveSearch=null;
+ loseOwnedCard(frame.card,frame.side);
+ if(frame.duringBattle&&battleSession?.weaponTurn===frame.side)finishWeaponAction(frame.side,false);
  return true;
 }
 
@@ -1370,7 +1417,7 @@ function botNextStep(repeatPhase=true){
  if(!state?.botTurn||state.gameWinner)return false;
  const window=PremiereGame.responseWindow(state.game);
  if(window||state.game?.timing.pending||state.automatedPending)return performAction(legalActions(state,'Dark')[0]);
- if(state.pendingForceLoss||battleSession)return false;
+ if(state.pendingForceLoss||state.pendingReserveSearch||battleSession)return false;
  const deferred=state.botTurn.decision;
  const duel=legalActions(state,'Dark').find(option=>option.kind==='duel');
  if(!deferred&&duel&&performAction(duel))return true;
@@ -1396,7 +1443,7 @@ function botNextStep(repeatPhase=true){
   const choice=available.filter(x=>x.kind==='activate').at(-1);
   if(choice&&performAction(choice))botSay('Activate: Bot aktiviert '+choice.args[0]+' Force. Jetzt verfügbar: '+state.botForce.length+'.');
  }else if(action.kind==='control'){
-  const retrieval=available.find(option=>option.kind==='retrieve');
+  const retrieval=available.find(option=>option.kind==='retrieve')??available.find(option=>option.kind==='searchReserve');
   if(retrieval)performAction(retrieval);
   const seeker=available.find(option=>option.kind==='moveSeeker');
   if(seeker)requestAction('moveSeeker','Dark',seeker.args);
@@ -1562,7 +1609,7 @@ function enterBattleSegments(){
   const x=battleSession;
   if(x.segmented)x.segment='weapons';
   if(battleWeaponOptions('Light').length||battleWeaponOptions('Dark').length||
-     (x.segmented&&PremiereGame.sides.some(side=>duelOptions(side).length||battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
+     (x.segmented&&PremiereGame.sides.some(side=>duelOptions(side).length||namedRetrievalOptions(side).length||battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
   else if(x.segmented)x.segment='power';
  });
 }
@@ -2035,7 +2082,8 @@ function botWeaponAction(){
  const options=available.filter(x=>x.kind==='fireWeapon'&&!hitTargets.includes(x.target)&&state.botDeck.length);
  options.sort((a,b)=>(b.target.power??0)-(a.target.power??0)||a.defense-a.bonus-b.defense+b.bonus||a.cost-b.cost);
  const choice=options[0];
- return available.find(x=>x.kind==='duel')??choice??available.find(x=>x.kind==='battleEffect'||x.kind==='weaponEffect')??available.find(x=>x.kind==='passWeapons');
+ return available.find(x=>x.kind==='duel')??choice??
+  available.find(x=>['battleEffect','weaponEffect','retrieve','searchReserve'].includes(x.kind))??available.find(x=>x.kind==='passWeapons');
 }
 function botWeaponDecision(){return performAction(botWeaponAction())}
 // Hits still participate in combat. The damage segment requires them to be forfeited.
@@ -2397,6 +2445,8 @@ function resolveResponsePass(side){
    settleBattleEffect(frame);
   }else if(frame.interrupt==='duel'){
    settleDuel(frame);
+  }else if(frame.interrupt==='retrieve'){
+   settleRetrieval(frame);
   }else if(frame.interrupt==='overload'){
    resolveOverload(frame);
   }else if(frame.interrupt==='assault'){
@@ -2468,6 +2518,7 @@ function settleCancelledResponse(game){
  if(cancelled?.kind==='interrupt'){
   if(cancelled.interrupt==='battleEffect')settleBattleEffect(cancelled);
   else if(cancelled.interrupt==='duel')settleDuel(cancelled);
+  else if(cancelled.interrupt==='retrieve')settleRetrieval(cancelled);
   else{
    PremiereGame.zones(state,cancelled.side).lost.push(cancelled.card);
    if(cancelled.interrupt==='overload'&&battleSession?.weaponTurn)finishWeaponAction(cancelled.side,false);
@@ -2522,7 +2573,7 @@ function interruptResponses(side,window){
  }
  const kind=window.kind==='lostPileEffect'?'alter':window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
  if(!kind)return [];
- const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','duel','overload'].includes(window.interrupt);
+ const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','duel','overload','retrieve'].includes(window.interrupt);
  const ability=requiresDestiny?highestInterruptAbility(side):0;
  if(requiresDestiny&&!ability)return [];
  return (hand??[]).flatMap((card,index)=>(kind==='alter'?isAlter(card):['Light:2217','Dark:2216'].includes(card.id))
@@ -2589,6 +2640,8 @@ function legalActions(position,side,request){
    ...reactDeployOptions(side,window).map(x=>offer('reactDeploy',x.args,x)),
    ...interruptResponses(side,window).map(x=>offer('interruptResponse',[x.index],x)),offer('passResponse')];
  }
+ if(position.pendingReserveSearch)return position.pendingReserveSearch.side===side?
+  reserveSearchChoices(position.pendingReserveSearch).map(choice=>offer('takeFromReserve',choice.args,choice)):[];
  const {hand,deck,force,board}=PremiereGame.zones(position,side);
  if(position.pendingForceLoss){
   if(position.pendingForceLoss.payer!==side)return [];
@@ -2607,6 +2660,7 @@ function legalActions(position,side,request){
   if(x.weaponTurn)return x.weaponTurn===side?
    [...battleWeaponOptions(side).map(shot=>offer('fireWeapon',shot.args,shot)),
    ...(x.repeatingWeapon?[]:[...duelOptions(side).map(option=>offer('duel',option.args,option)),
+    ...namedRetrievalOptions(side).map(option=>offer(option.kind,option.args,option)),
     ...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
     ...weaponEffectOptions(side).filter(option=>['defuse','overload'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
    offer('passWeapons'),...training]:training;
@@ -2635,7 +2689,7 @@ function legalActions(position,side,request){
  if(side==='Dark'&&botStep)actions.push(offer('botStep',[botStep.kind]));
  for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
  if(side==='Light'&&(position.phase!==0||position.activated))actions.push(offer('advance'));
- for(const option of retrievalOptions(side))actions.push(offer('retrieve',[option.index,option.slot],option));
+ for(const option of namedRetrievalOptions(side))actions.push(offer(option.kind,option.args,option));
  for(const option of transportOptions(side))actions.push(offer('transport',option.args,option));
  for(const group of dockingGroups(side)){
   const choosing=request?.kind==='dockGroup'&&group.args.every((arg,i)=>arg===request.args?.[i]);
@@ -2700,7 +2754,9 @@ function executeAction({kind,side,args,plan,ships}){
   case 'revolution': return deployRevolution(side,...args);
   case 'deployLostPileEffect': return deployLostPileEffect(side,...args);
   case 'alterLostPileEffect': return initiateAlterLostPileEffect(side,...args);
-  case 'retrieve': return playRetrieval(side,...args);
+  case 'retrieve':
+  case 'searchReserve': return playRetrieval(side,kind,...args);
+  case 'takeFromReserve': return finishReserveSearch(...args);
   case 'deployWithPilot': return deployWithPilot(side,...args);
   case 'transport': return performTransport(side,...args);
   case 'transitGroup': return performTransitGroup(side,plan);
@@ -2758,7 +2814,7 @@ function performAction(action,followUp=true){
  if(battleSession?.segmented)stopBattleWithoutPresence();
  if(game&&topLevelActions.has(action.kind))game.rootAction=action.side;
  if(state?.game&&!battleSession)checkLifeForceVictory();
- if(game?.rootAction&&!state.gameWinner&&!state.pendingForceLoss&&!state.automatedPending&&!battleSession&&
+ if(game?.rootAction&&!state.gameWinner&&!state.pendingForceLoss&&!state.pendingReserveSearch&&!state.automatedPending&&!battleSession&&
     !PremiereGame.responseWindow(game)&&!game.timing.pending){
   const priority=PremiereGame.otherSide(game.rootAction);
   delete game.rootAction;

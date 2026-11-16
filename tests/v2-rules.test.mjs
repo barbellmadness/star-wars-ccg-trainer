@@ -1932,6 +1932,42 @@ test('Force loss respects a required pile and retrieval preserves the remaining 
  assert.equal(run("PremiereGame.retrieveForce(state,'Light',2)[1]===last&&state.lost.map(card=>card.name).join()==='First,Third'"),true);
 });
 
+test('named Reserve searches spend Force before revealing choices, then transfer one card and shuffle',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const interrupt=card('Dark:2528'),motti=card('Dark:60'),tarkin=card('Dark:1061'),other=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(45,99);state.activeSide='Dark';state.phase=1;
+  state.botTurn={steps:botPlan(),index:2};state.botDeck=[motti,other,tarkin];state.botHand=[interrupt];state.hand=[];`);
+ assert.equal(run("requestAction('takeFromReserve','Dark',[0])"),false);
+ assert.equal(run("requestAction('searchReserve','Dark',[1])"),false);
+ assert.equal(run("requestAction('searchReserve','Dark',[0])"),true);
+ assert.equal(run('state.botUsed.length===4&&state.botHand.length===0&&state.botDeck.length===3'),true);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Motti|Tarkin/);
+ assert.equal(run("requestAction('takeFromReserve','Light',[1])||requestAction('takeFromReserve','Dark',[3])"),false);
+ assert.equal(run("requestAction('takeFromReserve','Dark',[1])"),true);
+ assert.equal(run("state.botHand[0]===tarkin&&state.botDeck.length===2&&state.botDeck.includes(motti)&&state.botDeck.includes(other)&&state.botLost[0]===interrupt"),true);
+ assert.equal(run("state.game.randomState!==99&&!state.pendingReserveSearch"),true);
+});
+
+test('a Reserve search with no match still consumes the Interrupt and shuffles; Sense stops a search before looking',async()=>{
+ for(const cancel of [false,true]){
+  const {run}=await craftHarness();
+  run(`setupDecks=null;state.game=PremiereGame.actionState(46,99);state.phase=1;
+   const interrupt=card('Light:1600'),other=card('Light:2052'),second=card('Light:2040');
+   state.hand=[interrupt];state.deck=[other,second];state.botHand=[];`);
+  if(cancel)run(`const sense=card('Dark:2216');state.botHand=[sense];state.dark[2]=[card('Dark:634')];
+   state.botDeck=[{name:'Destiny',destiny:1}];`);
+  assert.equal(run("requestAction('searchReserve','Light',[0])"),true);
+  if(cancel){
+   assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+   assert.equal(run('state.game.randomState===99'),true);
+  }else{
+   assert.equal(run("requestAction('takeFromReserve','Light',[null])"),true);
+   assert.equal(run('state.game.randomState!==99'),true);
+  }
+  assert.equal(run('!state.pendingReserveSearch&&state.hand.length===0&&state.used.length===3&&state.lost[0]===interrupt&&state.deck.length===2'),true);
+ }
+});
+
 test('the bot makes another legal drain after Light pays the previous one',()=>{
  const {run}=reactHarness();
  run(`state.light[0]=[];state.dark[0]=[{type:'Character',ability:1}];

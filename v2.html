@@ -326,6 +326,14 @@ function renderControlPanel(available=legalActions(state,'Light')){
   }
   box.style.display='block';return;
  }
+ if(state.pendingReserveSearch){
+  const frame=state.pendingReserveSearch,light=frame.side==='Light';
+  const options=light?available:legalActions(state,'Dark').slice(0,1);
+  box.innerHTML='<b>'+escapeHTML(frame.card.name)+' · Reserve Deck</b><p>'
+   +(light?'Wähle eine passende Karte. Danach wird das Deck gemischt.':'Der Bot durchsucht sein Reserve Deck.')+'</p>'
+   +options.map(option=>ruleButton(option,light?option.label:'Suche des Bots abschließen')).join(' ');
+  box.style.display='block';return;
+ }
  const pending=state.pendingForceLoss;
  if(pending?.payer==='Light'&&!state.gameWinner){
   const label={battleDamage:'Battle Damage',assault:'Assault'}[pending.reason]??'Force Drain';
@@ -334,8 +342,7 @@ function renderControlPanel(available=legalActions(state,'Light')){
    +available.map(option=>ruleButton(option,option.card?'Hand: '+option.card.name:names[option.args[0]]+' (oberste Karte)')).join(' ');
   box.style.display='block';return;
  }
- const retrieval=available.filter(option=>option.kind==='retrieve').map(option=>ruleButton(option,
-  option.card.name+' · '+option.target.name+' zurückholen ('+option.cost+' Force)')).join(' ');
+ const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
@@ -533,7 +540,7 @@ function renderBattle(){
  }else if(x.weaponTurn==='Light'){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
