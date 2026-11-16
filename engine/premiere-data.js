@@ -133,9 +133,11 @@ const PremiereData = (() => {
     return cards;
   }
 
+  const isEyesInTheDark = card => card?.id === 'Light:917';
+
   function isPlayableStarterCard(card) {
     if (card.type === 'Location') return Number.isInteger(card.icons.light) && Number.isInteger(card.icons.dark);
-    if (card.type === 'Weapon' || ['Light:735','Dark:734','Dark:1880','Dark:262','Light:997','Dark:996'].includes(card.id)) return true;
+    if (card.type === 'Weapon' || isEyesInTheDark(card) || ['Light:735','Dark:734','Dark:1880','Dark:262','Light:997','Dark:996'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 
@@ -212,7 +214,7 @@ const PremiereData = (() => {
   }
 
   return {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readCardValue, locationTitle,
-    isDeployableCharacter, basicWeaponRule, isBantha, permanentPilotAbility, buildAudit};
+    isDeployableCharacter, basicWeaponRule, isBantha, isEyesInTheDark, permanentPilotAbility, buildAudit};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PremiereData;

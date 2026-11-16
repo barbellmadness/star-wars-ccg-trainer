@@ -1193,6 +1193,93 @@ test('lost piles reveal only their top card and keep covered bot hands face down
  assert.doesNotMatch(ownPile.innerHTML,/Latest Loss/);
 });
 
+async function eyesInTheDarkHarness(){
+ const fixture=await premiereHarness();
+ fixture.run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
+  const copies=setupDecks.light.cards.filter(isEyesInTheDark).length;
+  beginStartingGame();
+  for(let i=0;i<7;i++)botNextStep();
+  state.phase=2;
+  const eyes=catalog.find(isEyesInTheDark);
+  state.hand=[eyes];state.botHand=[];`);
+ return fixture;
+}
+
+test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses while allowing retrieval',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ assert.equal(run('copies'),1);
+ assert.deepEqual(JSON.parse(run(`JSON.stringify(legalActions(state,'Light').filter(action=>
+  action.kind==='deployEyesInTheDark').map(action=>action.args))`)),[[0,'Light'],[0,'Dark']]);
+ assert.equal(run("state.phase=1;requestAction('deployEyesInTheDark','Light',[0,'Light'])"),false);
+ assert.equal(run("state.phase=2;requestAction('deployEyesInTheDark','Light',[0,'Unknown'])"),false);
+ run("state.lost.push({name:'Previously Visible'});inspectLostTop('Light')");
+ assert.equal(elements.get('cardInspector').open,true);
+ assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Light'])"),true);
+ assert.equal(elements.get('cardInspector').open,false);
+ run("inspectLostTop('Light')");
+ assert.equal(elements.get('cardInspector').open,false);
+ assert.match(elements.get('pilesLight').innerHTML,/Lost Pile verdeckt.*Eyes In The Dark/);
+ assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Previously Visible|lost-top-card/);
+ assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
+
+ run(`for(const zone of ['deck','force','used']){
+  PremiereGame.zones(state,'Light')[zone].push({name:'Secret '+zone});
+  beginForceLoss('Light',1,{reason:'drain',from:zone});
+  if(!requestAction('loseForce','Light',[zone]))throw new Error('Loss did not resolve');
+ }`);
+ assert.equal(run('state.lost.length'),4);
+ for(const viewer of ['Light','Dark']){
+  assert.doesNotMatch(run(`JSON.stringify(PremiereGame.playerView(state,'${viewer}'))`),/Secret|Previously Visible/);
+ }
+ assert.doesNotMatch(elements.get('log').textContent,/Secret/);
+ assert.match(elements.get('log').textContent,/eine verdeckte Karte/);
+ run(`state.hand=[{name:'Public Hand Loss'}];
+  beginForceLoss('Light',1,{reason:'drain',from:'hand'});
+  requestAction('loseForce','Light',['hand',0]);
+  const unit={name:'Public Table Loss',type:'Character'};
+  state.light[0].push(unit);loseTableCard('Light',0,unit);render()`);
+ assert.match(elements.get('log').textContent,/Public Hand Loss/);
+ assert.match(elements.get('log').textContent,/Public Table Loss/);
+ assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Public Hand Loss|Public Table Loss/);
+
+ run(`const luke=catalog.find(card=>locationTitle(card)==='luke skywalker');
+  state.lost.push(luke);state.hand=[catalog.find(card=>card.id==='Light:1600')];
+  state.force.push({name:'Force Payment'});render()`);
+ assert.equal(run("requestAction('retrieve','Light',[0,state.lost.indexOf(luke)])"),true);
+ assert.equal(run('state.used.includes(luke)&&PremiereGame.lostPileFaceDown(state,\'Light\')'),true);
+ assert.match(elements.get('log').textContent,/Luke Skywalker/);
+});
+
+test('Alter can uncover a pile after Eyes In The Dark is on the table',async()=>{
+ const {run,elements}=await eyesInTheDarkHarness();
+ run("state.botLost.push({name:'Visible Again'});state.dark[0].push({name:'Imperial',type:'Character',ability:4})");
+ assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Dark'])"),true);
+ assert.match(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
+ assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Visible Again/);
+ run("state.botHand=[catalog.find(card=>card.id==='Dark:94')];state.botDeck.push({name:'Destiny',destiny:1})");
+ assert.equal(run("requestAction('alterLostPileEffect','Dark',[0,0])"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster · Alter/);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.match(elements.get('pilesDark').innerHTML,/Visible Again/);
+ assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
+ assert.equal(run('state.lost.includes(eyes)&&state.lostPileEffects.length===0'),true);
+});
+
+test('Alter must draw below the highest ability to stop Eyes In The Dark from deploying',async()=>{
+ for(const destiny of [1,4]){
+  const {run,elements}=await eyesInTheDarkHarness();
+  run(`state.botHand=[catalog.find(card=>card.id==='Dark:94')];
+   state.dark[0].push({name:'Imperial',type:'Character',ability:4});
+   state.botDeck.push({name:'Destiny',destiny:${destiny}})`);
+  assert.equal(run("requestAction('deployEyesInTheDark','Light',[0,'Dark'])"),true);
+  assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster · Eyes In The Dark/);
+  assert.equal(run("requestAction('interruptResponse','Dark',[0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+  if(destiny===4)assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+  assert.equal(run("PremiereGame.lostPileFaceDown(state,'Dark')"),destiny===4);
+  assert.equal(run('state.lost.includes(eyes)'),destiny===1);
+ }
+});
+
 test('location art opens a detailed card inspector without changing game state',()=>{
  const {run,elements}=harness();
  run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',image:'https://res.starwarsccg.org/cards/test.gif',icons:{light:1,dark:2},gametext:'Some location effect'}],light:[[]],dark:[[]],phase:0,hand:[],force:[],botTurn:null};");
@@ -1804,14 +1891,20 @@ test('Battle, Power and Attrition Destiny use separate totals and actually draw 
 });
 
 test('damage payments alternate even when forfeiting removes all presence on the losing side',()=>{
- const {run}=segmentedBattleHarness();
- run('state.light[0]=[rebel];trooper.power=7;');
+ const {run,elements}=segmentedBattleHarness();
+ run(`state.light[0]=[rebel];trooper.power=7;
+  state.lostPileEffects=[{card:{name:'Eyes In The Dark'},target:'Light'}];
+  const lostFromHand=state.hand[0].name;
+  state.force.at(-1).name='Hidden Battle Loss';`);
  assert.equal(run("requestAction('battle','Light',[0])&&requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')"),true);
  assert.equal(run("requestAction('battleForceLoss','Light',['hand',0])"),true);
  assert.equal(run("requestAction('battleForfeit','Light',[0])"),false);
  assert.equal(run("requestAction('passDamage','Dark')&&requestAction('battleForfeit','Light',[0])"),true);
  assert.equal(run("!confirmedPresence('Light',0)&&battleSession.damage.debt.Light.damage===1&&battleSession.segment==='damage'"),true);
  assert.equal(run("requestAction('passDamage','Dark')&&requestAction('battleForceLoss','Light',['force'])"),true);
+ assert.ok(elements.get('log').textContent.includes(run('lostFromHand')));
+ assert.match(elements.get('log').textContent,/verliert eine verdeckte Karte für Battle Damage/);
+ assert.doesNotMatch(elements.get('log').textContent,/Hidden Battle Loss/);
  assert.equal(run("requestAction('passDamage','Dark')&&requestAction('passDamage','Light')&&battleSession===null"),true);
 });
 
