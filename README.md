@@ -20,7 +20,7 @@ Die vollständige vorhandene Testsuite läuft in einem Terminal mit `node --test
 
 Der Server liest die private Prüfdatei aus dem benachbarten Ordner `Star Wars CCG Premiere - Drucktexte lokal`. Bei einem anderen Speicherort gib den vollständigen Pfad zu `premiere-drucktexte-lokal.json` als Argument an. Die Datei bleibt außerhalb des Repositorys. Das Karten-Popup zeigt sichtgeprüfte Drucktexte getrennt vom aktiven Spieltext. Ohne Prüfdatei verwendet V2 die im Katalog vorhandenen Drucktexte.
 
-Für die lokale Abnahme prüft `node scripts/import_premiere.mjs --check` den fixierten Kartensatz und beide Decks. `node --test` spielt die Seeds 4, 7 und 9 bis zum Spielende und prüft Boden- und Raumbattles sowie Antwortaktionen. Die Suite spielt Seed 4 auch mit dem Regelstand älterer Spielstände durch. Für den Browser-Test mit installiertem Google Chrome führst du einmal `npm ci` und dann `npm run test:browser` aus. Mit `$env:SWCCG_CHROMIUM_CHANNEL = 'msedge'` kannst du Microsoft Edge verwenden.
+Für die lokale Abnahme prüft `node scripts/import_premiere.mjs --check` den fixierten Kartensatz und beide Decks. `node --test` spielt die Seeds 3, 4 und 9 bis zum Spielende und prüft Boden- und Raumbattles sowie Antwortaktionen. Die Suite spielt Seed 4 auch mit dem Regelstand und Bot älterer Spielstände durch. Für den Browser-Test mit installiertem Google Chrome führst du einmal `npm ci` und dann `npm run test:browser` aus. Mit `$env:SWCCG_CHROMIUM_CHANNEL = 'msedge'` kannst du Microsoft Edge verwenden.
 
 In V2 zeigt „Kartenfähigkeiten: Vollständigkeitsprüfung“ die aktuellen Abdeckungszahlen und die offenen Karten. Die herangezogenen Regelquellen stehen im [Regelstand](PREMIERE-REGELSTAND.md).
 
