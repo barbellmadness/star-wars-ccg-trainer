@@ -584,7 +584,8 @@ test('Dark bot cannot battle without Force, confirmed presence, or correct phase
  assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
  run("state.dark[0][0].ability=4;state.phase=2");
  assert.equal(run("canInitiateBattleFor('Dark',0)"),false);
- run("botNextStep()");
+ // The bot advances its own phase to Battle; unresolved presence must still prevent initiation.
+ run("state.dark[0][0].ability=null;botNextStep()");
  assert.equal(run("state.botForce.length"),1);
  assert.equal(run("battleSession"),null);
  assert.equal(run("state.botTurn.index"),1);
