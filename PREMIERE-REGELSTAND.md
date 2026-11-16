@@ -15,7 +15,9 @@ Die V2-Oberfläche und der Bot verwenden dasselbe Aktionsangebot. Neue Partien k
 
 Bei Battle und Force Drain erhält die Gegenseite die erste optionale Antwort. Shistavanen Wolfman und Bantha können für 1 Force von einer zulässigen benachbarten Site reagieren. Ein erfolgreicher React mit Presence hebt einen Force Drain auf. Sense kann einen React aufheben, Alter kann das gerade gespielte Sense aufheben und Sense kann Alter kontern. Kosten für bereits angesagte Reacts bleiben bezahlt. Weitere Reacts mit Deploy, Besatzung oder Sonderbewegung bleiben in der TODO-Liste. [Advanced Rulebook, Kapitel 1](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=14) · [Advanced Rulebook, Reacts](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=170)
 
-Die Engine prüft die drei Life-Force-Stapel nach der Auflösung einer Aktion. Ein mehrstufiger Force-Verlust wird vor der Entscheidung vollständig abgewickelt. Bei gleichzeitiger Erschöpfung beider Life Forces endet die Lernpartie mit einer eigenen Anzeige und ohne festgelegten Gewinner. Die Premiere-Quelle bestätigt die Erschöpfung als Verlustbedingung, für die gleichzeitige Erschöpfung bleibt die Wertung offen. [Decipher-Regelwerk, Life Force](https://res.starwarsccg.org/rules/rulebookv2.pdf#page=3)
+Die Engine prüft Reserve Deck, Force Pile und Used Pile nach der Auflösung einer Aktion. Ein mehrstufiger Force-Verlust wird vor der Entscheidung vollständig abgewickelt. Geht nur einer Seite die Life Force aus, gewinnt die andere Seite. [Decipher-Regelwerk, Life Force](https://res.starwarsccg.org/rules/rulebookv2.pdf#page=3)
+
+Verlieren beide Seiten gleichzeitig ihre letzte Life Force, wertet Decipher die Partie als Unentschieden („True Tie“). In der damaligen Turnierwertung erhalten beide Seiten je einen Siegpunkt und eine Differenz von null. V2 zeigt das Unentschieden an, protokolliert es und sperrt weitere Spielaktionen. [Decipher-Turnierleitfaden, Juni 1999, S. 4, „True ties“](https://starshipexcelsior.com/othersites/stccg1e/rules_archive/decipher/Z_KLAUSERS_ARCHIVE/Tourn/tournamentguide0699.pdf#page=4)
 
 ## Locations, Presence und Force
 

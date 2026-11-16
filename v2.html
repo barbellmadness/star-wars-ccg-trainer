@@ -736,7 +736,7 @@ function render(){
  renderDeckPiles('Light',light);
  el('gameMessage').hidden=!view.winner;
  if(view.winner){
-  el('instruction').textContent=view.winner==='Simultaneous'?'Spielende – beide Life Forces gleichzeitig aufgebraucht':'Spielende – '+view.winner+' Side gewinnt';
+  el('instruction').textContent=view.winner==='Simultaneous'?'Unentschieden – beide Life Forces gleichzeitig aufgebraucht':'Spielende – '+view.winner+' Side gewinnt';
   el('hint').textContent='';
  }
  el('phaseHelp').hidden=!!view.winner;

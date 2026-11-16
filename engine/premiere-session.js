@@ -58,7 +58,7 @@ function lifeForceRemaining(side){return state?PremiereGame.lifeForce(state,side
 function checkLifeForceVictory(){
  if(!state||state.gameWinner)return state?.gameWinner??null;
  state.gameWinner=PremiereGame.outcome(state);
- if(state.gameWinner)log(state.gameWinner==='Simultaneous'?'SPIELENDE: Beide Seiten haben gleichzeitig keine Life Force mehr.':'SPIELENDE: '+state.gameWinner+' Side gewinnt, weil die gegnerische Life Force aufgebraucht ist.');
+ if(state.gameWinner)log(state.gameWinner==='Simultaneous'?'SPIELENDE – Unentschieden. Beide Life Forces sind gleichzeitig aufgebraucht.':'SPIELENDE: '+state.gameWinner+' Side gewinnt, weil die gegnerische Life Force aufgebraucht ist.');
  return state.gameWinner;
 }
 

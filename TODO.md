@@ -25,7 +25,7 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 - [x] Pro Seite öffentliche und verdeckte Informationen ableiten. Handkarten des Bots sind standardmäßig verdeckt, Life-Force-Stapel erscheinen mit Kartenzahl. Karten werden bei einer Regelaktion wie Destiny oder Force-Verlust sichtbar.
 - [x] Ein Partie-Seed steuert die Startortwahl des Bots und beide Mischvorgänge. Ein Test spielt die protokollierten Aktionen erneut ab und vergleicht Zonenreihenfolge und Spielfeld.
 - [x] Nach einem regulären Sieg weitere Regelaktionen sperren. Die Engine wertet Life Force nach vollständiger Verlustzahlung aus und erkennt gleichzeitige Erschöpfung.
-- [ ] Für die gleichzeitige vollständige Erschöpfung beider Life Forces eine Premiere-Regelentscheidung zur Wertung belegen. V2 beendet und sperrt die Partie in diesem Fall mit einer eigenen Anzeige.
+- [x] Gleichzeitige vollständige Erschöpfung beider Life Forces nach Deciphers Regelentscheidung als Unentschieden werten. V2 zeigt das Ergebnis an und sperrt weitere Spielaktionen. [Decipher-Turnierleitfaden, Juni 1999, S. 4](https://starshipexcelsior.com/othersites/stccg1e/rules_archive/decipher/Z_KLAUSERS_ARCHIVE/Tourn/tournamentguide0699.pdf#page=4)
 
 ## 3. Locations, Presence und Force
 

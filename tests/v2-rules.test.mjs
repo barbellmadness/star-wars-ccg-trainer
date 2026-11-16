@@ -1754,8 +1754,8 @@ test('the opponent gets the next optional priority when there is an eligible pha
  assert.equal(run("requestAction('advance','Light')&&state.phase===1"),true);
 });
 
-test('one mandatory callback can deplete both sides before the engine determines an outcome',()=>{
- const {run}=reactHarness();
+test('simultaneous Life Force depletion shows a draw and locks the game',()=>{
+ const {run,elements}=reactHarness();
  run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;state.activated=true;state.force=[];
   state.botDeck.length=1;
   PremiereGame.registerTrigger(state.game,{id:'both-lose',side:'Dark',mandatory:true,event:'phase:end',scope:'phase',label:'Both lose',
@@ -1764,6 +1764,11 @@ test('one mandatory callback can deplete both sides before the engine determines
  assert.equal(run("requestAction('timingTrigger','Light',['both-lose'])"),true);
  assert.equal(run('state.gameWinner'),'Simultaneous');
  assert.equal(run("legalActions(state,'Dark').length+legalActions(state,'Light').length"),0);
+ assert.match(run('state.log.join("\\n")'),/SPIELENDE – Unentschieden/);
+ run('render()');
+ assert.equal(elements.get('gameMessage').hidden,false);
+ assert.equal(elements.get('instruction').textContent,'Unentschieden – beide Life Forces gleichzeitig aufgebraucht');
+ assert.equal(elements.get('step').disabled,true);
 });
 
 test('location conversion stacks opposing printings without moving units or compatible effects',async()=>{
