@@ -26,6 +26,13 @@ button:disabled{opacity:.35}
 .card-face-placeholder{display:grid;place-items:center;padding:4px;color:#c5d4e8;font-size:10px}
 .card-face:hover,.card-face:focus-visible,.card.chosen .card-face{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px #f3cf7a40}
 .card-face:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.hand-card{position:relative}
+.hand-card>.card-face{cursor:pointer}
+.hand-card-inspect{position:absolute;inset:auto 3px 3px auto;display:grid;place-items:center;width:34px;height:34px;padding:0;background:#101b2e;border-color:var(--gold);color:#fff0b0;cursor:zoom-in}
+.hand-card-inspect::before,.hand-card-inspect::after{content:"";position:absolute}
+.hand-card-inspect::before{width:10px;height:10px;border:2px solid currentColor;border-radius:50%;transform:translate(-2px,-2px)}
+.hand-card-inspect::after{width:8px;height:2px;background:currentColor;transform:translate(6px,6px) rotate(45deg)}
+.hand-card-inspect:hover,.hand-card-inspect:focus-visible{background:#283951;outline:2px solid var(--gold);outline-offset:1px}
 .hint{color:#b7c9e1}
 .log{max-height:170px;overflow:auto;white-space:pre-line}
 a{color:#b6d8ff}
@@ -342,7 +349,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.6.0';
+const trainerVersion='2.7.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -923,7 +930,7 @@ function inspectCard(side,i,zone,site){
   selectButton.hidden=false;
   selectButton.onclick=()=>{
    closeCard();
-   if(select(i,gameId,revision))el('handCard'+i)?.focus({preventScroll:true});
+   select(i,gameId,revision);
   };
  }
 }
@@ -983,14 +990,21 @@ function smallCardArt(card,placeholder='Bild fehlt',hit=false){
   +(hit?'<span class="card-hit-label" aria-hidden="true">Treffer</span>':'');
 }
 
-function mini(c,idx,clickable,side='Light',zone='hand',site=0,{equipAction,hits}={}){
- const isSelected=clickable&&selected===idx;
+function handCardMarkup(card,index){
+ const chosen=index===selected,game=currentGame(),name=escapeHTML(card.name);
+ return '<div class="card hand-card'+(chosen?' chosen':'')+'">'
+  +'<button class="card-face" type="button" id="handCard'+index+'" aria-pressed="'+chosen+'" aria-label="'+name+' auswählen"'
+  +' onclick="select('+index+','+game?.id+','+game?.revision+')">'+smallCardArt(card)+'</button>'
+  +'<button class="hand-card-inspect" type="button" id="inspectHandCard'+index+'" aria-haspopup="dialog" aria-label="'+name+' ansehen"'
+  +' title="Kartendetails ansehen" onclick="inspectCard(\'Light\','+index+',\'hand\')"></button></div>';
+}
+
+function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
  const boardCard=hits?.size?PremiereGame.zones(state,side).board[site][idx]:null;
  const hit=boardCard&&hits.has(boardCard);
  const hitClass=marked=>marked?' is-hit':'',hitLabel=marked=>marked?' · Getroffen':'';
  const equip=equipAction?ruleButton(equipAction,'Ausrüsten ('+equipAction.cost+' Force)'):'';
- const face='<button class="card-face'+hitClass(hit)+'" type="button"'
-  +(clickable?' id="handCard'+idx+'"':'')+' aria-haspopup="dialog" aria-label="'+escapeHTML(c.name)+' ansehen'+(isSelected?' (ausgewählt)':'')
+ const face='<button class="card-face'+hitClass(hit)+'" type="button" aria-haspopup="dialog" aria-label="'+escapeHTML(c.name)+' ansehen'
   +hitLabel(hit)+'" onclick="inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">'+smallCardArt(c,'Bild fehlt',hit)+'</button>';
  const loadout=zone==='field'?stackedCards(c):[];
  const originalLayers=boardCard?stackedCards(boardCard):[];
@@ -1000,12 +1014,15 @@ function mini(c,idx,clickable,side='Light',zone='hand',site=0,{equipAction,hits}
    +' ansehen'+hitLabel(layerHit)+'" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role,layerHit)+'</button>';
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
- return '<div class="card'+(isSelected?' chosen':'')+'">'+art+equip+'</div>';
+ return '<div class="card">'+art+equip+'</div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
  if(gameId!==currentGame()?.id||revision!==currentGame()?.revision||!state?.hand?.[i])return false;
- selected=i;render();return true;
+ selected=i;
+ render();
+ el('handCard'+i)?.focus({preventScroll:true});
+ return true;
 }
 
 function locationCardVisual(loc){
@@ -1033,8 +1050,10 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
  const devices=available.filter(option=>option.kind==='deployDevice'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
+ const locationEffects=available.filter(option=>option.kind==='deployLocationEffect'&&option.args[0]===selected&&option.args[1]===i)
+  .map(option=>ruleButton(option,option.target?option.target.name+' als Ziel':option.card.name+' ausspielen')).join('');
  const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
- const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+piloted
+ const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+locationEffects+piloted
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
   +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+devices
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
@@ -1043,7 +1062,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   const key=side.toLowerCase(),hits=battleHitCards(side,i);
   return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span>'
    +(loc?locationStatusMarkup(side,i):'')+'<div class="cards">'
-   +cards.map((card,index)=>mini(card,index,false,side,'field',i,{equipAction:side==='Light'?equipActions.get(index):null,hits})).join('')+'</div>'
+   +cards.map((card,index)=>mini(card,index,side,'field',i,{equipAction:side==='Light'?equipActions.get(index):null,hits})).join('')+'</div>'
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
@@ -1158,10 +1177,10 @@ function render(){
  if(state.botTurn)el('botStepText').textContent=automatic?'Bot spielt automatisch':'Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
   +' · Nächster Abschnitt: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
  el('board').innerHTML=renderPlaymat(available,view);
- el('hand').innerHTML=light.hand.map((card,index)=>mini(card,index,true,'Light','hand')).join('');
+ el('hand').innerHTML=light.hand.map(handCardMarkup).join('');
  const showBotHand=el('showBotHand').checked;
  el('botHandCount').textContent=dark.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
- el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,false,'Dark','hand')).join('')
+ el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,'Dark','hand')).join('')
   :('<div class="card card-back" role="img" aria-label="Verdeckte Dark-Side-Karte">'+cardBackMarkup('Dark')+'</div>').repeat(dark.handCount);
  el('botHistoryTitle').textContent=state.botTurn?'Aktivitäten im Bot-Zug':'Letzter Bot-Zug';
  el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
