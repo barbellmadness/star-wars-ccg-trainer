@@ -125,12 +125,14 @@ html:has(#cardInspector[open]){overflow:hidden}
     <div class="game-options">
       <label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label>
       <button id="start" disabled>Neue Partie</button>
+      <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
       <div class="starter-deck-actions">
         <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
         <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
       </div>
     </div>
     <div id="stats"></div>
+    <span id="gameSaveStatus" class="hint" role="status"></span>
   </div>
   <div class="panel" id="gameMessage"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div>
   <div id="setup" class="panel" style="display:none">
@@ -240,6 +242,7 @@ function ruleClick(action){
 function dispatchUI(action){
  const hand=state?.hand,previous=hand?.[selected];
  const result=performAction(action);
+ if(result)recordGameCommand({type:'action',kind:action.kind,side:action.side,args:action.args});
  if(result&&previous&&hand[selected]!==previous){
   selected=-1;
   render();
@@ -326,7 +329,7 @@ function startingLocationMarkup(card){
 }
 
 function showStarterDeck(side){
- const deck=starterDecks[side],counts=new Map();
+ const deck=(currentGame()?.starterDecks??starterDecks)[side],counts=new Map();
  for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
  el('starterDeckTitle').textContent=(side==='light'?'Light':'Dark')+' Side Deck · '+deck.cards.length+' Karten';
  const list=el('starterDeckCards');
@@ -389,14 +392,14 @@ function movementPanel(i,available){
  return options.length?'<div>'+options.map(option=>ruleButton(option,label(option))).join('')+'</div>':'';
 }
 
-function setNightConditions(value){return requestAction('trainingNight','Light',[!!value])}
+function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}
 
 function showEffectCoverage(){const v=effectCoverage();el('effectCoverage').textContent='Premiere-Karten gesamt: '+v.total+'\nOhne Kartentext: '+v.withoutText.length+'\nTeilweise implementiert: '+v.partial.length+'\nKartentexte ohne geprüfte automatische Implementierung: '+v.unimplemented.length+'\n\nOFFENE KARTEN (ID · Name · Themen):\n'+v.unimplemented.map(c=>c.id+' · '+c.name+' · '+(cardEffectFlags(c).join(', ')||'sonstige Regel')).join('\n')+'\n\nHinweis: Eine Schlüsselwortsuche ist keine Regelausführung. Der Trainer darf für diese Karten keine vollständige Originalregel-Konformität behaupten.'}
 
 function play(idx,i){return dispatchUI(PremiereGame.offer(currentGame(),'Light','deploy',[idx,i]))}
 function equipSelectedWeapon(site,host){return dispatchUI(PremiereGame.offer(currentGame(),'Light','equip',[selected,site,host]))}
 function playLocation(handIndex,position){
- if(requestAction('deployLocation','Light',[handIndex,position])){selected=-1;render();}
+ if(dispatchUI(PremiereGame.offer(currentGame(),'Light','deployLocation',[handIndex,position]))){selected=-1;render();}
 }
 
 function lossPreview(side,available){
@@ -690,7 +693,9 @@ function render(){
  }else controls.innerHTML=draw?ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
  el('botNext').disabled=!botStep;
- el('botNext').onclick=botStep?()=>{if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id)botNextStep()}:null;
+ el('botNext').onclick=botStep?()=>{
+  if(botStep.revision===currentGame()?.revision&&botStep.gameId===currentGame()?.id&&botNextStep())recordGameCommand({type:'bot'});
+ }:null;
  el('botTurnPanel').style.display=state.botTurn&&!view.winner?'flex':'none';
  if(state.botTurn)el('botStepText').textContent='Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
   +' · Nächste Aktion: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
@@ -705,6 +710,7 @@ function render(){
 }
 
 presentGame=()=>{
+ if(replayingGame)return;
  if(shownGame!==currentGame()){
   selected=-1;
   shownGame=currentGame();
@@ -718,10 +724,98 @@ presentGame=()=>{
  el('battleAnalysis').style.display='none';
  if(battleSession&&!PremiereGame.responseWindow(state?.game)&&!state?.gameWinner)renderBattle();
 };
+
+const saveKey='swccg.v2.autosave';
+const saveVersion=1;
+let starterDeckDefinition, activeSave, resumeCandidate, lastSavedValue=null, replayingGame=false;
+
+function saveStatus(message){
+ const status=el('gameSaveStatus');
+ if(status.textContent!==message)status.textContent=message;
+}
+
+function readSavedGame(){
+ try {
+  lastSavedValue=localStorage.getItem(saveKey);
+  if(lastSavedValue===null)return null;
+  const saved=JSON.parse(lastSavedValue);
+  if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
+     !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'){
+   throw new Error('Unbekannter Spielstand');
+  }
+  return saved;
+ }catch{
+  saveStatus('Der gespeicherte Spielstand konnte nicht geladen werden.');
+  return null;
+ }
+}
+
+function saveActiveGame(){
+ if(!activeSave||replayingGame)return;
+ const {revision,randomState}=currentGame();
+ try {
+  if(localStorage.getItem(saveKey)!==lastSavedValue){
+   saveStatus('Ein anderer Tab hat den Spielstand geändert. Speichern pausiert.');
+   return;
+  }
+  const value=JSON.stringify({...activeSave,revision,randomState});
+  localStorage.setItem(saveKey,value);
+  lastSavedValue=value;
+  saveStatus('Partie automatisch gespeichert');
+ }catch{
+  saveStatus('Automatisches Speichern im Browser fehlgeschlagen.');
+ }
+}
+
+function recordGameCommand(command){
+ if(!activeSave||replayingGame)return;
+ activeSave.commands.push(command);
+ saveActiveGame();
+}
+
+function startNewGame(seed,trainingBattle=false){
+ if(!start(seed,true,trainingBattle))return false;
+ activeSave={version:saveVersion,cardRevision:REVISION,seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
+ resumeCandidate=null;
+ el('resumeGame').hidden=true;
+ return true;
+}
+
+function resumeGameFromUI(){
+ const saved=resumeCandidate;
+ if(!saved)return false;
+ const previous={state,setupDecks,battleSession};
+ replayingGame=true;
+ try {
+  const decks=readStarterDecks(saved.decks,catalog);
+  if(!start(saved.seed,true,saved.trainingBattle,decks))throw new Error('Ungültiger Spielstart');
+  for(const command of saved.commands){
+   const accepted=command.type==='bot'?botNextStep():command.type==='action'&&requestAction(command.kind,command.side,command.args);
+   if(!accepted)throw new Error('Ungültige Spielaktion');
+  }
+  if(currentGame().revision!==saved.revision||currentGame().randomState!==saved.randomState)throw new Error('Abweichender Spielstand');
+ }catch{
+  ({state,setupDecks,battleSession}=previous);
+  saveStatus('Diese Partie konnte mit der aktuellen Version nicht fortgesetzt werden.');
+  return false;
+ }finally{
+  replayingGame=false;
+ }
+ activeSave=saved;
+ resumeCandidate=null;
+ el('resumeGame').hidden=true;
+ el('gameSeed').value=String(saved.seed);
+ el('trainingBattle').checked=saved.trainingBattle;
+ saveStatus('Gespeicherte Partie fortgesetzt');
+ presentGame();
+ return true;
+}
+
 function startFromUI(){
  const input=el('gameSeed');
- if(input.validity.valid)start(input.value?Number(input.value):undefined,true,el('trainingBattle').checked);
- else input.reportValidity();
+ if(!input.validity.valid){input.reportValidity();return;}
+ if(lastSavedValue!==null&&!confirm('Neue Partie starten? Der bisherige Spielstand wird ersetzt.'))return;
+ if(startNewGame(input.value?Number(input.value):undefined,el('trainingBattle').checked))saveActiveGame();
 }
 
 async function readLocalJson(path){
@@ -737,9 +831,15 @@ async function load(){try{
  ]);
  const cards=readCatalog(payload);
  starterDecks=readStarterDecks(deckLists,cards);
+ starterDeckDefinition=deckLists;
  catalog=cards;
  el('start').disabled=false;
- auditData();start();
+ auditData();
+ resumeCandidate=readSavedGame();
+ if(resumeCandidate){
+  el('resumeGame').hidden=false;
+  el('instruction').textContent='Gespeicherte Partie verfügbar';
+ }else startNewGame();
  el('viewLightDeck').disabled=false;
  el('viewDarkDeck').disabled=false;
  }catch(e){
@@ -750,6 +850,7 @@ async function load(){try{
  }}
 
 el('auditBtn').onclick=auditData;el('start').onclick=startFromUI;
+el('resumeGame').onclick=resumeGameFromUI;
 el('viewLightDeck').onclick=()=>showStarterDeck('light');
 el('viewDarkDeck').onclick=()=>showStarterDeck('dark');
 el('showBotHand').onchange=()=>{if(!el('showBotHand').checked)closeCard();render()};
