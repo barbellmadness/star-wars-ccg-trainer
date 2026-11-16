@@ -671,3 +671,43 @@ test('initial location choices include original image thumbnails',()=>{
  assert.match(markup,/start-location-option/);
  assert.match(markup,/https:\/\/res.starwarsccg.org\/cards\/echo.gif/);
 });
+
+test('Light may deploy successive locations beyond original three-slot board',()=>{
+ const {run}=harness();
+ run("render=()=>{};state={phase:2,activeSide:'Light',locations:[{name:'Hoth: A',type:'Location',subType:'Site'} ,null],light:[[],[]],dark:[[],[]],hand:[{name:'Hoth: B',type:'Location',subType:'Site'},{name:'Hoth: C',type:'Location',subType:'Site'}],force:[],used:[],deployedThisTurn:[],log:[]};");
+ run("play(0,1)");
+ assert.equal(run("state.locations.length"),3);
+ assert.equal(run("state.locations[2]===null"),true);
+ assert.equal(run("state.light.length"),3);
+ run("play(0,2)");
+ assert.equal(run("state.locations.length"),4);
+ assert.equal(run("state.locations[3]===null"),true);
+ assert.equal(run("state.hand.length"),0);
+});
+test('Dark bot deploy phase plays multiple affordable characters and pays Force per card',()=>{
+ const {run}=harness();
+ run("render=()=>{};state={phase:2,activeSide:'Dark',botTurn:{steps:[],index:0},locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{dark:1,light:0}},null],light:[[],[]],dark:[[],[]],botHand:[{name:'Trooper A',type:'Character',deploy:1,ability:1},{name:'Trooper B',type:'Character',deploy:2,ability:1}],botForce:[{id:1},{id:2},{id:3}],botUsed:[],deployedThisTurn:[],log:[]};");
+ const actions=run("botDeployPhase()");
+ assert.equal(actions.length,2);
+ assert.equal(run("state.dark[0].length"),2);
+ assert.equal(run("state.botHand.length"),0);
+ assert.equal(run("state.botForce.length"),0);
+ assert.equal(run("state.botUsed.length"),3);
+});
+test('Dark bot multi-deploy cannot spend more Force than available',()=>{
+ const {run}=harness();
+ run("state={phase:2,activeSide:'Dark',botTurn:{steps:[],index:0},locations:[{name:'Hoth: A',type:'Location',subType:'Site',icons:{dark:1,light:0}},null],light:[[],[]],dark:[[],[]],botHand:[{name:'Trooper A',type:'Character',deploy:1,ability:1},{name:'Trooper B',type:'Character',deploy:2,ability:1}],botForce:[{id:1}],botUsed:[],deployedThisTurn:[],log:[]};");
+ assert.equal(run("botDeployPhase().length"),1);
+ assert.equal(run("state.botHand.length"),1);
+ assert.equal(run("state.botForce.length"),0);
+});
+test('Location deploy rejects duplicate, occupied slot and wrong player phase',()=>{
+ const {run}=harness();
+ run("state={phase:2,activeSide:'Light',locations:[{name:'Hoth: A',type:'Location',subType:'Site'},null],light:[[],[]],dark:[[],[]],hand:[{name:'Hoth: A',type:'Location'},{name:'Hoth: B',type:'Location'}],log:[]};");
+ assert.equal(run("deployLocationFromHand('Light',0,1)"),false);
+ assert.equal(run("deployLocationFromHand('Light',1,0)"),false);
+ assert.equal(run("deployLocationFromHand('Dark',1,1)"),false);
+ assert.equal(run("state.locations.length"),2);
+ assert.equal(run("deployLocationFromHand('Light',1,1)"),true);
+ assert.equal(run("state.locations.length"),3);
+});
