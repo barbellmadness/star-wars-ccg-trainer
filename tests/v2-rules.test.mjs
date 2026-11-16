@@ -691,7 +691,6 @@ test('Premiere snapshot loads the four supported blasters into the starter decks
 test('fixed starter lists load 60 cards per side and each new game gets independent copies',async()=>{
  const {run,elements}=await premiereHarness();
  assert.equal(elements.get('start').disabled,false);
- assert.match(elements.get('setupOptions').innerHTML,/Starterdecklisten und Kartenabdeckung/);
  for(const [side,key] of [['Light','light'],['Dark','dark']]){
   const expected=starterLists.decks[side].cards.flatMap(({id,count})=>Array(count).fill(id));
   assert.equal(expected.length,60);
@@ -703,6 +702,34 @@ test('fixed starter lists load 60 cards per side and each new game gets independ
   run('start()');
   assert.notEqual(run(`${deck}.cards[0].power`),999);
  }
+});
+
+test('starter deck buttons open only the selected 60-card list on demand',async()=>{
+ const {run,elements}=await premiereHarness();
+ const dialog=run("el('starterDeckDialog')");
+ dialog.open=false;
+ dialog.showModal=()=>{dialog.open=true;};
+ const list=run("el('starterDeckCards')");
+ assert.match(html,/<dialog id="starterDeckDialog" aria-labelledby="starterDeckTitle">/);
+ assert.match(html,/<form method="dialog"><button autofocus>Schließen<\/button><\/form>/);
+ assert.equal(list.innerHTML,'');
+ assert.equal(elements.has('effectCoverage'),false);
+ assert.equal(dialog.open,false);
+
+ for(const [side,card,otherCard] of [['Light','Rebel Trooper','Stormtrooper'],['Dark','Stormtrooper','Rebel Trooper']]){
+  const button=elements.get('view'+side+'Deck');
+  assert.equal(button.disabled,false);
+  dialog.open=false;
+  button.onclick();
+  assert.equal(dialog.open,true);
+  assert.equal(elements.get('starterDeckTitle').textContent,side+' Side Deck · 60 Karten');
+  assert.ok(list.innerHTML.includes('10 × '+card));
+  assert.ok(!list.innerHTML.includes('10 × '+otherCard));
+  assert.equal([...list.innerHTML.matchAll(/<li>(\d+) × /g)].reduce((total,entry)=>total+Number(entry[1]),0),60);
+ }
+
+ run('showEffectCoverage()');
+ assert.match(elements.get('effectCoverage').textContent,/OFFENE KARTEN/);
 });
 
 function assertStartingDecksPreserved(run,lists){
@@ -1051,6 +1078,7 @@ test('Playmat uses official card image URLs for locations and accessible fallbac
 });
 test('Playmat places Dark above location art and Light below and retains actions',()=>{
  const {run}=harness();
+ assert.match(html,/id="botHand"[\s\S]*id="board"[\s\S]*id="hand"/);
  run("state={phase:0,locations:[{name:'Hoth: Echo Base',image:'https://res.starwarsccg.org/cards/example.gif'}],light:[[{name:'Rebel'}]],dark:[[{name:'Trooper'}]],hand:[],force:[],botTurn:null};");
  const content=run("renderPlaymatColumn(state.locations[0],0)");
  assert.ok(content.indexOf('DARK · 1')<content.indexOf('Location-Karte: Hoth: Echo Base'));
