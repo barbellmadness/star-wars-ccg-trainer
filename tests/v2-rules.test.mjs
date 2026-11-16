@@ -1737,7 +1737,7 @@ test('starter decks replay complete matches with legal decisions and conserve al
   return roots.flatMap(walk);
  }
  function playMatch(seed,cardRulesVersion=1){
-  start(seed,true,false,starterDecks,cardRulesVersion);
+  start(seed,true,false,starterDecks,cardRulesVersion,cardRulesVersion===0?0:1);
   const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
   choose();
   while(setupDecks.revealed.collision){retryStartingLocations();choose();}
@@ -1775,15 +1775,15 @@ test('starter decks replay complete matches with legal decisions and conserve al
   if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Final card balance at '+seed);
   return {...summary,winner:state.gameWinner,turn:state.turn,trace:JSON.stringify(state.game.actions)};
  }`);
- const matches=[4,7,9].map(seed=>JSON.parse(run(`JSON.stringify(playMatch(${seed}))`)));
+ const matches=[3,4,9].map(seed=>JSON.parse(run(`JSON.stringify(playMatch(${seed}))`)));
  assert.ok(matches.every(match=>match.winner&&match.botActions>0&&match.validated>0));
  assert.deepEqual(new Set(matches.map(match=>match.winner)),new Set(['Light','Dark']));
- assert.ok(matches.some(match=>match.ground&&match.space)&&matches.some(match=>match.reactions>0),
+ assert.ok(matches.some(match=>match.ground&&match.space&&match.reactions>0),
   JSON.stringify(matches.map(({trace,...match})=>match)));
  const legacy=JSON.parse(run('JSON.stringify(playMatch(4,0))'));
  assert.ok(legacy.winner&&legacy.ground&&legacy.space,
   JSON.stringify({...legacy,trace:undefined}));
- assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches[0]);
+ assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches.find(match=>match.seed===4));
 });
 
 function startSavedGame(run,seed=0){
@@ -1797,11 +1797,14 @@ test('legacy autosaves resume without applying new registered card rules retroac
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
  assert.equal(saved.cardRulesVersion,1);
+ assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
+ delete saved.botStrategyVersion;
  storage.setItem(key,JSON.stringify(saved));
  const reload=await premiereHarness(starterLists,{storage});
  assert.ok(reload.run("el('resumeGame').onclick()"));
  assert.equal(reload.run('currentGame().cardRulesVersion'),0);
+ assert.equal(reload.run('currentGame().botStrategyVersion'),0);
  assert.equal(reload.run("activeCardRules(catalog.find(card=>card.id==='Light:2052'),'freeSiteDeploy').length"),0);
 });
 
@@ -1884,6 +1887,7 @@ test('a saved live battle resumes in the damage segment and accepts the remainin
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
+ run('currentGame().botStrategyVersion=0;activeSave.botStrategyVersion=0');
  assert.equal(run(`act('chooseStart','Light',[setupDecks.light.startingIndices[1]])&&act('beginGame')`),true);
  run("for(let i=0;state.botTurn&&i<8;i++)el('botNext').onclick()");
  assert.equal(run(`act('activate','Light',[4])&&act('advance')&&act('advance')&&act('deploy','Light',[1,0])&&
@@ -2237,6 +2241,42 @@ test('the bot reevaluates distinct battle sites before leaving the Battle phase'
  assert.equal(run('botNextStep()&&state.phase===3&&battleSession.site===1'),true);
  assert.equal(run('finishBattle()'),true);
  assert.equal(run('botNextStep()&&state.phase===4&&state.battledSitesThisTurn.join()=== "0,1"'),true);
+});
+
+test('strategic bot spends its last Force taking a drain location before arming an isolated unit',async()=>{
+ const {run}=await craftHarness();
+ run("setupDecks=null;state.game=PremiereGame.actionState(98,0);state.game.botStrategyVersion=1;state.activeSide='Dark';state.botTurn={steps:[],index:0};");
+ run("state.dark[2]=[card('Dark:2355')];state.botHand=[card('Dark:1264'),card('Dark:2355')];state.botForce=[{}];state.locations[3]={...dunes,icons:{light:3,dark:1}};");
+ assert.ok(run("legalActions(state,'Dark').some(option=>option.kind==='equip')"));
+ assert.equal(run("botDeploymentChoice(legalActions(state,'Dark')).args.join()"),'1,3');
+ assert.ok(run("botDeployPhase().some(text=>text.includes('Stormtrooper')&&text.includes('Dune Sea'))"));
+ assert.equal(run('state.dark[3].length===1&&!state.dark[2][0].weapons?.length&&state.botForce.length===0'),true);
+});
+
+test('strategic bot holds a controlled drain and moves a spare unit into safe control',async()=>{
+ const {run}=await craftHarness();
+ run("setupDecks=null;state.game=PremiereGame.actionState(99,0);state.game.botStrategyVersion=1;state.activeSide='Dark';state.botTurn={steps:[],index:0};state.phase=4;");
+ run("state.locationOrder=[2,3,4,6,5,1,0];state.locations[2]={...dock,icons:{light:3,dark:1}};state.dark[2]=[card('Dark:2355')];state.light[3]=[card('Light:1593')];");
+ assert.ok(run("legalActions(state,'Dark').some(option=>option.kind==='move'&&option.to===3)"));
+ assert.equal(run('botMove()'),false);
+ run("state.light[3]=[];state.dark[2].push(card('Dark:2355'))");
+ assert.equal(run('botMove()&&state.dark[2].length===1&&state.dark[3].length===1'),true);
+});
+
+test('strategic bot gives up redundant cards before losing an important unit or Life Force',async()=>{
+ const {run}=await craftHarness();
+ run("setupDecks=null;state.game=PremiereGame.actionState(100,0);state.game.botStrategyVersion=1;state.activeSide='Light';state.botTurn=null;");
+ run("const vader=card('Dark:634'),duplicate=card('Dark:2446');state.botHand=[vader,duplicate];state.botDeck=[{}];");
+ assert.equal(run("beginForceLoss('Dark',1,{reason:'drain'})"),1);
+ assert.equal(run('state.botLost[0]===duplicate&&state.botHand[0]===vader&&state.botDeck.length===1'),true);
+});
+
+test('strategic bot shoots at a worthwhile target with favorable odds',()=>{
+ const {run}=weaponBattleHarness('Dark');
+ run(`state.game=PremiereGame.actionState(101,0);state.game.botStrategyVersion=1;state.phase=3;
+  rebel.power=8;rebel.armor=8;trooper.weapons=[blaster];`);
+ assert.equal(run("requestAction('battle','Dark',[0])"),true);
+ assert.equal(run('botWeaponAction().target===officer'),true);
 });
 
 test('the bot skips a legal battle when the opponent is favored after estimated Destiny',()=>{

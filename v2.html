@@ -349,7 +349,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.7.0';
+const trainerVersion='2.8.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -1271,7 +1271,8 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1].includes(saved.cardRulesVersion))){
+     (saved.cardRulesVersion!==undefined&&![0,1].includes(saved.cardRulesVersion))||
+     (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }
   return saved;
@@ -1307,7 +1308,7 @@ function recordGameCommand(command){
 
 function startNewGame(seed,trainingBattle=false){
  if(!start(seed,true,trainingBattle))return false;
- activeSave={version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,
+ activeSave={version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
   seed:currentGame().seed,trainingBattle,decks:starterDeckDefinition,commands:[]};
  activeSaveStored=false;
  resumeCandidate=null;
@@ -1322,7 +1323,8 @@ function resumeGameFromUI(){
  replayingGame=true;
  try {
   const decks=readStarterDecks(saved.decks,catalog);
-  if(!start(saved.seed,true,saved.trainingBattle,decks,saved.cardRulesVersion??0))throw new Error('Ungültiger Spielstart');
+  if(!start(saved.seed,true,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0))
+   throw new Error('Ungültiger Spielstart');
   for(const command of saved.commands){
    const accepted=command.type==='bot'?botNextStep(command.repeatPhase===true,command.adaptive===true):
     command.type==='action'&&requestAction(command.kind,command.side,command.args);
