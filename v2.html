@@ -349,7 +349,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.8.0';
+const trainerVersion='2.9.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -951,7 +951,13 @@ function inspectLocation(i){
  const flags=[[conditions.interior,'Innen'],[conditions.exterior,'Außen'],[conditions.scompLink,'Scomp Link'],
   [conditions.dockingBay,'Docking Bay'],[conditions.night,'Nacht']].filter(([shown])=>shown).map(([,label])=>label);
  const transit=conditions.dockingBay?'<p>Docking-Bay-Transit · Light '+conditions.transitCost+' / Dark '+PremiereLocations.conditions(state,i,'Dark').transitCost+' Force</p>':'';
- const effects=PremiereLocations.effectsAt(state,i).map(effect=>escapeHTML(effect.card.name));
+ const effects=PremiereLocations.effectsAt(state,i).map(effect=>{
+  const target=effect.target?' · '+effect.target.name:'';
+  const journey=effect.origin!==undefined?
+   ' · '+(effect.reachedKessel?'Rückflug nach '+state.locations[effect.origin].name:'Hinflug nach Kessel')+' · '+effect.distance+' Force':
+   effect.plansCollected?' · Pläne abgeholt':'';
+  return escapeHTML(effect.card.name+target+journey);
+ });
  const previous=state.convertedLocations?.[i]?.map(card=>escapeHTML(card.name+' · '+card.side))??[];
  showCardDetails(c,'<p class="location-icon-pips">Force-Icons · Light '+icons[0]+' / Dark '+icons[1]+'</p><p>'
   +escapeHTML(c.subType||c.type||'Location')+(c.side?' · '+escapeHTML(c.side):'')+(flags.length?' · '+flags.join(' · '):'')+'</p>'+transit
@@ -1051,7 +1057,8 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  const devices=available.filter(option=>option.kind==='deployDevice'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const locationEffects=available.filter(option=>option.kind==='deployLocationEffect'&&option.args[0]===selected&&option.args[1]===i)
-  .map(option=>ruleButton(option,option.target?option.target.name+' als Ziel':option.card.name+' ausspielen')).join('');
+  .map(option=>ruleButton(option,option.distance!==undefined?option.target.name+' · '+option.distance+' Force zurückholen':
+   option.target?option.target.name+' als Ziel':option.card.name+' ausspielen')).join('');
  const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
  const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+locationEffects+piloted
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
@@ -1271,7 +1278,7 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1].includes(saved.cardRulesVersion))||
+     (saved.cardRulesVersion!==undefined&&![0,1,latestCardRulesVersion].includes(saved.cardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }
