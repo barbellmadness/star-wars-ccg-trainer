@@ -49,7 +49,8 @@
 .player-hand .card{flex-basis:76px;padding:4px}
 .player-hand .card img{display:block;height:82px}
 .player-hand .card button{padding:3px 5px;font-size:11px}
-.player-hand .card-back{min-height:106px;display:grid;place-content:center;text-align:center;color:#f2d078}
+.player-hand .card-back{min-height:106px;display:flex;align-items:center;justify-content:center;cursor:default}
+.player-hand .card-back .side-card-back{height:auto;aspect-ratio:5/7;border-radius:4px;object-fit:cover}
 .hand-heading{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-height:30px}
 .hand-heading h2{margin:0}
 .hand-heading .hint,.bot-turn-controls .hint{font-size:12px}
@@ -73,8 +74,15 @@
 .deck-pile-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px}
 .deck-pile-summary .life-force{color:#f2d078}
 .pile-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr) minmax(48px,.68fr) minmax(0,1fr);text-align:center}
-.pile-slot{display:grid;place-content:center;min-height:45px;padding:3px;border:1px dashed #859bb6;border-radius:6px;font-size:11px}
+.pile-slot{display:grid;justify-items:center;align-content:center;gap:2px;min-height:82px;padding:3px;border:1px dashed #859bb6;border-radius:6px;font-size:11px}
 .pile-slot strong{font-size:17px;color:#e7edf9}
+.pile-slot .side-card-back,.pile-back-placeholder{display:block;width:25px;height:35px;margin-bottom:2px;border-radius:3px}
+.pile-slot .side-card-back{object-fit:cover;box-shadow:2px 2px 0 #8197b0,4px 4px 0 #293c55}
+.pile-back-placeholder{border:1px dashed #52617b}
+.lost-top-card{display:flex;align-items:center;gap:7px;width:100%;margin-top:5px;padding:4px 6px;text-align:left;font-size:12px}
+.lost-top-card img{width:22px;height:31px;flex:none;object-fit:contain}
+.lost-top-card small{display:block;color:#c5d4e8}
+.lost-top-card strong{overflow-wrap:anywhere}
 .pile-forward,.pile-draw,.pile-return{font-size:10px;font-weight:700}
 .pile-forward{display:grid;align-content:center;gap:1px}
 .pile-forward span,.pile-draw span{color:#e7edf9;font-size:16px;line-height:1}
@@ -211,6 +219,10 @@ html:has(#cardInspector[open]){overflow:hidden}
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
+const cardBackUrls={
+ Light:'https://res.starwarsccg.org/cards/lightcardback.png',
+ Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
+};
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -496,16 +508,26 @@ function showCardDetails(card,details){
  body.scrollTop=0;
 }
 
-function inspectCard(side,i,zone,site){
- if(!state)return;
- if(zone==='hand'&&side==='Dark'&&!el('showBotHand').checked)return;
- const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];
- const card=cards?.[i];if(!card)return;
+function showCardWithStats(card){
  const stats=[['Power','power'],['Ability','ability'],['Deploy','deploy'],['Forfeit','forfeit'],['Destiny','destiny']];
  for(const [label,field] of [['Landspeed','landspeed'],['Hyperspeed','hyperspeed'],['Maneuver','maneuver'],['Armor','armor']]){
   if(Number.isFinite(card[field])||['special','unknown'].includes(card.values?.[field]?.kind))stats.push([label,field]);
  }
  showCardDetails(card,'<p>'+stats.map(([label,field])=>label+' '+displayCardValue(card,field)).join(' · ')+'</p>');
+}
+
+function inspectCard(side,i,zone,site){
+ if(!state)return;
+ if(zone==='hand'&&side==='Dark'&&!el('showBotHand').checked)return;
+ const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];
+ const card=cards?.[i];
+ if(card)showCardWithStats(card);
+}
+
+function inspectLostTop(side){
+ if(!state||!PremiereGame.sides.includes(side))return;
+ const card=PremiereGame.zones(state,side).lost?.at(-1);
+ if(card)showCardWithStats(card);
 }
 
 function inspectLocation(i){
@@ -598,15 +620,24 @@ function renderPhaseTracks(view){
  }
 }
 
+function cardBackMarkup(side){
+ return '<img class="side-card-back" src="'+cardBackUrls[side]+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">';
+}
+
 function renderDeckPiles(side,player){
- const slot=(label,count)=>'<div class="pile-slot">'+label+' <strong>'+count+'</strong></div>';
+ const slot=(label,count)=>'<div class="pile-slot">'+(count?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
+  +label+' <strong>'+count+'</strong></div>';
  const lifeForce=PremiereGame.lifeForce(state,side);
+ const top=player.lost.at(-1);
+ const lostTop=top?'<button class="lost-top-card" type="button" aria-haspopup="dialog" onclick="inspectLostTop(\''+side+'\')">'
+  +(top.image?'<img src="'+escapeHTML(top.image)+'" alt="" loading="lazy">':'')
+  +'<span><small>Oben auf der Lost Pile</small><strong>'+escapeHTML(top.name)+'</strong></span></button>':'';
  el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lost.length+'</strong></span></figcaption>'
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
   +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
-  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>';
+  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+lostTop;
 }
 
 function render(){
@@ -654,7 +685,7 @@ function render(){
  const showBotHand=el('showBotHand').checked;
  el('botHandCount').textContent=dark.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
  el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,false,'Dark','hand')).join('')
-  :'<div class="card card-back">STAR WARS CCG<br>Verdeckt</div>'.repeat(dark.handCount);
+  :('<div class="card card-back" role="img" aria-label="Verdeckte Dark-Side-Karte">'+cardBackMarkup('Dark')+'</div>').repeat(dark.handCount);
  el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
  el('log').textContent=state.log.join('\n');
 }

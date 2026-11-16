@@ -1151,6 +1151,9 @@ test('both playmat pile diagrams show their own counts and follow card movement'
  run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
  assertPiles('Dark',51,0,0,0,51);
  assertPiles('Light',51,0,0,0,51);
+ assert.match(diagram('Dark'),/cards\/darkcardback\.png/);
+ assert.match(diagram('Light'),/cards\/lightcardback\.png/);
+ assert.equal((diagram('Light').match(/class="side-card-back"/g)||[]).length,1);
  assert.match(diagram('Light'),/Am Zugende unter das Reserve Deck.*Reserve Deck <strong.*Aktivieren.*→.*Force Pile.*Ausgeben.*→.*Used Pile.*↓.*Auf die Hand ziehen/);
 
  const activation=run("forceFromLocations('Dark').count");
@@ -1165,6 +1168,29 @@ test('both playmat pile diagrams show their own counts and follow card movement'
  assertPiles('Light',51,0,0,0,51);
  run('PremiereGame.moveTop(state.deck,state.lost);render()');
  assertPiles('Light',50,0,0,1,50);
+});
+
+test('lost piles reveal only their top card and keep covered bot hands face down',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame();
+  el('showBotHand').checked=false;
+  state.botHand=[{name:'Hidden Bot Card'}];
+  state.deck.push({name:'Latest Loss',type:'Character'},{name:'Earlier Loss',type:'Character'});
+  PremiereGame.loseForce(state,'Light','deck');
+  PremiereGame.loseForce(state,'Light','deck');
+  render()`);
+ const ownPile=elements.get('pilesLight');
+ assert.match(ownPile.innerHTML,/Lost Pile <strong>2<\/strong>/);
+ assert.match(ownPile.innerHTML,/Latest Loss/);
+ assert.doesNotMatch(ownPile.innerHTML,/Earlier Loss/);
+ assert.match(elements.get('botHand').innerHTML,/darkcardback\.png/);
+ assert.doesNotMatch(elements.get('botHand').innerHTML,/Hidden Bot Card/);
+ run("inspectLostTop('Light')");
+ assert.equal(elements.get('cardInspectorTitle').textContent,'Latest Loss');
+ assert.equal(elements.get('cardInspector').open,true);
+ run("closeCard();PremiereGame.retrieveForce(state,'Light',1);render()");
+ assert.match(ownPile.innerHTML,/Earlier Loss/);
+ assert.doesNotMatch(ownPile.innerHTML,/Latest Loss/);
 });
 
 test('location art opens a detailed card inspector without changing game state',()=>{
