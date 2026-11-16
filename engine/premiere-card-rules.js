@@ -34,7 +34,18 @@ const PremiereCardRules = (() => {
   register(['Dark:79'], [
     printed('Dark', 'controlSiteDrain', 'Beim Force Drain hier zählt jede kontrollierte Death-Star-Site als +1.', { region: 'Death Star' }),
   ], true);
-  register(['Light:672', 'Dark:669'], [drain('Light')]);
+  register(['Light:672'], [
+    drain('Light'),
+    printed('Light', 'releasePrisoners', 'Bei Kontrolle werden die auf dem Todesstern inhaftierten Charaktere an ihrer jeweiligen Site befreit.',
+      { since: 5, region: 'death star' }, 'Detention Block releases only imprisoned characters'),
+  ], true);
+  register(['Dark:669'], [
+    drain('Light'),
+    printed('Dark', 'freeNamedDeploy', 'Bei Kontrolle werden Wrong Turn und Retract The Bridge frei ausgespielt.',
+      { since: 5, names: ['wrong turn', 'retract the bridge'] }, 'Central Core waives Wrong Turn'),
+    printed('Light', 'cancelSiteDevice', 'Bei Kontrolle wird Death Star Tractor Beam aufgehoben.',
+      { since: 5, name: 'death star tractor beam' }, 'Central Core cancels the Tractor Beam'),
+  ]);
   register(['Light:680'], [
     printed('Light', 'deployWithoutIcons', 'Diese Seite darf hier ohne eigene Presence oder Force-Icons ausspielen.'),
     drain('Light'),
@@ -176,6 +187,18 @@ const PremiereCardRules = (() => {
   register(['Dark:489'], [
     continuous('device', 'Comlink kostet beim Deploy 1 Force und eröffnet Deploy-React-Optionen am Ort des Trägers oder an einer Nachbar-Site.',
       'character', 'Comlink equips', { cost: 1, since: 2, deployReact: true }),
+  ]);
+  register(['Light:2102', 'Dark:2833'], [
+    continuous('tableEffect', 'Liegt auf der gegnerischen Tischseite. Die Warriors dieser Seite kosten beim Deploy 1 Force mehr.',
+      'opposing table', 'Central Core waives Wrong Turn', { since: 5, cost: 3, warriorDeploy: 1, expires: 'when canceled' }),
+  ], true);
+  register(['Light:2277'], [
+    { event: 'cancelTableEffect', summary: 'Kann Wrong Turn beim Ausspielen oder auf dem Tisch als Lost Interrupt aufheben.',
+      targets: ['Dark:2833'], cost: 0, duration: 'instant', expires: 'after cancellation', test: 'Skywalkers cancels Wrong Turn', since: 5 },
+  ]);
+  register(['Dark:613'], [
+    { event: 'cancelTableEffect', summary: 'Kann Restricted Deployment beim Ausspielen oder auf dem Tisch als Lost Interrupt aufheben.',
+      targets: ['Light:2102'], cost: 0, duration: 'instant', expires: 'after cancellation', test: 'Skywalkers cancels Wrong Turn', since: 5 },
   ]);
   for (const [id, targets] of [['Light:348', 'rebel-or-jawa'], ['Dark:347', 'imperial-or-jawa']]) {
     register([id], [

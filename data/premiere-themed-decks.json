@@ -7,7 +7,7 @@
         "startingLocations": ["Light:2859", "Light:2855", "Light:2853", "Light:2858"],
         "cards": [
           { "id": "Light:95", "count": 1 },
-          { "id": "Light:259", "count": 3 },
+          { "id": "Light:259", "count": 2 },
           { "id": "Light:265", "count": 3 },
           { "id": "Light:530", "count": 2 },
           { "id": "Light:608", "count": 1 },
@@ -20,7 +20,9 @@
           { "id": "Light:2038", "count": 3 },
           { "id": "Light:2040", "count": 6 },
           { "id": "Light:2052", "count": 11 },
+          { "id": "Light:2102", "count": 1 },
           { "id": "Light:2217", "count": 2 },
+          { "id": "Light:2277", "count": 1 },
           { "id": "Light:2447", "count": 1 },
           { "id": "Light:2514", "count": 1 },
           { "id": "Light:2849", "count": 2 },
@@ -28,7 +30,7 @@
           { "id": "Light:2855", "count": 2 },
           { "id": "Light:2858", "count": 1 },
           { "id": "Light:2859", "count": 2 },
-          { "id": "Light:2907", "count": 5 }
+          { "id": "Light:2907", "count": 4 }
         ]
       },
       {
@@ -126,7 +128,8 @@
           { "id": "Dark:146", "count": 2 },
           { "id": "Dark:406", "count": 2 },
           { "id": "Dark:478", "count": 2 },
-          { "id": "Dark:489", "count": 2 },
+          { "id": "Dark:489", "count": 1 },
+          { "id": "Dark:613", "count": 1 },
           { "id": "Dark:634", "count": 1 },
           { "id": "Dark:668", "count": 4 },
           { "id": "Dark:669", "count": 1 },
@@ -138,13 +141,14 @@
           { "id": "Dark:816", "count": 1 },
           { "id": "Dark:1027", "count": 2 },
           { "id": "Dark:1061", "count": 3 },
-          { "id": "Dark:1264", "count": 6 },
+          { "id": "Dark:1264", "count": 5 },
           { "id": "Dark:1279", "count": 3 },
           { "id": "Dark:1426", "count": 1 },
           { "id": "Dark:2216", "count": 1 },
-          { "id": "Dark:2355", "count": 11 },
+          { "id": "Dark:2355", "count": 10 },
           { "id": "Dark:2360", "count": 2 },
-          { "id": "Dark:2600", "count": 3 }
+          { "id": "Dark:2600", "count": 3 },
+          { "id": "Dark:2833", "count": 2 }
         ]
       },
       {

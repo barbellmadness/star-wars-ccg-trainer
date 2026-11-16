@@ -189,15 +189,26 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     const handLoss = await page.evaluate(() => {
       state.activeSide = 'Dark';
       state.drainedSitesThisTurn = [];
+      state.locations[2] = {...catalog.find(card => card.id === 'Light:2462')};
       state.dark[2] = [{...catalog.find(card => card.id === 'Dark:2355')}];
+      const speeder = {...catalog.find(card => card.id === 'Light:2307')};
+      const driver = {...catalog.find(card => card.id === 'Light:2040')};
+      PremiereUnits.add(speeder, driver, 'driver', 'Light');
+      state.light[1].push(speeder);
+      state.force.push({name: 'React Force'});
       const name = state.hand[0].name;
       if (!requestAction('drain', 'Dark', [2])) throw Error('Dark drain did not start');
       return name;
     });
+    const reactControls = page.locator('.light-hand #playerReactControls');
+    assert.ok(await reactControls.getByRole('button', {name: 'SoroSuub V-35 Landspeeder (React, 1 Force)'}).isVisible());
+    assert.equal(await page.locator('#controlPanel').isVisible(), false);
+    await reactControls.getByRole('button', {name: 'Passen', exact: true}).click();
     const lossControls = page.locator('.light-hand #drainLossControls');
     assert.equal(await page.locator('#phaseDisplayLight > #step').count(), 1);
-    assert.ok(await lossControls.isVisible());
-    assert.match(await lossControls.textContent(), /Force Drain.*Cantina.*Noch 2 Force/);
+    await lossControls.waitFor({state: 'visible'});
+    assert.equal(await reactControls.isVisible(), false);
+    assert.match(await lossControls.textContent(), /Force Drain.*Moisture Farm.*Noch 2 Force/);
     assert.equal(await page.locator('#controlPanel').isVisible(), false);
     await lossControls.getByRole('button', {name: 'Hand · ' + handLoss, exact: true}).first().click();
     assert.match(await lossControls.textContent(), /Noch 1 Force/);
@@ -214,6 +225,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.evaluate(() => {
       state.activeSide = 'Light';
       state.phase = 3;
+      state.light[1].pop();
       state.dark[1][0].weapons = [];
       state.force.push({name: 'Test Force'}, {name: 'Test Force'});
       state.deck.push({name: 'Test Destiny', destiny: 6});
@@ -241,7 +253,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.12.1'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.13.0'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
