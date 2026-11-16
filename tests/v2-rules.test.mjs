@@ -590,3 +590,12 @@ test('Dark bot cannot battle without Force, confirmed presence, or correct phase
  assert.equal(run("battleSession"),null);
  assert.equal(run("state.botTurn.index"),1);
 });
+
+test('initiated battles cannot be abandoned before paying attrition and damage',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,activeSide:'Light',botTurn:null,locations:[{name:'Hoth: A'}],light:[[{ability:4,power:3}]],dark:[[{ability:1,power:2}]],force:[{id:'f'}],used:[],battledSitesThisTurn:[],log:[]};");
+ assert.equal(run("battleAnalysis(0)"),true);
+ assert.equal(run("closeBattle()"),false);
+ assert.equal(run("battleSession.initiator"),'Light');
+ assert.equal(run("state.used.length"),1);
+});
