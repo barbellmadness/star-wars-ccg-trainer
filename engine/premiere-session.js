@@ -1,9 +1,9 @@
-const {REVISION, readCatalog, readStarterDecks, buildAudit, locationTitle, isDeployableCharacter, isBantha, permanentPilotAbility, basicWeaponRule}=PremiereData;
+const {REVISION, readCatalog, readStarterDecks, buildAudit, locationTitle, isDeployableCharacter, isBantha, isEyesInTheDark, permanentPilotAbility, basicWeaponRule}=PremiereData;
 let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','deployLocation','convertLocation','revolution','deployEyesInTheDark','alterLostPileEffect','retrieve','equip','deployDevice','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -62,6 +62,10 @@ function checkLifeForceVictory(){
  return state.gameWinner;
 }
 
+function forceLossDescription(side,zone,card){
+ return zone!=='hand'&&PremiereGame.lostPileFaceDown(state,side)?'eine verdeckte Karte':card.name;
+}
+
 function loseForceForDrain(side,zone,index){
  const pending=state?.pendingForceLoss;
  if(!pending||state.gameWinner||pending.payer!==side||!PremiereGame.lossChoices(state,side,pending.from).some(choice=>
@@ -70,7 +74,7 @@ function loseForceForDrain(side,zone,index){
  if(!card)return false;
  pending.remaining--;
  const label=pending.reason==='battleDamage'?'Battle Damage':pending.reason==='assault'?'Assault':'Force Drain';
- log(side+' verliert 1 Force für '+label+' aus '+zone+': '+card.name+'.');
+ log(side+' verliert 1 Force für '+label+' aus '+zone+': '+forceLossDescription(side,zone,card)+'.');
  if(!pending.remaining||!PremiereGame.lossChoices(state,side).length){
   state.pendingForceLoss=null;
   if(pending.reason==='battleDamage')endBattleTiming();
@@ -484,6 +488,7 @@ function cardPowerModifier(c,side,siteIndex){
 }
 
 function cardEffectStatus(c){
+ if(isEyesInTheDark(c))return 'UMGESETZT: Legt den gewählten Lost Pile verdeckt. Verluste aus Life Force bleiben verdeckt, Rückholen bleibt möglich.';
  if(isBantha(c))return 'TEILWEISE: Außen-Site, Ability ½, Landspeed, React, Waffenabwehr und Power +1 für anwesende Tusken Raider. Boarding ist offen.';
  if(c.id==='Light:1593')return 'TEILWEISE: Force-Generierung +1 außerhalb von Tatooine-Sites und gedruckte Attrition-Immunität. Pilotenboni sind offen.';
  if(c.id==='Light:2110')return 'TEILWEISE: Vertauscht Force-Icons und die Seiten der implementierten Ortsregeln. Expand The Empire und Aufheben des Effects sind offen.';
@@ -1125,6 +1130,37 @@ function deployRevolution(side,handIndex,slot){
  PremiereGame.moveTop(force,used,3);
  ((state.locationEffects??=[])[slot]??=[]).push({card});
  log(card.name+' vertauscht Force-Icons und Seiten des Spieltexts bei '+state.locations[slot].name+'.');
+ return true;
+}
+
+function placeEyesInTheDark(effect){
+ (state.lostPileEffects??=[]).push(effect);
+ log(effect.card.name+' liegt bei der Lost Pile der '+effect.target+' Side. Der Stapel ist verdeckt.');
+}
+
+function deployEyesInTheDark(side,index,target){
+ const [card]=PremiereGame.zones(state,side).hand.splice(index,1);
+ const effect={card,target},frame={kind:'lostPileEffect',side,...effect};
+ if(state.game&&interruptResponses(PremiereGame.otherSide(side),frame).length){
+  PremiereGame.openResponse(state.game,frame);
+  log(side+' kündigt '+card.name+' für die Lost Pile der '+target+' Side an.');
+ }else placeEyesInTheDark(effect);
+ return true;
+}
+
+function cancelLostPileEffect(effect){
+ const index=state.lostPileEffects.indexOf(effect);
+ if(index<0)return;
+ state.lostPileEffects.splice(index,1);
+ loseOwnedCard(effect.card,effect.card.side);
+ log(effect.card.name+' wurde aufgehoben.');
+}
+
+function initiateAlterLostPileEffect(side,index,effectIndex){
+ const [card]=PremiereGame.zones(state,side).hand.splice(index,1);
+ const targetEffect=state.lostPileEffects[effectIndex];
+ PremiereGame.openResponse(state.game,{kind:'interrupt',interrupt:'alter',side,card,targetEffect,ability:highestInterruptAbility(side)});
+ log(side+' spielt '+card.name+' gegen '+targetEffect.card.name+' bei der '+targetEffect.target+' Side.');
  return true;
 }
 
@@ -1972,7 +2008,9 @@ function removeBattleUnit(side,card){
 }
 
 function loseOwnedCard(card,fallback){
- PremiereGame.zones(state,card.owner??card.side??fallback).lost.push(card);
+ const owner=card.owner??card.side??fallback;
+ PremiereGame.zones(state,owner).lost.push(card);
+ if(PremiereGame.lostPileFaceDown(state,owner))log(card.name+' geht offen verloren und wird anschließend verdeckt abgelegt.');
 }
 
 function loseTableCard(side,slot,card){
@@ -2033,7 +2071,7 @@ function battleDamageAction(side,kind,args){
   const card=PremiereGame.loseForce(state,side,...args);
   if(!card)return false;
   debt.damage--;
-  log(side+' verliert '+card.name+' für Battle Damage.');
+  log(side+' verliert '+forceLossDescription(side,args[0],card)+' für Battle Damage.');
  }
  d.passes=kind==='passDamage'?d.passes+1:0;
  d.priority=PremiereGame.otherSide(side);
@@ -2109,10 +2147,7 @@ function resolveBattleLosses(){
   const {board}=PremiereGame.zones(state,side),cards=board[x.site];
   for(const i of x[side==='Light'?'lightLoss':'darkLoss'].slice().sort((a,b)=>b-a)){
    const card=cards.splice(i,1)[0];
-   PremiereUnits.remove(card,unit=>{
-    const owner=unit.owner??unit.side??side;
-    PremiereGame.zones(state,owner).lost.push(unit);
-   },passenger=>{
+   PremiereUnits.remove(card,unit=>loseOwnedCard(unit,side),passenger=>{
     const controller=passenger.controller??side;
     PremiereGame.zones(state,controller).board[x.site].push(passenger);
     log(passenger.name+' steigt vom verlorenen Bantha ab.');
@@ -2196,10 +2231,13 @@ function resolveResponsePass(side){
    const {used}=PremiereGame.zones(state,frame.side);
    const complete=cancelled=>{
     used.push(frame.card);
-    if(cancelled)PremiereGame.cancelResponse(game,parent);
+    if(cancelled){
+     if(frame.targetEffect)cancelLostPileEffect(frame.targetEffect);
+     else PremiereGame.cancelResponse(game,parent);
+    }
     settleCancelledResponse(game);
    };
-   if(parent.kind==='interrupt'&&['sense','alter'].includes(parent.interrupt))complete(true);
+   if(parent?.kind==='interrupt'&&['sense','alter'].includes(parent.interrupt))complete(true);
    else drawDestinySeries(frame.side,'interrupt',1,0,draws=>{
     const draw=draws.find(item=>!item.cancelled),destiny=draw?.value??null;
     const cancelled=destiny!==null&&destiny<frame.ability;
@@ -2234,6 +2272,8 @@ function resolveResponsePass(side){
     log('Force Drain aufgehoben: Der React hat Presence an den Ort gebracht.');
    }
   }
+ }else if(frame.kind==='lostPileEffect'&&!frame.cancelled){
+  placeEyesInTheDark({card:frame.card,target:frame.target});
  }else if(frame.kind==='drain'&&!frame.cancelled){
   resolveForceDrain(frame.side,frame.site,frame.bonus);
  }else if(frame.kind==='battle'){
@@ -2246,6 +2286,10 @@ function resolveResponsePass(side){
 
 function settleCancelledResponse(game){
  const cancelled=PremiereGame.removeCancelledResponse(game);
+ if(cancelled?.kind==='lostPileEffect'){
+  loseOwnedCard(cancelled.card,cancelled.side);
+  log(cancelled.card.name+' wurde beim Ausspielen aufgehoben.');
+ }
  if(cancelled?.kind==='interrupt'){
   if(cancelled.interrupt==='battleEffect')settleBattleEffect(cancelled);
   else{
@@ -2255,9 +2299,8 @@ function settleCancelledResponse(game){
   log(cancelled.card.name+' wurde aufgehoben und kommt in den Lost Pile.');
  }
  if(cancelled?.kind==='react'&&cancelled.deploy){
-  const {lost}=PremiereGame.zones(state,cancelled.side);
-  lost.push(cancelled.card);
-  if(cancelled.pilot)lost.push(cancelled.pilot);
+  loseOwnedCard(cancelled.card,cancelled.side);
+  if(cancelled.pilot)loseOwnedCard(cancelled.pilot,cancelled.side);
   (state.cancelledReactTitles??=[]).push(locationTitle(cancelled.card));
  }
 }
@@ -2287,6 +2330,12 @@ function initiateReactDeploy(side,index,pilotIndex,hostIndex){
  return true;
 }
 
+const isAlter=card=>['Light:95','Dark:94'].includes(card.id);
+function highestInterruptAbility(side){
+ return Math.max(0,...PremiereLocations.activeCards(state,side)
+  .filter(card=>card.type==='Character'&&!card.undercover).map(card=>cardAbility(card)??0));
+}
+
 function interruptResponses(side,window){
  if(!window||window.cancelled||side===window.side)return [];
  const {force,hand}=PremiereGame.zones(state,side);
@@ -2295,14 +2344,13 @@ function interruptResponses(side,window){
   if(!force?.length)return [];
   return (hand??[]).flatMap((card,index)=>card.id===id?[{kind:'assault',card,index,cost:1}]:[]);
  }
- const kind=window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
+ const kind=window.kind==='lostPileEffect'?'alter':window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
  if(!kind)return [];
- const ids=kind==='sense'?['Light:2217','Dark:2216']:['Light:95','Dark:94'];
- const requiresDestiny=window.kind==='react'||['assault','battleEffect','overload'].includes(window.interrupt);
- const ability=requiresDestiny?Math.max(0,...PremiereLocations.activeCards(state,side)
-  .filter(card=>card.type==='Character'&&!card.undercover).map(card=>cardAbility(card)??0)):0;
+ const requiresDestiny=window.kind==='lostPileEffect'||window.kind==='react'||['assault','battleEffect','overload'].includes(window.interrupt);
+ const ability=requiresDestiny?highestInterruptAbility(side):0;
  if(requiresDestiny&&!ability)return [];
- return (hand??[]).flatMap((card,index)=>ids.includes(card.id)?[{kind,card,index,ability,cost:0}]:[]);
+ return (hand??[]).flatMap((card,index)=>(kind==='alter'?isAlter(card):['Light:2217','Dark:2216'].includes(card.id))
+  ?[{kind,card,index,ability,cost:0}]:[]);
 }
 
 function initiateInterruptResponse(side,index){
@@ -2398,6 +2446,11 @@ function legalActions(position,side){
  const active=position.activeSide??(position.botTurn?'Dark':'Light');
  const actions=side==='Light'&&(!position.game||position.trainingBattle)?[offer('trainingNight',[!position.nightConditions])]:[];
  for(const option of weaponEffectOptions(side))actions.push(offer('weaponEffect',option.args,option));
+ if(position.game&&position.lostPileEffects?.length&&hand?.some(isAlter)&&highestInterruptAbility(side)>0){
+  for(const [index,card] of hand.entries())if(isAlter(card)){
+   position.lostPileEffects.forEach((effect,effectIndex)=>actions.push(offer('alterLostPileEffect',[index,effectIndex],{card,target:effect.target})));
+  }
+ }
  if(side!==active)return actions;
  const botStep=position.botTurn?.steps[position.botTurn.index];
  if(side==='Dark'&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
@@ -2414,6 +2467,9 @@ function legalActions(position,side){
  }else if(position.phase===2){
   for(const option of automatedDeployOptions(side))actions.push(offer('deployAutomated',[option.index,option.slot],option));
   for(const [i,card] of (hand??[]).entries()){
+   if(side==='Light'&&isEyesInTheDark(card))for(const target of PremiereGame.sides){
+    actions.push(offer('deployEyesInTheDark',[i,target],{card,target}));
+   }
    for(const slot of locationDeployPositions(side,i))actions.push(offer('deployLocation',[i,slot],{card}));
    const conversion=conversionTarget(side,i);
    if(conversion>=0)actions.push(offer('convertLocation',[i,conversion],{card}));
@@ -2454,6 +2510,8 @@ function executeAction({kind,side,args}){
   case 'deployLocation': return deployLocationFromHand(side,...args);
   case 'convertLocation': return convertLocation(side,...args);
   case 'revolution': return deployRevolution(side,...args);
+  case 'deployEyesInTheDark': return deployEyesInTheDark(side,...args);
+  case 'alterLostPileEffect': return initiateAlterLostPileEffect(side,...args);
   case 'retrieve': return playRetrieval(side,...args);
   case 'deployWithPilot': return deployWithPilot(side,...args);
   case 'transport': return performTransport(side,...args);

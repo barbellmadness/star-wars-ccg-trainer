@@ -83,6 +83,9 @@
 .lost-top-card img{width:22px;height:31px;flex:none;object-fit:contain}
 .lost-top-card small{display:block;color:#c5d4e8}
 .lost-top-card strong{overflow-wrap:anywhere}
+.lost-pile-covered{display:flex;align-items:center;gap:7px;margin-top:5px;padding:4px 6px;border:1px dashed #859bb6;border-radius:6px}
+.lost-pile-covered .side-card-back{width:22px;height:31px;flex:none;object-fit:cover}
+.lost-pile-covered small{display:block;color:#c5d4e8}
 .pile-forward,.pile-draw,.pile-return{font-size:10px;font-weight:700}
 .pile-forward{display:grid;align-content:center;gap:1px}
 .pile-forward span,.pile-draw span{color:#e7edf9;font-size:16px;line-height:1}
@@ -226,7 +229,7 @@ const cardBackUrls={
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let selected=-1, shownGame;
+let selected=-1, shownGame, inspectedLostSide=null;
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action){
@@ -266,8 +269,10 @@ function renderControlPanel(available=legalActions(state,'Light')){
  }
  const window=PremiereGame.responseWindow(state.game);
  if(window){
-  const title=window.kind==='destiny'?'Destiny':window.kind==='interrupt'?window.card.name:window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
-  box.innerHTML='<b>Antwortfenster · '+escapeHTML(title)+' bei '+escapeHTML(state.locations[window.site].name)+'</b><p>Priorität: '+window.priority+'</p>';
+  const title=window.kind==='destiny'?'Destiny':['interrupt','lostPileEffect'].includes(window.kind)?window.card.name
+   :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
+  const loc=state.locations[window.site];
+  box.innerHTML='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>';
   if(window.kind==='destiny')box.innerHTML+='<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>';
   if(window.priority==='Dark'){
    const option=legalActions(state,'Dark')[0];
@@ -289,9 +294,11 @@ function renderControlPanel(available=legalActions(state,'Light')){
  const retrieval=available.filter(option=>option.kind==='retrieve').map(option=>ruleButton(option,
   option.card.name+' · '+option.target.name+' zurückholen ('+option.cost+' Force)')).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const lostPileEffects=available.filter(option=>['deployEyesInTheDark','alterLostPileEffect'].includes(option.kind))
+  .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const rack=state.blasterRack;
  const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
- const extra=retrieval+equipment+rackView;
+ const extra=[retrieval,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  if(state.phase===1&&!state.botTurn&&!state.gameWinner){
   const drains=available.filter(option=>option.kind==='drain');
   box.innerHTML='<b>Control Phase · Force Drain</b><p class="hint">Ein legaler Drain kann den Wert 0 haben. Pro Ort ist ein Drain je Zug möglich.</p>'
@@ -499,6 +506,7 @@ function displayCardValue(card,field){
 }
 
 function showCardDetails(card,details){
+ inspectedLostSide=null;
  const dialog=el('cardInspector'),body=el('cardInspectorBody');
  el('cardInspectorTitle').textContent=card.name;
  const image=card.image?'<img src="'+escapeHTML(card.image)+'" alt="Kartenscan: '+escapeHTML(card.name)+'">'
@@ -525,9 +533,11 @@ function inspectCard(side,i,zone,site){
 }
 
 function inspectLostTop(side){
- if(!state||!PremiereGame.sides.includes(side))return;
+ if(!state||!PremiereGame.sides.includes(side)||PremiereGame.lostPileFaceDown(state,side))return;
  const card=PremiereGame.zones(state,side).lost?.at(-1);
- if(card)showCardWithStats(card);
+ if(!card)return;
+ showCardWithStats(card);
+ inspectedLostSide=side;
 }
 
 function inspectLocation(i){
@@ -549,6 +559,7 @@ function inspectLocation(i){
 function closeCard(){
  const dialog=el('cardInspector');
  if(dialog.open)dialog.close();
+ inspectedLostSide=null;
 }
 
 function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
@@ -628,16 +639,19 @@ function renderDeckPiles(side,player){
  const slot=(label,count)=>'<div class="pile-slot">'+(count?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
   +label+' <strong>'+count+'</strong></div>';
  const lifeForce=PremiereGame.lifeForce(state,side);
- const top=player.lost.at(-1);
+ const top=player.lostTop;
+ if(player.lostFaceDown&&inspectedLostSide===side)closeCard();
+ const cover=player.lostFaceDown?'<div class="lost-pile-covered">'+(player.lostCount?cardBackMarkup(side):'')
+  +'<span><strong>Lost Pile verdeckt</strong><small>'+player.lostEffects.map(card=>escapeHTML(card.name)).join(', ')+'</small></span></div>':'';
  const lostTop=top?'<button class="lost-top-card" type="button" aria-haspopup="dialog" onclick="inspectLostTop(\''+side+'\')">'
   +(top.image?'<img src="'+escapeHTML(top.image)+'" alt="" loading="lazy">':'')
   +'<span><small>Oben auf der Lost Pile</small><strong>'+escapeHTML(top.name)+'</strong></span></button>':'';
  el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
-  +'</strong></span><span>Lost Pile <strong>'+player.lost.length+'</strong></span></figcaption>'
+  +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
   +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
-  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+lostTop;
+  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+cover+lostTop;
 }
 
 function render(){

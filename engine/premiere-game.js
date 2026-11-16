@@ -36,7 +36,7 @@ const PremiereGame = (() => {
     const state = {game, turn: 1, phase: 0, activeSide: 'Dark', activated: false,
       deck, botDeck, hand: [], botHand: [], locations, locationOrder, convertedLocations: {}, locationEffects: {},
       light: locations.map(() => []), dark: locations.map(() => []),
-      force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [],
+      force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [], lostPileEffects: [],
       log: [], botReason: 'Bot wartet.', botHistory: [], botTurn: null,
       pendingForceLoss: null, gameWinner: null, nightConditions: false};
     resetTurn(state, 'Dark');
@@ -105,14 +105,22 @@ const PremiereGame = (() => {
     return card;
   }
 
+  function lostPileFaceDown(state, side) {
+    return (state.lostPileEffects ?? []).some(effect => effect.target === side);
+  }
+
   function playerView(state, side) {
     if (!state || !sides.includes(side)) return null;
     const clone = card => card && JSON.parse(JSON.stringify(card));
     const players = Object.fromEntries(sides.map(player => {
       const piles = zones(state, player);
+      const faceDown = lostPileFaceDown(state, player);
       return [player, {handCount: piles.hand?.length ?? 0, reserveCount: piles.deck?.length ?? 0,
         forceCount: piles.force?.length ?? 0, usedCount: piles.used?.length ?? 0,
-        lost: (piles.lost ?? []).map(clone), board: (piles.board ?? []).map(row => row.map(clone)),
+        lostCount: piles.lost?.length ?? 0, lostFaceDown: faceDown,
+        lostTop: faceDown ? null : clone(piles.lost?.at(-1)) ?? null,
+        lostEffects: (state.lostPileEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),
+        board: (piles.board ?? []).map(row => row.map(clone)),
         ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
@@ -283,7 +291,7 @@ const PremiereGame = (() => {
   }
 
   return {actionState, answer, cancelResponse, checkpoint, copyDeck, createState, execute, expire,
-    lifeForce, lossChoices, loseForce, moveTop, offer, openResponse, otherSide, outcome, passResponse, playerView, random,
+    lifeForce, lossChoices, loseForce, lostPileFaceDown, moveTop, offer, openResponse, otherSide, outcome, passResponse, playerView, random,
     recirculate, registerTrigger, removeCancelledResponse, resetTurn, resolveTrigger, responseWindow,
     retrieveCard, retrieveForce, setPhase, setupView, shuffle, sides, triggerOptions, useOnce, wasUsed, zones};
 })();
