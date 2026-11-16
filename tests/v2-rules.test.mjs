@@ -599,3 +599,36 @@ test('initiated battles cannot be abandoned before paying attrition and damage',
  assert.equal(run("battleSession.initiator"),'Light');
  assert.equal(run("state.used.length"),1);
 });
+
+test('weapon hit obliges forfeiture even when attrition and battle damage are zero',()=>{
+ const {run}=harness();
+ run("renderBattle=()=>{};const hit={name:'Hit trooper',power:4,ability:4,forfeit:3};state={phase:3,locations:[{name:'Tatooine: A'}],light:[[hit]],dark:[[{name:'Dark',power:1,ability:1,forfeit:1}]],lost:[],botLost:[],log:[],deck:[],used:[],botDeck:[],botUsed:[],force:[],botForce:[]};battleSession={site:0,initiator:'Light',lightDestiny:0,darkDestiny:0,lightCard:{name:'Skipped'},darkCard:{name:'Skipped'},lightLoss:[],darkLoss:[],weaponHits:{Light:[],Dark:[]},lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("recordBattleWeaponHit('Light',0)"),true);
+ assert.equal(run("battleSession.lightLoss.includes(0)"),true);
+ assert.equal(run("battleForfeitPlan('Light').valid"),true);
+ run("toggleLoss('Light',0)");
+ assert.equal(run("battleSession.lightLoss.includes(0)"),true);
+ assert.equal(run("resolveBattleLosses()"),true);
+ assert.equal(run("state.lost[0].name"),'Hit trooper');
+ assert.equal(run("state.light[0].length"),0);
+});
+test('weapon hit cannot be ignored even if the target is immune to attrition',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Tatooine: A'}],light:[[{name:'Immune',forfeit:5,gametext:'Immune to attrition < 5.'}]],dark:[[]],log:[]};battleSession={site:0,lightCard:{name:'Drawn'},darkCard:{name:'Drawn'},lightDestiny:0,darkDestiny:1,lightLoss:[],darkLoss:[],lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("recordBattleWeaponHit('Light',0)"),true);
+ assert.equal(run("battleForfeitPlan('Light').valid"),true);
+ run("battleSession.lightLoss=[]");
+ assert.equal(run("battleForfeitPlan('Light').valid"),false);
+});
+test('weapon hit registration rejects invalid targets and phases',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Site'}],light:[[{name:'L'}]],dark:[[]],log:[]};battleSession={site:0,lightLoss:[],darkLoss:[]};");
+ assert.equal(run("recordBattleWeaponHit('Dark',0)"),false);
+ assert.equal(run("recordBattleWeaponHit('Light',2)"),false);
+ assert.equal(run("recordBattleWeaponHit('Other',0)"),false);
+ assert.equal(run("recordBattleWeaponHit('Light',0)"),true);
+ assert.equal(run("recordBattleWeaponHit('Light',0)"),true);
+ assert.equal(run("battleSession.weaponHits.Light.length"),1);
+ run("state.phase=4");
+ assert.equal(run("recordBattleWeaponHit('Light',0)"),false);
+});
