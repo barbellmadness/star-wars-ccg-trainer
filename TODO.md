@@ -30,12 +30,12 @@ V2 beherrscht bereits den Grundablauf mit Force, Deploy, Drain, Bewegung und Bat
 ## 3. Locations, Presence und Force
 
 - [x] Planetensysteme, Planetensites und mobile Sites des Premiere-Sets gruppieren. Sites regelgerecht einfügen und die Playmat in dieser Reihenfolge darstellen. Bereits ausgespielte Karten behalten ihren Standort.
-- [ ] Location-Deploy und Konvertieren gegnerischer Varianten desselben Orts umsetzen. Die neue Kartenseite, bleibende Karten am Ort, beteiligte Effekte und den Referenzzustand prüfen.
-- [ ] `at`, `present`, `aboard`, Presence, Occupy und Control als eigenständige Regelabfragen abbilden. Halbe Ability, Droiden, Spione, Passagiere und eingeschlossene Einheiten in den jeweils zutreffenden Abfragen berücksichtigen.
-- [ ] Force-Generierung um Location- und Kartentextmodifikatoren ergänzen. Unbekannte Icon-Werte und Nullwerte unterscheiden. Optionale Aktivierung, Reserve-Grenze und Umlauf beider Used Piles am Zugende mit vollständigem Stapelverlauf prüfen.
-- [ ] Force Drains mit Bonus, Malus, Verbot, Ersatz und React-Fenster umsetzen. Überprüfen, wann ein Drain mit Wert null angesagt werden darf. Mehrere unterschiedliche kontrollierte Locations pro Zug unterstützen.
-- [ ] Force Loss und Retrieval als gemeinsame Aktionen modellieren. Zahlung aus Hand oder erlaubter Stapelspitze, Rückgewinnung aus Lost Pile, Umgang mit leerem Stapel und den Zielstapel für jede Karte prüfen.
-- [ ] Ortsbezogene Bedingungen wie Nacht, Scomp Link, Docking Bay, Innen- und Außenbereich sowie die gedruckten Standort- und Seitenbeschränkungen aus den Karten ableiten.
+- [x] Location-Deploy und Konvertieren gegnerischer Varianten. Der Platz auf der Playmat hält Einheiten und gültige Zieleffekte am Ort. Ältere Fassungen liegen unter der aktuellen Karte.
+- [x] `at`, `present`, `aboard`, Presence, Occupy und Control als eigenständige Abfragen. Halbe Ability, Droiden, Undercover-Spione und eingeschlossene Einheiten sind geprüft. Aktionen zum Ein- und Aussteigen stehen in Abschnitt 4.
+- [x] Force-Generierung aus effektiven Icons, persönlicher Force und Luke Skywalker. Tests unterscheiden unbekannte Icons und null und prüfen Aktivierung, Reserve-Grenze und Umlauf beider Used Piles.
+- [x] Force Drains mit gedruckten Ortsboni, optionalen Lichtschwertboni, Modifikatoren, Undercover-Verbot und React-Fenstern. Assault-Interrupts ersetzen die Auflösung. Ein legaler Drain kann null betragen. Auch der Bot kann an mehreren Locations im selben Zug drainen.
+- [x] Force Loss und Retrieval teilen Zonenregeln für Hand, Stapelspitze und ausgewählte Karten im Lost Pile. Zurückgeholte Karten gehen in die Used Pile. Die Lost-Funktion der benannten Rückhol-Interrupts nutzt das gemeinsame Aktionsangebot.
+- [x] Ortsbedingungen für Nacht, Scomp Link, Docking Bay samt Kosten und Innen-/Außenbereiche abfragen. V2 verwendet unter anderem die gedruckten Deploy-Bedingungen für Jawas, Tusken Raider, Death Star Trooper, die Trash Compactor und die Rabatte an Lars’ Farm und Obi-Wans Hütte. Transit, weitere Kartentexte und Pile-Suche bleiben in den zugehörigen Abschnitten.
 
 ## 4. Charaktere, Fahrzeuge, Schiffe und Bewegung
 

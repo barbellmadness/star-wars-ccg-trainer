@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html=readFileSync(new URL('../v2.html',import.meta.url),'utf8');
 const cardDataScript=readFileSync(new URL('../engine/premiere-data.js',import.meta.url),'utf8');
 const gameScript=readFileSync(new URL('../engine/premiere-game.js',import.meta.url),'utf8');
+const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
@@ -14,6 +15,7 @@ function harness(){
  const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error});
  vm.runInContext(cardDataScript,context);
  vm.runInContext(gameScript,context);
+ vm.runInContext(locationScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
@@ -149,7 +151,7 @@ test('Force drain bot pays from chosen hand and life-force piles into Lost Pile'
 });
 test('Dark Force drain makes Light player choose from hand or a Life Force pile',()=>{
  const {run}=harness();
- run("state={turn:1,phase:0,activeSide:'Dark',activated:false,botTurn:{steps:[],index:0},locations:[{name:'Hoth: A',icons:{light:2,dark:0}}],light:[[]],dark:[[{name:'Imperial',ability:1,power:1}]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,deck:[{name:'Reserve L'}],force:[{name:'Force L'}],used:[],hand:[{name:'Hand L'}],lost:[],botDeck:[{name:'Reserve D'}],botForce:[],botUsed:[],botHand:[],botLost:[],log:[],botHistory:[],botReason:''};");
+ run("state={turn:1,phase:1,activeSide:'Dark',activated:false,botTurn:{steps:[],index:0},locations:[{name:'Hoth: A',icons:{light:2,dark:0}}],light:[[]],dark:[[{name:'Imperial',ability:1,power:1}]],drainedSitesThisTurn:[],pendingForceLoss:null,gameWinner:null,deck:[{name:'Reserve L'}],force:[{name:'Force L'}],used:[],hand:[{name:'Hand L'}],lost:[],botDeck:[{name:'Reserve D'}],botForce:[],botUsed:[],botHand:[],botLost:[],log:[],botHistory:[],botReason:''};");
  assert.equal(run("initiateForceDrain('Dark',0)"),true);
  assert.equal(run("state.pendingForceLoss.remaining"),2);
  assert.equal(run("loseForceForDrain('Light','force')"),true);
@@ -1230,7 +1232,7 @@ test('UI action versions reject duplicate clicks, wrong-side targets and unaffor
 function reactHarness(){
  const session=harness();
  session.run(`const nearby={name:'Hoth: Exterior A',type:'Location',subType:'Site',locationTags:['Planet','Exterior'],icons:{light:1,dark:1}};
-  const target={...nearby,name:'Hoth: Exterior B'};
+  const target={...nearby,name:'Hoth: Exterior B',icons:{...nearby.icons}};
   const wolfman={name:'Shistavanen Wolfman',id:'Light:2250',instanceId:'Light:9',type:'Character',deploy:2,ability:2};
   const imperial={name:'Imperial',type:'Character',ability:3};
   state=PremiereGame.createState(PremiereGame.actionState(21,1),[],[],[nearby,target],[0,1]);
@@ -1340,4 +1342,137 @@ test('one mandatory callback can deplete both sides before the engine determines
  assert.equal(run("requestAction('timingTrigger','Light',['both-lose'])"),true);
  assert.equal(run('state.gameWinner'),'Simultaneous');
  assert.equal(run("legalActions(state,'Dark').length+legalActions(state,'Light').length"),0);
+});
+
+test('location conversion stacks opposing printings without moving units or compatible effects',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`const catalogCard=id=>({...catalog.find(card=>card.id===id)});
+  const darkBay=catalogCard('Dark:2446'),lightBay=catalogCard('Light:2447'),revolution=catalogCard('Light:2110');
+  const guard={ability:1,name:'Guard'},effect={card:{name:'Location effect',side:'Dark'},requiredTag:'Scomp Link'};
+  const incompatible={card:{name:'Inapplicable effect',side:'Dark'},requiredTag:'Mobile'};
+  state=PremiereGame.createState(PremiereGame.actionState(41,0),[],[],[darkBay,null],[0]);setupDecks=null;
+  state.deck=[{name:'Life L'}];state.botDeck=[{name:'Life D'}];state.force=[{},{},{}];state.phase=2;state.activeSide='Light';
+  state.dark[0].push(guard);state.hand=[revolution,lightBay];state.locationEffects={0:[effect,incompatible]};`);
+ assert.equal(run("requestAction('revolution','Light',[0,0])"),true);
+ assert.equal(run("PremiereLocations.conditions(state,0,'Light').transitCost"),1);
+ run('select(0)');
+ assert.match(elements.get('board').innerHTML,/Konvertieren/);
+ assert.equal(run("requestAction('convertLocation','Light',[0,0])"),true);
+ assert.equal(run(`state.locations[0]===lightBay&&state.dark[0][0]===guard&&state.convertedLocations[0][0]===darkBay&&
+  state.locationEffects[0][0]===effect&&state.locationEffects[0][1].card===revolution&&state.botLost[0]===incompatible.card&&state.locationOrder.join()==='0'`),true);
+ assert.equal(run("PremiereLocations.conditions(state,0,'Light').transitCost"),2);
+ assert.equal(run("PremiereLocations.icons(state,0,'Light')===lightBay.icons.dark"),true);
+ run('inspectLocation(0)');
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Scomp Link.*Docking Bay.*darunter|Scomp Link.*Docking Bay.*Darunter/);
+ run('state.hand=[{...lightBay}]');
+ assert.equal(run("requestAction('convertLocation','Light',[0,0])"),false);
+ assert.equal(run("requestAction('deployLocation','Light',[0,0])"),false);
+});
+
+test('at, present, aboard, Occupy and Control differ for enclosed units, droids and spies',()=>{
+ const {run}=reactHarness();
+ run(`const passenger={type:'Character',ability:2},droid={type:'Character',subType:'Droid'},
+  ship={type:'Starship',occupants:[{card:passenger,role:'passenger'},{card:droid,role:'passenger'}]},
+  spy={type:'Character',ability:3,undercover:true};
+  state.locations[0]={name:'Hoth',type:'Location',subType:'System'};
+  state.light=[[ship],[]];state.dark=[[],[spy]];`);
+ assert.equal(run('PremiereLocations.at(state,passenger,0)&&PremiereLocations.aboard(state,passenger,ship)'),true);
+ assert.equal(run('PremiereLocations.present(state,passenger,ship)&&!PremiereLocations.present(state,passenger,0)'),true);
+ assert.equal(run("PremiereLocations.occupy(state,'Light',0,cardAbility)&&PremiereLocations.control(state,'Light',0,cardAbility)"),true);
+ assert.equal(run("confirmedPresence('Dark',1)"),false);
+ run('state.light[1].push(wolfman);state.activeSide="Light";state.botTurn=null;');
+ assert.equal(run("PremiereLocations.at(state,wolfman,0)&&PremiereLocations.control(state,'Light',1,cardAbility)"),true);
+ assert.equal(run("forceDrainValue('Light',1)"),null);
+ run('spy.undercover=false;');
+ assert.equal(run("confirmedPresence('Dark',1)&&!PremiereLocations.control(state,'Light',1,cardAbility)"),true);
+});
+
+test('Luke modifies Force off Tatooine, zero icons are known, and activation stops at the Reserve limit',()=>{
+ const {run}=reactHarness();
+ run(`PremiereGame.resetTurn(state,'Light');state.botTurn=null;
+  state.light[0]=[{id:'Light:1593',ability:4,type:'Character'}];
+  state.locations[0].icons.light=0;state.locations[1].icons.light=null;`);
+ assert.equal(run("JSON.stringify(forceFromLocations('Light'))"),'{"count":2,"unknown":1}');
+ run("state.locations[0].name='Tatooine: Dune Sea'");
+ assert.equal(run("forceFromLocations('Light').count"),1);
+ run("state.locations[0].name='Alderaan';state.locations[0].subType='System'");
+ assert.equal(run("requestAction('activate','Light',[2])"),false);
+ assert.equal(run("requestAction('activate','Light',[1])"),true);
+ assert.equal(run("state.deck.length===0&&state.force.at(-1).name==='Life L'"),true);
+});
+
+test('printed drain bonuses, penalties and zero drains share the per-location turn limit',()=>{
+ const {run}=reactHarness();
+ run(`state.light[0]=[];state.dark[0]=[{type:'Character',ability:1}];
+  state.locations[0].icons.light=0;state.locations[1].id='Dark:2458';
+  state.locationEffects={1:[{card:{id:'test modifier'},drainModifier:{Dark:-1}}]};`);
+ assert.equal(run("forceDrainValue('Dark',0)"),0);
+ assert.equal(run("forceDrainValue('Dark',1)"),1);
+ assert.equal(run("requestAction('drain','Dark',[0])&&state.pendingForceLoss===null"),true);
+ assert.equal(run("requestAction('drain','Dark',[0])"),false);
+ assert.equal(run("requestAction('drain','Dark',[1])&&state.pendingForceLoss.remaining===1"),true);
+});
+
+test('Surprise Assault replaces a Force Drain with the destiny comparison and shared loss choices',()=>{
+ const {run}=reactHarness();
+ run(`state.light[0]=[];imperial.power=2;state.hand=[{id:'Light:2385',name:'Surprise Assault'}];
+  state.deck.push({name:'Assault Destiny',destiny:3});`);
+ assert.equal(run("requestAction('drain','Dark',[1])&&requestAction('interruptResponse','Light',[0])"),true);
+ assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run(`state.lost[0].name==='Surprise Assault'&&state.used.map(card=>card.name).join()===
+  'React cost,Assault Destiny'&&state.botLost.length===1&&state.pendingForceLoss===null`),true);
+});
+
+test('Force loss respects a required pile and retrieval preserves the remaining pile order',async()=>{
+ const {run}=await premiereHarness();
+ run(`const source=id=>({...catalog.find(card=>card.id===id)});
+  const interrupt=source('Light:2105'),obi=source('Light:1803'),bottom={name:'Bottom'},last={name:'Top'};
+  state=PremiereGame.createState(PremiereGame.actionState(42,0),[],[],[],[]);setupDecks=null;
+  state.activeSide='Light';state.phase=1;state.deck=[bottom,last];state.botDeck=[{name:'Life D'}];
+  state.force=[{name:'Cost'}];state.lost=[{name:'First'},obi,{name:'Third'}];state.hand=[interrupt];
+  beginForceLoss('Light',1,{reason:'drain',from:'deck'});`);
+ assert.equal(run("requestAction('loseForce','Light',['force'])"),false);
+ assert.equal(run("requestAction('loseForce','Light',['deck'])"),true);
+ assert.equal(run('state.deck[0]===bottom&&state.lost.at(-1)===last'),true);
+ assert.equal(run("requestAction('retrieve','Light',[0,1])"),true);
+ assert.equal(run('state.used.at(-1)===obi&&state.lost.at(-1)===interrupt'),true);
+ assert.equal(run("PremiereGame.retrieveForce(state,'Light',2)[1]===last&&state.lost.map(card=>card.name).join()==='First,Third'"),true);
+});
+
+test('the bot makes another legal drain after Light pays the previous one',()=>{
+ const {run}=reactHarness();
+ run(`state.light[0]=[];state.dark[0]=[{type:'Character',ability:1}];
+  state.locations[1].icons.light=2;state.phase=0;
+  state.botTurn={steps:[{kind:'control'},{kind:'deploy'}],index:0};
+  state.deck.push({name:'Extra 1'},{name:'Extra 2'});state.hand=[{name:'Hand loss'}];`);
+ assert.equal(run('botNextStep()&&state.pendingForceLoss.locationIndex===1'),true);
+ assert.equal(run('botNextStep()'),false);
+ assert.equal(run("requestAction('loseForce','Light',['hand',0])&&requestAction('loseForce','Light',['force'])"),true);
+ assert.equal(run('botNextStep()&&state.pendingForceLoss.locationIndex===0&&state.phase===1'),true);
+ assert.equal(run("requestAction('loseForce','Light',['deck'])&&botNextStep()&&state.phase===2"),true);
+});
+
+test('lightsabers offer an optional bonus, and a forbidden location offers no drain',()=>{
+ const {run}=reactHarness();
+ run(`state.activeSide='Light';state.botTurn=null;
+  state.dark[1]=[];wolfman.weapons=[{id:'Light:1386',type:'Weapon'}];`);
+ assert.equal(run("legalActions(state,'Light').filter(action=>action.kind==='drain').map(action=>action.amount).join()"),'1,2');
+ run("state.locationEffects={0:[{card:{id:'test modifier'},drainForbiddenFor:'Light'}]};");
+ assert.equal(run("requestAction('drain','Light',[0,1])"),false);
+});
+
+test('Jawa deployment honors the Tatooine restriction and both players’ printed payments',async()=>{
+ const {run}=await premiereHarness();
+ run(`const card=id=>({...catalog.find(c=>c.id===id)}),jawa=card('Dark:1372'),camp=card('Dark:2454');
+  const nonTatooine={name:'Hoth: A',type:'Location',subType:'Site',icons:{dark:2,light:1}};
+  const other={name:'Tatooine: Another Site',type:'Location',subType:'Site',icons:{dark:2,light:1}};
+  state=PremiereGame.createState(PremiereGame.actionState(43,0),[],[],[camp,nonTatooine,other],[0,2,1]);setupDecks=null;
+  state.activeSide='Dark';state.phase=2;state.botTurn={steps:[],index:0};state.botHand=[jawa,{...jawa}];
+  state.botForce=[{name:'Dark bottom'},{name:'Dark top'}];state.botDeck=[{}];state.deck=[{}];`);
+ assert.equal(run("requestAction('deploy','Dark',[0,1])"),false);
+ assert.equal(run("requestAction('deploy','Dark',[0,2])"),false);
+ assert.ok(run("requestAction('deploy','Dark',[0,0])"));
+ run("state.force=[{name:'Light payment'}]");
+ assert.ok(run("requestAction('deploy','Dark',[0,2])"));
+ assert.equal(run("state.dark[0].length===1&&state.dark[2].length===1&&state.used[0].name==='Light payment'&&state.botUsed.length===2"),true);
 });

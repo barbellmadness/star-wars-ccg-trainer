@@ -34,7 +34,7 @@ const PremiereGame = (() => {
 
   function createState(game, deck, botDeck, locations, locationOrder) {
     const state = {game, turn: 1, phase: 0, activeSide: 'Dark', activated: false,
-      deck, botDeck, hand: [], botHand: [], locations, locationOrder,
+      deck, botDeck, hand: [], botHand: [], locations, locationOrder, convertedLocations: {}, locationEffects: {},
       light: locations.map(() => []), dark: locations.map(() => []),
       force: [], used: [], lost: [], botForce: [], botUsed: [], botLost: [],
       log: [], botReason: 'Bot wartet.', botHistory: [], botTurn: null,
@@ -69,6 +69,42 @@ const PremiereGame = (() => {
     return true;
   }
 
+  function lossChoices(state, side, preferred) {
+    const {hand, deck, force, used} = zones(state, side);
+    const piles = {deck, force, used};
+    if (Object.hasOwn(piles, preferred) && piles[preferred]?.length) return [{args: [preferred]}];
+    const cards = (hand ?? []).map((card, i) => ({args: ['hand', i], card}));
+    if (preferred === 'hand' && cards.length) return cards;
+    return [...cards,
+      ...Object.entries(piles).filter(([, pile]) => pile?.length).map(([zone]) => ({args: [zone]}))];
+  }
+
+  function loseForce(state, side, zone, index) {
+    const {hand, deck, force, used, lost} = zones(state, side);
+    if (zone === 'hand') {
+      if (!Number.isInteger(index) || !hand[index]) return null;
+      const [card] = hand.splice(index, 1);
+      lost.push(card);
+      return card;
+    }
+    const piles = {deck, force, used};
+    if (!Object.hasOwn(piles, zone) || !piles[zone]?.length) return null;
+    return moveTop(piles[zone], lost)[0];
+  }
+
+  function retrieveForce(state, side, count) {
+    const {lost, used} = zones(state, side);
+    return moveTop(lost, used, count);
+  }
+
+  function retrieveCard(state, side, index) {
+    const {lost, used} = zones(state, side);
+    if (!Number.isInteger(index) || !lost[index]) return null;
+    const [card] = lost.splice(index, 1);
+    used.push(card);
+    return card;
+  }
+
   function playerView(state, side) {
     if (!state || !sides.includes(side)) return null;
     const clone = card => card && JSON.parse(JSON.stringify(card));
@@ -80,7 +116,9 @@ const PremiereGame = (() => {
         ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
-      winner: state.gameWinner, locations: state.locations.map(clone), players};
+      winner: state.gameWinner, locations: state.locations.map(clone), players,
+      convertedLocations: state.locations.map((_, slot) => (state.convertedLocations?.[slot] ?? []).map(clone)),
+      locationEffects: state.locations.map((_, slot) => (state.locationEffects?.[slot] ?? []).map(effect => clone(effect.card)))};
   }
 
   function setupView(setup, side) {
@@ -243,9 +281,9 @@ const PremiereGame = (() => {
   }
 
   return {actionState, answer, cancelResponse, checkpoint, copyDeck, createState, execute, expire,
-    lifeForce, moveTop, offer, openResponse, otherSide, outcome, passResponse, playerView, random,
+    lifeForce, lossChoices, loseForce, moveTop, offer, openResponse, otherSide, outcome, passResponse, playerView, random,
     recirculate, registerTrigger, removeCancelledResponse, resetTurn, resolveTrigger, responseWindow,
-    setPhase, setupView, shuffle, sides, triggerOptions, useOnce, wasUsed, zones};
+    retrieveCard, retrieveForce, setPhase, setupView, shuffle, sides, triggerOptions, useOnce, wasUsed, zones};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereGame;
