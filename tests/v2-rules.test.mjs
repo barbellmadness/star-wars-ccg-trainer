@@ -633,6 +633,106 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
  assert.equal(run("recordBattleWeaponHit('Light',0)"),false);
 });
 
+test('Premiere snapshot loads four supported blasters into the learning decks with independent card copies',async()=>{
+ const {run}=harness();
+ const snapshot=readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8');
+ run(`fetch=async()=>({ok:true,json:async()=>JSON.parse(${JSON.stringify(snapshot)})})`);
+ await run('load()');
+ assert.equal(run("catalog.find(c=>c.name==='Rebel Trooper').warrior"),true);
+ assert.deepEqual(JSON.parse(run('JSON.stringify(catalog.filter(basicWeaponRule).map(c=>c.id))')),['Light:259','Light:265','Dark:264','Dark:1264']);
+ for(const side of ['Light','Dark']){
+  run(`var weaponTestDeck=makeDeck('${side}')`);
+  assert.equal(run('weaponTestDeck.length'),60);
+  assert.equal(run('weaponTestDeck.filter(basicWeaponRule).length'),4);
+  assert.equal(run('new Set(weaponTestDeck).size'),60);
+ }
+});
+
+function weaponBattleHarness(initiator='Light'){
+ const {run,elements}=harness();
+ run(`
+ const rifle={id:'Light:265',side:'Light',name:'Blaster Rifle',type:'Weapon',subType:'Character'};
+ const blaster={id:'Dark:1264',side:'Dark',name:'Imperial Blaster',type:'Weapon',subType:'Character'};
+ const rebel={side:'Light',name:'Rebel',type:'Character',warrior:true,ability:2,power:3,deploy:1,forfeit:2};
+ const officer={side:'Light',name:'Officer',type:'Character',ability:1,power:0,deploy:1,forfeit:2};
+ const trooper={side:'Dark',name:'Trooper',type:'Character',warrior:true,ability:3,power:3,deploy:1,forfeit:2};
+ const forceCards=()=>Array.from({length:5},(_,i)=>({name:'Force '+i}));
+ state={turn:1,phase:2,activeSide:'${initiator}',botTurn:${initiator==='Dark'?'{steps:[],index:0}':'null'},locations:[
+  {name:'Tatooine: A',type:'Location',subType:'Site'}, {name:'Tatooine: B',type:'Location',subType:'Site'}
+ ],light:[[rebel,officer],[]],dark:[[trooper],[]],hand:[rifle],botHand:[blaster],
+ deck:[{name:'Battle draw',destiny:5},{name:'Weapon draw',destiny:3}],
+ botDeck:[{name:'Bot battle draw',destiny:5},{name:'Bot weapon draw',destiny:4}],
+ force:forceCards(),botForce:forceCards(),used:[],botUsed:[],lost:[],botLost:[],log:[],botHistory:[],battledSitesThisTurn:[]};`);
+ return {run,elements};
+}
+
+test('Light equips a blaster through the playmat only on an eligible warrior and it moves with its host',()=>{
+ const {run}=weaponBattleHarness();
+ run('select(0)');
+ assert.match(run('renderPlaymatColumn(state.locations[0],0)'),/equipSelectedWeapon\(0,0\)/);
+ assert.doesNotMatch(run('renderPlaymatColumn(state.locations[0],0)'),/equipSelectedWeapon\(0,1\)/);
+ assert.equal(run("deployWeaponFor('Dark',0,0,0)"),false);
+ assert.equal(run("deployWeaponFor('Light',0,0,1)"),false);
+ assert.equal(run("deployWeaponFor('Light',0,1,0)"),false);
+ run('equipSelectedWeapon(0,0)');
+ assert.equal(run('rebel.weapons[0]===rifle&&state.hand.length===0&&state.force.length===3&&state.used.length===2'),true);
+ run('state.phase=4');
+ assert.equal(run('moveCharacter(0,0,1)'),true);
+ assert.equal(run('state.light[1][0].weapons[0]===rifle'),true);
+});
+
+test('Dark bot equips an affordable weapon on its warrior during Deploy',()=>{
+ const {run}=weaponBattleHarness('Dark');
+ assert.match(run('botDeployPhase()[0]'),/Trooper erhält Imperial Blaster/);
+ assert.equal(run('trooper.weapons[0]===blaster&&state.botForce.length===4&&state.botUsed.length===1'),true);
+});
+
+test('battle alternates weapon actions, hit warriors can return fire, and attached weapons follow forfeited hosts',()=>{
+ const {run,elements}=weaponBattleHarness();
+ run('rebel.weapons=[rifle];trooper.weapons=[blaster];state.phase=3;');
+ assert.equal(run('battleAnalysis(0)'),true);
+ assert.match(elements.get('battleControls').innerHTML,/fireBattleWeapon\('Light',0,0,0\)/);
+ assert.doesNotMatch(elements.get('battleControls').innerHTML,/Light Battle Destiny ziehen/);
+ assert.equal(run("fireBattleWeapon('Dark',0,0,0)"),false);
+ assert.equal(run("fireBattleWeapon('Light',0,0,9)"),false);
+ assert.equal(run('state.force.length===4&&state.deck.length===2'),true);
+ run("skipDestiny('Light')");
+ assert.equal(run('battleSession.lightCard'),null);
+ assert.equal(run("fireBattleWeapon('Light',0,0,0)"),true);
+ assert.equal(run("battleSession.weaponHits.Dark.includes(0)&&state.used.at(-1).name==='Weapon draw'"),true);
+ assert.equal(run("battleTotals(0).darkPower===3&&battleSession.darkCard===null"),true);
+ assert.match(elements.get('battleControls').innerHTML,/botWeaponDecision\(\)/);
+ assert.equal(run('botWeaponDecision()'),true);
+ assert.equal(run("battleSession.weaponHits.Light.includes(0)&&state.botUsed.at(-1).name==='Bot weapon draw'"),true);
+ assert.equal(run('state.force.length===2&&state.botForce.length===4'),true);
+ assert.equal(run("fireBattleWeapon('Light',0,0,0)"),false);
+ assert.equal(run("passBattleWeapons('Light')"),true);
+ assert.equal(run('botWeaponDecision()'),true);
+ assert.equal(run('battleSession.weaponTurn'),null);
+ run("skipDestiny('Light');botDestinyDecision()");
+ assert.equal(run('resolveBattleLosses()'),true);
+ assert.equal(run('state.lost.includes(rebel)&&state.lost.includes(rifle)&&state.botLost.includes(trooper)&&state.botLost.includes(blaster)'),true);
+ assert.equal(run("'weapons' in rebel||'weapons' in trooper"),false);
+});
+
+test('weapon destiny equal to the target defense misses, even for the initiator',()=>{
+ const {run}=weaponBattleHarness('Dark');
+ run('trooper.weapons=[blaster];state.botDeck.at(-1).destiny=2;state.phase=3;');
+ assert.equal(run("initiateBattleFor('Dark',0)"),true);
+ assert.equal(run('battleSession.weaponTurn'),'Dark');
+ assert.equal(run('botWeaponDecision()'),true);
+ assert.equal(run("battleSession.weaponHits.Light.length===0&&state.botForce.length===3&&battleSession.darkCard===null"),true);
+});
+
+test('an empty Reserve Deck cannot hit and does not refund the weapon action',()=>{
+ const {run}=weaponBattleHarness();
+ run('rebel.weapons=[rifle,rifle];state.deck=[];state.phase=3;battleAnalysis(0);');
+ assert.equal(run("fireBattleWeapon('Light',0,0,0)"),true);
+ assert.equal(run('battleSession.weaponHits.Dark.length===0&&state.used.length===3&&state.force.length===2'),true);
+ assert.equal(run('botWeaponDecision()'),true);
+ assert.equal(run("fireBattleWeapon('Light',0,1,0)"),false);
+});
+
 test('Playmat uses official card image URLs for locations and accessible fallback',()=>{
  const {run}=harness();
  assert.match(html,/<header class="brand-header"><img[^>]+alt="Star Wars Customizable Card Game Logo"/);
