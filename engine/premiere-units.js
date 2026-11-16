@@ -96,6 +96,19 @@ const PremiereUnits = (() => {
     (host.occupants ??= []).push({card, role});
   }
 
+  function usesMultipleWeapons(host) {
+    return capital(host) || (host.attachments ?? []).some(item=>item.id==='Dark:2357');
+  }
+
+  function canUseWeapon(state, host, weapon) {
+    return usesMultipleWeapons(host) || !(state.weaponUsesThisTurn ?? []).some(use=>use.host===host&&use.weapon!==weapon);
+  }
+
+  function recordWeaponUse(state, host, weapon) {
+    if(!(state.weaponUsesThisTurn ?? []).some(use=>use.host===host&&use.weapon===weapon))
+      (state.weaponUsesThisTurn??=[]).push({host,weapon});
+  }
+
   function remove(card, process, survive) {
     const occupants = card.occupants ?? [];
     const attachments = [...(card.weapons ?? []), ...(card.attachments ?? [])];
@@ -112,7 +125,8 @@ const PremiereUnits = (() => {
     }
   }
 
-  return {active, accepts, add, bantha, capital, crawler, enclosed, fighter, hasDock, landspeedCost, remove, roles, stats, tie, tube};
+  return {active, accepts, add, bantha, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost,
+    recordWeaponUse, remove, roles, stats, tie, tube, usesMultipleWeapons};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereUnits;

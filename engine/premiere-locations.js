@@ -148,8 +148,12 @@ const PremiereLocations = (() => {
       modifier += state.locations.filter((card, index) => card && !system(card) && region(card) === 'Death Star' && control(state, side, index, ability) === true).length;
     }
     modifier += effects.reduce((sum, effect) => sum + (effect.drainModifier?.[side] ?? 0), 0);
-    const optional = presentCards(state, side, slot).filter(card => lightsabers.has(card.id)).length;
-    return {base, modifier, optional};
+    const present = presentCards(state, side, slot);
+    const weapons = present.flatMap(host=>{
+      const eligible=(host.weapons??[]).filter(weapon=>lightsabers.has(weapon.id)&&units.canUseWeapon(state,host,weapon));
+      return (units.usesMultipleWeapons(host)?eligible:eligible.slice(0,1)).map(weapon=>({host,weapon}));
+    });
+    return {base, modifier, optional:weapons.length, weapons};
   }
 
   return {aboard, activeCards, at, cardsOnTable, conditions, control, drain, effectsAt, forceGeneration, icons, presence,
