@@ -35,4 +35,7 @@ Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen 
 4. Erst nach rechtlicher Prüfung Bilder öffentlich ausliefern.
 
 ## Veröffentlichung
-GitHub Pages ist bei einem privaten Repository nicht in jedem GitHub-Tarif verfügbar. Wenn Pages in Settings > Pages nicht verfügbar ist, kann ein separater Hosting-Dienst verwendet werden. Eine Live-Webadresse ist aktuell noch nicht eingerichtet.
+
+GitHub Actions aktualisiert die [öffentliche V2-Seite](https://barbellmadness.github.io/star-wars-ccg-trainer/v2.html) bei Pushes auf Entwicklungsbranches mit dem Präfix `codex/`. Lege neue Branches von einem Entwicklungsstand an, der den Veröffentlichungsworkflow bereits enthält.
+
+Vor jeder Veröffentlichung prüft der Workflow die Premiere-Kartendaten und führt `node --test` aus. Für Pull Requests laufen dieselben Prüfungen. Das Deployment wird durch den erfolgreichen Push ausgelöst und folgt dem Stand des getesteten Commits.

@@ -19,3 +19,31 @@ jobs:
         run: node scripts/import_premiere.mjs --check
       - name: Run all tests
         run: node --test
+      - name: Stage the static site from the tested commit
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/')
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/pages"
+          git archive HEAD index.html v2.html data/ engine/ | tar -x -C "$RUNNER_TEMP/pages"
+      - name: Upload the GitHub Pages artifact
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/')
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/pages
+  deploy:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/')
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
