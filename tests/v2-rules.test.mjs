@@ -387,3 +387,44 @@ test('EG-6 destiny does not double Dark power if already tied or stronger',()=>{
  assert.equal(run("battleSession.darkPowerDoubled"),undefined);
  assert.equal(run("battleDamagePreview().darkTotal"),3);
 });
+
+
+test('printed unconditional immunity is strict and conditional/granted immunity is excluded',()=>{
+ const {run}=harness();
+ assert.equal(run("printedAttritionImmunityBelow({gametext:'Immune to attrition < 5.'})"),5);
+ assert.equal(run("printedAttritionImmunityBelow({gametext:\"Adds 1 to power. 'Diplomatic' immunity to attrition < 2.\"})"),2);
+ assert.equal(run("printedAttritionImmunityBelow({gametext:'Immune to attrition < 5 if Han pilots.'})"),null);
+ assert.equal(run("printedAttritionImmunityBelow({gametext:'Adds immunity to attrition < 2 to all vehicles.'})"),null);
+ assert.equal(run("immuneToBattleAttrition({gametext:'Immune to attrition < 5.'},4)"),true);
+ assert.equal(run("immuneToBattleAttrition({gametext:'Immune to attrition < 5.'},5)"),false);
+});
+test('immune Vader still requires vulnerable Trooper forfeit when attrition is 4',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Tatooine: A'}],light:[[{name:'Rebel',forfeit:7,power:8,ability:4}]],dark:[[{name:'Vader',forfeit:8,power:6,gametext:'Immune to attrition < 5.'},{name:'Trooper',forfeit:2,power:2}]]};battleSession={site:0,lightCard:{name:'Draw'},darkCard:{name:'Freiwillig verzichtet'},lightDestiny:4,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[],darkLoss:[]};");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),false);
+ run("battleSession.darkLoss=[1]");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+ assert.equal(run("battleForfeitPlan('Dark').sum"),2);
+ run("battleSession.darkLoss=[0]");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),false);
+});
+test('at immunity threshold Vader must be eligible for attrition',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{name:'Rebel',forfeit:7,power:5,ability:4}]],dark:[[{name:'Vader',forfeit:8,power:6,gametext:'Immune to attrition < 5.'}]]};battleSession={site:0,lightCard:{name:'Draw'},darkCard:{name:'Freiwillig verzichtet'},lightDestiny:5,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[],darkLoss:[]};");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),false);
+ run("battleSession.darkLoss=[0]");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+});
+test('immune Vader can forfeit to cover battle damage only after Trooper covers attrition',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{name:'Rebel',forfeit:7,power:10,ability:4}]],dark:[[{name:'Vader',forfeit:8,power:6,gametext:'Immune to attrition < 5.'},{name:'Trooper',forfeit:2,power:2}]]};battleSession={site:0,lightCard:{name:'Draw'},darkCard:{name:'Freiwillig verzichtet'},lightDestiny:4,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[],darkLoss:[0,1]};");
+ assert.equal(run("battleDamagePreview().darkDamage"),6);
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+ assert.equal(run("battleForfeitPlan('Dark').remainingDamage"),0);
+});
+test('all immune cards survive attrition without forfeit but battle damage remains payable',()=>{
+ const {run}=harness();
+ run("state={phase:3,locations:[{name:'Hoth: A'}],light:[[{name:'Rebel',power:10,ability:4}]],dark:[[{name:'Vader',forfeit:8,power:6,gametext:'Immune to attrition < 5.'}]]};battleSession={site:0,lightCard:{name:'Draw'},darkCard:{name:'Freiwillig verzichtet'},lightDestiny:4,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,lightLoss:[],darkLoss:[]};");
+ assert.equal(run("battleForfeitPlan('Dark').valid"),true);
+ assert.equal(run("battleForfeitPlan('Dark').remainingDamage"),8);
+});
