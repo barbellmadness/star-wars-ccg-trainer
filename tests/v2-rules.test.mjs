@@ -2165,6 +2165,26 @@ test('starfighters deploy with a manual pilot as one paid action and use the mat
  assert.match(field,/light-zone.*?aria-label="Pilot · [^"]*Biggs Darklighter ansehen".*?Power <b>5<\/b>.*?Ability <b>2<\/b>/);
 });
 
+test('Playmat distinguishes unknown Location status and marks only the actual hit card instance aboard',async()=>{
+ const {run}=await craftHarness();
+ run(`const damaged=card('Light:1677'),other=card('Light:1677'),hitPilot=card('Light:1098'),otherPilot=card('Light:1098');
+  state.light[6]=[damaged,other];
+  PremiereUnits.add(damaged,hitPilot,'pilot','Light');
+  PremiereUnits.add(other,otherPilot,'pilot','Light');
+  state.light[2]=[{name:'Unbekannte Ability',type:'Character'}];
+  state.dark[2]=[card('Dark:2355')];
+  battleSession={site:6,hitUnits:{Light:[hitPilot],Dark:[]}};`);
+ const battleSite=run('renderPlaymatColumn(state.locations[6],6,false,[])');
+ assert.equal((battleSite.match(/class="card-hit-label"/g)??[]).length,1);
+ assert.match(battleSite,/aria-label="Pilot · [^"]*Han Solo ansehen · Getroffen" onclick="inspectStackLayer\('Light',6,0,0\)"/);
+ const otherSite=run('renderPlaymatColumn(state.locations[2],2,false,[])');
+ assert.match(otherSite,/dark-zone.*aria-label="Control · unbekannt"/);
+ assert.match(otherSite,/light-zone.*aria-label="Presence · unbekannt"/);
+ assert.doesNotMatch(otherSite,/class="card-hit-label"/);
+ run('battleSession=null');
+ assert.doesNotMatch(run('renderPlaymatColumn(state.locations[6],6,false,[])'),/class="card-hit-label"/);
+});
+
 test('a parked unpiloted fighter cannot take off until an eligible pilot boards',async()=>{
  const {run}=await craftHarness();
  run("const xwing=card('Light:2057'),leader=card('Light:2067');state.hand=[xwing];");

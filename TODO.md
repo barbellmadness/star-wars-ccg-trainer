@@ -36,7 +36,7 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 ## 9. Bedienung und Lernfunktionen
 
-- [ ] Treffer, aktivierte Bedingungen, Presence und Control direkt an der betroffenen Location auf der Playmat sichtbar machen.
+- [ ] Aktivierte Bedingungen direkt an der betroffenen Location auf der Playmat sichtbar machen.
 - [ ] Am ausgewählten Objekt nur gültige Aktionen und Ziele anbieten. Kosten, Ursprung der Regel, ausstehende Auswahl und den Grund für eine gesperrte Aktion verständlich anzeigen.
 - [ ] Vollständig prüfen, ob Stapel, verdeckte Karten, Inspektor und Protokoll dieselben Sichtbarkeitsregeln einhalten.
 - [ ] Karteninspektor für alle 324 Karten vervollständigen. Originalbild, englischer Spieltext, deutsche Erklärung, Auslösezeitpunkt, Beispiel und Stand der Umsetzung anzeigen. Bei Bildfehlern Kartennamen und Spieltext lesbar halten.

@@ -32,6 +32,7 @@ a{color:#b6d8ff}
 .brand-header{display:flex;justify-content:center;align-items:center;padding:4px 0}
 .brand-header img{width:min(380px,75vw);height:72px;object-fit:contain;filter:drop-shadow(0 4px 14px #f3cf7a38)}
 .playmat-shell{border:1px solid #657a93;border-radius:16px;padding:8px;background:radial-gradient(ellipse at 50% 100%,#233a55 0%,#101c2d 52%,#090f1b);box-shadow:inset 0 0 28px #02050cbf,0 0 19px #799bc427}
+#returnToBattle{position:sticky;top:6px;z-index:2;margin:0 2px 5px;border-color:var(--gold);padding:5px 9px;font-size:12px}
 .playmat-scroll{overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 8px}
 .playmat{display:flex;align-items:stretch;gap:12px;width:max-content;min-width:100%}
 .playmat-column{flex:0 0 200px;width:200px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(48px,1fr) auto minmax(48px,1fr);gap:8px;border:1px solid #415570;border-radius:12px;background:#091122ae;padding:8px}
@@ -47,7 +48,13 @@ a{color:#b6d8ff}
 .playmat-stack>.stack-layer{transform:translateX(-5px)}
 .playmat-stack>.stack-layer:focus-visible{z-index:1}
 .stack-layer .card-face-placeholder{place-items:start center;padding:1px;font-size:9px}
+.playmat-zone .card-face.is-hit{position:relative;border-color:#ff8d94;box-shadow:inset 0 0 0 1px #ff8d94}
+.card-hit-label{position:absolute;inset:1px 1px auto auto;padding:0 3px;border-radius:3px;background:#8b2037;color:#fff;font-size:9px;font-weight:700;line-height:11px;pointer-events:none}
 .zone-totals{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px;padding-top:4px;border-top:1px solid #b8c9da45;color:#d8e5f4;font-size:11px;font-variant-numeric:tabular-nums}
+.location-status{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:10px;line-height:1.2}
+.location-status span{padding:2px 4px;border:1px solid #58687e;border-radius:4px;background:#141d2b;color:#b9c6d6}
+.location-status .is-confirmed{border-color:#7fa494;background:#1b352f;color:#d6fae8;font-weight:700}
+.location-status .is-unknown{border-color:#b39a63;color:#ffdf9e}
 .playmat-location{display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:center;overflow-wrap:anywhere}
 .playmat-location > div,.playmat-location button{max-width:100%}
 .playmat-location img{display:block;width:168px;max-width:100%;height:120px;object-fit:contain;border:2px solid #c9af70;border-radius:7px;background:#07101c;box-shadow:0 7px 20px #0009}
@@ -222,6 +229,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
       <div><h2 id="battleTitle" tabindex="-1" autofocus>Kampf</h2><p id="battlePriority" role="status"></p></div>
       <div class="dialog-controls">
         <label><input id="autoBotBattle" type="checkbox"> Bot automatisch</label>
+        <button id="viewBattlePlaymat" type="button">Playmat ansehen</button>
         <button id="endBattleGame" type="button"></button>
       </div>
     </header>
@@ -252,6 +260,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
       <figure class="deck-pile-area" id="pilesDark" aria-label="Kartenstapel der Dark Side"></figure>
     </div>
     <div class="playmat-shell">
+      <button id="returnToBattle" type="button" aria-haspopup="dialog" hidden>Zurück zum Kampf</button>
       <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
     </div>
     <div class="panel player-hand light-hand">
@@ -326,7 +335,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.1.0';
+const trainerVersion='2.2.0';
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -334,7 +343,7 @@ const cardBackUrls={
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','Kontrolle: Eigene Presence (Ability ≥ 1) ohne gegnerische Presence erlaubt einmal pro Location einen Force Drain in Höhe der gegnerischen Force-Icons. Gegner wählt Verluste aus Hand oder Life Force; Kartentext-Modifikatoren fehlen.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let selected=-1, shownGame, inspectedLostSide=null;
+let selected=-1, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
 let localPrintTexts=new Map();
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
@@ -615,13 +624,21 @@ function changeModifier(side,kind,value,gameId,revision){
  return dispatchUI({kind:'trainingModifier',side:'Light',args:[side,kind,Number(value)],gameId,revision});
 }
 
+function battleHitCards(side,slot){
+ const x=battleSession;
+ if(!x||x.resolved||x.site!==slot)return new Set();
+ if(x.hitUnits)return new Set(x.hitUnits[side]);
+ const row=PremiereGame.zones(state,side).board[slot];
+ return new Set((x.weaponHits?.[side]??[]).map(index=>row[index]).filter(Boolean));
+}
+
 function battleSideMarkup(side,power,ability,destiny,current){
  const x=battleSession;
  const cards=x.segmented?activeBattleUnits(side):battleCandidates(side,x.site);
- const hit=x.hitUnits?.[side]??[];
+ const hits=battleHitCards(side,x.site);
  const figures=cards.map(card=>'<figure class="battle-card">'+(card.image?
   '<img src="'+escapeHTML(card.image)+'" alt="">':'')+'<figcaption>'+escapeHTML(card.name??'Karte')
-  +(hit.includes(card)?'<small>Getroffen</small>':'')+'</figcaption></figure>').join('');
+  +(hits.has(card)?'<small>Getroffen</small>':'')+'</figcaption></figure>').join('');
  return '<section class="battle-side '+side.toLowerCase()+(current?' is-current':'')+'"><h3>'+side+' Side</h3><p class="battle-stats">Power '+power
   +' · Ability '+(ability??'?')+' · Battle Destiny '+(destiny??'–')+'</p>'
   +'<p class="battle-stats hint">Destiny-Draws '+(battleDestinyDrawCount(side,x.site,ability)??'–')
@@ -698,6 +715,21 @@ function closeBattle(){
  const dialog=el('battleAnalysis');
  if(dialog.open)dialog.close();
  return true;
+}
+
+function showBattlePlaymat(){
+ if(!battleSession||battleSession.resolved||state.gameWinner)return;
+ battleOnPlaymat=battleSession;
+ el('battleAnalysis').close();
+ el('returnToBattle').hidden=false;
+ el('returnToBattle').focus({preventScroll:true});
+ el('playmatLocation'+battleSession.site)?.scrollIntoView({block:'nearest',inline:'center'});
+ scheduleAutomaticBot();
+}
+
+function returnToBattle(){
+ battleOnPlaymat=null;
+ presentGame();
 }
 
 function submitCombinedAttack(form,action){
@@ -863,22 +895,27 @@ function inspectStackLayer(side,site,host,index){
  if(layer)showCardWithStats(layer.card);
 }
 
-function smallCardArt(card,placeholder='Bild fehlt'){
+function smallCardArt(card,placeholder='Bild fehlt',hit=false){
  const image=card.image?'<img loading="lazy" src="'+escapeHTML(card.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
- return image+'<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">'+escapeHTML(placeholder)+'</span>';
+ return image+'<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">'+escapeHTML(placeholder)+'</span>'
+  +(hit?'<span class="card-hit-label" aria-hidden="true">Treffer</span>':'');
 }
 
-function mini(c,idx,clickable,side='Light',zone='hand',site=0,equipAction=null){
+function mini(c,idx,clickable,side='Light',zone='hand',site=0,{equipAction,hits}={}){
  const isSelected=clickable&&selected===idx;
+ const boardCard=hits?.size?PremiereGame.zones(state,side).board[site][idx]:null;
+ const hit=boardCard&&hits.has(boardCard);
+ const hitClass=marked=>marked?' is-hit':'',hitLabel=marked=>marked?' · Getroffen':'';
  const equip=equipAction?ruleButton(equipAction,'Ausrüsten ('+equipAction.cost+' Force)'):'';
- const face='<button class="card-face" type="button"'
+ const face='<button class="card-face'+hitClass(hit)+'" type="button"'
   +(clickable?' id="handCard'+idx+'"':'')+' aria-haspopup="dialog" aria-label="'+escapeHTML(c.name)+' ansehen'+(isSelected?' (ausgewählt)':'')
-  +'" onclick="inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">'+smallCardArt(c)+'</button>';
+  +hitLabel(hit)+'" onclick="inspectCard(\''+side+'\','+idx+',\''+zone+'\','+site+')">'+smallCardArt(c,'Bild fehlt',hit)+'</button>';
  const loadout=zone==='field'?stackedCards(c):[];
+ const originalLayers=boardCard?stackedCards(boardCard):[];
  const layers=loadout.map(({card,role},index)=>{
-  const label=escapeHTML(role+' · '+card.name);
-  return '<button class="card-face stack-layer" type="button" aria-haspopup="dialog" title="'+label+'" aria-label="'+label
-   +' ansehen" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role)+'</button>';
+  const label=escapeHTML(role+' · '+card.name),layerHit=hits?.has(originalLayers[index]?.card);
+  return '<button class="card-face stack-layer'+hitClass(layerHit)+'" type="button" aria-haspopup="dialog" title="'+label+hitLabel(layerHit)+'" aria-label="'+label
+   +' ansehen'+hitLabel(layerHit)+'" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role,layerHit)+'</button>';
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
  return '<div class="card'+(isSelected?' chosen':'')+'">'+art+equip+'</div>';
@@ -893,6 +930,15 @@ function locationCardVisual(loc){
  if(!loc)return '<div class="location-fallback">Freier Location-Platz</div>';
  const name=escapeHTML(loc.name||'Location');
  return loc.image?'<img loading="lazy" src="'+escapeHTML(loc.image)+'" alt="Location-Karte: '+name+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><div class="location-fallback" style="display:none">'+name+' (Bild nicht verfügbar)</div>':'<div class="location-fallback">'+name+' (kein Kartenbild)</div>';
+}
+
+function locationStatusMarkup(side,slot){
+ const fields=[['Presence',confirmedPresence(side,slot)],['Control',PremiereLocations.control(state,side,slot,cardAbility)]];
+ return '<div class="location-status">'+fields.map(([label,value])=>{
+  const status=label+' · '+(value===true?'ja':value===null?'unbekannt':'nein');
+  return '<span class="'+(value===true?'is-confirmed':value===null?'is-unknown':'is-absent')+'" role="img" aria-label="'+status+'" title="'+status+'">'
+   +label+' '+(value===true?'✓':value===null?'?':'–')+'</span>';
+ }).join('')+'</div>';
 }
 
 function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light')){
@@ -910,14 +956,15 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const totals=loc?battleTotals(i):null,stat=value=>Number.isFinite(value)?value.toLocaleString('de-DE'):'?';
  const zone=(side,cards)=>{
-  const key=side.toLowerCase();
-  return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span><div class="cards">'
-   +cards.map((card,index)=>mini(card,index,false,side,'field',i,side==='Light'?equipActions.get(index)??null:null)).join('')+'</div>'
+  const key=side.toLowerCase(),hits=battleHitCards(side,i);
+  return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span>'
+   +(loc?locationStatusMarkup(side,i):'')+'<div class="cards">'
+   +cards.map((card,index)=>mini(card,index,false,side,'field',i,{equipAction:side==='Light'?equipActions.get(index):null,hits})).join('')+'</div>'
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
  const actions=(state.phase!==4||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
- return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'">'+zone('Dark',dark)
+ return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
  +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
  +zone('Light',light)+'</div>';
@@ -1041,7 +1088,7 @@ function runBotStep(action){
 const autoBotKey='swccg.v2.autoBot';
 let autoBotTimer=null;
 const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state&&!state.gameWinner&&
- !el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open;
+ !battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open;
 
 function automaticBotAction(){
  if(!automaticBot())return null;
@@ -1081,6 +1128,8 @@ function setAutoBot(enabled){
 presentGame=()=>{
  if(replayingGame)return;
  el('endGame').hidden=!currentGame()||!!state?.gameWinner;
+ if(battleOnPlaymat!==battleSession||battleSession?.resolved||state?.gameWinner)battleOnPlaymat=null;
+ el('returnToBattle').hidden=!battleOnPlaymat;
  if(shownGame!==currentGame()){
   selected=-1;
   shownGame=currentGame();
@@ -1092,8 +1141,9 @@ presentGame=()=>{
   el('setup').style.display='none';
   render();
  }
- if(battleSession&&!state?.gameWinner)renderBattle();
- else closeBattle();
+ if(battleSession&&!state?.gameWinner){
+  if(!battleOnPlaymat)renderBattle();
+ }else closeBattle();
  scheduleAutomaticBot();
 };
 
@@ -1305,6 +1355,8 @@ el('autoBotBattle').onchange=()=>setAutoBot(el('autoBotBattle').checked);
 el('cardInspector').onclose=scheduleAutomaticBot;
 el('starterDeckDialog').onclose=scheduleAutomaticBot;
 el('movementDialog').onclose=scheduleAutomaticBot;
+el('viewBattlePlaymat').onclick=showBattlePlaymat;
+el('returnToBattle').onclick=returnToBattle;
 el('battleAnalysis').oncancel=event=>{if(!closeBattle())event.preventDefault();};
 load();
 </script></html>
