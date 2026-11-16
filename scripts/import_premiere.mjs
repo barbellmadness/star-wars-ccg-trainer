@@ -3,7 +3,7 @@ import {readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import premiere from '../engine/premiere-data.js';
 
-const {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readThemedDecks, buildAudit} = premiere;
+const {SOURCE, REVISION, EDITION, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit} = premiere;
 const snapshotPath = new URL('../data/premiere.json', import.meta.url);
 const deckPath = new URL('../data/premiere-starter-decks.json', import.meta.url);
 const themesPath = new URL('../data/premiere-themed-decks.json', import.meta.url);
@@ -114,14 +114,15 @@ async function main(args) {
   }
   const [mode] = args;
   const downloads = mode === undefined || mode === '--verify-source';
-  const [snapshot, definition, themeDefinitions] = await Promise.all([
+  const [snapshot, definition, themeDefinitions, supplemental] = await Promise.all([
     downloads ? Promise.all([downloadInputs(), readJson(notesPath)]).then(([inputs, notes]) => buildSnapshot(inputs, notes)) : readJson(snapshotPath),
     readJson(deckPath),
-    readJson(themesPath)
+    readJson(themesPath),
+    readJson(new URL('../data/premiere-supplemental-cards.json', import.meta.url))
   ]);
   const catalog = readCatalog(snapshot);
   const decks = readStarterDecks(definition, catalog);
-  const themes = readThemedDecks(themeDefinitions, catalog);
+  const themes = readThemedDecks(themeDefinitions, [...catalog, ...readSupplementalCards(supplemental)]);
   const audit = buildAudit(catalog, decks);
   if (mode === '--report') {
     process.stdout.write(serialize({inputsSha256: SHA256, ...audit}));

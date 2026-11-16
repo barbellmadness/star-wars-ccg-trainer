@@ -57,6 +57,7 @@ a{color:#b6d8ff}
 .stack-layer .card-face-placeholder{place-items:start center;padding:1px;font-size:9px}
 .playmat-zone .card-face.is-hit{position:relative;border-color:#ff8d94;box-shadow:inset 0 0 0 1px #ff8d94}
 .card-hit-label{position:absolute;inset:1px 1px auto auto;padding:0 3px;border-radius:3px;background:#8b2037;color:#fff;font-size:9px;font-weight:700;line-height:11px;pointer-events:none}
+.custody-label{display:block;margin-top:3px;color:#ffd78a;font-size:10px;line-height:1.2}
 .zone-totals{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px;padding-top:4px;border-top:1px solid #b8c9da45;color:#d8e5f4;font-size:11px;font-variant-numeric:tabular-nums}
 .location-status{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:10px;line-height:1.2}
 .location-status span{padding:2px 4px;border:1px solid #58687e;border-radius:4px;background:#141d2b;color:#b9c6d6}
@@ -295,6 +296,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
           <h2>Deine Hand · Light Side</h2>
         </div>
         <section id="playerReactControls" class="react-controls" aria-label="Deine React-Aktionen" tabindex="-1" hidden></section>
+        <section id="playerCustodyControls" class="react-controls" aria-label="Gefangenenentscheidung" tabindex="-1" hidden></section>
         <div id="hand" class="cards"></div>
       </div>
       <aside class="phase-display" id="phaseDisplayLight" aria-label="Phasen der Light Side">
@@ -364,7 +366,8 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.13.0';
+const trainerVersion='2.14.0';
+let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
  Dark:'https://res.starwarsccg.org/cards/darkcardback.png'
@@ -427,10 +430,30 @@ function renderPlayerReact(window,available){
  if(focus)area.focus();
 }
 
+function custodyMarkup(available){
+ const pending=state.pendingCustody?.[0];
+ if(!pending)return '';
+ const controls=pending.side==='Light'?available.map(option=>ruleButton(option,option.label)).join(' '):
+  botRuleButton(botCustodyAction(),'Gefangenenentscheidung des Bots zeigen');
+ return '<b>'+escapeHTML(pending.card.name)+' · '+(pending.side==='Light'?'Befreiung':'Gefangennahme')+'</b><p>'+
+  (pending.side==='Light'?'Entscheide, wohin deine befreite Karte geht.':'Dark Side entscheidet über den Gefangenen.')+'</p>'+controls;
+}
+
+function renderPlayerCustody(inBattleDialog,available){
+ const area=el('playerCustodyControls'),pending=state.pendingCustody?.[0];
+ const focus=area.hidden&&pending?.side==='Light'&&!inBattleDialog;
+ area.hidden=inBattleDialog||!pending;
+ area.innerHTML=area.hidden?'':custodyMarkup(available);
+ if(focus)area.focus({preventScroll:true});
+}
+
 function renderControlPanel(available=legalActions(state,'Light'),box=el('controlPanel'),react=reactResponse()){
  const drainArea=el('drainLossControls');
  const focusDrain=drainArea.hidden||drainArea.contains?.(document.activeElement);
  drainArea.hidden=true;
+ if(state.pendingCustody?.length){
+  box.innerHTML='';box.style.display='none';return;
+ }
  if(state.automatedPending){
   const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
@@ -791,8 +814,9 @@ function renderBattle(){
   dark.some(option=>!option.kind.startsWith('training'))?'Dark':null;
  const response=PremiereGame.responseWindow(state.game);
  const react=reactResponse();
- const reactControls=react?'<section class="react-controls" aria-label="Deine React-Aktionen">'+responseMarkup(react,available)+'</section>':'';
- const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending);
+ const reactControls=state.pendingCustody?.length?'<section class="react-controls" aria-label="Gefangenenentscheidung">'+custodyMarkup(available)+'</section>':
+  react?'<section class="react-controls" aria-label="Deine React-Aktionen">'+responseMarkup(react,available)+'</section>':'';
+ const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending||state.pendingCustody?.length);
  const stage=x.segment??(x.weaponTurn?'weapons':'power');
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
  const title=el('battleTitle');
@@ -1026,6 +1050,7 @@ function cardLoadout(card){
  return [
   ...(card.weapons??[]).map(card=>({card,role:'Waffe'})),
   ...(card.attachments??[]).map(card=>({card,role:'Ausrüstung'})),
+  ...(card.escortedCaptive?[{card:card.escortedCaptive,role:'Gefangener',crew:true}]:[]),
   ...(card.occupants??[]).map(({card,role})=>({card,role:crewLabels[role]??role,crew:true}))
  ];
 }
@@ -1071,7 +1096,8 @@ function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
    +' ansehen'+hitLabel(layerHit)+'" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role,layerHit)+'</button>';
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
- return '<div class="card">'+art+equip+'</div>';
+ const custody=c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:'';
+ return '<div class="card">'+art+(custody?'<span class="custody-label">'+escapeHTML(custody)+'</span>':'')+equip+'</div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
@@ -1138,6 +1164,8 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
  +(loc&&isSite(loc)?locationNightMarkup(i):'')
+ +(PremiereLocations.prison(loc)?'<span class="custody-label">Gefängnis</span>':'')
+ +(loc?.id==='Light:672'?'<span class="custody-label">Light-Kontrolle befreit Gefangene auf dem Todesstern</span>':'')
  +(drains?'<div class="playmat-drain-actions" role="group" aria-label="Force Drain bei '+escapeHTML(loc.name)+'">'+drains+'</div>':'')
  +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
  +zone('Light',light)+'</div>';
@@ -1208,6 +1236,7 @@ function render(){
  el(inBattleDialog?'controlPanel':'battleResponses').style.display='none';
  renderControlPanel(available,el(inBattleDialog?'battleResponses':'controlPanel'),react);
  renderPlayerReact(inBattleDialog?null:react,available);
+ renderPlayerCustody(inBattleDialog,available);
  el('nightConditions').checked=!!state.nightConditions;
  const night=available.find(option=>option.kind==='trainingNight');
  el('nightConditions').disabled=!night;
@@ -1273,6 +1302,7 @@ function automaticBotAction(){
  if(!automaticBot())return null;
  const dark=legalActions(state,'Dark');
  if(!dark.length)return null;
+ if(state.pendingCustody?.length)return botCustodyAction(dark);
  if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||
     state.pendingForceLoss||state.pendingReserveSearch)return dark[0];
  if(battleSession){
@@ -1342,7 +1372,7 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1,2,3,4,latestCardRulesVersion].includes(saved.cardRulesVersion))||
+     (saved.cardRulesVersion!==undefined&&![0,1,2,3,4,5,latestCardRulesVersion].includes(saved.cardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }
@@ -1400,7 +1430,7 @@ function resumeGameFromUI(){
  const previous={state,setupDecks,battleSession};
  replayingGame=true;
  try {
-  const decks=readStarterDecks(saved.decks,catalog);
+  const decks=readStarterDecks(saved.decks,[...catalog,...supplementalCatalog]);
   if(!start(saved.seed,true,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0))
    throw new Error('Ungültiger Spielstart');
   for(const command of saved.commands){
@@ -1468,6 +1498,7 @@ function endGameFromUI(){
  el('forceControls').hidden=true;
  el('drainLossControls').hidden=true;
  el('playerReactControls').hidden=true;
+ el('playerCustodyControls').hidden=true;
  el('step').disabled=true;
  el('stats').textContent='';
  el('gameMessage').hidden=false;
@@ -1510,14 +1541,16 @@ async function loadLocalPrintTexts(cards){
 }
 
 async function load(){try{
- const [payload,deckLists,themedLists]=await Promise.all([
+ const [payload,deckLists,themedLists,supplemental]=await Promise.all([
   readLocalJson('data/premiere.json'),
   readLocalJson('data/premiere-starter-decks.json'),
-  readLocalJson('data/premiere-themed-decks.json')
+  readLocalJson('data/premiere-themed-decks.json'),
+  readLocalJson('data/premiere-supplemental-cards.json')
  ]);
  const cards=readCatalog(payload);
+ supplementalCatalog=PremiereData.readSupplementalCards(supplemental);
  starterDecks=readStarterDecks(deckLists,cards);
- const themes=PremiereData.readThemedDecks(themedLists,cards);
+ const themes=PremiereData.readThemedDecks(themedLists,[...cards,...supplementalCatalog]);
  localPrintTexts=await loadLocalPrintTexts(cards);
  deckChoices=Object.fromEntries(Object.keys(sideName).map(side=>[side,[
   {deck:starterDecks[side],definition:deckLists.decks[sideName[side]]},...themes[side]

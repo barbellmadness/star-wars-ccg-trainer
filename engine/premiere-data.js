@@ -65,9 +65,10 @@ const PremiereData = (() => {
     return url;
   }
 
-  function normalizeCard(record) {
+  function normalizeCard(record, edition = EDITION) {
     const {id, side, set, sourceId, gempId, rawFront: front} = record ?? {};
-    if (!SIDES.includes(side) || set !== EDITION || !Number.isSafeInteger(sourceId) || sourceId < 1 || id !== side + ':' + sourceId || !/^1_\d+$/.test(gempId ?? '')) {
+    if (!SIDES.includes(side) || set !== edition || !Number.isSafeInteger(sourceId) || sourceId < 1 || id !== side + ':' + sourceId ||
+        !new RegExp('^' + edition + '_\\d+$').test(gempId ?? '')) {
       throw new Error('Ungültige Premiere-Edition, Kartenseite oder Karten-ID: ' + (id ?? 'fehlt'));
     }
     if (!front || typeof front.title !== 'string' || !front.title.trim() || !CARD_TYPES.has(front.type)) {
@@ -123,7 +124,7 @@ const PremiereData = (() => {
     if (snapshot?.schema !== 2 || snapshot.source !== SOURCE || snapshot.revision !== REVISION || snapshot.edition !== EDITION || !Array.isArray(snapshot.cards) || snapshot.cards.length !== 324) {
       throw new Error('Ungültiger Premiere-Snapshot. Erwartet sind 324 Karten der festgeschriebenen Revision.');
     }
-    const cards = snapshot.cards.map(normalizeCard);
+    const cards = snapshot.cards.map(record => normalizeCard(record));
     if (new Set(cards.map(card => card.id)).size !== cards.length || new Set(cards.map(card => card.gempId)).size !== cards.length) {
       throw new Error('Doppelte Karten- oder Gemp-IDs in der Premiere-Datenbank.');
     }
@@ -131,6 +132,14 @@ const PremiereData = (() => {
       if (cards.filter(card => card.side === side).length !== 162) throw new Error(side + ' muss im Premiere-Snapshot genau 162 Karten enthalten.');
     }
     return cards;
+  }
+
+  function readSupplementalCards(payload) {
+    if (payload?.schema !== 1 || payload.source !== SOURCE || payload.revision !== REVISION ||
+        payload.card?.id !== 'Dark:2915' || payload.card.gempId !== '4_180') {
+      throw new Error('Ungültiger Datensatz für Zuckuss’ Fanggewehr.');
+    }
+    return [normalizeCard(payload.card, '4')];
   }
 
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
@@ -153,7 +162,9 @@ const PremiereData = (() => {
     for (const entry of definition.cards) {
       const {id, count} = entry ?? {}, card = byId.get(id);
       if (!card || card.side !== side) throw error('Unbekannte oder seitenfremde Premiere-Karte ' + id + '.');
-      if (card.set !== EDITION) throw error(id + ' stammt aus einer anderen Edition.');
+      if (card.set !== EDITION && !(id === 'Dark:2915' && definition.theme?.id === 'imperiale-garnison')) {
+        throw error(id + ' stammt aus einer anderen Edition.');
+      }
       if (ids.has(id)) throw error('Doppelter Eintrag für ' + id + '.');
       if (!Number.isInteger(count) || count < 1 || count > 60) throw error('Ungültige Kartenanzahl für ' + id + '.');
       if (!isPlayableStarterCard(card)) throw error(card.name + ' kann im aktuellen Lernmodus nicht ausgespielt werden.');
@@ -242,7 +253,7 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, SIDES, readCatalog, readStarterDecks, readThemedDecks, readCardValue, locationTitle,
+  return {SOURCE, REVISION, EDITION, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, readCardValue, locationTitle,
     isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility, buildAudit};
 })();
 

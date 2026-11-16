@@ -12,6 +12,10 @@ const PremiereUnits = (() => {
   const rUnit = card => card?.characteristics?.includes('r-unit');
   const driveDroids = new Set(['Light:2000', 'Dark:2001']);
   const canDrive = card => card.subType !== 'Droid' || (driveDroids.has(card.id) && !textSuppressed(card));
+  const bountyHunter = card => card?.type === 'Character' &&
+    (card.characteristics?.includes('bounty hunter') || /(?:^|[.!?]\s+)bounty hunter\./i.test(card.lore ?? ''));
+  const canEscort = card => active(card) && card.type === 'Character' &&
+    (card.warrior || bountyHunter(card) || card.characteristics?.includes('battle droid'));
 
   const capacity = new Map([
     ['Light:530', {pilot:3, passenger:4, cargo:1}], ['Light:1045', {shared:2}],
@@ -27,15 +31,21 @@ const PremiereUnits = (() => {
   const hasDock = card => card?.type === 'Starship' && /ship-docking capability/i.test(card.gametext ?? '');
   const enclosed = card => card.type === 'Starship' || tube(card) || crawler(card) || card.enclosed === true;
 
-  function accepts(host, card, role, ignored = null) {
+  function accepts(host, card, role, ignored = null, captiveSeats = Number(!!card?.escortedCaptive)) {
     if (!active(host) || !active(card) || host === card) return false;
     const spec = capacity.get(host.id);
     if (!spec) return false;
     const crew = (host.occupants ?? []).filter(entry => entry !== ignored);
     const isCrew = job => job === 'pilot' || job === 'passenger';
+    const captiveCount = crew.filter(entry => entry.card.escortedCaptive).length;
     const limit = spec[role] ?? (isCrew(role) ? spec.shared : 0);
     if (!limit || crew.filter(entry => entry.role === role).length >= limit) return false;
-    if (isCrew(role) && crew.filter(entry => isCrew(entry.role)).length >= (spec.shared ?? spec.crew ?? Infinity)) return false;
+    if (isCrew(role) || captiveSeats) {
+      const passengers = crew.filter(entry => entry.role === 'passenger').length + captiveCount + captiveSeats + Number(role === 'passenger');
+      if (passengers > (spec.passenger ?? spec.shared ?? 0)) return false;
+      if (crew.filter(entry => isCrew(entry.role)).length + captiveCount + captiveSeats + Number(isCrew(role)) >
+          (spec.shared ?? spec.crew ?? Infinity)) return false;
+    }
     if (role === 'cargo') return card.type === 'Vehicle' && !bantha(card);
     if (role === 'hangar') return tie(card);
     if (card.type !== 'Character' || (card.id === 'Light:1407' && enclosed(host) && !capital(host)) ||
@@ -141,7 +151,7 @@ const PremiereUnits = (() => {
     }
   }
 
-  return {active, accepts, add, bantha, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost,
+  return {active, accepts, add, bantha, bountyHunter, canEscort, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost,
     recordWeaponUse, remove, restrainingBolt, roles, stats, textSuppressed, tie, tube, usesMultipleWeapons};
 })();
 

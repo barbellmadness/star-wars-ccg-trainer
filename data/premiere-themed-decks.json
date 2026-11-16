@@ -3,23 +3,25 @@
   "decks": {
     "Light": [
       {
-        "theme": { "id": "massassi-widerstand", "name": "Massassi-Widerstand", "description": "Dodonna und Rebel Troopers sichern die Yavin-4-Sites. Y-Wings unterstützen sie aus dem Orbit." },
-        "startingLocations": ["Light:2859", "Light:2855", "Light:2853", "Light:2858"],
+        "theme": { "id": "massassi-widerstand", "name": "Massassi-Widerstand", "description": "Dodonna verteidigt Yavin 4. Der Detention Block Control Room ermöglicht die Befreiung von Gefangenen auf dem Todesstern." },
+        "startingLocations": ["Light:2859", "Light:2855", "Light:2853", "Light:2858", "Light:672"],
         "cards": [
           { "id": "Light:95", "count": 1 },
           { "id": "Light:259", "count": 2 },
           { "id": "Light:265", "count": 3 },
           { "id": "Light:530", "count": 2 },
           { "id": "Light:608", "count": 1 },
+          { "id": "Light:672", "count": 2 },
           { "id": "Light:1021", "count": 3 },
           { "id": "Light:1495", "count": 2 },
           { "id": "Light:1503", "count": 1 },
           { "id": "Light:1593", "count": 2 },
+          { "id": "Light:1690", "count": 2 },
           { "id": "Light:1803", "count": 1 },
           { "id": "Light:1962", "count": 3 },
           { "id": "Light:2038", "count": 3 },
           { "id": "Light:2040", "count": 6 },
-          { "id": "Light:2052", "count": 11 },
+          { "id": "Light:2052", "count": 7 },
           { "id": "Light:2102", "count": 1 },
           { "id": "Light:2217", "count": 2 },
           { "id": "Light:2277", "count": 1 },
@@ -120,8 +122,8 @@
     ],
     "Dark": [
       {
-        "theme": { "id": "imperiale-garnison", "name": "Imperiale Garnison", "description": "Tarkin und seine Offiziere sichern die Korridore des Todessterns mit Stormtroopern und Blastern." },
-        "startingLocations": ["Dark:682", "Dark:673", "Dark:678"],
+        "theme": { "id": "imperiale-garnison", "name": "Imperiale Garnison", "description": "Tarkin sichert den Todesstern. Zwei Kopfgeldjäger können mit Zuckuss’ Fanggewehr aus Dagobah Gefangene machen und in den Detention Block bringen." },
+        "startingLocations": ["Dark:673", "Dark:682", "Dark:678"],
         "cards": [
           { "id": "Dark:79", "count": 1 },
           { "id": "Dark:94", "count": 1 },
@@ -137,18 +139,21 @@
           { "id": "Dark:675", "count": 2 },
           { "id": "Dark:678", "count": 2 },
           { "id": "Dark:682", "count": 2 },
+          { "id": "Dark:741", "count": 2 },
           { "id": "Dark:777", "count": 2 },
           { "id": "Dark:816", "count": 1 },
+          { "id": "Dark:934", "count": 2 },
           { "id": "Dark:1027", "count": 2 },
           { "id": "Dark:1061", "count": 3 },
-          { "id": "Dark:1264", "count": 5 },
+          { "id": "Dark:1264", "count": 3 },
           { "id": "Dark:1279", "count": 3 },
           { "id": "Dark:1426", "count": 1 },
           { "id": "Dark:2216", "count": 1 },
-          { "id": "Dark:2355", "count": 10 },
+          { "id": "Dark:2355", "count": 5 },
           { "id": "Dark:2360", "count": 2 },
           { "id": "Dark:2600", "count": 3 },
-          { "id": "Dark:2833", "count": 2 }
+          { "id": "Dark:2833", "count": 2 },
+          { "id": "Dark:2915", "count": 3 }
         ]
       },
       {

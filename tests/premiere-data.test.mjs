@@ -7,7 +7,7 @@ import {buildSnapshot} from '../scripts/import_premiere.mjs';
 const json = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
 const snapshot = json('premiere.json');
 const definitions = json('premiere-starter-decks.json');
-const {readCatalog, readStarterDecks, readThemedDecks, buildAudit, readCardValue} = premiere;
+const {readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit, readCardValue} = premiere;
 
 test('the checked-in catalog and starter decks validate against the pinned edition', () => {
   const catalog = readCatalog(snapshot);
@@ -49,7 +49,7 @@ test('linked print text is kept separate and the audit lists the remaining scans
 });
 
 test('both sides have four distinct, valid 60-card themed decks with playable starting locations', () => {
-  const catalog = readCatalog(snapshot);
+  const catalog = [...readCatalog(snapshot), ...readSupplementalCards(json('premiere-supplemental-cards.json'))];
   const definitions = json('premiere-themed-decks.json');
   const sets = readThemedDecks(definitions, catalog);
   for (const side of ['light', 'dark']) {
@@ -59,9 +59,16 @@ test('both sides have four distinct, valid 60-card themed decks with playable st
     for (const {deck, definition} of sets[side]) {
       assert.equal(deck.cards.length, 60);
       assert.deepEqual([...new Set(deck.startingIndices.map(index => deck.cards[index].id))], definition.startingLocations);
-      assert.ok(deck.cards.every(card => card.side.toLowerCase() === side && card.set === '1'));
+      assert.ok(deck.cards.every(card => card.side.toLowerCase() === side &&
+        (card.set === '1' || (card.id === 'Dark:2915' && deck.theme.id === 'imperiale-garnison'))));
     }
   }
+  const garrison = sets.dark.find(({deck}) => deck.theme.id === 'imperiale-garnison').deck;
+  assert.equal(garrison.cards.filter(card => card.id === 'Dark:2915').length, 3);
+  assert.ok(sets.light[0].deck.cards.some(card => card.id === 'Light:672'));
+  const starterWithRifle = json('premiere-starter-decks.json');
+  starterWithRifle.decks.Dark.cards[0].id = 'Dark:2915';
+  assert.throws(() => readStarterDecks(starterWithRifle, catalog), /anderen Edition/);
   const invalid = structuredClone(definitions);
   invalid.decks.Light[0].startingLocations = [];
   assert.throws(() => readThemedDecks(invalid, catalog), /mindestens eine Starting Location/);
