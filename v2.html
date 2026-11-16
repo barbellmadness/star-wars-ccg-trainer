@@ -13,12 +13,19 @@ function drawFromForce(){if(!state||state.phase!==5||state.botTurn)return;if(!st
 function recirculate(side){const deck=side==='Light'?state.deck:state.botDeck,used=side==='Light'?state.used:state.botUsed;if(used.length){deck.unshift(...used.splice(0));log(side+' Used Pile unter das eigene Reserve Deck gelegt.')}}
 function recirculateBoth(){recirculate('Light');recirculate('Dark')}
 
+function cardAbility(c){
+ // Droids have no ability, counting as zero in comparisons; unknown other ability stays unknown.
+ if(Number.isFinite(c?.ability))return c.ability;
+ if(String(c?.type||'').toLowerCase()==='character'&&String(c?.subType||'').toLowerCase()==='droid')return 0;
+ return null;
+}
 function confirmedPresence(side,i){
  if(!state||!state.locations?.[i])return false;
  const cards=(side==='Light'?state.light:state.dark)?.[i]||[];
  if(!cards.length)return false;
- if(cards.some(c=>!Number.isFinite(c.ability)))return null;
- return cards.reduce((sum,c)=>sum+c.ability,0)>=1;
+ const values=cards.map(cardAbility),known=values.reduce((n,v)=>n+(Number.isFinite(v)?v:0),0);
+ if(known>=1)return true;
+ return values.some(v=>v===null)?null:false;
 }
 function forceDrainValue(side,i){
  if(!state||state.gameWinner||state.pendingForceLoss||state.drainedSitesThisTurn?.includes(i))return null;
@@ -139,9 +146,22 @@ function botMoveScore(option){
 function movementPanel(i){if(state.phase!==4||state.botTurn)return '';const options=movementOptions().filter(x=>x.from===i);return options.length?'<div><small>Bewegung: nur direkt benachbarte Felder desselben Planeten (Lernmodell)</small>'+options.map(x=>'<button onclick="moveCharacter('+x.from+','+x.index+','+x.to+')">'+escapeHTML(x.name)+' → '+escapeHTML(state.locations[x.to].name)+' (1 Force)</button>').join('')+'</div>':''}
 function setNightConditions(value){if(!state)return;state.nightConditions=!!value;log('Nachtbedingungen (manueller Lernschalter): '+(state.nightConditions?'aktiv':'inaktiv'));render()}
 function characterTraits(c){return (c.characteristics||[]).map(x=>String(x).toLowerCase())}
-function cardPowerModifier(c,side,siteIndex){if(!state||!state.nightConditions||side!=='Light')return 0;const same=state.light[siteIndex]||[];const tooex=same.some(x=>x.id==='Light:2'&&/nighttime conditions/i.test(x.gametext||''));if(!tooex||!sitePlanet(state.locations[siteIndex]))return 0;const traits=characterTraits(c);return traits.some(x=>/\brebel\b|\balien\b/.test(x))?2:0}
-function cardEffectStatus(c){if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power +2 für verbündete Rebels/Aliens am selben Planetensite; Attrition-Immunität offen.';if(!(c.gametext||'').trim())return 'KEIN KARTENTEXT: keine individuellen Text-Effekte zu automatisieren (andere Spielregeln gelten weiterhin).';return 'OFFEN: Kartentext noch nicht als ausführbare Regel validiert.'}
-function effectCoverage(){const total=catalog.length,withoutText=catalog.filter(c=>!(c.gametext||'').trim()),partial=catalog.filter(c=>c.id==='Light:2'),unimplemented=catalog.filter(c=>(c.gametext||'').trim()&&c.id!=='Light:2');return {total,withoutText,partial,unimplemented}}
+function isDroid(c){return String(c?.type||'').toLowerCase()==='character'&&String(c?.subType||'').toLowerCase()==='droid'}
+function isPowerDroid(c){return isDroid(c)&&(c.id==='Dark:816'||(c.extraText||[]).some(tag=>/\bpower droid\b/i.test(String(tag))))}
+function cardPowerModifier(c,side,siteIndex){
+ if(!state||!['Light','Dark'].includes(side)||!isSite(state.locations?.[siteIndex]))return 0;
+ const same=(side==='Light'?state.light:state.dark)?.[siteIndex]||[];
+ let bonus=0;
+ if(side==='Light'&&state.nightConditions&&sitePlanet(state.locations[siteIndex])&&
+    same.some(x=>x.id==='Light:2'&&/nighttime conditions/i.test(x.gametext||''))&&
+    characterTraits(c).some(x=>/\brebel\b|\balien\b/.test(x)))bonus+=2;
+ // EG-6 gives +1 power to each other allied droid at its site, except power droids.
+ if(isDroid(c)&&!isPowerDroid(c))
+   bonus+=same.filter(x=>x.id==='Dark:816'&&/adds 1 to power of each of your droids/i.test(x.gametext||'')).length;
+ return bonus;
+}
+function cardEffectStatus(c){if(c.id==='Light:2')return 'TEILWEISE: Nacht-Power +2 für verbündete Rebels/Aliens am selben Planetensite; Attrition-Immunität offen.';if(c.id==='Dark:816')return 'TEILWEISE: EG-6 erhöht Power eigener Droids am selben Site; Spezial-Destiny 0 und bedingte Power-Verdopplung unterstützt.';if(!(c.gametext||'').trim())return 'KEIN KARTENTEXT: keine individuellen Text-Effekte zu automatisieren (andere Spielregeln gelten weiterhin).';return 'OFFEN: Kartentext noch nicht als ausführbare Regel validiert.'}
+function effectCoverage(){const total=catalog.length,withoutText=catalog.filter(c=>!(c.gametext||'').trim()),partial=catalog.filter(c=>c.id==='Light:2'||c.id==='Dark:816'),unimplemented=catalog.filter(c=>(c.gametext||'').trim()&&c.id!=='Light:2'&&c.id!=='Dark:816');return {total,withoutText,partial,unimplemented}}
 function showEffectCoverage(){const v=effectCoverage();el('effectCoverage').textContent='Premiere-Karten gesamt: '+v.total+'\nOhne Kartentext: '+v.withoutText.length+'\nTeilweise implementiert: '+v.partial.length+'\nKartentexte ohne geprüfte automatische Implementierung: '+v.unimplemented.length+'\n\nOFFENE KARTEN (ID · Name · Themen):\n'+v.unimplemented.map(c=>c.id+' · '+c.name+' · '+(cardEffectFlags(c).join(', ')||'sonstige Regel')).join('\n')+'\n\nHinweis: Eine Schlüsselwortsuche ist keine Regelausführung. Der Trainer darf für diese Karten keine vollständige Originalregel-Konformität behaupten.'}
 function cardEffectFlags(c){const s=c.gametext||'';return [{name:'Force',re:/force generation|force drain|force icons?|activate.*force|generates? .*force/i},{name:'Deploy',re:/deploy|deployment/i},{name:'Destiny',re:/destiny|attrition/i},{name:'Power',re:/power [+-]|power is|power \+/i},{name:'Movement',re:/move|movement|landspeed|hyperspeed|transport/i},{name:'Immunity',re:/immun/i}].filter(x=>x.re.test(s)).map(x=>x.name)}
 function isSpyCharacter(c){
@@ -193,7 +213,11 @@ else if(action.kind==='deploy'){const loc=state.botHand.findIndex(c=>isLoc(c)&&!
 else if(action.kind==='finish'){recirculateBoth();state.phase=0;state.activated=false;state.movedThisTurn=[];state.deployedThisTurn=[];state.drainedSitesThisTurn=[];state.battledSitesThisTurn=[];state.activeSide='Light';state.turn++;state.botTurn=null;botSay('Bot beendet seinen Lernzug. Light Side beginnt mit Activate.')}
 render()}
 function advance(){if(!state)return;if(state.gameWinner||state.pendingForceLoss){log('Spielende oder ausstehende Force-Verluste: Aktion derzeit nicht möglich.');render();return;}if(battleSession){log('Battle-Analyse bitte zuerst schließen.');render();return}if(state.botTurn){log('Bitte den sichtbaren Bot-Zug zuerst abschließen.');render();return}if(state.phase===0&&!state.activated){log('Bitte zuerst Force aktivieren (auch 0 ist erlaubt).');render();return}if(state.phase===5){recirculateBoth();state.drainedSitesThisTurn=[];state.battledSitesThisTurn=[];state.activeSide='Dark';botBegin();render();return}state.phase=(state.phase+1)%6;render()}
-function battleTotals(i){const total=(cards,key)=>cards.reduce((n,c)=>n+(Number.isFinite(c[key])?c[key]:0),0);const ability=cards=>cards.every(c=>Number.isFinite(c.ability))?total(cards,'ability'):null;return {lightPower:state.light[i].reduce((n,c)=>n+(Number.isFinite(c.power)?c.power:0)+cardPowerModifier(c,'Light',i),0),darkPower:total(state.dark[i],'power'),lightAbility:ability(state.light[i]),darkAbility:ability(state.dark[i])}}
+function battleTotals(i){
+ const ability=cards=>{const a=cards.map(cardAbility),known=a.reduce((n,v)=>n+(Number.isFinite(v)?v:0),0);return a.some(v=>v===null)&&known<4?null:known};
+ const power=(cards,side)=>cards.reduce((n,c)=>n+(Number.isFinite(c.power)?c.power:0)+cardPowerModifier(c,side,i),0);
+ return {lightPower:power(state.light[i],'Light'),darkPower:power(state.dark[i],'Dark'),lightAbility:ability(state.light[i]),darkAbility:ability(state.dark[i])};
+}
 function canInitiateBattle(i){
  // Premiere basic rules: a battle costs 1 Force, requires both sides to occupy the
  // location, and a location can be battled at most once per player's turn.
@@ -213,7 +237,19 @@ function battleAnalysis(i){
  render();renderBattle();el('battleAnalysis').scrollIntoView({behavior:'smooth',block:'nearest'});
  return true;
 }
-function battleDestiny(side){if(!battleSession||state.phase!==3)return;const x=battleSession,t=battleTotals(x.site),light=side==='Light',key=light?'lightCard':'darkCard',val=light?'lightDestiny':'darkDestiny';if(x[key]!==null)return;const ability=light?t.lightAbility:t.darkAbility;if(!light&&x.lightCard===null){log('Zuerst entscheidet Light Side über Battle Destiny.');return}if(ability===null||ability<4){log(side+' hat keine bestätigte Battle-Destiny-Berechtigung.');return}const deck=light?state.deck:state.botDeck,used=light?state.used:state.botUsed,card=deck.pop();if(card)used.push(card);x[key]=card||{name:'Reserve Deck leer'};x[val]=card?(Number.isFinite(card.destiny)?card.destiny:0):0;log(side+' zieht '+(card?card.name:'keine Karte')+' – Battle Destiny '+x[val]+(card?' (in Used Pile)':''));render();renderBattle()}
+function printedBattleDestiny(card){
+ if(!card)return null;
+ // Premiere EG-6's star explicitly defines its destiny as zero.
+ if(card.id==='Dark:816'&&/destiny equals zero/i.test(card.gametext||''))return 0;
+ if(isLoc(card))return 0; // All locations have destiny 0.
+ return Number.isFinite(card.destiny)?card.destiny:null;
+}
+function battleDestiny(side){if(!battleSession||state.phase!==3)return;const x=battleSession,t=battleTotals(x.site),light=side==='Light',key=light?'lightCard':'darkCard',val=light?'lightDestiny':'darkDestiny';if(x[key]!==null)return;const ability=light?t.lightAbility:t.darkAbility;if(!light&&x.lightCard===null){log('Zuerst entscheidet Light Side über Battle Destiny.');return}if(ability===null||ability<4){log(side+' hat keine bestätigte Battle-Destiny-Berechtigung.');return}const deck=light?state.deck:state.botDeck,used=light?state.used:state.botUsed,card=deck.pop();if(card)used.push(card);x[key]=card||{name:'Reserve Deck leer'};x[val]=card?printedBattleDestiny(card):0;
+ if(card?.id==='Dark:816'&&side==='Dark'&&/total power present is doubled/i.test(card.gametext||'')&&t.darkPower<t.lightPower){
+  x.darkPowerDoubled=true;
+  log('EG-6 als Battle Destiny gezogen: Dark-Power present ist niedriger als Light; Dark-Power present einmalig verdoppelt.');
+ }
+ log(side+' zieht '+(card?card.name:'keine Karte')+' – Battle Destiny '+(x[val]===null?'UNBEKANNT (Originalwert prüfen)':x[val])+(card?' (in Used Pile)':''));render();renderBattle()}
 function skipDestiny(side){if(!battleSession||state.phase!==3)return;if(side==='Dark'&&battleSession.lightCard===null)return;const x=battleSession,key=side==='Light'?'lightCard':'darkCard',val=side==='Light'?'lightDestiny':'darkDestiny';if(x[key]!==null)return;x[key]={name:'Freiwillig verzichtet'};x[val]=0;log(side+' verzichtet auf Battle Destiny.');renderBattle()}
 function botDestinyDecision(){if(!battleSession)return;const x=battleSession,t=battleTotals(x.site);if(x.lightCard===null){log('Light Side entscheidet zuerst über Battle Destiny.');return}if(x.darkCard!==null)return;if(t.darkAbility!==null&&t.darkAbility>=4)battleDestiny('Dark');else skipDestiny('Dark')}
 function setBattleModifier(side,kind,value){const x=battleSession;if(!x||state.phase!==3)return;const key=(side==='Light'?'light':'dark')+(kind==='power'?'PowerMod':'Bonus');const n=Number(value);if(!Number.isInteger(n)||n<0||n>20){log('Ungültiger Modifikator (0–20).');return}x[key]=n;log(side+' manueller '+(kind==='power'?'Power':'zusätzlicher Battle-Destiny')+'-Bonus '+n+' (nicht automatisch durch Kartentext verifiziert).');renderBattle()}
@@ -246,7 +282,7 @@ function lossPreview(side){
  const sum=selected.reduce((n,i)=>n+(Number.isFinite(cards[i]?.forfeit)?cards[i].forfeit:0),0);
  return '<div style="border:1px solid #566981;border-radius:8px;padding:10px;margin:8px 0"><b>'+side+' · Forfeit-Auswahl</b><p class="hint">Eingehende Attrition: '+(incoming??'noch unbekannt')+' · Battle Damage: '+(required??'noch unbekannt')+' · gewählter Forfeit: '+sum+' · offener Battle Damage: '+(required==null?'–':Math.max(0,required-sum))+'</p>'+cards.map((c,i)=>'<label style="display:block;padding:5px"><input type="checkbox" '+(selected.includes(i)?'checked':'')+' onchange="toggleLoss(\''+side+'\','+i+')"> '+escapeHTML(c.name)+' · Forfeit '+(c.forfeit??'?')+'</label>').join('')+'<p class="hint">'+escapeHTML(p.valid?'Forfeit-Auswahl im Basis-Lernmodus zulässig':p.reason)+'</p></div>';
 }
-function battleDamagePreview(){if(!battleSession)return null;const x=battleSession,t=battleTotals(x.site);if(!Number.isFinite(x.lightDestiny)||!Number.isFinite(x.darkDestiny))return null;const lightTotal=t.lightPower+x.lightDestiny+x.lightBonus+x.lightPowerMod,darkTotal=t.darkPower+x.darkDestiny+x.darkBonus+x.darkPowerMod;return {lightTotal,darkTotal,lightDamage:Math.max(0,darkTotal-lightTotal),darkDamage:Math.max(0,lightTotal-darkTotal)}}
+function battleDamagePreview(){if(!battleSession)return null;const x=battleSession,t=battleTotals(x.site);if(!Number.isFinite(x.lightDestiny)||!Number.isFinite(x.darkDestiny))return null;const lightTotal=(t.lightPower+x.lightPowerMod)*(x.lightPowerDoubled?2:1)+x.lightDestiny+x.lightBonus,darkTotal=(t.darkPower+x.darkPowerMod)*(x.darkPowerDoubled?2:1)+x.darkDestiny+x.darkBonus;return {lightTotal,darkTotal,lightDamage:Math.max(0,darkTotal-lightTotal),darkDamage:Math.max(0,lightTotal-darkTotal)}}
 function lossValue(side){const x=battleSession,cards=side==='Light'?state.light[x.site]:state.dark[x.site],indices=x[side==='Light'?'lightLoss':'darkLoss'];return {sum:indices.reduce((n,i)=>n+(cards[i]?.forfeit||0),0),unknown:indices.some(i=>!Number.isFinite(cards[i]?.forfeit)),count:indices.length}}
 function resolveBattleLosses(){
  const x=battleSession;if(!x||x.resolved||state.phase!==3||state.pendingForceLoss||state.gameWinner)return false;
@@ -274,7 +310,7 @@ function resolveBattleLosses(){
 function commitDemoLoss(){return resolveBattleLosses()}
 
 function modifierControls(){const x=battleSession;return '<div class="panel"><b>Manuelle Karten-Effekte (nur Lernmodus)</b><p class="hint">Trage zusätzliche Destiny-Werte oder Power-Modifikatoren nur ein, wenn du sie anhand des Originalkartentexts geprüft hast. Diese Werte werden nicht automatisch aus Karten erkannt. Ein zusätzlicher Destiny Draw wird hier nicht vom Reserve Deck gezogen.</p>'+['Light','Dark'].map(side=>{const k=side==='Light'?'light':'dark';return '<p>'+side+': Zusätzlicher Destiny-Bonus <input type="number" min="0" max="20" value="'+x[k+'Bonus']+'" style="width:55px" onchange="setBattleModifier(\''+side+'\',\'destiny\',this.value)"> · Power-Bonus <input type="number" min="0" max="20" value="'+x[k+'PowerMod']+'" style="width:55px" onchange="setBattleModifier(\''+side+'\',\'power\',this.value)"></p>'}).join('')+'</div>'}
-function renderBattle(){const x=battleSession;if(!x)return;const i=x.site,t=battleTotals(i),lightReady=x.lightCard!==null,darkReady=x.darkCard!==null;el('battleAnalysis').style.display='block';el('battleDetails').innerHTML='<p><b>'+escapeHTML(state.locations[i].name)+'</b></p><p>Light: Power '+t.lightPower+' · Ability '+(t.lightAbility??'?')+' · Battle Destiny '+(x.lightDestiny??'–')+'</p><p>Dark: Power '+t.darkPower+' · Ability '+(t.darkAbility??'?')+' · Battle Destiny '+(x.darkDestiny??'–')+'</p><p>Gesamt-Power (ohne Modifikatoren): Light '+(t.lightPower+(x.lightDestiny||0))+' · Dark '+(t.darkPower+(x.darkDestiny||0))+'</p>'+modifierControls()+lossPreview('Light')+lossPreview('Dark')+'<p class="hint">Forfeits zählen gleichzeitig für Attrition und Battle Damage. Den restlichen Battle Damage bezahlst du durch Force-Verluste aus Hand oder Life Force. Noch nicht unterstützt: Weapon Hits, Attrition-Immunität, Reaktionen, Kartentext und echte Mehrfach-Destiny-Draws. Die Kampfauflösung bleibt ein Basisregel-Lernmodus.</p>';el('battleControls').innerHTML='<button '+(lightReady||t.lightAbility===null||t.lightAbility<4?'disabled':'')+' onclick="battleDestiny(\'Light\')">Light Battle Destiny ziehen</button> <button '+(lightReady?'disabled':'')+' onclick="skipDestiny(\'Light\')">Light verzichtet</button> <button '+(!lightReady||darkReady?'disabled':'')+' onclick="botDestinyDecision()">Bot-Entscheidung zeigen</button><p class="hint">Die Light Side entscheidet zuerst; danach wird die Bot-Entscheidung sichtbar ausgeführt. Keine zusätzlichen Draws ohne explizit implementierte Karteneffekte.</p><button '+(!lightReady||!darkReady?'disabled':'')+' onclick="resolveBattleLosses()">Forfeits bestätigen und Battle Damage bezahlen</button>'}
+function renderBattle(){const x=battleSession;if(!x)return;const i=x.site,t=battleTotals(i),lightReady=x.lightCard!==null,darkReady=x.darkCard!==null;el('battleAnalysis').style.display='block';el('battleDetails').innerHTML='<p><b>'+escapeHTML(state.locations[i].name)+'</b></p><p>Light: Power '+t.lightPower+' · Ability '+(t.lightAbility??'?')+' · Battle Destiny '+(x.lightDestiny??'–')+'</p><p>Dark: Power '+t.darkPower+' · Ability '+(t.darkAbility??'?')+' · Battle Destiny '+(x.darkDestiny??'–')+'</p><p>Gesamt-Power (inkl. Modifikatoren): Light '+(battleDamagePreview()?.lightTotal??'–')+' · Dark '+(battleDamagePreview()?.darkTotal??'–')+'</p>'+modifierControls()+lossPreview('Light')+lossPreview('Dark')+'<p class="hint">Forfeits zählen gleichzeitig für Attrition und Battle Damage. Den restlichen Battle Damage bezahlst du durch Force-Verluste aus Hand oder Life Force. Noch nicht unterstützt: Weapon Hits, Attrition-Immunität, Reaktionen, Kartentext und echte Mehrfach-Destiny-Draws. Die Kampfauflösung bleibt ein Basisregel-Lernmodus.</p>';el('battleControls').innerHTML='<button '+(lightReady||t.lightAbility===null||t.lightAbility<4?'disabled':'')+' onclick="battleDestiny(\'Light\')">Light Battle Destiny ziehen</button> <button '+(lightReady?'disabled':'')+' onclick="skipDestiny(\'Light\')">Light verzichtet</button> <button '+(!lightReady||darkReady?'disabled':'')+' onclick="botDestinyDecision()">Bot-Entscheidung zeigen</button><p class="hint">Die Light Side entscheidet zuerst; danach wird die Bot-Entscheidung sichtbar ausgeführt. Keine zusätzlichen Draws ohne explizit implementierte Karteneffekte.</p><button '+(!lightReady||!darkReady?'disabled':'')+' onclick="resolveBattleLosses()">Forfeits bestätigen und Battle Damage bezahlen</button>'}
 function closeBattle(){battleSession=null;el('battleAnalysis').style.display='none';render()}
 function inspectCard(side,i,zone,site){if(!state)return;const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];const c=cards?.[i];if(!c)return;el('cardInspector').style.display='block';el('cardInspectorBody').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:15px"><div>'+(c.image?'<img src="'+escapeHTML(c.image)+'" alt="Originalkarte" style="width:210px;max-width:100%">':'')+'</div><div style="flex:1;min-width:200px"><b>'+escapeHTML(c.name)+'</b><p>Power '+(c.power??'–')+' · Ability '+(c.ability??'–')+' · Deploy '+(c.deploy??'–')+' · Forfeit '+(c.forfeit??'–')+' · Destiny '+(c.destiny??'–')+'</p><p style="white-space:pre-wrap">'+escapeHTML(c.gametext||'Kein Kartentext in Datenbank')+'</p><p class="hint">Englischer Kartentext aus lokaler Datenbank. Karteneffekte werden noch nicht automatisch ausgeführt.</p></div></div>';el('cardInspector').scrollIntoView({behavior:'smooth',block:'nearest'})}
 function closeCard(){el('cardInspector').style.display='none'}
@@ -285,7 +321,7 @@ async function load(){try{
  const r=await fetch('data/premiere.json',{cache:'no-cache'});
  if(!r.ok)throw Error('Lokale Datenbank fehlt (HTTP '+r.status+'). Import-Workflow in GitHub Actions ausführen.');
  const payload=await r.json();if(payload.schema!==1||!Array.isArray(payload.cards)||payload.cards.length!==324)throw Error('Lokale Premiere-Datenbank ungültig: 324 Karten erwartet.');
- catalog=payload.cards.map(c=>({id:c.id,side:c.side,name:c.name||'Unbekannt',type:c.type||'',subType:c.subType||'',rarity:c.rarity||'',unique:c.unique===true,image:c.image||'',power:c.power==null?null:Number(c.power),destiny:c.destiny==null?null:Number(c.destiny),ability:c.ability==null?null:Number(c.ability),forfeit:c.forfeit==null?null:Number(c.forfeit),deploy:c.deploy==null?null:Number(c.deploy),gametext:c.gametext||'',lore:c.lore||c.rawFront?.lore||'',characteristics:Array.isArray(c.rawFront?.characteristics)?c.rawFront.characteristics:[],icons:{light:iconValue(c.lightSideIcons),dark:iconValue(c.darkSideIcons)}}));
+ catalog=payload.cards.map(c=>({id:c.id,side:c.side,name:c.name||'Unbekannt',type:c.type||'',subType:c.subType||'',rarity:c.rarity||'',unique:c.unique===true,image:c.image||'',power:c.power==null?null:Number(c.power),destiny:c.destiny==null?null:Number(c.destiny),ability:c.ability==null?null:Number(c.ability),forfeit:c.forfeit==null?null:Number(c.forfeit),deploy:c.deploy==null?null:Number(c.deploy),gametext:c.gametext||'',lore:c.lore||c.rawFront?.lore||'',characteristics:Array.isArray(c.rawFront?.characteristics)?c.rawFront.characteristics:[],extraText:Array.isArray(c.rawFront?.extraText)?c.rawFront.extraText:[],icons:{light:iconValue(c.lightSideIcons),dark:iconValue(c.darkSideIcons)}}));
  el('instruction').textContent=catalog.length+' Premiere-Karten aus eigener Datenbank geladen';auditData();showEffectCoverage();start()
  }catch(e){el('instruction').textContent='Lokale Kartendatenbank nicht bereit';el('hint').textContent=e.message}}
 
