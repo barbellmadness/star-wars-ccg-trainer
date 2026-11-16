@@ -17,7 +17,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  const document={getElementById(id){
   if(!elements.has(id))elements.set(id,{
    value:'',checked:true,style:{},innerHTML:'',textContent:'',open:false,validity:{valid:true},
-   showModal(){this.open=true;},close(){this.open=false;},
+   showModal(){this.open=true;},close(){this.open=false;},focus(){},
   });
   return elements.get(id);
  }};
@@ -690,6 +690,32 @@ test('the card inspector separates rules text, print scan, lore, German notes an
  assert.match(elements.get('cardInspectorBody').innerHTML,/Aktiver Spieltext.*Verknüpfte Vor-Errata-Fassung/);
  run("closeCard();el('showBotHand').checked=false;inspectCard('Dark',0,'hand')");
  assert.equal(elements.get('cardInspector').open,false);
+});
+
+test('hand and field cards use image buttons, with hand selection and field status available in the inspector',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`start(0);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()`);
+ const hand=elements.get('hand').innerHTML;
+ assert.match(hand,/<button class="card-face"[^>]*aria-haspopup="dialog"[^>]*onclick="inspectCard\('Light',0,'hand',0\)"><img/);
+ assert.doesNotMatch(hand,/<b>|>Details<\/button>/);
+ run("inspectCard('Light',0,'hand',0)");
+ assert.equal(elements.get('cardInspector').open,true);
+ assert.equal(run('selected'),-1);
+ assert.equal(elements.get('selectInspectorCard').hidden,false);
+ run("el('selectInspectorCard').onclick()");
+ assert.equal(run('selected'),0);
+ assert.equal(elements.get('cardInspector').open,false);
+ assert.match(elements.get('hand').innerHTML,/class="card chosen"/);
+
+ run(`const ship={name:'Test Ship',type:'Starship',ionDamage:true,
+  weapons:[{name:'Test Weapon'}],occupants:[{role:'pilot',card:{name:'Test Pilot'}}]};
+  state.light[0].push(ship);inspectCard('Light',0,'field',0)`);
+ const field=run('renderPlaymatColumn(state.locations[0],0)');
+ assert.match(field,/class="location-name">[^<]+/);
+ assert.match(field,/aria-label="Test Ship ansehen" onclick="inspectCard\('Light',0,'field',0\)"/);
+ assert.doesNotMatch(field,/<b>Test Ship|>Details<\/button>|Test Weapon|Test Pilot/);
+ assert.equal(elements.get('selectInspectorCard').hidden,true);
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Ionenschaden.*Besatzung und Ausrüstung.*Test Weapon.*Pilot · Test Pilot/);
 });
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
