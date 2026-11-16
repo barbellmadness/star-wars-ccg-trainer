@@ -477,3 +477,55 @@ test('Vader bonus does not apply when absent, and never generates attrition from
  assert.equal(run("battleSession.darkDestiny"),0);
  assert.equal(run("battleAttritionAgainst('Light')"),0);
 });
+
+test('Death Star War Room grants actual second Light battle destiny only to the initiator',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{id:'Dark:682',name:'Death Star: War Room',type:'Location',subType:'Site',gametext:'Dark: If you control, with a leader here, all Rebel Troopers are forfeit -1. Light: If you initiate a battle here, add one battle destiny.'}],light:[[{ability:4,power:5}]],dark:[[{ability:4,power:4}]],deck:[{name:'Second',destiny:2},{name:'First',destiny:3}],used:[],botDeck:[],botUsed:[],log:[]};battleSession={site:0,initiator:'Light',lightCard:null,darkCard:{name:'Freiwillig verzichtet'},lightDestiny:null,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("battleDestinyDrawCount('Light',0,4)"),2);
+ run("battleDestiny('Light')");
+ assert.equal(run("battleSession.lightDestiny"),5);
+ assert.equal(run("battleSession.lightDrawCards.length"),2);
+ assert.equal(run("state.deck.length"),0);
+ assert.equal(run("state.used.length"),2);
+ assert.equal(run("battleAttritionAgainst('Dark')"),5);
+ assert.equal(run("battleDamagePreview().lightTotal"),10);
+});
+test('War Room bonus allows one added battle destiny with ability below four',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{id:'Dark:682',name:'Death Star: War Room',type:'Location',subType:'Site',gametext:'Light: If you initiate a battle here, add one battle destiny.'}],light:[[{ability:1,power:1}]],dark:[[{ability:4,power:4}]],deck:[{name:'Bonus',destiny:4}],used:[],botDeck:[],botUsed:[],log:[]};battleSession={site:0,initiator:'Light',lightCard:null,darkCard:{name:'Freiwillig verzichtet'},lightDestiny:null,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("battleDestinyDrawCount('Light',0,1)"),1);
+ run("battleDestiny('Light')");
+ assert.equal(run("battleSession.lightDestiny"),4);
+ assert.equal(run("state.used.length"),1);
+});
+test('War Room bonus is side- and initiator-specific and fails closed on missing printed text',()=>{
+ const {run}=harness();
+ run("state={locations:[{id:'Dark:682',name:'Death Star: War Room',type:'Location',subType:'Site',gametext:'Light: If you initiate a battle here, add one battle destiny.'}]};battleSession={site:0,initiator:'Dark'};");
+ assert.equal(run("printedWarRoomExtraBattleDestiny('Light',0)"),0);
+ assert.equal(run("battleDestinyDrawCount('Dark',0,4)"),1);
+ run("battleSession.initiator='Light'");
+ assert.equal(run("printedWarRoomExtraBattleDestiny('Light',0)"),1);
+ assert.equal(run("printedWarRoomExtraBattleDestiny('Dark',0)"),0);
+ run("state.locations[0].gametext='Light: Another unrelated ability.'");
+ assert.equal(run("printedWarRoomExtraBattleDestiny('Light',0)"),0);
+ assert.equal(run("battleDestinyDrawCount('Light',0,null)"),null);
+});
+test('Massassi War Room adds Dark battle destiny with Vader +1 on every actual draw',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{id:'Light:2859',name:'Yavin 4: Massassi War Room',type:'Location',subType:'Site',gametext:'Light: If you control, with a leader here, all Stormtroopers are forfeit -1. Dark: If you initiate a battle here, add one battle destiny.'}],light:[[{ability:4,power:4}]],dark:[[{id:'Dark:634',name:'Vader',ability:6,power:6,gametext:'When in battle, adds 1 to each of your battle destiny draws.'}]],deck:[],used:[],botDeck:[{name:'Second',destiny:2},{name:'First',destiny:1}],botUsed:[],log:[]};battleSession={site:0,initiator:'Dark',lightCard:{name:'Freiwillig verzichtet'},darkCard:null,lightDestiny:0,darkDestiny:null,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ assert.equal(run("battleDestinyDrawCount('Dark',0,6)"),2);
+ run("battleDestiny('Dark')");
+ assert.equal(run("battleSession.darkDestiny"),5);
+ assert.equal(run("battleSession.darkDrawCards.length"),2);
+ assert.equal(run("state.botUsed.length"),2);
+ assert.equal(run("battleAttritionAgainst('Light')"),5);
+});
+test('Two entitled draws with only one Reserve card draw only once and never invent destiny',()=>{
+ const {run}=harness();
+ run("render=()=>{};renderBattle=()=>{};state={phase:3,locations:[{id:'Dark:682',name:'Death Star: War Room',type:'Location',subType:'Site',gametext:'Light: If you initiate a battle here, add one battle destiny.'}],light:[[{ability:4,power:2}]],dark:[[{ability:4,power:2}]],deck:[{name:'Only',destiny:6}],used:[],botDeck:[],botUsed:[],log:[]};battleSession={site:0,initiator:'Light',lightCard:null,darkCard:{name:'Freiwillig verzichtet'},lightDestiny:null,darkDestiny:0,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0};");
+ run("battleDestiny('Light')");
+ assert.equal(run("battleSession.lightDestiny"),6);
+ assert.equal(run("battleSession.lightDrawCards.length"),1);
+ assert.equal(run("state.used.length"),1);
+ assert.equal(run("state.deck.length"),0);
+});
