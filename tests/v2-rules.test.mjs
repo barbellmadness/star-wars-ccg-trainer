@@ -650,3 +650,24 @@ test('Playmat places Dark above location art and Light below and retains actions
  assert.match(content,/onclick="play\(/);
  assert.match(content,/onclick="battleAnalysis\(/);
 });
+
+test('location art opens a detailed card inspector without changing game state',()=>{
+ const {run,elements}=harness();
+ run("state={locations:[{name:'Tatooine: Mos Eisley',type:'Location',subType:'Site',image:'https://res.starwarsccg.org/cards/test.gif',icons:{light:1,dark:2},gametext:'Some location effect'}],light:[[]],dark:[[]],phase:0,hand:[],force:[],botTurn:null};");
+ const markup=run("renderPlaymatColumn(state.locations[0],0)");
+ assert.match(markup,/onclick="inspectLocation\(0\)"/);
+ assert.equal(run("inspectLocation(0)"),true);
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Tatooine: Mos Eisley/);
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Force-Icons · Light 1 \/ Dark 2/);
+ assert.match(elements.get('cardInspectorBody').innerHTML,/Some location effect/);
+ assert.equal(run("state.locations[0].name"),'Tatooine: Mos Eisley');
+ assert.equal(run("inspectLocation(9)"),false);
+});
+test('initial location choices include original image thumbnails',()=>{
+ const {run,elements}=harness();
+ run("setupDecks=null;catalog=[{name:'Hoth: Echo Base',type:'Location',subType:'Site',side:'Light',icons:{light:1,dark:0},image:'https://res.starwarsccg.org/cards/echo.gif'}, {name:'Rebel',type:'Character',side:'Light',power:1,deploy:1,ability:1}, {name:'Dark Site',type:'Location',subType:'Site',side:'Dark',icons:{light:0,dark:1}}, {name:'Trooper',type:'Character',side:'Dark',power:1,deploy:1,ability:1}];");
+ run("start()");
+ const markup=elements.get('setupOptions').innerHTML;
+ assert.match(markup,/start-location-option/);
+ assert.match(markup,/https:\/\/res.starwarsccg.org\/cards\/echo.gif/);
+});
