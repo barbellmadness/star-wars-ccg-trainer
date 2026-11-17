@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Premiere cards and starter decks
-        run: node scripts/import_premiere.mjs --check
+      - name: Validate cards and starter decks
+        run: |
+          node scripts/import_premiere.mjs --check
+          node scripts/import_premiere.mjs --edition a-new-hope --check
       - name: Run all tests
         run: node --test
       - name: Stage the static site from the tested commit

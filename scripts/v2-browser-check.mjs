@@ -359,7 +359,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.29'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.30'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -443,14 +443,30 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
 
     await page.getByText('Trainer-Optionen und Kartenprüfung', {exact: true}).click();
-    await page.getByRole('button', {name: 'Premiere-Kartenkatalog öffnen'}).click();
+    await page.getByRole('button', {name: 'Kartenkatalog öffnen'}).click();
     const catalog = page.getByRole('dialog', {name: /Premiere-Kartenkatalog · 324 Karten/});
     await catalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Stormtrooper');
     await catalog.getByRole('button', {name: 'Stormtrooper · Dark', exact: true}).click();
     const catalogCard = page.getByRole('dialog', {name: 'Stormtrooper', exact: true});
     assert.match(await catalogCard.textContent(), /Stand der Umsetzung/);
     await catalogCard.getByRole('button', {name: 'Schließen'}).click();
+    const editionPicker = page.getByLabel('Edition', {exact: true});
+    const gameDecks = await page.evaluate(() => JSON.stringify(currentGame().starterDecks));
+    await editionPicker.selectOption('2');
+    const expansionCatalog = page.getByRole('dialog', {name: 'A New Hope-Kartenkatalog · 162 Karten'});
+    await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('');
+    assert.equal(await expansionCatalog.locator('#starterDeckCards li').count(), 162);
+    await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Dianoga');
+    await expansionCatalog.getByRole('button', {name: 'Dianoga · Dark', exact: true}).click();
+    const dianoga = page.getByRole('dialog', {name: 'Dianoga', exact: true});
+    assert.match(await dianoga.textContent(), /Creature.*Stand der Umsetzung.*Regelprüfung offen/s);
+    assert.equal(await dianoga.getByRole('button', {name: 'Karte auswählen'}).count(), 0);
+    await dianoga.getByRole('button', {name: 'Schließen'}).click();
+    await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Retract The Bridge');
+    assert.match(await expansionCatalog.locator('#starterDeckCards li').textContent(), /Imperiale Garnison/);
+    await editionPicker.selectOption('1');
     await catalog.getByRole('button', {name: 'Schließen'}).click();
+    assert.equal(await page.evaluate(() => JSON.stringify(currentGame().starterDecks)), gameDecks);
 
     await page.locator('#configureGame').click();
     await page.locator('#gameMode').selectOption('');
