@@ -225,7 +225,8 @@ function beginForceLoss(payer,amount,terms){
 }
 
 function beggarAt(side){
- if(!state?.game||state.activeSide!==side||PremiereGame.wasUsed(state.game,'turn','beggarPayment'))return null;
+ if(!state?.game||state.activeSide!==side)return null;
+ if((state.game.cardRulesVersion??latestCardRulesVersion)<24&&PremiereGame.wasUsed(state.game,'turn','beggarPayment'))return null;
  for(const [site] of state.locations.entries()){
   const effect=PremiereLocations.effectsAt(state,site).find(item=>(item.card.owner??item.card.side)===side&&locationEffectRule(item.card)?.beggar);
   if(effect)return {site,effect};
@@ -243,19 +244,34 @@ function forceBudget(side){
  return (PremiereGame.zones(state,side).force?.length??0)+beggarCredit(side);
 }
 
-function spendForce(side,amount=1){
+function spendForce(side,amount=1,reservedOpponentForce=0){
  const {force,used}=PremiereGame.zones(state,side);
  if(!(amount>0))return [];
- const borrowed=Math.min(amount,beggarCredit(side));
+ const rival=PremiereGame.zones(state,PremiereGame.otherSide(side));
+ const available=(rival.force?.length??0)-reservedOpponentForce;
+ const borrowed=Math.min(amount,beggarCredit(side),Math.max(0,available));
  if(!borrowed)return PremiereGame.moveTop(force,used,amount);
- const source=beggarAt(side),rival=PremiereGame.zones(state,PremiereGame.otherSide(side));
+ const source=beggarAt(side);
  const paid=PremiereGame.moveTop(rival.force,rival.used,borrowed);
  paid.push(...PremiereGame.moveTop(force,used,amount-borrowed));
  state.beggarPayment=null;
- PremiereGame.useOnce(state.game,'turn','beggarPayment');
  log(side+' verwendet mit '+source.effect.card.name+' '+borrowed+' gegnerische Force.');
- if(borrowed>1)cancelLocationEffect(source.site,source.effect);
+ if((state.game.cardRulesVersion??latestCardRulesVersion)>=24){
+  const loans=state.beggarLoans??=new Map();
+  const previous=loans.get(source.effect);
+  loans.set(source.effect,{site:source.site,amount:(previous?.amount??0)+borrowed});
+ }else{
+  PremiereGame.useOnce(state.game,'turn','beggarPayment');
+  if(borrowed>1)cancelLocationEffect(source.site,source.effect);
+ }
  return paid;
+}
+
+function settleBeggarLoans(){
+ for(const [effect,{site,amount}] of state.beggarLoans??[]){
+  if(amount>1)cancelLocationEffect(site,effect);
+ }
+ state.beggarLoans?.clear();
 }
 
 function beggarPaymentOptions(side){
@@ -438,7 +454,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=23;
+const latestCardRulesVersion=24;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function deploymentSide(card){
@@ -593,6 +609,13 @@ function craftStats(card,slot,forMovement=false){
  if(!stats.powered&&card.id==='Light:1677'&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10){
   stats.maneuver=0;
   stats.hyperspeed=0;
+ }
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=24&&!stats.powered&&['Starship','Vehicle'].includes(card.type)){
+  stats.power=0;
+  stats.armor=Number.isFinite(card.armor)?(card.ionDamage?0:2):null;
+  for(const attribute of ['maneuver','hyperspeed','landspeed']){
+   if(Number.isFinite(card[attribute]))stats[attribute]=0;
+  }
  }
  return stats;
 }
@@ -845,7 +868,7 @@ function performTransport(side,...args){
  }
  if(kind==='shuttleUp'||kind==='shuttleDown')(state.movedThisTurn??=[]).push(card);
  if(kind==='shuttleDown'||kind==='exit')clearJuriAfterMove(card,side,to);
- if(kind==='deployAboard'&&jawaCosts.has(card.id))spendJawaDeployForce(side,choice.cost);
+ if(kind==='deployAboard'&&jawaCosts.has(card.id))spendJawaDeployForce(side,choice.cost,choice.opponentCost);
  else spendForce(side,choice.cost);
  if(choice.opponentCost)payOpposingJawaCost(side,choice.opponentCost);
  log(side+' · '+choice.label+': '+card.name+' / '+choice.carrier.name+' ('+choice.cost+' Force).');
@@ -1468,12 +1491,19 @@ function jawaDeployPayment(card,loc,side){
 function canPayJawaDeploy(side,payment,free=false){
  if(!payment)return false;
  const actor=PremiereGame.zones(state,side),opponent=PremiereGame.zones(state,PremiereGame.otherSide(side));
- const own=(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=23?actor.force?.length??0:forceBudget(side);
- return (free||payment.own<=own)&&payment.opposing<=(opponent.force?.length??0);
+ const opponentsForce=opponent.force?.length??0;
+ if(payment.opposing>opponentsForce)return false;
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ if(free)return true;
+ if(version<23)return payment.own<=forceBudget(side);
+ const available=actor.force?.length??0;
+ const loan=version>=24?Math.min(beggarCredit(side),opponentsForce-payment.opposing):0;
+ return payment.own<=available+loan;
 }
 
-function spendJawaDeployForce(side,amount){
- if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<23)return spendForce(side,amount);
+function spendJawaDeployForce(side,amount,opposing=0){
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ if(version!==23)return spendForce(side,amount,version>=24?opposing:0);
  const {force,used}=PremiereGame.zones(state,side);
  return PremiereGame.moveTop(force,used,amount);
 }
@@ -3522,7 +3552,8 @@ function pileInterruptOptions(side){
    case 'fullScaleAlert':
     return stormtroopersOnTable()>0?[{card,rule,cost,args:[index,mode],label:card.name+' · Gegnerische Bewegung blockieren (2 Force)'}]:[];
    case 'beruStew':
-    if(PremiereGame.wasUsed(state.game,'turn',card.id)||![side,PremiereGame.otherSide(side)].some(actor=>
+    if(PremiereGame.wasUsed(state.game,'turn',card.id))return [];
+    if((state.game.cardRulesVersion??latestCardRulesVersion)<24&&!PremiereGame.sides.some(actor=>
      !activationLocked(actor)&&PremiereGame.reserveCards(PremiereGame.zones(state,actor).deck).length))return [];
     return [{card,rule,cost,args:[index,mode],label:card.name+' · Beide Seiten aktivieren Force'}];
    case 'doomed':
@@ -4545,12 +4576,11 @@ function deployBoardCardFor(side,handIndex,siteIndex){
  if(cost===null)return null;
  const force=light?state.force:state.botForce,used=light?state.used:state.botUsed,rows=light?state.light:state.dark;
  hand.splice(handIndex,1);
- if(jawaCosts.has(card.id))spendJawaDeployForce(side,cost);
- else spendForce(side,cost);
  if(jawaCosts.has(card.id)){
   const {opposing}=jawaDeployPayment(card,loc,side);
+  spendJawaDeployForce(side,cost,opposing);
   if(opposing)payOpposingJawaCost(side,opposing);
- }
+ }else spendForce(side,cost);
  rows[siteIndex].push(card);
  if(card.owner||card.side)card.controller=side;
  (state.deployedThisTurn??=[]).push(card);
@@ -4928,6 +4958,7 @@ function botDrain(){
 function endTurn(side){
  checkpoint('phase:end',()=>checkpoint('turn:end',()=>{
   resolveDroidDetectors();
+  settleBeggarLoans();
   recirculateBoth();
   if(side==='Dark')botSay('Bot beendet seinen Lernzug.');
   PremiereGame.resetTurn(state,PremiereGame.otherSide(side));
@@ -4968,9 +4999,18 @@ function advanceBotStep(kind){
  return true;
 }
 
+function battleAbilityAt(card,slot){
+ if(card.type==='Starship')return craftStats(card,slot).ability;
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=24&&card.type==='Vehicle'&&PremiereUnits.enclosed(card)){
+  const driver=craftStats(card,slot).powered&&card.occupants?.find(({card,role})=>role==='driver'&&PremiereUnits.active(card)&&!card.asleep);
+  if(driver)return battleCardAbility(driver.card);
+ }
+ return battleCardAbility(card);
+}
+
 function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiator:null){
  const ability=(cards,side)=>{
-  const values=cards.map(card=>card.type==='Starship'?craftStats(card,i).ability:battleCardAbility(card));
+  const values=cards.map(card=>battleAbilityAt(card,i));
   const known=Math.max(0,values.reduce((sum,value)=>sum+(Number.isFinite(value)?value:0),0)-jediAbilityReduction(side,i)+
    (battleSession?.site===i?battleSession.obiAssistance?.[side]??0:0));
   return values.some(value=>value===null)&&known<4?null:known;
@@ -5518,7 +5558,7 @@ function abilityPowerSources(side){
  const x=battleSession;
  if(!x?.segmented)return [];
  return activeBattleUnits(side).filter(card=>PremiereLocations.present(state,card,x.site)).map(card=>({
-  card,ability:card.type==='Starship'?craftStats(card,x.site).ability:battleCardAbility(card),
+  card,ability:battleAbilityAt(card,x.site),
  }));
 }
 
@@ -7435,7 +7475,7 @@ function initiateReactDeploy(side,...args){
    mount:option.mount,placement:option.placement,item:option.item,crewRole:args[4]}))return false;
  const {hand}=PremiereGame.zones(state,side);
  for(const i of [index,pilotIndex].filter(i=>i>=0).sort((a,b)=>b-a))hand.splice(i,1);
- if(jawaCosts.has(option.card.id))spendJawaDeployForce(side,option.cost);
+ if(jawaCosts.has(option.card.id))spendJawaDeployForce(side,option.cost,option.opponentCost);
  else spendForce(side,option.cost);
  if(option.opponentCost)payOpposingJawaCost(side,option.opponentCost);
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<18&&option.comlinkHost&&window.comlinkHost!==option.comlinkHost){

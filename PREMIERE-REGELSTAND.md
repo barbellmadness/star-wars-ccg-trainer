@@ -33,9 +33,13 @@ Force-Verluste kommen aus der Hand oder von einer erlaubten Stapelspitze. Retrie
 
 Surprise Assault und Counter Assault heben einen angesagten Force Drain für 1 Force auf. V2 bestimmt die Zahl der Destiny-Ziehungen und die anwesende gegnerische Power zu Beginn der Auflösung. Bei einer Differenz verliert die Seite mit dem niedrigeren Ergebnis entsprechend Force. Dathcha verlangt auf Tatooine grundsätzlich je 2 Force aus beiden Force Piles. Restricted Deployment erhöht den Dark-Anteil auf 3. [Advanced Rulebook, Counter Assault](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=140) · [Premiere-FAQ, Dathcha](https://res.starwarsccg.org/rules/premierefaq.pdf)
 
+Beggar erlaubt in eigenen Zügen Zahlungen aus der gegnerischen Force Pile. Ab insgesamt zwei geliehenen Force geht Beggar am eigenen Zugende verloren. Die vorgeschriebene Zahlung der Gegenseite für einen Jawa zählt dabei nicht. Bei Beru Stew aktiviert jede Seite bis zu zwei verfügbare Force in der von der aktiven Seite festgelegten Reihenfolge. [Advanced Rulebook, Beggar und Beru Stew](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=138)
+
 ## Einheiten und Bewegung
 
 Bei der Auswahl eines Sternjägers bietet die Playmat den gemeinsamen Deploy mit einem geeigneten Piloten an. An einer Docking Bay kann der Sternjäger auch ohne Pilot stehen. Besatzung und Fracht bleiben beim Wechsel des Ortes an Bord. Fahrer, Piloten und Astromechs werden aus den gedruckten Kapazitäten und Kandidaten geprüft. Bei Verlust eines Trägers werden Anhänge und Insassen separat abgelegt. Bantha-Passagiere steigen am Ort aus. [Advanced Rulebook, Starships und Vehicles](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=89)
+
+An Bord geschlossener Fahrzeuge und Raumschiffe zählt zur Battle Destiny die Ability der fahrenden oder pilotierenden Besatzung. Ohne Fahrer oder Pilot gelten Power und Maneuver 0 sowie Armor 2, falls die Karte Armor besitzt. Die Werte gelten auch für gelandete Raumschiffe. [Advanced Rulebook, Passengers und Unpiloted](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=90)
 
 Landspeed folgt der Site-Reihenfolge innerhalb derselben Gruppe. Lift Tubes bleiben auf mobilen Innen-Sites. Hyperspeed erfordert einen passenden Nav Computer oder Astromech, einen aktiven Piloten und ausreichende Reichweite. Landen und Starten sind an Docking Bays kostenlos. TIEs brauchen eine Docking Bay. Die Oberfläche bietet einzelne oder alle berechtigten Einheiten für Docking-Bay-Transit und eine Auswahl für den Andocktransfer an. [Advanced Rulebook, Movement](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=66)
 
@@ -60,6 +64,8 @@ Wenn This Is All Your Fault den Schuss auf einen Droiden umlenkt, übernimmt der
 Die feste [Players-Committee-Revision `65cd150`](https://github.com/swccgpc/swccg-card-json/tree/65cd150d20634447a5499d763ac324436158c7a8) liefert den **aktiven Referenztext**. Ihre 324 aktiven Front-Datensätze entsprechen dem vorherigen Trainer-Snapshot. Für jede der 139 Markierungen (`E1` 138-mal, `D-E1` einmal) weist der Prüfbericht den Korrekturslip, den Druckscan und die Entscheidung aus. Der Trainer verwendet die korrigierte Fassung als Referenz, weil der Slip derselben Premiere-Karte und der festgeschriebenen Revision zugeordnet ist. Ein übernommener Referenztext wird erst mit einer konkreten Regel und einem Test automatisch gespielt.
 
 Der Karteninspektor zeigt den aktiven Spieltext, den verlinkten Druckscan, Lore und vorhandene deutsche Erklärungen getrennt. Die Drucktexte aller 324 Premiere-Karten wurden am Spieltextfeld der verlinkten Scans geprüft. 16 Transkriptionen mit ihren Scan-URLs stehen in `data/premiere-card-notes.json`. Die übrigen 308 bleiben in einer privaten Prüfdatei auf dem Laptop außerhalb des Repositorys. V2 kann sie beim lokalen Start aus dieser Datei anzeigen. Bei Gold 1, Red 1, Black 2 und Black 3 enthält der Drucktext eine Pilotenanforderung, die im aktiven Datenfeld verkürzt ist. Der Wortlaut von R2-X2 weicht ebenfalls ab.
+
+Bei Scomp Link Access läuft die 20-Sekunden-Frist auch beim Neuladen weiter. Ist sie abgelaufen, bleibt die Auswahl zum vorgeschriebenen Mischen verfügbar.
 
 `node scripts/import_premiere.mjs --report` wertet den Stand des Repositorys aus. Unter `openPrintTexts` stehen deshalb die 308 lokal geprüften Karten mit Karten-ID und Scan-Link. Mit `node scripts/import_premiere.mjs --verify-scans` lässt sich prüfen, ob die verlinkten Server Bildantworten liefern.
 

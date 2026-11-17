@@ -406,7 +406,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.18';
+const trainerVersion='2.15.19';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -1644,6 +1644,7 @@ function parseSavedGame(value){
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1,2].includes(saved.botStrategyVersion))||
      (saved.lesson!==undefined&&!PremiereLearning.lesson(saved.lesson))||
+     (saved.peekDeadline!==undefined&&(!Number.isSafeInteger(saved.peekDeadline)||saved.peekDeadline<0))||
      (saved.exposureRevision!==undefined&&(!Number.isInteger(saved.exposureRevision)||saved.exposureRevision<0||
       saved.exposureRevision>saved.commands.length))){
    throw new Error('Unbekannter Spielstand');
@@ -1663,13 +1664,12 @@ function readSavedGame(){
 
 function saveActiveGame(){
  if(!activeSave||replayingGame)return;
- const {revision,randomState}=currentGame();
  try {
   if(localStorage.getItem(saveKey)!==lastSavedValue){
    saveStatus('Ein anderer Tab hat den Spielstand geändert. Speichern pausiert.');
    return;
   }
-  const value=JSON.stringify({...activeSave,revision,randomState});
+  const value=JSON.stringify(scenarioSnapshot());
   localStorage.setItem(saveKey,value);
   lastSavedValue=value;
   activeSaveStored=true;
@@ -1744,6 +1744,11 @@ function replayScenario(saved,commands=saved.commands,verify=true){
    undoAvailable=reversibleLearningAction(command,before);
   }
   if(verify&&(currentGame().revision!==saved.revision||currentGame().randomState!==saved.randomState))throw new Error('Abweichender Spielstand');
+  if(verify&&state?.pendingCardView?.mode==='scompPeek'&&state.pendingCardView.side==='Light'){
+   // Replaying the peek rebuilds its choices but must never grant more viewing time.
+   const frame=state.pendingCardView;
+   frame.expiresAt=Math.min(frame.expiresAt,saved.peekDeadline??0);
+  }
  }catch{
   ({state,setupDecks,battleSession,undoAvailable}=previous);
   return false;
@@ -1803,7 +1808,11 @@ function undoLearningStep(){
 function scenarioSnapshot(){
  if(!activeSave||!currentGame())return null;
  const {revision,randomState}=currentGame();
- return {...activeSave,commands:activeSave.commands.slice(),revision,randomState};
+ const snapshot={...activeSave,commands:activeSave.commands.slice(),revision,randomState};
+ const frame=state?.pendingCardView;
+ if(frame?.mode==='scompPeek'&&frame.side==='Light')snapshot.peekDeadline=frame.expiresAt;
+ else delete snapshot.peekDeadline;
+ return snapshot;
 }
 
 function currentReview(result){
