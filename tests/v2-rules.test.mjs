@@ -1427,6 +1427,19 @@ test('Dathcha pays with both Force Piles even when deploying aboard',async()=>{
  assert.equal(run('state.force.length===lightBefore-2&&state.botForce.length===darkBefore-2&&crawler.occupants[0].card===dathcha'),true);
 });
 
+test('Dathcha pays a Restricted Deployment surcharge only from the Dark Force Pile',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(262,0);state.game.cardRulesVersion=23;
+  const dathcha=card('Dark:643');state.activeSide='Dark';state.botHand=[dathcha];state.hand=[];
+  state.tableEffects=[{card:card('Light:2102'),target:'Dark'}];
+  state.botForce=state.botForce.slice(0,2);state.force=state.force.slice(0,2);`);
+ assert.equal(run("requestAction('deploy','Dark',[0,2])"),false);
+ run('state.botForce.push({name:"Restricted Deployment surcharge"})');
+ assert.equal(run("requestAction('deploy','Dark',[0,0])"),false);
+ assert.ok(run("requestAction('deploy','Dark',[0,2])"));
+ assert.equal(run('state.botUsed.length===3&&state.used.length===2&&state.dark[2].includes(dathcha)'),true);
+});
+
 test('Death Star Trooper can deploy only on the Death Star',async()=>{
  const {run}=await craftHarness();
  run("const trooper=card('Dark:668');state.locations[3]=card('Dark:673');state.dark[2]=[trooper]");
@@ -2590,7 +2603,7 @@ test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses w
  run(`const luke=catalog.find(card=>locationTitle(card)==='luke skywalker');
   state.lost.push(luke);state.hand=[catalog.find(card=>card.id==='Light:1600')];
   state.force.push({name:'Force Payment'});render()`);
- assert.equal(run("requestAction('retrieve','Light',[0,state.lost.indexOf(luke)])"),true);
+ assert.equal(run("requestAction('retrieve','Light',[0])&&requestAction('finishCardInformation','Light',['recover',state.lost.indexOf(luke)])"),true);
  assert.equal(run('state.used.includes(luke)&&PremiereGame.lostPileFaceDown(state,\'Light\')'),true);
  assert.match(elements.get('log').textContent,/Luke Skywalker/);
 });
@@ -3044,8 +3057,8 @@ test('learning Undo stops at a voluntarily revealed bot hand and at a private dr
 test('selected theme decks set the starting locations and are saved, replayed and previewed',async()=>{
  const storage=autosaveStorage();
  const {run,elements}=await premiereHarness(starterLists,{storage});
- assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,5);
- assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,5);
+ assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,6);
+ assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,6);
  run("el('selectLightDeck').value='falcon-kessel';el('selectLightDeck').onchange();el('viewLightDeck').onclick()");
  assert.match(elements.get('starterDeckTitle').textContent,/Kessel Run · 60 Karten/);
  assert.match(elements.get('starterDeckCards').innerHTML,/3 × •Millennium Falcon/);
@@ -3069,12 +3082,30 @@ test('selected theme decks set the starting locations and are saved, replayed an
  assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-garnison');
 });
 
+test('the two additional Premiere decks start together and preserve their cards through autosave',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ run("el('selectLightDeck').value='rebellen-spezialeinsatz';el('selectDarkDeck').value='imperiale-sondereinheit'");
+ startSavedGame(run,801);
+ assert.equal(run(`const pick=()=>act('chooseStart','Light',legalActions(null,'Light')[0].args);
+  pick()&&(!setupDecks.revealed.collision||act('retrySetup')&&pick())&&act('beginGame')`),true);
+ const snapshot="JSON.stringify([state.locations,state.deck.map(c=>c.id),state.botDeck.map(c=>c.id),state.hand.map(c=>c.id),state.botHand.map(c=>c.id)])";
+ const opening=run(snapshot);
+ assert.equal(run(`const lists=currentGame().starterDecks;
+  lists.light.cards.some(card=>card.id==='Light:2385')&&lists.dark.cards.some(card=>card.id==='Dark:2517')`),true);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run('resumeGameFromUI()'),true);
+ assert.equal(reload.run(snapshot),opening);
+ assert.equal(reload.elements.get('selectLightDeck').value,'rebellen-spezialeinsatz');
+ assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-sondereinheit');
+});
+
 test('legacy autosaves resume without applying new registered card rules retroactively',async()=>{
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,22);
+ assert.equal(saved.cardRulesVersion,23);
  assert.equal(saved.botStrategyVersion,2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -3524,6 +3555,55 @@ test('both Premiere Assault cards compare destiny against present power',()=>{
  assert.equal(run("state.botLost[0].name==='Counter Assault'&&state.pendingForceLoss.payer==='Light'&&state.pendingForceLoss.remaining===1"),true);
 });
 
+test('Counter Assault at a system counts the starship once and includes its added pilot power',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(263,0);state.game.cardRulesVersion=23;
+  const fighter=card('Light:2838'),pilot=card('Light:2040'),assault=card('Dark:575');
+  PremiereUnits.add(fighter,pilot,'pilot','Light');
+  state.light[0]=[fighter];state.phase=1;state.botHand=[assault];state.hand=[];
+  state.botDeck=[{name:'Remaining reserve',destiny:4},{name:'Assault destiny',destiny:5}];`);
+ assert.equal(run(`requestAction('drain','Light',[0])&&requestAction('interruptResponse','Dark',[0])&&
+  requestAction('passResponse','Light')&&requestAction('passResponse','Dark')`),true);
+ assert.equal(run('!state.pendingForceLoss&&state.botDeck.length===1&&state.botLost.includes(assault)'),true);
+ assert.equal(run('state.botUsed.length===2&&state.botUsed.at(-1).destiny===5&&battleSession===null'),true);
+});
+
+test('named retrieval declares no target before responses, then offers only named personas to its player',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(264,0);state.game.cardRulesVersion=23;state.game.botStrategyVersion=2;
+  const empire=card('Dark:2528'),tarkin=card('Dark:1061'),tagge=card('Dark:1027'),other=card('Dark:2355');
+  state.botHand=[empire];state.botLost=[tarkin,other,tagge];state.hand=[];state.phase=1;setAutoBot(false);`);
+ assert.match(elements.get('controlPanel').innerHTML,/Interrupt des Bots zeigen/);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Tarkin|Tagge/);
+ assert.equal(run("requestAction('retrieve','Dark',[0,2])"),false);
+ assert.equal(run("dispatchUI(offTurnBotInterrupt())&&state.pendingCardView.mode==='namedRecovery'&&state.botUsed.length===2"),true);
+ assert.deepEqual(JSON.parse(run("JSON.stringify(legalActions(state,'Dark').map(action=>action.args))")),[['recover',0],['recover',2]]);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Tarkin|Tagge/);
+ assert.equal(run("requestAction('finishCardInformation','Dark',['recover',1])"),false);
+ assert.equal(run("requestAction('finishCardInformation','Dark',['recover',2])&&state.botUsed.at(-1)===tagge&&state.botLost.includes(empire)"),true);
+});
+
+test('the four Light recovery Interrupts recover and search for their printed personas',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(265,0);state.game.cardRulesVersion=23;state.phase=1;
+  state.activeSide='Dark';state.botHand=[];
+  function checkNamedInterrupt(id,targetId){
+   const target=card(targetId),other=card('Light:2052');
+   state.lost=[other,target];
+   state.hand=[card(id)];
+   state.force=forcePile();
+   if(!requestAction('retrieve','Light',[0])||requestAction('finishCardInformation','Light',['recover',0])||
+      !requestAction('finishCardInformation','Light',['recover',1])||state.used.at(-1)!==target)return false;
+   state.deck=[other,target];state.used=[];state.lost=[];
+   state.hand=[card(id)];
+   return requestAction('searchReserve','Light',[0])&&requestAction('takeFromReserve','Light',[0])&&state.hand[0]===target&&
+    state.force.length===1&&state.deck[0]===other;
+  }`);
+ for(const [id,target] of [[1102,1098],[1500,1495],[1600,1593],[2105,1803]]){
+  assert.equal(run(`checkNamedInterrupt('Light:${id}','Light:${target}')`),true);
+ }
+});
+
 test('Force loss respects a required pile and retrieval preserves the remaining pile order',async()=>{
  const {run}=await premiereHarness();
  run(`const source=id=>({...catalog.find(card=>card.id===id)});
@@ -3535,7 +3615,7 @@ test('Force loss respects a required pile and retrieval preserves the remaining 
  assert.equal(run("requestAction('loseForce','Light',['force'])"),false);
  assert.equal(run("requestAction('loseForce','Light',['deck'])"),true);
  assert.equal(run('state.deck[0]===bottom&&state.lost.at(-1)===last'),true);
- assert.equal(run("requestAction('retrieve','Light',[0,1])"),true);
+ assert.equal(run("requestAction('retrieve','Light',[0])&&requestAction('finishCardInformation','Light',['recover',1])"),true);
  assert.equal(run('state.used.at(-1)===obi&&state.lost.at(-1)===interrupt'),true);
  assert.equal(run("PremiereGame.retrieveForce(state,'Light',2)[1]===last&&state.lost.map(card=>card.name).join()==='First,Third'"),true);
 });
