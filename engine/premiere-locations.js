@@ -139,7 +139,9 @@ const PremiereLocations = (() => {
     });
     for (const {card, slot, unavailable} of entries(state, side)) {
       const location = state.locations[slot];
-      if (!unavailable && card.id === 'Light:1593' && location && (system(location) || region(location) !== 'Tatooine')) count++;
+      if (!unavailable && card.id === 'Light:1593' && location &&
+          !(state.game?.cardRulesVersion >= 7 && units.textSuppressed(card)) &&
+          (system(location) || region(location) !== 'Tatooine')) count++;
     }
     return {count, unknown};
   }

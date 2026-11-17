@@ -171,11 +171,27 @@ const PremiereCardRules = (() => {
   ]);
   register(['Light:1495'], [
     characterStat('rebelAura', 1, 'Mit Leia an einer Death-Star-Site anwesende Rebels erhalten Power +1.', { region: 'death star' }),
-  ]);
+    continuous('attritionImmunity', 'Leia hat diplomatische Immunität gegen Attrition unter 2.',
+      'Leia Organa', 'Leia improves Death Star Rebels but not herself', { below: 2, legacy: true }),
+  ], true);
   register(['Dark:2648'], [
     characterStat('tuskenPower', 1, 'Ein anderer anwesender nicht einzigartiger Tusken Raider gibt Power +1. Vier eigene anwesende Raider geben insgesamt weitere Power +2.',
       { groupAmount: 2, minimum: 4 }),
-  ]);
+    continuous('deployRegion', 'Kann nur auf Tatooine ausgespielt werden.',
+      'Tatooine site', 'Tusken Raiders count present non-unique copies', { region: 'tatooine', legacy: true }),
+  ], true);
+  register(['Dark:741'], [
+    continuous('forceIconPower', 'Erhält +1 Power pro Dark-Force-Icon an der Location und weitere +2 bei Nacht.',
+      'this character', 'Djas Puhr counts Dark Force icons and nighttime', { amount: 1, nightAmount: 2, since: 7 }),
+    continuous('attritionImmunity', 'Djas Puhr ist immun gegen Attrition unter 3.',
+      'Djas Puhr', 'Djas Puhr counts Dark Force icons and nighttime', { below: 3, since: 7 }),
+  ], true);
+  register(['Dark:816'], [
+    continuous('nonPowerDroidAura', 'Erhöht die Power jedes eigenen anwesenden Droiden außer Power Droids um 1.',
+      'friendly non-power droid present', 'EG-6 boosts friendly non-power droids', { amount: 1, legacy: true }),
+    continuous('battlePowerDouble', 'Destiny ist 0. Als Battle Destiny kann sie bei geringerer eigener Power die eigene Power einmal pro Battle verdoppeln.',
+      'your power present before destiny', 'EG-6 battle destiny doubles underdog Dark present power', { duration: 'once per battle', expires: 'after battle', legacy: true }),
+  ], true);
 
   const device = (id, targets, cost, summary, fields) => register([id], [continuous('device', summary, targets,
     'registered devices', { cost, ...fields })], true);
@@ -259,9 +275,231 @@ const PremiereCardRules = (() => {
       'Rebel on Tatooine', 'Our Most Desperate Hour reaches Alderaan', { expires: 'completion, cancellation or target lost', mission: 'desperate-hour', since: 3 }),
   ], true);
   register(['Light:305'], [
-    continuous('kesselSmuggler', 'BoShek darf einen Kessel Run anstelle eines Schmugglers fliegen. Seine Pilot-Power und gedruckte Attrition-Immunität gelten daneben.',
+    continuous('kesselSmuggler', 'BoShek darf einen Kessel Run anstelle eines Schmugglers fliegen.',
       'BoShek aboard a starship', 'Kessel Run tracks', { since: 2 }),
-  ]);
+    continuous('pilotPower', 'Ein von BoShek gesteuertes Schiff erhält +3 Power.',
+      'piloted ship', 'Premiere pilots apply bonuses only while piloting', { amount: 3, legacy: true }),
+    continuous('attritionImmunity', 'BoShek ist immun gegen Attrition unter 3.',
+      'BoShek', 'Premiere pilots apply bonuses only while piloting', { below: 3, legacy: true }),
+  ], true);
+  register(['Light:2040','Dark:1279'], [
+    continuous('pilotPower', 'Ein von dieser Karte gesteuertes Schiff erhält +2 Power.',
+      'piloted ship', 'Premiere pilots apply bonuses only while piloting', { amount: 2, legacy: true }),
+  ], true);
+  register(['Light:2038','Dark:1286'], [
+    continuous('cannotMove', 'Diese Karte darf sich nicht bewegen. Sie kann von einem Transporter getragen werden.',
+      'this character', 'Premiere guards gain defending power and cannot move', { since: 7 }),
+    continuous('defendingPower', 'Wenn diese Karte einen Kampf verteidigt, erhält sie +4 Power.',
+      'defending participant', 'Premiere guards gain defending power and cannot move', { amount: 4, since: 7 }),
+  ], true);
+  register(['Light:1556','Dark:1557'], [
+    continuous('defuseMine', 'Kann im eigenen Zug für 1 Force eine Mine am selben Site entschärfen.',
+      'revealed mine at same site', 'Premiere mining droids defuse mines at the same site', { cost: 1, duration: 'instant', expires: 'after resolving' }),
+  ], true);
+  register(['Light:1995'], [
+    continuous('astromechStats', 'An Bord eines Starfighters steigen Power, Maneuver und Hyperspeed um je 1.',
+      'starfighter aboard', 'Premiere navigation droids improve only their supported craft', { amount: 1, legacy: true }),
+  ], true);
+  register(['Light:2000','Dark:2001'], [
+    continuous('vehicleDroidStats', 'An Bord eines Nicht-Kreaturenfahrzeugs steigen Power, Maneuver und Landspeed um je 1.',
+      'non-creature vehicle aboard', 'Premiere navigation droids improve only their supported craft', { amount: 1, legacy: true }),
+    continuous('transportDriver', 'Dieser Droide kann Transportfahrzeuge fahren.',
+      'transport vehicle', 'Premiere navigation droids improve only their supported craft', { legacy: true }),
+  ], true);
+  for (const [id, ship, power, maneuver] of [
+    ['Light:239','Red 3',2,1], ['Light:1098','Millennium Falcon',2,2], ['Dark:790','Black 2',3,1], ['Dark:791','Black 3',3,1],
+    ['Light:1390','Red 6',2,1], ['Light:1924','Gold 5',2,1],
+  ]) {
+    const test = 'Premiere matching pilots grant maneuver and one fallback destiny';
+    const effects = [
+      continuous('pilotPower', 'Das gesteuerte Schiff erhält +' + power + ' Power.', 'piloted ship', test, { amount: power, legacy: true }),
+      continuous('matchingPilot', 'Beim Steuern von ' + ship + ' gelten +' + maneuver + ' Maneuver und eine Battle Destiny, falls kein regulärer Draw möglich ist.',
+        ship, test, { amount: maneuver, legacy: true }),
+    ];
+    if (id === 'Light:1098') effects.push(continuous('redrawOwnDestiny', 'Einmal pro Battle für 1 Force eigenes gerade gezogenes Destiny neu ziehen.',
+      'own just drawn destiny', 'Han can pay for one replacement', { cost: 1, duration: 'once per battle', expires: 'after battle', legacy: true }));
+    register([id], effects, true);
+  }
+  register(['Light:1593'], [
+    continuous('forceGeneration', 'Außerhalb von Tatooine erhöht Luke die eigene gesamte Force-Generierung um 1.',
+      'Light Side total Force generation', 'Luke adds Force off Tatooine and his Red 5 maneuver bonus', { amount: 1, legacy: true }),
+    continuous('pilotPower', 'Ein von Luke gesteuertes Schiff erhält +3 Power.',
+      'piloted ship', 'Luke adds Force off Tatooine and his Red 5 maneuver bonus', { amount: 3, legacy: true }),
+    continuous('matchingPilot', 'Beim Steuern von Red 5 erhält das Schiff +2 Maneuver.',
+      'Red 5', 'Luke adds Force off Tatooine and his Red 5 maneuver bonus', { amount: 2, legacy: true }),
+    continuous('attritionImmunity', 'Luke ist immun gegen Attrition unter 3.',
+      'Luke Skywalker', 'Luke adds Force off Tatooine and his Red 5 maneuver bonus', { below: 3, legacy: true }),
+  ], true);
+  register(['Dark:1539'], [
+    continuous('shipWeaponDiscount', 'Waffen kosten auf dem von Tanbris gesteuerten Schiff 1 Force weniger.',
+      'Starship weapons that deploy on his ship', 'Tanbris discounts only weapons on the ship he pilots', { amount: 1, since: 7 }),
+    continuous('pilotPower', 'Ein von Tanbris gesteuertes Schiff erhält +2 Power. Ein Starfighter erhält außerdem −1 Maneuver.',
+      'piloted ship', 'Tanbris discounts only weapons on the ship he pilots', { amount: 2, legacy: true }),
+  ], true);
+  register(['Dark:1989'], [
+    continuous('capitalAstromech', 'An Bord eines Capital Starships steigen Power und Hyperspeed um 1. Das Schiff ist immun gegen Attrition unter 3.',
+      'capital starship aboard', 'R1-G4 modifies capital ships and cannot board fighters', { below: 3, amount: 1, legacy: true }),
+    continuous('boardingRestriction', 'Darf nicht an Bord von Starfightern.', 'starfighters',
+      'R1-G4 modifies capital ships and cannot board fighters', { legacy: true }),
+  ], true);
+  register(['Light:1407'], [
+    continuous('pilotPower', 'Ein von Kal’Falnl gesteuertes Schiff erhält +2 Power.',
+      'piloted ship', 'Kal’Falnl can pilot capital ships and move three sites', { amount: 2, since: 7 }),
+    continuous('boardingRestriction', 'Darf nicht an Bord von Starfightern und geschlossenen Fahrzeugen.', 'starfighters and enclosed vehicles',
+      'Kal’Falnl can pilot capital ships and move three sites', { legacy: true }),
+    continuous('landspeed', 'Hat Landspeed 3.', 'this character', 'Kal’Falnl can pilot capital ships and move three sites', { amount: 3, legacy: true }),
+    continuous('opposingDestinyZero', 'Haben beide Spieler genau eine Battle Destiny gezogen und ist deine höher, wird die gegnerische Battle Destiny auf 0 gesetzt.',
+      'opponent in same battle', 'Kal’Falnl sets opposite single battle destiny to zero', { duration: 'rest of battle', legacy: true }),
+  ], true);
+  const starfighterTest = 'Premiere starfighter pilots and capacity follow their printed slots';
+  const permanentPilot = continuous('permanentPilot', 'Der permanente Pilot stellt Ability 1 bereit.',
+    'this starfighter', starfighterTest, { amount: 1, legacy: true });
+  const capacityRule = (summary, capacity) => continuous('crewCapacity', summary, 'characters aboard',
+    starfighterTest, { capacity, legacy: true });
+  register(['Light:2838','Dark:2595'], [permanentPilot], true);
+  register(['Dark:2600'], [
+    permanentPilot,
+    continuous('capitalDeployDiscount', 'Kostet 1 Force weniger bei einem Imperial Capital Starship am selben System.',
+      'same system as an Imperial capital starship', 'TIE Fighter deploy discount needs an Imperial capital ship at the system',
+      { amount: 1, legacy: true }),
+  ], true);
+  register(['Light:2907'], [permanentPilot, capacityRule('Kann einen zusätzlichen Piloten oder Passagier aufnehmen.', { shared: 1 })], true);
+  register(['Light:2057'], [capacityRule('Kann einen Piloten aufnehmen.', { pilot: 1 })], true);
+  register(['Light:2060'], [capacityRule('Kann einen Piloten und einen Astromech aufnehmen.', { pilot: 1, astromech: 1 })], true);
+  const carriersTest = 'Premiere transports enforce crew, cargo and docking capacity';
+  for (const [id, ability, slots, summary] of [
+    ['Light:530',1,{ pilot: 3, passenger: 4, cargo: 1 },'Drei Piloten, vier Passagiere und ein Fahrzeug.'],
+    ['Dark:723',2,{ pilot: 6, passenger: 8, cargo: 2, hangar: 4 },'Sechs Piloten, acht Passagiere, zwei Fahrzeuge und vier TIEs.'],
+    ['Dark:1291',1,{ pilot: 6, passenger: 8, cargo: 2, hangar: 4 },'Sechs Piloten, acht Passagiere, zwei Fahrzeuge und vier TIEs.'],
+    ['Dark:2602',1,{ pilot: 1, passenger: 2, crew: 2 },'Kann einen Piloten und einen Passagier oder zwei Passagiere aufnehmen.'],
+  ]) {
+    const effects = [
+      continuous('crewCapacity', summary, 'allowed crew and cargo', carriersTest, { capacity: slots, legacy: true }),
+      continuous('permanentPilot', 'Der permanente Pilot stellt Ability ' + ability + ' bereit.',
+        'this starship', carriersTest, { amount: ability, legacy: true }),
+    ];
+    if (slots.cargo) effects.push(continuous('shipDocking', 'Kann mit einem anderen Schiff am selben System zum Transfer andocken.',
+      'friendly Starship at same system', carriersTest, { cost: 1, legacy: true }));
+    register([id], effects, true);
+  }
+  register(['Dark:191'], [
+    continuous('crewCapacity', 'Kann zwei Passagiere tragen. Eigene Ability ist ½.', 'two passengers', carriersTest,
+      { capacity: { passenger: 2 }, legacy: true }),
+    continuous('moveReact', 'Kann auf einen gerade initiierten Battle oder Force Drain im Bewegungsradius reagieren.',
+      'exterior site of opposing battle or drain', 'a Bantha has half ability', { legacy: true }),
+    continuous('tuskenAura', 'Jeder Tusken Raider am selben Außen-Site erhält +1 Power.',
+      'Tusken Raider at the same exterior site', 'a Bantha has half ability', { amount: 1, legacy: true }),
+  ], true);
+  const transportTest = 'Premiere transport reacts honor the route, passengers and printed cost';
+  const battleDrainReact = continuous('moveReact', 'Kann auf einen gerade initiierten Battle oder Force Drain mit einer Bewegung reagieren.',
+    'location of opposing battle or drain', transportTest, { legacy: true });
+  register(['Light:2250'], [
+    {...battleDrainReact, summary: 'Kann als React zu einer benachbarten Site ziehen.', targets: 'adjacent site'},
+  ], true);
+  register(['Light:1548','Dark:1547'], [
+    battleDrainReact,
+    continuous('liftTubeMovement', 'Kann vier Passagiere tragen. Einsatz und Bewegung sind auf innere mobile Sites beschränkt. Es braucht keinen Fahrer.',
+      'interior mobile sites and passengers', transportTest, { capacity: { passenger: 4 }, legacy: true }),
+  ], true);
+  for(const [id, passengers, riders] of [
+    ['Light:1609',2,'Luke'], ['Light:2307',3,'Luke, Beru oder Owen']
+  ]) {
+    register([id], [
+      battleDrainReact,
+      continuous('crewCapacity', 'Kann einen Fahrer und ' + passengers + ' Passagiere aufnehmen.',
+        'driver and passengers aboard', transportTest, { capacity: { driver: 1, passenger: passengers }, legacy: true }),
+      continuous('freeTransport', 'Fährt kostenlos, wenn ' + riders + ' an Bord ist.',
+        riders, transportTest, { legacy: true }),
+    ], true);
+  }
+  for(const [ids, cost, bonus] of [
+    [['Light:259','Dark:1264'], 1, 0], [['Light:265','Dark:264'], 2, 1],
+  ]) {
+    const test = 'Premiere blasters enforce mount, cost and strict defense threshold';
+    register(ids, [
+      continuous('weaponDeploy', 'Für ' + cost + ' Force an einem eigenen Warrior ausspielen.',
+        'own warrior', test, { cost, duration: 'while equipped', legacy: true }),
+      continuous('weaponShot', 'Für ' + cost + ' Force eine Waffen-Destiny ziehen. Ein Treffer benötigt Destiny' +
+        (bonus ? ' +1' : '') + ' über dem Verteidigungswert.',
+        'character, creature or vehicle', test, { cost, amount: bonus, duration: 'damage segment', legacy: true }),
+    ], true);
+  }
+  register(['Light:1503'], [
+    continuous('weaponDeploy', 'Kostet 1 Force auf Leia oder 2 Force auf einem anderen eigenen Warrior.',
+      'Leia or own warrior', 'named pistols use alternative deploy costs', { cost: 1, fallbackCost: 2, legacy: true }),
+    continuous('weaponShot', 'Feuert kostenlos. Destiny −1 muss über dem Verteidigungswert liegen. Feuert Leia, ist der Forfeit eines getroffenen Ziels 0.',
+      'character, creature or vehicle', 'Premiere blasters enforce mount, cost and strict defense threshold', { amount: -1, duration: 'damage segment', legacy: true }),
+  ], true);
+  register(['Light:1106'], [
+    continuous('weaponDeploy', 'Kostet 1 Force auf Han oder 3 Force auf einem anderen eigenen Warrior.',
+      'Han or own warrior', 'named pistols use alternative deploy costs', { cost: 1, fallbackCost: 3, legacy: true }),
+    continuous('weaponShot', 'Kostet 1 Force zum Feuern. Destiny +1 muss über der Verteidigung liegen. Feuert Han, ist der Forfeit eines getroffenen Ziels 0.',
+      'character, creature or vehicle', 'named pistols use alternative deploy costs', { cost: 1, amount: 1, duration: 'damage segment', legacy: true }),
+  ], true);
+  const saberTest = 'lightsabers enforce named and ability-based costs';
+  const saberDrain = continuous('weaponDrain', 'Kann einen eigenen Force Drain am selben Ort um 1 erhöhen.',
+    'own Force drain where present', 'using a lightsaber during a drain', { amount: 1, duration: 'one drain', legacy: true });
+  register(['Light:1386','Dark:620'], [
+    continuous('weaponDeploy', 'Auf einen eigenen Warrior ausspielen. Kosten sind 7 minus dessen Ability.',
+      'own warrior', saberTest, { costFormula: '7 - ability', legacy: true }),
+    continuous('weaponShot', 'Zum Angriff erneut 7 minus Ability bezahlen. Zwei Destiny ziehen und bei Summe über der Verteidigung treffen.',
+      'character or creature', saberTest, { costFormula: '7 - ability', duration: 'damage segment', legacy: true }),
+    saberDrain,
+  ], true);
+  for (const [id, bearer] of [['Light:1813','Obi-Wan'],['Dark:2702','Vader']]) {
+    register([id], [
+      continuous('weaponDeploy', 'Wird kostenlos auf ' + bearer + ' ausgespielt.', bearer, saberTest, { legacy: true }),
+      continuous('weaponShot', 'Feuert kostenlos. Zwei Destiny ziehen. Liegt die Summe über der Verteidigung, ist das Ziel getroffen und sein Forfeit 0.',
+        'character or creature', saberTest, { duration: 'damage segment', legacy: true }),
+      saberDrain,
+    ], true);
+  }
+  for (const [id, mounts, cost, result, test] of [
+    ['Light:1962','X-wing, Y-wing oder B-wing',1,'Destiny über der Verteidigung trifft.','all ship armaments enforce their printed mounts'],
+    ['Light:1971','Corellian Corvette oder Falcon',2,'Gegen Starfighter zählt Destiny +1. Ein Wert über der Verteidigung trifft.','all ship armaments enforce their printed mounts'],
+    ['Dark:303','TIE Advanced x1',1,'Destiny −1 gegen Capital Starships und Destiny +1 gegen Starfighter. Ein Wert über der Verteidigung trifft.','all ship armaments enforce their printed mounts'],
+    ['Dark:1327','Star Destroyer',2,'Ist Destiny +2 höher als die Verteidigung, gehen die Schiffswaffen des Ziels verloren. Verteidigung und Hyperspeed werden auf 0 gesetzt.','a successful Ion Cannon destroys ship weapons'],
+  ]) {
+    register([id], [
+      continuous('weaponDeploy', 'Für ' + cost + ' Force auf ' + mounts + ' ausspielen.', mounts, test,
+        { cost, duration: 'while equipped', legacy: true }),
+      continuous('weaponShot', 'Für 1 Force auf ein Starship feuern. ' + result,
+        'opposing starship', test, { cost: 1, duration: id === 'Dark:1327' ? 'while target remains in play' : 'damage segment', legacy: true }),
+    ], true);
+  }
+  register(['Dark:146'], [
+    continuous('weaponDeploy', 'Für 3 Force auf einem eigenen Warrior ausspielen.', 'own warrior', 'Assault Rifle fires from an adjacent location',
+      { cost: 3, duration: 'while equipped', legacy: true }),
+    continuous('weaponShot', 'Für 2 Force ein Ziel am selben oder benachbarten Site angreifen. Destiny +1 muss über der Verteidigung liegen.',
+      'character, creature or vehicle at same or adjacent site', 'Assault Rifle fires from an adjacent location',
+      { cost: 2, amount: 1, duration: 'damage segment', legacy: true }),
+  ], true);
+  register(['Dark:1002'], [
+    continuous('weaponDeploy', 'Für 2 Force auf einem Tusken Raider ausspielen.', 'Tusken Raider', 'Gaderffii Stick blocks the chosen bearer',
+      { cost: 2, duration: 'while equipped', legacy: true }),
+    continuous('weaponShot', 'Direkt nach Kampfbeginn kostenlos zwei Destiny gegen eine Figur ziehen. Bei Summe über 5 sind deren Waffen für diesen Kampf blockiert.',
+      'character in just initiated battle', 'Gaderffii Stick blocks the chosen bearer',
+      { duration: 'rest of battle', expires: 'after battle', legacy: true }),
+  ], true);
+  register(['Dark:1551'], [
+    continuous('weaponDeploy', 'Für 2 Force auf einem eigenen Warrior ausspielen.', 'own warrior', 'Light Repeating Blaster Rifle needs a present power droid',
+      { cost: 2, duration: 'while equipped', legacy: true }),
+    continuous('weaponShot', 'Mit eigenem Power Droid oder Fusion Generator vor Ort darf der Warrior wiederholt feuern. Jeder Schuss kostet 2 Force. Destiny +1 muss über der Verteidigung liegen.',
+      'character, creature or vehicle', 'Light Repeating Blaster Rifle needs a present power droid',
+      { cost: 2, amount: 1, duration: 'weapon segment', legacy: true }),
+  ], true);
+  register(['Dark:2644'], [
+    continuous('weaponDeploy', 'Für 3 Force auf einem eigenen Star Destroyer oder einem mobilen System ausspielen.',
+      'Star Destroyer or mobile system', 'all ship armaments enforce their printed mounts', { cost: 3, duration: 'while equipped', legacy: true }),
+    continuous('weaponShot', 'Für 2 Force auf ein Starship feuern und zwei Destiny ziehen. Gegen Capital Starships zieht die Batterie 2 ab, gegen andere Schiffe 5. Ein Wert über der Verteidigung trifft.',
+      'opposing Starship', 'all ship armaments enforce their printed mounts', { cost: 2, duration: 'damage segment', legacy: true }),
+  ], true);
+  register(['Light:2610','Dark:2609'], [
+    continuous('mineDeploy', 'Ein eigener Mining Droid legt die Mine auf der Gegenseite derselben Site aus. An Außen-Sites kann er Karten verdeckt als Minenfeld vergraben.',
+      'site with friendly mining droid', 'a buried mine and a dud are hidden', { duration: 'until detonation or removal', legacy: true }),
+    continuous('mineExplosion', 'Die ausgelegte Mine explodiert am Anfang deines nächsten Zugs. Destiny gibt die Anzahl gegnerischer Figuren an derselben Site vor, die der Gegner verliert. Der Gegner wählt. Die Mine geht ebenfalls verloren.',
+      'opposing characters present with mine', 'each Timer Mine waits for its owner', { duration: 'instant', expires: 'after resolving', legacy: true }),
+  ], true);
   const blockKesselRun = continuous('blockKesselRun', 'Wer die Seite mit diesem Ortswortlaut kontrolliert, verhindert oder hebt Kessel Run auf.',
     'Kessel Run at Kessel', 'Kessel Run tracks', { printedSide: 'Dark', since: 2 });
   register(['Light:1427'], [drain('Light'), blockKesselRun], true);

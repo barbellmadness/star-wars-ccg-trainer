@@ -61,12 +61,18 @@ const PremiereUnits = (() => {
   }
 
   const matchingPilots = new Map([
-    ['Light:239', ['Light:2060', 1]], ['Light:799', ['Light:1045', 1]], ['Light:1098', ['Light:1677', 2]],
-    ['Light:1593', ['Light:2068', 2]], ['Light:1924', ['Light:1050', 1]], ['Light:2067', ['Light:2057', 1]],
-    ['Dark:790', ['Dark:247', 1]], ['Dark:791', ['Dark:249', 1]], ['Dark:634', ['Dark:2700', 3]]
+    ['Light:239', ['Light:2060', 1, true]], ['Light:799', ['Light:1045', 1, true]], ['Light:1098', ['Light:1677', 2, true]],
+    ['Light:1390', [null, 1, true, 'Red 6']], ['Light:1593', ['Light:2068', 2]],
+    ['Light:1924', ['Light:1050', 1, true, 'Gold 5']], ['Light:2067', ['Light:2057', 1, true]],
+    ['Dark:790', ['Dark:247', 1, true]], ['Dark:791', ['Dark:249', 1, true]], ['Dark:634', ['Dark:2700', 3]]
   ]);
+  function matchingPilot(ship, pilot, matchNames) {
+    const match = matchingPilots.get(pilot.id);
+    return match && ((match[0] && match[0] === ship.id) || (matchNames && match[3] === name(ship))) ? match : null;
+  }
+  const matchingBattleDestiny = (ship, pilot, matchNames) => matchingPilot(ship, pilot, matchNames)?.[2] === true;
 
-  function stats(card, permanentAbility, {landed = false} = {}) {
+  function stats(card, permanentAbility, {landed = false, activePilotText = false} = {}) {
     const occupants = (card.occupants ?? []).filter(({card}) => active(card));
     const pilots = occupants.filter(({role}) => role === 'pilot').map(({card}) => card);
     const motor = card.type === 'Starship' ? permanentAbility !== null || pilots.length > 0
@@ -76,11 +82,12 @@ const PremiereUnits = (() => {
     const ability = permanentAbility ?? 0;
     const navComputer = !!card.navComputer || occupants.some(({card,role}) => rUnit(card) && ['passenger','astromech'].includes(role));
     if (powered && card.type === 'Starship') for (const pilot of pilots) {
+      if (activePilotText && textSuppressed(pilot)) continue;
       const text = pilot.gametext ?? '';
-      const bonus = Number(text.match(/Adds (\d+) to power of anything he pilots/i)?.[1] ?? 0);
+      const bonus = Number(text.match(activePilotText?/Adds (\d+) to power of anything (?:he|she) pilots/i:/Adds (\d+) to power of anything he pilots/i)?.[1] ?? 0);
       power += pilot.id === 'Dark:634' && card.id === 'Dark:2700' ? 4 : bonus;
-      const match = matchingPilots.get(pilot.id);
-      if (Number.isFinite(maneuver) && match?.[0] === card.id) maneuver += match[1];
+      const match = matchingPilot(card, pilot, activePilotText);
+      if (Number.isFinite(maneuver) && match) maneuver += match[1];
       if (Number.isFinite(maneuver) && pilot.id === 'Dark:1539' && fighter(card)) maneuver--;
       if (Number.isFinite(hyperspeed) && pilot.id === 'Dark:502' && card.id === 'Dark:723') hyperspeed++;
     }
@@ -151,7 +158,7 @@ const PremiereUnits = (() => {
     }
   }
 
-  return {active, accepts, add, bantha, bountyHunter, canEscort, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost,
+  return {active, accepts, add, bantha, bountyHunter, canEscort, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, landspeedCost, matchingBattleDestiny,
     recordWeaponUse, remove, restrainingBolt, roles, stats, textSuppressed, tie, tube, usesMultipleWeapons};
 })();
 

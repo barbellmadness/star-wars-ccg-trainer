@@ -170,7 +170,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=6;
+const latestCardRulesVersion=7;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -276,7 +276,12 @@ function landedAt(card,slot){
 }
 
 function craftStats(card,slot,forMovement=false){
- return PremiereUnits.stats(card,permanentPilotAbility(card),{landed:!forMovement&&landedAt(card,slot)});
+ return PremiereUnits.stats(card,permanentPilotAbility(card),{landed:!forMovement&&landedAt(card,slot),
+  activePilotText:(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7});
+}
+
+function movementPrevented(card){
+ return PremiereUnits.restrainingBolt(card)||activeCardRules(card,'cannotMove').length>0;
 }
 
 function groundReach(card,from,to,range){
@@ -294,7 +299,7 @@ function groundReach(card,from,to,range){
 
 function travelOptions(card,side,from,to,react=false){
  const origin=state.locations[from],destination=state.locations[to];
- if(from===to||!origin||!destination||!PremiereUnits.active(card)||PremiereUnits.restrainingBolt(card))return [];
+ if(from===to||!origin||!destination||!PremiereUnits.active(card)||movementPrevented(card))return [];
  const options=[];
  if(card.type==='Starship'){
   const stats=craftStats(card,from,true);
@@ -311,7 +316,8 @@ function travelOptions(card,side,from,to,react=false){
  }
  const vehicle=card.type==='Vehicle',character=card.type==='Character'||isDeployableCharacter(card);
  if(!vehicle&&!character)return [];
- const speed=vehicle?craftStats(card,from).landspeed:card.id==='Dark:1709'||card.id==='Light:1407'?3:1;
+ const kalSpeed=card.id==='Light:1407'&&((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||!PremiereUnits.textSuppressed(card));
+ const speed=vehicle?craftStats(card,from).landspeed:card.id==='Dark:1709'||kalSpeed?3:1;
  if(speed>0&&groundReach(card,from,to,react&&card.id==='Light:2250'?1:speed)){
   options.push({kind:'Landspeed',cost:vehicle?PremiereUnits.landspeedCost(card):1});
  }
@@ -376,7 +382,7 @@ function transportOptions(side){
  const options=[];
  if(state.activeSide!==side||![2,4].includes(state.phase))return options;
  const {board,force,hand}=PremiereGame.zones(state,side);
- const move=state.phase===4,ready=card=>PremiereUnits.active(card)&&!state.movedThisTurn?.includes(card)&&!PremiereUnits.restrainingBolt(card);
+ const move=state.phase===4,ready=card=>PremiereUnits.active(card)&&!state.movedThisTurn?.includes(card)&&!movementPrevented(card);
  const offer=(kind,from,to,unit,host,role,cost,card,carrier,label)=>{
   if(cost<=(force?.length??0))options.push({args:[kind,from,to,unit,host,role],from,to,card,carrier,cost,label});
  };
@@ -394,16 +400,16 @@ function transportOptions(side){
    }
   }
   if(move)for(const [j,card] of row.entries())for(const role of PremiereUnits.roles(host,card)){
-   if(!PremiereUnits.restrainingBolt(card)&&(landed||role==='cargo'||role==='hangar'))offer('embark',slot,slot,j,i,role,0,card,host,'Einsteigen');
+   if(!movementPrevented(card)&&(landed||role==='cargo'||role==='hangar'))offer('embark',slot,slot,j,i,role,0,card,host,'Einsteigen');
   }
   for(const [j,entry] of (host.occupants??[]).entries()){
    const card=entry.card;
-   if(!PremiereUnits.active(card))continue;
+   if(!PremiereUnits.active(card)||activeCardRules(card,'cannotMove').length)continue;
    for(const role of PremiereUnits.roles(host,card,entry).filter(role=>role!==entry.role)){
     offer('role',slot,slot,j,i,role,0,card,host,'Rolle wechseln');
    }
    (host.occupants??[]).forEach((other,k)=>{
-    if(k>j&&other.role!==entry.role&&PremiereUnits.accepts(host,card,other.role,other)&&
+    if(k>j&&other.role!==entry.role&&!activeCardRules(other.card,'cannotMove').length&&PremiereUnits.accepts(host,card,other.role,other)&&
        PremiereUnits.accepts(host,other.card,entry.role,entry))offer('swap',slot,k,j,i,'',0,card,host,'Rollen tauschen mit '+other.card.name);
    });
    if(!move||PremiereUnits.restrainingBolt(card))continue;
@@ -497,7 +503,7 @@ function dockingGroups(side){
   if(right<=left||!canDock(first,second,slot))return [];
   const ships=[first,second];
   const choices=ships.flatMap((ship,source)=>(ship.occupants??[]).flatMap(({card,role},index)=>{
-   if(!['pilot','passenger','cargo','hangar'].includes(role)||PremiereUnits.restrainingBolt(card))return [];
+   if(!['pilot','passenger','cargo','hangar'].includes(role)||movementPrevented(card))return [];
    const destination={...ships[1-source],occupants:[]};
    const roles=PremiereUnits.roles(destination,card).filter(role=>role!=='astromech');
    return roles.length?[{source,index,card,roles}]:[];
@@ -671,7 +677,8 @@ const isNonUniqueTusken=card=>matchesRegisteredTarget(card,'tusken')&&!card.uniq
 
 function tuskenGroupPower(cards){
  const present=cards.filter(isNonUniqueTusken);
- const [rule]=activeCardRules(present[0],'tuskenPower');
+ const [rule]=(currentGame()?.cardRulesVersion??latestCardRulesVersion)<7?activeCardRules(present[0],'tuskenPower'):
+  present.flatMap(card=>activeCardRules(card,'tuskenPower'));
  return rule&&present.length>=rule.minimum?rule.groupAmount:0;
 }
 
@@ -683,19 +690,32 @@ function cardPowerModifier(c,side,siteIndex,ownPresent){
  const disarmed=PremiereWeapons.disarmed(c)?-1:0;
  if(!state||!['Light','Dark'].includes(side))return disarmed;
  let bonus=disarmed+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex);
+ const [forcePower]=activeCardRules(c,'forceIconPower');
+ if(forcePower&&PremiereLocations.present(state,c,siteIndex)){
+  bonus+=forcePower.amount*(PremiereLocations.icons(state,siteIndex,'Dark')??0);
+  if(PremiereLocations.conditions(state,siteIndex,side).night)bonus+=forcePower.nightAmount;
+ }
  if(!state.locations?.[siteIndex]||!isSite(state.locations[siteIndex]))return bonus;
  const same=ownPresent??PremiereLocations.presentCards(state,side,siteIndex);
  bonus+=registeredCharacterModifier('characterPower',c,siteIndex)+rebelAuraPower(c,side,siteIndex,same);
  const [tuskenRule]=activeCardRules(c,'tuskenPower');
- if(tuskenRule&&same.some(card=>card!==c&&isNonUniqueTusken(card)))bonus+=tuskenRule.amount;
+ if(tuskenRule&&(same.some(card=>card!==c&&isNonUniqueTusken(card))||
+    ((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7&&PremiereLocations.presentCards(state,PremiereGame.otherSide(side),siteIndex)
+     .some(isNonUniqueTusken))))bonus+=tuskenRule.amount;
  if(side==='Light'&&PremiereLocations.conditions(state,siteIndex,side).night&&sitePlanet(state.locations[siteIndex])&&
     same.some(x=>x.id==='Light:2'&&!PremiereUnits.textSuppressed(x)&&/nighttime conditions/i.test(x.gametext||''))&&
     characterTraits(c).some(x=>/\brebel\b|\balien\b/.test(x)))bonus+=2;
  // EG-6 gives +1 power to each other allied droid at its site, except power droids.
  if(isDroid(c)&&!isPowerDroid(c))
    bonus+=same.filter(x=>x.id==='Dark:816'&&!PremiereUnits.textSuppressed(x)&&/adds 1 to power of each of your droids/i.test(x.gametext||'')).length;
- if(c.id==='Dark:2648'&&isExteriorPlanetSite(state.locations[siteIndex]))
-   bonus+=(state.dark[siteIndex]||[]).filter(isBantha).length;
+ if(isExteriorPlanetSite(state.locations[siteIndex])){
+  const legacy=(currentGame()?.cardRulesVersion??latestCardRulesVersion)<7;
+  if(legacy&&c.id==='Dark:2648')bonus+=(state.dark[siteIndex]||[]).filter(isBantha).length;
+  if(!legacy&&matchesRegisteredTarget(c,'tusken')&&PremiereLocations.present(state,c,siteIndex)){
+   bonus+=PremiereGame.sides.flatMap(player=>PremiereLocations.presentCards(state,player,siteIndex))
+    .reduce((sum,unit)=>sum+(activeCardRules(unit,'tuskenAura')[0]?.amount??0),0);
+  }
+ }
  return bonus;
 }
 
@@ -809,8 +829,12 @@ function craftDeployCost(card,loc,side,pilot=null){
   const tarkinAboard=board.some(ship=>ship.type==='Starship'&&ship.occupants?.some(({card})=>locationTitle(card)==='grand moff tarkin'));
   if(tarkinAboard)discount=deployRule.tarkinDiscount;
  }
- if(card.id==='Dark:2600'&&state.dark[state.locations.indexOf(loc)]?.some(c=>
-  c.type==='Starship'&&/^Capital\b/i.test(c.subType||'')&&/\bImperial\b/i.test(c.subType)))discount++;
+ if(card.id==='Dark:2600'){
+  const legacy=(currentGame()?.cardRulesVersion??latestCardRulesVersion)<7;
+  const source=c=>PremiereUnits.capital(c)&&/\bImperial\b/i.test(c.subType);
+  if(legacy?state.dark[slot]?.some(source):
+     isSystem(loc)&&PremiereGame.sides.some(player=>PremiereLocations.presentCards(state,player,slot).some(c=>PremiereUnits.active(c)&&source(c))))discount++;
+ }
  return Math.max(0,card.deploy-discount)+(pilot?crewDeployCost(pilot,side,loc):0);
 }
 
@@ -879,10 +903,18 @@ function weaponPlacementOptions(side,card,slot){
  if(!PremiereWeapons.definition(card)||card.side!==side||!withinDeploymentLimit(card,side))return [];
  return weaponMounts(side).flatMap(mount=>{
   if(slot!==undefined&&mount.slot!==slot)return [];
-  const cost=PremiereWeapons.deployCost(card,mount.host,cardAbility(mount.host));
+  const cost=weaponDeployCost(card,mount.host);
   if(cost===null||cost>force.length)return [];
   return [{mount,siteIndex:mount.slot,hostIndex:mount.index,host:mount.host,cost}];
  });
+}
+
+function weaponDeployCost(weapon,host){
+ const cost=PremiereWeapons.deployCost(weapon,host,cardAbility(host));
+ if(cost===null||weapon.subType!=='Starship'||host.type!=='Starship')return cost;
+ const discount=(host.occupants??[]).some(({card,role})=>
+  role==='pilot'&&PremiereUnits.active(card)&&activeCardRules(card,'shipWeaponDiscount').length);
+ return discount?Math.max(0,cost-1):cost;
 }
 
 function deployWeaponFor(side,handIndex,siteIndex,hostIndex){
@@ -919,7 +951,7 @@ function weaponEffectOptions(side){
    if(PremiereWeapons.projector(weapon)||weapon.side!==side)return;
    targetMounts.forEach(target=>{
     if(source.host===target.host||source.slot!==target.slot||source.place!==target.place)return;
-    const cost=PremiereWeapons.deployCost(weapon,target.host,cardAbility(target.host));
+    const cost=weaponDeployCost(weapon,target.host);
     if(cost!==null&&cost<=(force?.length??0))add(['transfer',a,w,target.slot,target.index],weapon.name+' → '+target.host.name+' ('+cost+' Force)',{source,weapon,target,cost});
    });
   }));
@@ -965,8 +997,10 @@ function weaponEffectOptions(side){
   });
  }
  if(active&&(force?.length??0)>0)weapons.forEach((entry,index)=>{
-  if(!PremiereWeapons.mine(entry.card)||!PremiereLocations.presentCards(state,side,entry.slot).some(card=>
-     PremiereWeapons.miningDroid(card)&&PremiereUnits.active(card)))return;
+  if(!PremiereWeapons.mine(entry.card))return;
+  const canDefuse=(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7?mineLayers(side,entry.slot):
+   PremiereLocations.presentCards(state,side,entry.slot).some(card=>PremiereWeapons.miningDroid(card)&&PremiereUnits.active(card));
+  if(!canDefuse)return;
   add(['defuse',index],'Timer Mine entschärfen (1 Force)',{entry,cost:1});
  });
  return options;
@@ -2246,7 +2280,7 @@ function botWeaponPressure(side,slot){
 }
 
 function botBattleEstimate(slot,adaptive){
- const {darkPower,lightPower,darkAbility,lightAbility}=battleTotals(slot);
+ const {darkPower,lightPower,darkAbility,lightAbility}=battleTotals(slot,'Dark');
  if(!adaptive)return darkPower-lightPower;
  const darkDraws=Math.min(state.botDeck?.length??0,battleDestinyDrawCount('Dark',slot,darkAbility,'Dark')??0);
  const lightDraws=Math.min(state.deck?.length??0,battleDestinyDrawCount('Light',slot,lightAbility,'Dark')??0);
@@ -2332,15 +2366,16 @@ function advanceBotStep(kind){
  return true;
 }
 
-function battleTotals(i){
+function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiator:null){
  const ability=cards=>{const a=cards.map(card=>card.type==='Starship'?craftStats(card,i).ability:cardAbility(card)),known=a.reduce((n,v)=>n+(Number.isFinite(v)?v:0),0);return a.some(v=>v===null)&&known<4?null:known};
  const lightPresent=PremiereLocations.presentCards(state,'Light',i),darkPresent=PremiereLocations.presentCards(state,'Dark',i);
  const cards=(side,present)=>present.filter(card=>card.type!=='Weapon'&&card.type!=='Device'&&
   PremiereUnits.active(card)&&(!battleSession?.segmented||battleSession.site!==i||battleSession.participants[side].includes(card)));
  const power=(cards,side,present)=>{
   const jungle=cards.reduce((total,card)=>total+jungleBonus(card,side,i,cards),0);
+  const defense=initiator&&side!==initiator?cards.reduce((total,card)=>total+(activeCardRules(card,'defendingPower')[0]?.amount??0),0):0;
   return cards.reduce((n,c)=>n+(['Starship','Vehicle'].includes(c.type)?craftStats(c,i).power:(c.power??0))+cardPowerModifier(c,side,i,present),
-   jungle+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
+   jungle+defense+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
  };
  const light=cards('Light',lightPresent),dark=cards('Dark',darkPresent);
  return {lightPower:power(light,'Light',lightPresent),darkPower:power(dark,'Dark',darkPresent),lightAbility:ability(light),darkAbility:ability(dark)};
@@ -2612,9 +2647,9 @@ function battleDestinyDrawCount(side,siteIndex,ability,initiator=battleSession?.
  if(!Number.isFinite(ability))return null; // Unknown ability cannot justify an assumed draw.
  const required=minimumBattleDestinyAbility(side,siteIndex);
  const own=PremiereGame.zones(state,side).board?.[siteIndex]??[];
- const matching=new Map([['Light:2060','Light:239'],['Light:1045','Light:799'],['Light:1677','Light:1098'],['Light:1050','Light:1924'],['Light:2057','Light:2067'],['Dark:247','Dark:790'],['Dark:249','Dark:791']]);
+ const activeText=(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7;
  const backup=own.some(ship=>craftStats(ship,siteIndex).powered&&ship.occupants?.some(entry=>entry.role==='pilot'&&
-  entry.card.id===matching.get(ship.id)&&PremiereUnits.active(entry.card)));
+  PremiereUnits.matchingBattleDestiny(ship,entry.card,activeText)&&PremiereUnits.active(entry.card)&&(!activeText||!PremiereUnits.textSuppressed(entry.card))));
  const regular=ability>=required||backup?1:0;
  return regular+printedWarRoomExtraBattleDestiny(side,siteIndex,initiator)+(battleSession?.extraDraws?.[side]??0);
 }
@@ -2645,7 +2680,8 @@ function destinyResponses(side,frame){
  const {force}=PremiereGame.zones(state,side);
  const members=x.participants[side].filter(card=>battleCandidates(side,x.site).includes(card));
  const offers=[];
- if(side===frame.side&&force.length&&members.some(card=>card.id==='Light:1098')&&
+ if(side===frame.side&&force.length&&members.some(card=>card.id==='Light:1098'&&
+    ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||activeCardRules(card,'redrawOwnDestiny').length))&&
     !PremiereGame.wasUsed(state.game,'battle','hanRedraw')){
   offers.push({kind:'hanRedraw',label:'Han Solo: Destiny neu ziehen (1 Force)'});
  }
@@ -2735,7 +2771,8 @@ function settlePowerSegment(){
   return;
  }
  if(x.drawCounts?.Light===1&&x.drawCounts.Dark===1&&x.lightDestiny>x.darkDestiny&&
-    activeBattleUnits('Light').some(card=>card.id==='Light:1407')){
+    activeBattleUnits('Light').some(card=>card.id==='Light:1407'&&
+     ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||!PremiereUnits.textSuppressed(card)))){
   x.darkDestiny=0;
   log("Kal'Falnl C'ndros setzt Dark Battle Destiny auf 0.");
  }
@@ -3065,6 +3102,10 @@ function battleAttritionAgainst(side){
 }
 
 function printedAttritionImmunityBelow(c){
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7){
+  const [registered]=PremiereCardRules.effects(c,'attritionImmunity');
+  if(registered?.below!==undefined)return registered.below;
+ }
  // Only unconditional printed values; conditional / granted immunity remains unsupported.
  const m=String(c?.gametext||'').match(/(?:^|[.!?]\s+)(?:['"]diplomatic['"]\s+)?(?:immune|immunity)\s+to\s+attrition\s*<\s*(\d+)\s*(?=[.!?]|$)/i);
  return m?Number(m[1]):null;
@@ -3354,6 +3395,7 @@ function reactOptions(side, window){
   if(state.reactedThisTurn?.includes(card)||(card.occupants??[]).some(entry=>state.reactedThisTurn?.includes(entry.card)))return [];
   const dantooine=card.type==='Starship'&&PremiereLocations.ruleAt(state,window.site,side,'shipReact');
   if(!dantooine&&!['Light:2250','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
+  if(!dantooine&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7&&PremiereUnits.textSuppressed(card))return [];
   return travelOptions(card,side,from,window.site,true).filter(option=>option.cost<=force.length)
    .map(option=>({from,index,card,cost:option.cost,movement:option.kind}));
  }));
