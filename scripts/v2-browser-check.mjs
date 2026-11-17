@@ -4,7 +4,7 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {startLocalV2Server} from './serve-v2-local.mjs';
 
-test('V2 starts, handles unavailable images and stays playable at desktop and narrow widths', {timeout: 45000}, async () => {
+test('V2 starts, handles unavailable images and stays playable at desktop and narrow widths', {timeout: 60000}, async () => {
   const server = startLocalV2Server({port: 0});
   let browser;
   try {
@@ -131,7 +131,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Eyes In The Dark ansehen', exact: false}).click();
     await effect.getByRole('button', {name: 'Dark Side Lost Pile verdecken (0 Force)'}).click();
     assert.equal(await effect.isVisible(), false);
-    assert.match(await page.locator('#pilesDark').textContent(), /Lost Pile verdeckt/);
+    assert.match(await page.locator('#pilesBot').textContent(), /Lost Pile verdeckt/);
 
     await page.evaluate(() => {
       const card = id => ({...catalog.find(card => card.id === id)});
@@ -219,22 +219,22 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#controlPanel').isVisible(), false);
     await reactControls.getByRole('button', {name: 'Passen', exact: true}).click();
     const lossControls = page.locator('.light-hand #drainLossControls');
-    assert.equal(await page.locator('#phaseDisplayLight > #step').count(), 1);
+    assert.equal(await page.locator('#phaseDisplayPlayer > #step').count(), 1);
     await lossControls.waitFor({state: 'visible'});
     assert.equal(await reactControls.isVisible(), false);
     assert.match(await lossControls.textContent(), /Force Drain.*Moisture Farm.*Noch 2 Force/);
     assert.equal(await page.locator('#controlPanel').isVisible(), false);
     await lossControls.getByRole('button', {name: 'Hand · ' + handLoss, exact: true}).first().click();
     assert.match(await lossControls.textContent(), /Noch 1 Force/);
-    assert.equal(await page.locator('#pilesLight .lost-top-card strong').textContent(), handLoss);
+    assert.equal(await page.locator('#pilesPlayer .lost-top-card strong').textContent(), handLoss);
     await page.evaluate(() => {
       state.lostPileEffects.push({card: catalog.find(card => card.id === 'Dark:2897'), target: 'Light'});
       presentGame();
     });
     await lossControls.getByRole('button', {name: 'Reserve Deck (oberste Karte)'}).click();
     assert.equal(await lossControls.isVisible(), false);
-    assert.equal(await page.locator('#pilesLight .lost-top-card').count(), 0);
-    assert.match(await page.locator('#pilesLight').textContent(), /Lost Pile verdeckt/);
+    assert.equal(await page.locator('#pilesPlayer .lost-top-card').count(), 0);
+    assert.match(await page.locator('#pilesPlayer').textContent(), /Lost Pile verdeckt/);
 
     await page.evaluate(() => {
       state.activeSide = 'Light';
@@ -267,7 +267,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.20'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.21'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -331,7 +331,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Force aktivieren'}).click();
     await page.getByRole('button', {name: 'Schritt rückgängig'}).click();
     assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
-    assert.equal(await page.locator('#pilesLight .pile-slot').nth(1).textContent(), 'Force Pile 0');
+    assert.equal(await page.locator('#pilesPlayer .pile-slot').nth(1).textContent(), 'Force Pile 0');
     page.once('dialog', dialog => dialog.accept());
     await page.locator('#endGame').click();
     await page.getByRole('button', {name: 'Partie auswerten'}).click();
@@ -355,6 +355,30 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await catalogCard.textContent(), /Stand der Umsetzung/);
     await catalogCard.getByRole('button', {name: 'Schließen'}).click();
     await catalog.getByRole('button', {name: 'Schließen'}).click();
+
+    await page.locator('#gameMode').selectOption('');
+    await page.getByLabel('Du spielst').selectOption('Dark');
+    await page.locator('#gameSeed').fill('4');
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', {name: 'Neue Partie'}).click();
+    await page.locator('#setup button.start-location-option').first().click();
+    for (let attempt = 0; attempt < 3 && await page.getByRole('button', {name: 'Erneut wählen'}).isVisible(); attempt++) {
+      await page.getByRole('button', {name: 'Erneut wählen'}).click();
+      await page.locator('#setup button.start-location-option').first().click();
+    }
+    await page.getByRole('button', {name: 'Partie beginnen'}).click();
+    assert.equal(await page.locator('#playerHandTitle').textContent(), 'Deine Hand · Dark Side');
+    assert.equal(await page.locator('#botHand').getByRole('img', {name: 'Verdeckte Light-Side-Karte'}).count(), 8);
+    assert.equal(await page.locator('#board .playmat-column').first().locator('.playmat-zone').first().getAttribute('class'), 'playmat-zone light-zone');
+    const firstDarkCard = await page.locator('#inspectHandCard0').getAttribute('aria-label');
+    await page.locator('#inspectHandCard0').click();
+    const darkCard = page.getByRole('dialog', {name: firstDarkCard.replace(/ ansehen$/, ''), exact: true});
+    assert.ok(await darkCard.isVisible());
+    await darkCard.getByRole('button', {name: 'Schließen'}).click();
+    await page.reload();
+    await page.getByRole('button', {name: 'Partie fortsetzen'}).click();
+    assert.equal(await page.getByLabel('Du spielst').inputValue(), 'Dark');
+    assert.equal(await page.locator('#inspectHandCard0').getAttribute('aria-label'), firstDarkCard);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
