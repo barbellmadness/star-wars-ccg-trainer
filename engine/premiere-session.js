@@ -436,8 +436,12 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=21;
+const latestCardRulesVersion=22;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
+
+function deploymentSide(card){
+ return (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22?card?.owner??card?.side:card?.side;
+}
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
  if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295)return false;
@@ -1317,7 +1321,7 @@ function weaponDeployOptions(side,handIndex){
 
 function weaponPlacementOptions(side,card,slot,free=false){
 
- if(!PremiereWeapons.definition(card)||card.side!==side||!withinDeploymentLimit(card,side))return [];
+ if(!PremiereWeapons.definition(card)||deploymentSide(card)!==side||!withinDeploymentLimit(card,side))return [];
  return weaponMounts(side).flatMap(mount=>{
   if(slot!==undefined&&mount.slot!==slot)return [];
   const base=weaponDeployCost(card,mount.host);
@@ -1340,6 +1344,7 @@ function deployWeaponFor(side,handIndex,siteIndex,hostIndex){
  if(!option)return false;
  const {hand}=PremiereGame.zones(state,side),[weapon]=hand.splice(handIndex,1);
  spendForce(side,option.cost);
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22)delete weapon.kabeHeld;
  attachWeapon(option.mount,weapon);
  log(side+' rüstet '+option.host.name+' mit '+weapon.name+' aus ('+option.cost+' Force → Used Pile).');
  return true;
@@ -1795,7 +1800,8 @@ function devicePlacementOptions(side,device,budget=Infinity){
  const {board}=PremiereGame.zones(state,side);
  const [rule]=activeCardRules(device,'device');
  const backpack=side==='Dark'&&device?.id==='Dark:2357';
- if((!rule&&!backpack)||(device.side&&device.side!==side)||(rule?.cost??0)>budget)return [];
+ const owner=deploymentSide(device);
+ if((!rule&&!backpack)||(owner&&owner!==side)||(rule?.cost??0)>budget)return [];
  const mounts=weaponMounts(side).map(mount=>({...mount,hostSide:side}));
  if(rule?.allowOpponent||activeCardRules(device,'reusableComlink').length){
   const opponent=PremiereGame.otherSide(side);
@@ -1954,6 +1960,7 @@ function takeStolenTableCard(side,actor,target){
  assign(card);
  if(card.type==='Weapon'){
   if(activeCardRules(actor,'controlTheft').some(rule=>rule.mode==='kabe'))card.kabeHeld=true;
+  else if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22)delete card.kabeHeld;
   (actor.weapons??=[]).push(card);
  }
  else if(card.type==='Device')(actor.attachments??=[]).push(card);
@@ -4318,10 +4325,12 @@ function openDeploymentReaction(side,cards){
 
 function deployPilotOptions(side,handIndex,slot){
  const {hand}=PremiereGame.zones(state,side),ship=hand?.[handIndex],loc=state.locations[slot];
- if(ship?.type!=='Starship'||(ship.side&&ship.side!==side)||permanentPilotAbility(ship)!==null||
+ const shipSide=deploymentSide(ship);
+ if(ship?.type!=='Starship'||(shipSide&&shipSide!==side)||permanentPilotAbility(ship)!==null||
     !loc||!hasDeployPresence(side,loc)||!withinDeploymentLimit(ship,side))return [];
  return hand.flatMap((pilot,index)=>{
-  if(index===handIndex||!pilot.pilot||!Number.isFinite(pilot.deploy)||(pilot.side&&pilot.side!==side)||!withinDeploymentLimit(pilot,side))return [];
+  const pilotSide=deploymentSide(pilot);
+  if(index===handIndex||!pilot.pilot||!Number.isFinite(pilot.deploy)||(pilotSide&&pilotSide!==side)||!withinDeploymentLimit(pilot,side))return [];
   const cost=craftDeployCost(ship,loc,side,pilot);
   return cost!==null&&cost<=forceBudget(side)?[{pilot,index,cost,ship}]:[];
  });
@@ -6120,6 +6129,7 @@ function pilotForfeitModifier(card,slot){
 function prepareDamageSegment(){
  const x=battleSession;
  if(x.lightCard===null||x.darkCard===null)return;
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22&&stopBattleWithoutPresence())return;
  const result=battleDamagePreview();
  if(!result)return;
  const debt=Object.fromEntries(PremiereGame.sides.map(side=>{
@@ -6278,12 +6288,24 @@ function stopBattleWithoutPresence(){
  if(!x?.segmented||state.pendingCustody?.length||!['weapons','power'].includes(x.segment)||PremiereGame.responseWindow(state.game))return;
  if(PremiereGame.sides.every(side=>battlePresence(side,x.site)))return;
  log('Battle endet vorzeitig, weil eine Seite keine teilnehmende Presence mehr hat.');
+ loseHitsFromInterruptedBattle(x);
  for(const card of x.chargedTroopers?.keys()??[]){
   const entry=PremiereLocations.findEntry(state,card);
   if(entry?.slot===x.site&&loseTableCard(entry.side,entry.slot,card))log(card.name+' wird wegen Trooper Charge forfeitet.');
  }
  battleSession=null;
  endBattleTiming(x.site);
+ return true;
+}
+
+function loseHitsFromInterruptedBattle(battle){
+ if(!battle?.segmented||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<22)return;
+ for(const side of PremiereGame.sides){
+  for(const card of battle.hitUnits?.[side]??[]){
+   const entry=PremiereLocations.findEntry(state,card);
+   if(entry&&loseTableCard(entry.side,entry.slot,card))log(card.name+' geht durch den Waffentreffer verloren.');
+  }
+ }
 }
 
 function battleDamageAction(side,kind,args){
@@ -6298,6 +6320,7 @@ function battleDamageAction(side,kind,args){
   debt.hits=debt.hits.filter(card=>!saved.includes(card));
   x.hitUnits[side]=x.hitUnits[side].filter(card=>!saved.includes(card));
   x.zeroForfeit=(x.zeroForfeit??[]).filter(card=>!saved.includes(card));
+  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22)for(const card of saved)x.droidHitForfeits?.delete(card);
   x.weaponHits[side]=x.weaponHits[side].filter(index=>!positions.includes(index));
   if(!removeBattleUnit(side,option.card))return false;
   PremiereBattle.forfeit(debt,option.value);
@@ -6723,7 +6746,7 @@ function resolveResponsePass(side){
   resolveForceDrain(frame.side,frame.site,frame.bonus);
  }else if(frame.kind==='battle'){
   if(!frame.cancelled&&battlePresence('Light',frame.site)&&battlePresence('Dark',frame.site))enterBattleSegments();
-  else {battleSession=null;PremiereGame.expire(game,'battle');}
+  else {loseHitsFromInterruptedBattle(battleSession);battleSession=null;PremiereGame.expire(game,'battle');}
  }
  settleCancelledResponse(game);
  return true;
@@ -6843,6 +6866,7 @@ function finishGarbageChute(frame,parent){
  if(parent?.kind==='battle'){
   for(const unit of frame.units)relocateCharacter(frame.side,unit,frame.destination);
   PremiereGame.cancelResponse(state.game,parent);
+  loseHitsFromInterruptedBattle(battleSession);
   battleSession=null;
   endBattleTiming();
  }
