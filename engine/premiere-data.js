@@ -150,7 +150,8 @@ const PremiereData = (() => {
       ['Light:735','Dark:734','Dark:1880','Dark:262','Light:997','Dark:996','Light:2435','Dark:2360','Dark:1939','Light:664','Light:1429','Dark:489',
        'Light:95','Dark:94','Light:2217','Dark:2216','Light:348','Dark:347','Light:2100','Dark:2099','Dark:777','Light:1870',
        'Light:2514','Dark:1831','Light:1778','Dark:2373','Light:2102','Dark:2833','Light:2277','Dark:613','Light:2625','Dark:2029',
-       'Light:1039','Dark:2357','Dark:1555','Dark:1691','Dark:391','Light:2297','Light:2531','Light:2740'].includes(card.id)) return true;
+       'Light:1039','Dark:2357','Dark:1555','Dark:1691','Dark:391','Light:2297','Light:2531','Light:2740','Light:1389','Dark:621',
+       'Light:994','Light:1455','Dark:1576','Dark:1578','Dark:2701'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 

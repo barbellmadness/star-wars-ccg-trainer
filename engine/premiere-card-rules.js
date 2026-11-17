@@ -254,6 +254,30 @@ const PremiereCardRules = (() => {
     defendingDestiny('Verteidigt ein Warrior eine Site allein, eine Battle Destiny hinzufügen.',1,{ warrior: true, siteOnly: true }),
     defendingDestiny('Verteidigt Leia eine Site allein, zwei Battle Destiny hinzufügen.',2,{ character: 'leia organa', siteOnly: true }),
   ], true);
+  register(['Dark:1578'], [
+    defendingDestiny('Verteidigt ein Warrior eine Site allein, eine Battle Destiny hinzufügen.',1,{ warrior:true,siteOnly:true,since:12 }),
+    defendingDestiny('Verteidigt Tagge eine Site allein, zwei Battle Destiny hinzufügen.',2,{ character:'general tagge',siteOnly:true,since:12 }),
+  ],true);
+  for(const [id,character,faction] of [['Light:1455','obi-wan kenobi','Rebel'],['Dark:2701','darth vader','Imperial']]){
+    register([id],[
+      defendingDestiny('Verteidigt '+character+' eine Site allein, +1 Power und eine zusätzliche Battle Destiny.',1,
+        { character,siteOnly:true,power:1,since:12 }),
+      defendingDestiny('Verteidigt ein anderer '+faction+' mit mehr als 2 Ability eine Site allein, eine Battle Destiny hinzufügen.',1,
+        { subType:faction,except:character,minimumAbility:3,siteOnly:true,since:12 }),
+    ],true);
+  }
+  register(['Light:994'],[
+    defendingDestiny('Verteidigt ein eigener Pilot oder permanenter Pilot im All allein, eine Battle Destiny hinzufügen.',1,
+      { pilot:true,spaceOnly:true,since:12 }),
+    defendingDestiny('Verteidigt Luke im All allein, +1 Power und eine zusätzliche Battle Destiny.',1,
+      { character:'luke skywalker',spaceOnly:true,power:1,since:12 }),
+  ],true);
+  register(['Dark:1576'],[
+    defendingDestiny('Verteidigt ein eigener Pilot oder permanenter Pilot im All allein, eine Battle Destiny hinzufügen.',1,
+      { pilot:true,spaceOnly:true,since:12 }),
+    defendingDestiny('Verteidigt Motti im All allein, zwei Battle Destiny hinzufügen.',2,
+      { character:'admiral motti',spaceOnly:true,since:12 }),
+  ],true);
   for(const [id, own, opponent, special, summary] of [
     ['Dark:391','grand moff tarkin','Rebel','leia organa','Kämpft Tarkin gegen einen Rebel mit mehr als 2 Ability, eine zusätzliche Destiny ziehen. Gegen Leia sind es zwei.'],
     ['Light:2531','luke skywalker','Imperial','darth vader','Kämpft Luke gegen einen Imperial mit mehr als 2 Ability, eine zusätzliche Destiny ziehen. Gegen Vader sind es zwei.'],
@@ -393,6 +417,32 @@ const PremiereCardRules = (() => {
     if (id === 'Light:1098') effects.push(continuous('redrawOwnDestiny', 'Einmal pro Battle für 1 Force eigenes gerade gezogenes Destiny neu ziehen.',
       'own just drawn destiny', 'Han can pay for one replacement', { cost: 1, duration: 'once per battle', expires: 'after battle', legacy: true }));
     register([id], effects, true);
+  }
+  for (const [id, ship, squadron] of [['Light:799','Gold 1','gold'],['Light:2067','Red 1','red']]) {
+    const test='Premiere squadron leaders raise only other matching pilots’ forfeit';
+    register([id], [
+      continuous('pilotPower', 'Das gesteuerte Schiff erhält +2 Power.', 'piloted ship', test, { amount: 2, legacy: true }),
+      continuous('matchingPilot','Beim Steuern von '+ship+' gelten +1 Maneuver und eine Battle Destiny, falls sonst kein Draw möglich ist.',
+        ship,test,{ amount:1,legacy:true }),
+      continuous('squadronForfeit','Andere Piloten der eigenen Staffel an derselben Location erhalten +1 Forfeit.',
+        squadron+' squadron pilot at same location',test,{ squadron,amount:1,since:12 }),
+    ],true);
+  }
+  register(['Dark:60'],[
+    continuous('imperialFleetDiscount','Mit mindestens zwei imperialen Raumschiffen auf dem Tisch kostet Motti 2 Force weniger.',
+      'Imperial starships on table','Motti discounts his deploy and reduces Rebel pilot forfeit at the system',{ amount:2,legacy:true }),
+    continuous('pilotPower','Das gesteuerte Schiff erhält +2 Power.','piloted ship',
+      'Motti discounts his deploy and reduces Rebel pilot forfeit at the system',{ amount:2,legacy:true }),
+    continuous('rebelPilotForfeit','Rebel-Piloten am selben System verlieren 1 Forfeit.','Rebel pilots at the same system',
+      'Motti discounts his deploy and reduces Rebel pilot forfeit at the system',{ amount:-1,since:12 }),
+  ],true);
+  for(const [id,rank,faction] of [['Light:1389','Jedi Knight','Rebel'],['Dark:621','Dark Jedi','Imperial']]){
+    register([id],[
+      continuous('doubleBattlePower','Für 1 Force verdoppeln alle anderen beteiligten '+faction+
+        '-Figuren am Ort ihre Kampf-Power, wenn ein eigener '+rank+' anwesend ist.',
+        'present Jedi and other participating '+faction+' characters','Jedi Presence doubles only other matching participants',
+        { rank,faction,cost:1,duration:'rest of battle',expires:'after battle',since:12 }),
+    ],true);
   }
   register(['Light:1593'], [
     continuous('forceGeneration', 'Außerhalb von Tatooine erhöht Luke die eigene gesamte Force-Generierung um 1.',

@@ -1552,6 +1552,90 @@ test('Defending battle interrupts distinguish lone characters and printed modes'
  }
 });
 
+test('Premiere squadron leaders raise only other matching pilots’ forfeit',async()=>{
+ const {run}=await craftHarness();
+ run(`const dutch=card('Light:799'),pops=card('Light:1924'),leader=card('Light:2067'),biggs=card('Light:239'),pilot=card('Light:2040'),
+  red=card('Light:2057');state.light[0]=[dutch,pops,leader,biggs,pilot,red];battleSession={site:0};`);
+ assert.equal(run("battleForfeitValue(dutch,'Light')-dutch.forfeit"),0);
+ assert.equal(run("battleForfeitValue(leader,'Light')-leader.forfeit"),0);
+ assert.equal(run("battleForfeitValue(pops,'Light')-pops.forfeit"),1);
+ assert.equal(run("battleForfeitValue(biggs,'Light')-biggs.forfeit"),1);
+ assert.equal(run("battleForfeitValue(pilot,'Light')-pilot.forfeit"),0);
+ run("state.light[0].splice(state.light[0].indexOf(pilot),1);PremiereUnits.add(red,pilot,'pilot','Light')");
+ assert.equal(run("battleForfeitValue(pilot,'Light')-pilot.forfeit"),1);
+ run('leader.gameTextCancelled=true');
+ assert.equal(run("battleForfeitValue(pilot,'Light')-pilot.forfeit"),0);
+});
+
+test('Motti discounts his deploy and reduces Rebel pilot forfeit at the system',async()=>{
+ const {run}=await craftHarness();
+ run(`const motti=card('Dark:60'),destroyer=card('Dark:723'),other=card('Dark:1291'),pilot=card('Light:2040'),rebel=card('Light:2052'),
+  corvette=card('Light:530');battleSession={site:0};`);
+ assert.equal(run("crewDeployCost(motti,'Dark',state.locations[2])"),run('motti.deploy'));
+ run("state.dark[0]=[destroyer];state.dark[1]=[other];PremiereUnits.add(destroyer,motti,'pilot','Dark')");
+ assert.equal(run("crewDeployCost(motti,'Dark',state.locations[2])"),run('motti.deploy-2'));
+ assert.equal(run('craftStats(destroyer,0).power-destroyer.power'),2);
+ run("state.light[0]=[corvette];PremiereUnits.add(corvette,pilot,'pilot','Light');PremiereUnits.add(corvette,rebel,'passenger','Light')");
+ assert.equal(run("battleForfeitValue(pilot,'Light')-pilot.forfeit"),-1);
+ assert.equal(run("battleForfeitValue(rebel,'Light')-rebel.forfeit"),0);
+ run("state.dark[1].push(state.dark[0].pop())");
+ assert.equal(run("battleForfeitValue(pilot,'Light')-pilot.forfeit"),0);
+});
+
+test('Jedi Presence doubles only other matching participants',async()=>{
+ for(const [side,cardId,jediId,factionId,enemyId] of [
+  ['Light','Light:1389','Light:1803','Light:2052','Dark:2355'],
+  ['Dark','Dark:621','Dark:634','Dark:2355','Light:2052'],
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),jedi=card('${jediId}'),faction=card('${factionId}'),
+   interrupt=card('${cardId}'),own=PremiereGame.zones(state,side),other=PremiereGame.zones(state,opponent);
+   setupDecks=null;state.game=PremiereGame.actionState(131,1);state.game.cardRulesVersion=12;state.activeSide=side;state.phase=3;
+   state.botTurn=side==='Dark'?{steps:[],index:0}:null;
+   own.board[2]=[jedi,faction];other.board[2]=[card('${enemyId}')];own.hand.splice(0,own.hand.length,interrupt);other.hand.splice(0);
+   const total=()=>battleTotals(2)[side.toLowerCase()+'Power'];`);
+  assert.equal(run("requestAction('battle',side,[2])"),true);
+  assert.equal(run("requestAction('battleEffect',side,[0,null,1])"),false);
+  const before=run('total()'),force=run('own.force.length');
+  assert.equal(run("requestAction('battleEffect',side,[0,null,0])"),true);
+  assert.equal(run('own.force.length'),force-1);
+  assert.equal(run('total()-faction.power'),before);
+  assert.equal(run('battleSession.doubledPowerCards.has(jedi)'),false);
+  run('own.board[2].pop()');
+  assert.equal(run('total()'),run('jedi.power'));
+ }
+});
+
+test('Lone warrior and pilot interrupts distinguish sites, space and additional power',async()=>{
+ for(const [id,side,defenderId,carrierId,location,choice,expectedPower,expectedDestiny] of [
+  ['Dark:1578','Dark','Dark:1027',null,2,[0,2],0,2],
+  ['Light:1455','Light','Light:1803',null,2,[0,1,null,1],1,1],
+  ['Dark:2701','Dark','Dark:634',null,2,[0,1,null,1],1,1],
+  ['Light:994','Light','Light:1593','Light:2060',0,[0,1,null,1],1,1],
+  ['Dark:1576','Dark','Dark:60','Dark:247',0,[0,2],0,2],
+  ['Light:994','Light','Light:2838',null,0,[0,1],0,1],
+  ['Dark:1576','Dark','Dark:2600',null,0,[0,1],0,1],
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),slot=${location},defender=card('${defenderId}'),interrupt=card('${id}'),
+   own=PremiereGame.zones(state,side),other=PremiereGame.zones(state,opponent);
+   const fighterId=${JSON.stringify(carrierId)},fighter=fighterId?card(fighterId):null;
+   if(fighter)PremiereUnits.add(fighter,defender,'pilot',side);
+   const opponentCard=slot===0?(opponent==='Dark'?'Dark:2600':'Light:2838'):(opponent==='Dark'?'Dark:2355':'Light:2052');
+   own.board[slot]=[fighter??defender];other.board[slot]=[card(opponentCard)];
+   own.hand.splice(0,own.hand.length,interrupt);other.hand.splice(0);
+   setupDecks=null;state.game=PremiereGame.actionState(133,1);state.game.cardRulesVersion=12;
+   state.activeSide=opponent;state.phase=3;state.botTurn=opponent==='Dark'?{steps:[],index:0}:null;
+   requestAction('battle',opponent,[slot]);requestAction('passWeapons',opponent);
+   const total=()=>battleTotals(slot)[side.toLowerCase()+'Power'];`);
+  const before=run('total()');
+  assert.equal(run("requestAction('battleEffect',side,[0,3])"),false,id);
+  assert.equal(run(`requestAction('battleEffect',side,${JSON.stringify(choice)})`),true,id);
+  assert.equal(run('battleSession.extraDraws[side]'),expectedDestiny,id);
+  assert.equal(run('total()')-before,expectedPower,id);
+ }
+});
+
 test('Paired combat interrupts check opposing ability and the named opponent',async()=>{
  for(const [interruptId,ownId,ordinaryId,specialId,rejectedId,side] of [
   ['Dark:391','Dark:1061','Light:1098','Light:1495','Light:2052','Dark'],
@@ -2814,7 +2898,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,11);
+ assert.equal(saved.cardRulesVersion,12);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
