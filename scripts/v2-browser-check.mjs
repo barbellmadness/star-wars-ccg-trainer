@@ -28,6 +28,24 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await deckTiles.count(), 8);
     assert.match(await deckTiles.filter({hasText: 'Jedi auf Tatooine'}).innerHTML(), /obiwankenobi\.gif.*Obi-Wan Kenobi/s);
     assert.match(await deckTiles.filter({hasText: 'Droidenstützpunkt'}).innerHTML(), /c3po\.gif.*C-3PO/s);
+    const selectedTile = deckTiles.locator('xpath=self::button[@aria-pressed="true"]');
+    const selectedBeforePreview = await selectedTile.getAttribute('data-deck');
+    assert.equal(await page.locator('.launch-deck-guide').count(), 8);
+    const preview = page.getByRole('button', {name: 'Strategie und Karten zu Jedi auf Tatooine ansehen'});
+    await preview.click();
+    const jediDeck = page.getByRole('dialog', {name: 'Jedi auf Tatooine · 60 Karten'});
+    assert.match(await jediDeck.locator('#starterDeckStrategy').textContent(), /Startort.*Obi-Wan.*Erste Züge.*Gift Of The Mentor.*Schlüsselzüge/s);
+    await jediDeck.getByRole('button', {name: /× .*Obi-Wan Kenobi/}).click();
+    const obiWan = page.getByRole('dialog', {name: /Obi-Wan Kenobi/});
+    assert.ok(await obiWan.isVisible());
+    assert.match(await obiWan.textContent(), /Aktiver Spieltext/);
+    await page.keyboard.press('Escape');
+    assert.equal(await obiWan.isVisible(), false);
+    assert.ok(await jediDeck.isVisible());
+    assert.match(await page.evaluate(() => document.activeElement?.textContent), /Obi-Wan Kenobi/);
+    await page.keyboard.press('Escape');
+    assert.equal(await selectedTile.getAttribute('data-deck'), selectedBeforePreview);
+    assert.equal(await preview.evaluate(button => document.activeElement === button), true);
     await deckTiles.filter({hasText: 'Schmuggler auf dem Kessel Run'}).click();
     assert.match(await deckTiles.locator('xpath=self::button[@aria-pressed="true"]').innerHTML(), /millenniumfalcon\.gif.*Millennium Falcon/s);
     await page.getByRole('button', {name: 'Deckliste ansehen'}).click();
@@ -36,6 +54,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Seite wechseln'}).click();
     await chooseSide('dark');
     assert.equal(await deckTiles.count(), 8);
+    assert.equal(await page.locator('.launch-deck-guide').count(), 8);
     assert.match(await deckTiles.filter({hasText: 'Vaders Jagd'}).innerHTML(), /darthvader\.gif.*Darth Vader/s);
     assert.match(await deckTiles.filter({hasText: 'Sturmtruppen-Offensive'}).innerHTML(), /stormtrooper\.gif.*Stormtrooper/s);
     assert.match(await deckTiles.filter({hasText: 'Blockade von Kessel'}).innerHTML(), /devastator\.gif.*Devastator/s);
@@ -62,7 +81,11 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.keyboard.press('Escape');
     await darkDeck.selectOption('imperiale-garnison');
     await page.getByRole('button', {name: 'Dark Side Deck ansehen'}).click();
-    assert.match(await page.getByRole('dialog', {name: 'Imperiale Garnison · 60 Karten'}).textContent(), /Zuckuss' Snare Rifle/);
+    const garrison = page.getByRole('dialog', {name: 'Imperiale Garnison · 60 Karten'});
+    await garrison.getByRole('button', {name: /Zuckuss' Snare Rifle/}).click();
+    assert.ok(await page.getByRole('dialog', {name: /Zuckuss' Snare Rifle/}).isVisible());
+    await page.keyboard.press('Escape');
+    assert.ok(await garrison.isVisible());
     await page.keyboard.press('Escape');
     await lightDeck.selectOption('starter');
     await darkDeck.selectOption('starter');
@@ -297,7 +320,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.23'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.24'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

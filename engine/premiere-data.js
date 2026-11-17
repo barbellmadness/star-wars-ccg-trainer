@@ -205,14 +205,22 @@ const PremiereData = (() => {
     });
     if (new Set(starts.map(locationTitle)).size !== starts.length) throw error('Die Starting Locations müssen unterschiedliche Namen haben.');
     const startingIndices = starts.flatMap(card => cards.flatMap((copy, index) => copy === card ? [index] : []));
-    if (definition.theme === undefined) return {cards, startingIndices};
+    const deck = {cards, startingIndices};
+    if (definition.strategy !== undefined) {
+      const fields = ['start', 'opening', 'tactics'];
+      if (!fields.every(field => typeof definition.strategy?.[field] === 'string' && definition.strategy[field].trim())) {
+        throw error('Die Strategie benötigt einen Startort, einen Aufbau und Schlüsselzüge.');
+      }
+      deck.strategy = Object.fromEntries(fields.map(field => [field, definition.strategy[field]]));
+    }
+    if (definition.theme === undefined) return deck;
     const {id, name, description} = definition.theme ?? {};
     if (typeof id !== 'string' || !/^[a-z]+(?:-[a-z]+)*$/.test(id) || id === 'starter' ||
         typeof name !== 'string' || !name.trim() || typeof description !== 'string' || !description.trim()) {
       throw error('Ungültige Angaben zum Themendeck.');
     }
     if (!startingIndices.length) throw error('Ein Themendeck benötigt mindestens eine Starting Location.');
-    return {cards, startingIndices, theme: {id, name, description}};
+    return {...deck, theme: {id, name, description}};
   }
 
   function readStarterDecks(payload, catalog) {
