@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,18);
+ assert.equal(saved.cardRulesVersion,19);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -4553,4 +4553,61 @@ test('Blaster Rack stores weapons, releases them at their normal price and loses
  run("state.hand=[card('Light:95')];state.light[3]=[card('Light:1593')];state.deck=[{name:'Low',destiny:1}];");
  assert.equal(run("requestAction('cancelTableEffect','Light',[0,1])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
  assert.equal(run("blasterRacks().length===1&&state.botLost.includes(second)&&state.botLost.includes(weapon)"),true);
+});
+
+test('Affect Mind and Lack of Faith reduce total ability only at a site without the opposing Jedi',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  const ids=side==='Light'?['Light:68','Light:1803','Light:1593','Dark:1279','Dark:634']:
+   ['Dark:1208','Dark:634','Dark:1279','Light:2040','Light:1803'];
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),effect=card('${ids[0]}'),jedi=card('${ids[1]}');
+   const invalid=card('${ids[2]}'),rivalOne=card('${ids[3]}'),rivalTwo=card('${ids[3]}'),counter=card('${ids[4]}');
+   setupDecks=null;state.game=PremiereGame.actionState(141,0);state.activeSide=side;
+   const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,opponent);
+   own.hand.splice(0,own.hand.length,effect);rival.hand.length=0;
+   state.botTurn=side==='Dark'?{steps:[],index:0}:null;
+   own.board[3]=[invalid,jedi];rival.board[3]=[rivalOne,rivalTwo];`);
+  assert.equal(run("!requestAction('deployTableEffect',side,[0,0])&&requestAction('deployTableEffect',side,[0,1])"),true);
+  assert.equal(run("own.force.length===4&&jedi.attachments.includes(effect)&&jediAbilityReduction(opponent,3)===2"),true);
+  assert.equal(run("battleTotals(3)[opponent.toLowerCase()+'Ability']===Math.max(0,cardAbility(rivalOne)+cardAbility(rivalTwo)-2)"),true);
+  run("rival.board[3].push(counter);");
+  assert.equal(run("jediAbilityReduction(opponent,3)"),0);
+  run("rival.board[3].pop();own.board[3]=[invalid];own.board[6]=[jedi];");
+  assert.equal(run("jediAbilityReduction(opponent,3)===0&&jediAbilityReduction(opponent,6)===0"),true);
+ }
+});
+
+test('Demotion cancels text and reduces power on eligible Imperials until Alter removes the Effect',async()=>{
+ const {run}=await craftHarness();
+ run(`const effect=card('Light:695'),praji=card('Dark:502'),vader=card('Dark:634'),stormtrooper=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(142,0);state.hand=[effect];state.dark[3]=[vader,stormtrooper,praji];state.botHand=[];
+  const admiral=card('Dark:723');`);
+ assert.equal(run("const demotions=legalActions(state,'Light').filter(action=>action.kind==='deployTableEffect');demotions.length===1&&demotions[0].host===praji&&performAction(demotions[0])"),true);
+ assert.equal(run("state.force.length===3&&PremiereUnits.textSuppressed(praji)&&cardPowerModifier(praji,'Dark',3)===-2"),true);
+ run("PremiereUnits.add(admiral,praji,'pilot','Dark');state.dark[3]=[vader,stormtrooper];state.dark[6]=[admiral];");
+ assert.equal(run("craftStats(admiral,6).power===admiral.power&&craftStats(admiral,6).hyperspeed===admiral.hyperspeed"),true);
+ run("state.botHand=[card('Dark:94')];state.botDeck=[{name:'Low',destiny:1}];");
+ assert.equal(run("requestAction('cancelTableEffect','Dark',[0,0])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.equal(run("!PremiereUnits.textSuppressed(praji)&&state.lost.includes(effect)&&craftStats(admiral,6).power===admiral.power+2&&craftStats(admiral,6).hyperspeed===admiral.hyperspeed+1"),true);
+});
+
+test('both Jawa effects charge each player and add forfeit only to their own Jawas',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side);
+   const effect=card(side==='Light'?'Light:1380':'Dark:1378'),jawa=card(side==='Light'?'Light:1373':'Dark:1372');
+   const rivalJawa=card(side==='Light'?'Dark:1372':'Light:1373'),other=card(side==='Light'?'Light:2052':'Dark:2355');
+   const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,opponent);
+   setupDecks=null;state.game=PremiereGame.actionState(143,0);state.activeSide=side;
+   own.hand.splice(0,own.hand.length,effect);rival.hand.length=0;
+   state.botTurn=side==='Dark'?{steps:[],index:0}:null;const reserve=rival.force.splice(2,3);
+   own.board[3]=[jawa,other];rival.board[3]=[rivalJawa];`);
+  assert.equal(run("!requestAction('deployTableEffect',side,[0])&&own.force.length===5&&rival.force.length===2"),true);
+  assert.equal(run("rival.force.push(...reserve);requestAction('deployTableEffect',side,[0])"),true);
+  assert.equal(run("own.force.length===2&&rival.force.length===2&&own.used.length===3&&rival.used.length===3"),true);
+  run("battleSession={site:3};");
+  assert.equal(run("battleForfeitValue(jawa,side)===jawa.forfeit+1&&battleForfeitValue(rivalJawa,opponent)===rivalJawa.forfeit&&battleForfeitValue(other,side)===other.forfeit"),true);
+  run("cancelTableEffect(state.tableEffects[0]);");
+  assert.equal(run("battleForfeitValue(jawa,side)===jawa.forfeit&&own.lost.includes(effect)"),true);
+ }
 });

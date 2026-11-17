@@ -197,7 +197,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=18;
+const latestCardRulesVersion=19;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -751,7 +751,8 @@ function tooexNightRule(side,slot,event,present=PremiereLocations.presentCards(s
 function cardPowerModifier(c,side,siteIndex,ownPresent){
  const disarmed=PremiereWeapons.disarmed(c)?-1:0;
  if(!state||!['Light','Dark'].includes(side))return disarmed;
- let bonus=disarmed+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c)+PremiereUnits.trainingPower(c);
+ const demotion=(c.attachments??[]).flatMap(card=>activeCardRules(card,'demotionPower'))[0]?.amount??0;
+ let bonus=disarmed+demotion+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c)+PremiereUnits.trainingPower(c);
  const [forcePower]=activeCardRules(c,'forceIconPower');
  if(forcePower&&PremiereLocations.present(state,c,siteIndex)){
   bonus+=forcePower.amount*(PremiereLocations.icons(state,siteIndex,'Dark')??0);
@@ -1819,11 +1820,29 @@ function tableEffectOptions(side){
   const rule=tableEffectRule(card);
   if(!rule||card.side!==side||!withinDeploymentLimit(card,side))return [];
   if(rule.trainingSkill)return trainingOptions(side,card,index,rule.trainingSkill);
+  if(rule.characterTarget)return characterEffectOptions(side,card,index,rule,force?.length??0);
   const target=rule.ownSide?side:PremiereGame.otherSide(side);
   const free=waiver?.rule.names.includes(locationTitle(card));
   const cost=free?0:rule.cost;
-  return cost<=(force?.length??0)?[{args:[index],card,target,cost,
-   label:card.name+' · '+target+' Side ('+cost+' Force)'+(free?' · Central Core':'')}]:[];
+  const opposingCost=rule.opposingCost??0;
+  const rival=opposingCost?PremiereGame.zones(state,PremiereGame.otherSide(side)).force:[];
+  return cost<=(force?.length??0)&&opposingCost<=(rival?.length??0)?[{args:[index],card,target,cost,opposingCost,
+   label:card.name+' · '+target+' Side ('+cost+' Force'+(opposingCost?' pro Seite':'')+')'+(free?' · Central Core':'')}]:[];
+ });
+}
+
+const forceUser=card=>card.type==='Character'&&PremiereUnits.active(card)&&cardAbility(card)>=6;
+
+function characterEffectOptions(side,card,index,rule,budget){
+ if(rule.cost>budget)return [];
+ const owned=rule.characterTarget==='force-user';
+ const entries=(owned?[side]:PremiereGame.sides).flatMap(actor=>PremiereLocations.entries(state,actor));
+ return entries.flatMap(({card:host,side:target,unavailable},hostIndex)=>{
+  if(unavailable||!PremiereUnits.active(host)||host.type!=='Character')return [];
+  const valid=owned?forceUser(host):host.subType==='Imperial'&&
+   !/\bvader\b|\bemperor\b/.test(locationTitle(host))&&!characterTraits(host).includes('stormtrooper')&&locationTitle(host)!=='stormtrooper';
+  return valid?[{args:[index,hostIndex],card,target,host,cost:rule.cost,
+   label:card.name+' auf '+host.name+' ('+rule.cost+' Force)'}]:[];
  });
 }
 
@@ -1844,6 +1863,7 @@ function deployTableEffect(side,index,hostIndex){
  const {hand,force,used}=PremiereGame.zones(state,side);
  const [card]=hand.splice(index,1);
  PremiereGame.moveTop(force,used,option.cost);
+ if(option.opposingCost)payOpposingJawaCost(side,option.opposingCost);
  const frame={kind:'tableEffect',side,card,target:option.target,host:option.host,training:option.training};
  log(side+' kündigt '+option.label+' an.');
  if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);
@@ -1853,7 +1873,8 @@ function deployTableEffect(side,index,hostIndex){
 
 function placeTableEffect({card,target,host,training}){
  if(host){
-  card.training=training;
+  if(training)card.training=training;
+  if(tableEffectRule(card)?.cancelsHostText)card.suppressesHostText=true;
   (host.attachments??=[]).push(card);
   (state.tableEffects??=[]).push({card,target,host});
   log(card.name+' liegt auf '+host.name+'.');
@@ -2668,7 +2689,11 @@ function advanceBotStep(kind){
 }
 
 function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiator:null){
- const ability=cards=>{const a=cards.map(card=>card.type==='Starship'?craftStats(card,i).ability:cardAbility(card)),known=a.reduce((n,v)=>n+(Number.isFinite(v)?v:0),0);return a.some(v=>v===null)&&known<4?null:known};
+ const ability=(cards,side)=>{
+  const values=cards.map(card=>card.type==='Starship'?craftStats(card,i).ability:cardAbility(card));
+  const known=Math.max(0,values.reduce((sum,value)=>sum+(Number.isFinite(value)?value:0),0)-jediAbilityReduction(side,i));
+  return values.some(value=>value===null)&&known<4?null:known;
+ };
  const lightPresent=PremiereLocations.presentCards(state,'Light',i),darkPresent=PremiereLocations.presentCards(state,'Dark',i);
  const cards=(side,present)=>present.filter(card=>card.type!=='Weapon'&&card.type!=='Device'&&
   PremiereUnits.active(card)&&(!battleSession?.segmented||battleSession.site!==i||battleSession.participants[side].includes(card)));
@@ -2686,7 +2711,16 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
   },jungle+bonus+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
  };
  const light=cards('Light',lightPresent),dark=cards('Dark',darkPresent);
- return {lightPower:power(light,'Light',lightPresent),darkPower:power(dark,'Dark',darkPresent),lightAbility:ability(light),darkAbility:ability(dark)};
+ return {lightPower:power(light,'Light',lightPresent),darkPower:power(dark,'Dark',darkPresent),
+  lightAbility:ability(light,'Light'),darkAbility:ability(dark,'Dark')};
+}
+
+function jediAbilityReduction(side,slot){
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<19||!state.locations[slot]||!isSite(state.locations[slot]))return 0;
+ if(PremiereLocations.presentCards(state,side,slot).some(forceUser))return 0;
+ const opponents=PremiereLocations.presentCards(state,PremiereGame.otherSide(side),slot);
+ return Math.max(0,...opponents.flatMap(card=>(card.attachments??[]).flatMap(effect=>
+  activeCardRules(effect,'reduceOpposingAbility').map(rule=>rule.amount))));
 }
 
 function jungleBonus(card,side,slot,participants){
@@ -3599,6 +3633,10 @@ function battleForfeitValue(card,side){
  }
  const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
  const exterior=version>=14?isSite(loc)&&loc.locationTags?.includes('Exterior'):isExteriorPlanetSite(loc);
+ if(version>=19&&matchesRegisteredTarget(card,'jawa')){
+  modifier+=Math.max(0,...(state.tableEffects??[]).filter(effect=>effect.target===side)
+   .flatMap(({card})=>activeCardRules(card,'globalJawaForfeit').map(rule=>rule.amount)));
+ }
  if(exterior&&matchesRegisteredTarget(card,'jawa')){
   const present=PremiereGame.sides.flatMap(actor=>PremiereLocations.presentCards(state,actor,slot));
   if(version>=14)modifier+=present.flatMap(unit=>activeCardRules(unit,'jawaForfeit'))[0]?.amount??0;
@@ -3685,7 +3723,7 @@ function loseOwnedCard(card,fallback){
 function loseTableCard(side,slot,card,outOfPlay=false){
  if(!detachTableCard(side,slot,card))return false;
  PremiereUnits.remove(card,unit=>{
-  if(unit.training&&state.tableEffects?.length)state.tableEffects=state.tableEffects.filter(effect=>effect.card!==unit);
+  if(unit.type==='Effect'&&state.tableEffects?.length)state.tableEffects=state.tableEffects.filter(effect=>effect.card!==unit);
   if(unit.escortedCaptive){
    const captive=unit.escortedCaptive;
    delete unit.escortedCaptive;

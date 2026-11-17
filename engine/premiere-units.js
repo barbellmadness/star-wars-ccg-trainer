@@ -7,7 +7,8 @@ const PremiereUnits = (() => {
   const crawler = card => ['Light:2161', 'Dark:2160'].includes(card?.id);
   const active = card => !!card && !card.inactive && !card.captured && !card.missing && !card.undercover;
   const restrainingBolt = card => card?.attachments?.find(item => ['Light:2100', 'Dark:2099'].includes(item.id));
-  const textSuppressed = card => !!card?.gameTextCancelled || !!restrainingBolt(card);
+  const textSuppressed = card => !!card?.gameTextCancelled || !!restrainingBolt(card) ||
+    !!card?.attachments?.some(effect=>effect.suppressesHostText&&!effect.gameTextCancelled);
   const training = card => (card?.attachments ?? []).filter(effect => effect.training && !textSuppressed(effect));
   function hasSkill(card, skill) {
     const printed = skill === 'smuggler' ? card?.characteristics?.some(trait => trait.toLowerCase() === 'smuggler') : card?.[skill] === true;

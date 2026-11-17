@@ -279,6 +279,26 @@ const PremiereCardRules = (() => {
     continuous('rackRelease','In deiner Deploy Phase darfst du die Waffe für ihre normalen Deploy-Kosten einem berechtigten eigenen Charakter geben.',
       'eligible friendly character','Blaster Rack stores weapons and loses them when canceled',{since:18}),
   ],true);
+  for(const [id,target] of [['Light:68','Jedi'],['Dark:1208','Dark Jedi']]){
+    register([id],[
+      continuous('tableEffect','Für 1 Force auf einem eigenen '+target+' ausspielen.',
+        'friendly '+target,'Affect Mind and Lack of Faith reduce total ability',{ownSide:true,characterTarget:'force-user',cost:1,since:19}),
+      continuous('reduceOpposingAbility','An einer Site hat der Gegner insgesamt 2 Ability weniger, solange ein eigener Träger und kein gegnerischer '+(target==='Jedi'?'Dark Jedi':'Jedi')+' anwesend sind.',
+        'opponent at the site','Affect Mind and Lack of Faith reduce total ability',{amount:2,since:19}),
+    ],true);
+  }
+  register(['Light:695'],[
+    continuous('tableEffect','Für 2 Force auf einem Imperial ausspielen. Vader, der Emperor und Stormtrooper sind ausgenommen.',
+      'eligible Imperial','Demotion cancels text and reduces power',{characterTarget:'demotion',cost:2,cancelsHostText:true,since:19}),
+    continuous('demotionPower','Der betroffene Imperial hat 2 Power weniger und sein Kartentext ist aufgehoben.',
+      'host Imperial','Demotion cancels text and reduces power',{amount:-2,since:19}),
+  ],true);
+  register(['Light:1380','Dark:1378'],[
+    continuous('tableEffect','Für jeweils 3 Force von beiden Seiten auf deiner Tischseite ausspielen. Ohne ausreichende Force auf beiden Seiten ist der Deploy gesperrt.',
+      'own side of table','both Jawa effects charge each player and add forfeit',{ownSide:true,cost:3,opposingCost:3,since:19}),
+    continuous('globalJawaForfeit','Alle eigenen Jawas erhalten +1 Forfeit.',
+      'friendly Jawas on table','both Jawa effects charge each player and add forfeit',{amount:1,since:19}),
+  ],true);
   register(['Light:2102', 'Dark:2833'], [
     continuous('tableEffect', 'Liegt auf der gegnerischen Tischseite. Die Warriors dieser Seite kosten beim Deploy 1 Force mehr.',
       'opposing table', 'Central Core waives Wrong Turn', { since: 5, cost: 3, warriorDeploy: 1, expires: 'when canceled' }),

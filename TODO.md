@@ -18,7 +18,7 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. Central Core ermöglicht den kostenlosen Deploy von Wrong Turn. Bei Kontrolle hebt die Light-Seite der Central Core den Tractor Beam auf, und der Detention Block Control Room befreit auf dem Todesstern inhaftierte Figuren. Für die Tonnika Sisters ist der einfache Mos-Eisley-Bonus gemäß aktueller Kombikarten-Regel geprüft.
 
-V2.15.11 führt 196 der 324 Premiere-Karten als vollständig, 11 als teilweise umgesetzt und 117 als offen. Die letzten Prüfungen decken Deploy-React durch Comlink und CZ-3, beide Disarmed-Karten und Blaster Rack ab. Die aktuelle Abdeckung steht im Kartenregelregister und in V2 unter „Kartenfähigkeiten: Vollständigkeitsprüfung“.
+V2.15.12 führt 201 der 324 Premiere-Karten als vollständig, 11 als teilweise umgesetzt und 112 als offen. Die letzten Prüfungen decken Jedi-Effekte auf Gesamt-Ability, Demotion sowie die Deploy-Kosten und Forfeit-Boni von Jawa Siesta und Jawa Pack ab. Die aktuelle Abdeckung steht im Kartenregelregister und in V2 unter „Kartenfähigkeiten: Vollständigkeitsprüfung“.
 
 - [ ] Pro Karten-ID einen Eintrag mit Regelquelle, gültigem Text, einzelnen Effekten, Ereignis, Kosten, Zielen, Dauer, Ablauf und Testreferenzen führen. Dieselbe Karte kann mehrere offene und bereits ausführbare Abschnitte haben.
 - [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. Die übrigen im Code verstreuten Regeln in das Register überführen.
