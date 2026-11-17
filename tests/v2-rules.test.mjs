@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,15);
+ assert.equal(saved.cardRulesVersion,16);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -4384,4 +4384,55 @@ test('Treadwell protects friendly vehicles, droids and fighters from attrition',
  assert.equal(run("battleImmunity('Dark',tieFighter)"),0);
  run("droid.gameTextCancelled=false;state.dark[2]=[vehicle,other];state.dark[3]=[droid];");
  assert.equal(run("battleImmunity('Dark',tieFighter)"),0);
+});
+
+test('both pilot trainers grant pilot skill or a ship power bonus',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  const [first,existing,trainer,craft,droid]=side==='Light'
+   ?['Light:2052','Light:2040','Light:826','Light:530','Light:1995']
+   :['Dark:2355','Dark:1279','Dark:190','Dark:1291','Dark:816'];
+  run(`const side='${side}',actor=card('${first}'),pilot=card('${existing}'),droid=card('${droid}'),
+   trainer=card('${trainer}'),second=card('${trainer}'),craft=card('${craft}');
+   setupDecks=null;state.game=PremiereGame.actionState(132,0);state.activeSide=side;
+   const own=PremiereGame.zones(state,side);
+   own.hand.splice(0,own.hand.length,trainer,second);own.board[3]=[actor,pilot,droid];
+   state.botTurn=side==='Dark'?{steps:[],index:0}:null;`);
+  assert.equal(run("!PremiereUnits.accepts(craft,actor,'pilot')&&!requestAction('deployTableEffect',side,[0,2])"),true);
+  assert.equal(run("requestAction('deployTableEffect',side,[0,0])&&PremiereUnits.accepts(craft,actor,'pilot')&&actor.attachments[0]===trainer"),true);
+  assert.equal(run("requestAction('deployTableEffect',side,[0,2])"),true);
+  assert.equal(run("PremiereUnits.trainingPower(actor,true)===2&&PremiereUnits.trainingPower(pilot,true)===1&&!alterTarget(trainer)"),true);
+  run("PremiereUnits.add(craft,actor,'pilot',side);own.board[3]=[craft,pilot,droid];");
+  assert.equal(run("craftStats(craft,6).power"),run("craft.power+2"));
+  run("cancelTableEffect(state.tableEffects[0]);");
+  assert.equal(run("craft.occupants[0].role==='passenger'&&!PremiereUnits.hasSkill(actor,'pilot')&&own.lost.includes(trainer)"),true);
+ }
+});
+
+test('both warrior trainers grant warrior skill or character power and leave with the host',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  const ids=side==='Light'?['Light:2040','Light:2052','Light:2157','Light:265']:['Dark:1279','Dark:2355','Dark:1430','Dark:264'];
+  run(`const side='${side}',recruit=card('${ids[0]}'),veteran=card('${ids[1]}'),trainer=card('${ids[2]}'),
+   second=card('${ids[2]}'),blaster=card('${ids[3]}');
+   setupDecks=null;state.game=PremiereGame.actionState(133,0);state.activeSide=side;
+   const own=PremiereGame.zones(state,side);own.hand.splice(0,own.hand.length,trainer,second,blaster);
+   own.board[3]=[recruit,veteran];state.botTurn=side==='Dark'?{steps:[],index:0}:null;`);
+  assert.equal(run("!weaponDeployOptions(side,2).some(option=>option.host===recruit)"),true);
+  assert.equal(run("requestAction('deployTableEffect',side,[0,0])&&requestAction('deployTableEffect',side,[0,2])"),true);
+  assert.equal(run("weaponDeployOptions(side,0).some(option=>option.host===recruit)&&PremiereUnits.canEscort(recruit)"),true);
+  assert.equal(run("cardPowerModifier(recruit,side,3)===0&&cardPowerModifier(veteran,side,3)===1"),true);
+  assert.equal(run("loseTableCard(side,3,recruit)&&own.lost.includes(trainer)&&!state.tableEffects.some(effect=>effect.card===trainer)"),true);
+ }
+});
+
+test('Rycar Ryjerd grants smuggler skill or character power',async()=>{
+ const {run}=await craftHarness();
+ run(`const rebel=card('Light:2040'),smuggler=card('Light:1098'),rycar=card('Light:2141'),copy=card('Light:2141');
+  setupDecks=null;state.game=PremiereGame.actionState(134,0);state.hand=[rycar,copy];
+  state.light[3]=[rebel,smuggler];`);
+ assert.equal(run("!matchesRegisteredTarget(rebel,'underworld')&&matchesRegisteredTarget(smuggler,'underworld')"),true);
+ assert.equal(run("requestAction('deployTableEffect','Light',[0,0])&&requestAction('deployTableEffect','Light',[0,2])"),true);
+ assert.equal(run("matchesRegisteredTarget(rebel,'underworld')&&cardPowerModifier(rebel,'Light',3)===0&&cardPowerModifier(smuggler,'Light',3)===1"),true);
+ assert.equal(run("state.force.length===5&&state.tableEffects.length===2&&!alterTarget(rycar)"),true);
 });

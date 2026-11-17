@@ -367,6 +367,14 @@ const PremiereCardRules = (() => {
     { event: 'cancelTableEffect', summary: 'Kann Restricted Deployment beim Ausspielen oder auf dem Tisch als Lost Interrupt aufheben.',
       targets: ['Light:2102'], cost: 0, duration: 'instant', expires: 'after cancellation', test: 'Skywalkers cancels Wrong Turn', since: 5 },
   ]);
+  for(const [ids,skill,summary,test] of [
+    [['Light:826','Dark:190'],'pilot','Gibt einer eigenen Figur ohne Pilot-Skill diesen Skill und +2 Power für das pilotierte Schiff. Gibt einem vorhandenen Piloten stattdessen +1 Schiff-Power.','both pilot trainers grant pilot skill or a ship power bonus'],
+    [['Light:2157','Dark:1430'],'warrior','Gibt einer eigenen Figur ohne Warrior-Skill diesen Skill. Ein vorhandener Warrior erhält stattdessen +1 Power.','both warrior trainers grant warrior skill or character power'],
+    [['Light:2141'],'smuggler','Gibt einer eigenen Figur ohne Smuggler-Skill diesen Skill. Ein vorhandener Smuggler erhält stattdessen +1 Power.','Rycar Ryjerd grants smuggler skill or character power'],
+  ]){
+    register(ids,[continuous('tableEffect',summary+' Immun gegen Alter.','own character',test,
+      {ownSide:true,trainingSkill:skill,since:16})],true);
+  }
   for (const [id, targets] of [['Light:348', 'rebel-or-jawa'], ['Dark:347', 'imperial-or-jawa']]) {
     register([id], [
       continuous('device', 'Caller wird an einen eigenen berechtigten Träger angelegt.', targets, 'Caller steals', { since: 3 }),

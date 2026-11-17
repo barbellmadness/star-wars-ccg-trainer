@@ -197,7 +197,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=15;
+const latestCardRulesVersion=16;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -664,7 +664,7 @@ function matchesRegisteredTarget(card,target){
  if(target==='alien-except-tusken')return alien&&!traits.includes('tusken raider')&&locationTitle(card)!=='tusken raider';
  if(target==='jawa')return traits.includes('jawa')||locationTitle(card)==='jawa';
  if(target==='tusken')return traits.includes('tusken raider')||locationTitle(card)==='tusken raider';
- if(target==='underworld')return card.type==='Character'&&['spy','thief','bounty hunter','smuggler'].some(trait=>traits.includes(trait));
+ if(target==='underworld')return card.type==='Character'&&(['spy','thief','bounty hunter'].some(trait=>traits.includes(trait))||PremiereUnits.hasSkill(card,'smuggler'));
  if(target==='imperial-trooper')return card.type==='Character'&&card.subType==='Imperial'&&traits.includes('trooper');
  if(target==='rebel-trooper-or-y-wing')return traits.includes('rebel trooper')||(card.type==='Starship'&&/\bY-Wing\b/i.test(card.subType??''));
  if(target==='stormtrooper-or-tie')return traits.includes('stormtrooper')||PremiereUnits.tie(card);
@@ -751,7 +751,7 @@ function tooexNightRule(side,slot,event,present=PremiereLocations.presentCards(s
 function cardPowerModifier(c,side,siteIndex,ownPresent){
  const disarmed=PremiereWeapons.disarmed(c)?-1:0;
  if(!state||!['Light','Dark'].includes(side))return disarmed;
- let bonus=disarmed+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c);
+ let bonus=disarmed+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c)+PremiereUnits.trainingPower(c);
  const [forcePower]=activeCardRules(c,'forceIconPower');
  if(forcePower&&PremiereLocations.present(state,c,siteIndex)){
   bonus+=forcePower.amount*(PremiereLocations.icons(state,siteIndex,'Dark')??0);
@@ -876,7 +876,7 @@ function crewDeployCost(card,side,loc){
 }
 
 function warriorDeployIncrease(card,side){
- if(card.type!=='Character'||!card.warrior)return 0;
+ if(card.type!=='Character'||!PremiereUnits.hasSkill(card,'warrior'))return 0;
  return Math.max(0,...(state.tableEffects??[]).filter(effect=>effect.target===side)
   .map(effect=>tableEffectRule(effect.card)?.warriorDeploy??0));
 }
@@ -1775,6 +1775,7 @@ function tableEffectOptions(side){
  return (hand??[]).flatMap((card,index)=>{
   const rule=tableEffectRule(card);
   if(!rule||card.side!==side||!withinDeploymentLimit(card,side))return [];
+  if(rule.trainingSkill)return trainingOptions(side,card,index,rule.trainingSkill);
   const target=rule.ownSide?side:PremiereGame.otherSide(side);
   const free=waiver?.rule.names.includes(locationTitle(card));
   const cost=free?0:rule.cost;
@@ -1783,20 +1784,38 @@ function tableEffectOptions(side){
  });
 }
 
-function deployTableEffect(side,index){
- const option=tableEffectOptions(side).find(choice=>choice.args[0]===index);
+function trainingOptions(side,card,index,skill){
+ return PremiereLocations.entries(state,side).flatMap(({card:host,unavailable},hostIndex)=>{
+  if(unavailable||!PremiereUnits.active(host)||host.type!=='Character')return [];
+  const granted=!PremiereUnits.hasSkill(host,skill);
+  if(granted&&skill!=='smuggler'&&isDroid(host))return [];
+  const power=granted?(skill==='pilot'?2:0):1;
+  return [{args:[index,hostIndex],card,target:side,host,cost:0,training:{skill,granted,power},
+   label:card.name+' auf '+host.name+' · '+(granted?skill+'-Skill':'+1 Power')+' (0 Force)'}];
+ });
+}
+
+function deployTableEffect(side,index,hostIndex){
+ const option=tableEffectOptions(side).find(choice=>choice.args[0]===index&&choice.args[1]===hostIndex);
  if(!option)return false;
  const {hand,force,used}=PremiereGame.zones(state,side);
  const [card]=hand.splice(index,1);
  PremiereGame.moveTop(force,used,option.cost);
- const frame={kind:'tableEffect',side,card,target:option.target};
+ const frame={kind:'tableEffect',side,card,target:option.target,host:option.host,training:option.training};
  log(side+' kündigt '+option.label+' an.');
  if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);
  else placeTableEffect(frame);
  return true;
 }
 
-function placeTableEffect({card,target}){
+function placeTableEffect({card,target,host,training}){
+ if(host){
+  card.training=training;
+  (host.attachments??=[]).push(card);
+  (state.tableEffects??=[]).push({card,target,host});
+  log(card.name+' liegt auf '+host.name+'.');
+  return;
+ }
  (state.tableEffects??=[]).push({card,target});
  log(card.name+' liegt auf der '+target+' Side.'+(tableEffectRule(card)?.warriorDeploy?' Warriors dieser Seite kosten +1 Force.':''));
 }
@@ -1820,6 +1839,22 @@ function cancelTableEffect(effect){
  const index=state.tableEffects.indexOf(effect);
  if(index<0)return;
  state.tableEffects.splice(index,1);
+ if(effect.host){
+  const host=effect.host,index=host.attachments.indexOf(effect.card);
+  if(index>=0)host.attachments.splice(index,1);
+  const entry=PremiereLocations.findEntry(state,host),craft=entry?.carriers[0];
+  const seat=craft?.occupants.find(occupant=>occupant.card===host&&occupant.role==='pilot');
+  if(seat&&!PremiereUnits.hasSkill(host,'pilot')){
+   if(PremiereUnits.accepts(craft,host,'passenger',seat))seat.role='passenger';
+   else if(detachTableCard(entry.side,entry.slot,host))PremiereUnits.remove(host,unit=>{
+    if(unit===host)PremiereGame.zones(state,host.owner??host.side??entry.side).used.push(host);
+    else{
+     state.tableEffects=state.tableEffects.filter(registered=>registered.card!==unit);
+     loseOwnedCard(unit,entry.side);
+    }
+   },unit=>loseOwnedCard(unit,entry.side));
+  }
+ }
  loseOwnedCard(effect.card,effect.card.side);
  log(effect.card.name+' wurde aufgehoben.');
 }
@@ -1872,7 +1907,7 @@ function missionTargets(mission,side){
   if(mission==='death-star-plans')return isDroid(card)&&locationGroup(loc)!=='death star'?[{target:card,targetIndex}]:[];
   if(mission==='desperate-hour')return card.type==='Character'&&card.subType==='Rebel'&&locationGroup(loc)==='tatooine'?
    [{target:card,targetIndex}]:[];
-  const smuggler=characterTraits(card).includes('smuggler')||activeCardRules(card,'kesselSmuggler').length>0;
+  const smuggler=PremiereUnits.hasSkill(card,'smuggler')||activeCardRules(card,'kesselSmuggler').length>0;
   return smuggler&&isPlanetSystem(loc)&&carriers.some(ship=>ship.type==='Starship'&&PremiereUnits.active(ship))?
    [{target:card,targetIndex,origin:slot,parsec:loc.parsec}]:[];
  });
@@ -2857,7 +2892,7 @@ function battleEffectOptions(side){
     (lone.type==='Character'||rule.pilot&&permanentPilot)&&(!rule.siteOnly||isSite(location))&&
     (!rule.spaceOnly||isSystem(location)||location.subType==='Sector')&&
     (!rule.character||locationTitle(lone)===rule.character)&&(!rule.except||locationTitle(lone)!==rule.except)&&
-    (!rule.subType||lone.subType===rule.subType)&&(!rule.warrior||lone.warrior)&&(!rule.pilot||lone.pilot||permanentPilot)&&
+    (!rule.subType||lone.subType===rule.subType)&&(!rule.warrior||PremiereUnits.hasSkill(lone,'warrior'))&&(!rule.pilot||PremiereUnits.hasSkill(lone,'pilot')||permanentPilot)&&
     (!rule.minimumAbility||cardAbility(lone)>=rule.minimumAbility));
    for(const rule of activeCardRules(card,'opposedDestiny')){
     if(rule.ownRank?!own.some(unit=>unit.extraText?.includes(rule.ownRank)):!names.has(rule.own))continue;
@@ -3508,7 +3543,7 @@ function battleForfeitValue(card,side){
  const {site:slot}=battleSession,loc=state.locations[slot];
  let modifier=(card.battleForfeitModifier??0)+registeredLocationModifier('forfeit',card,side,slot)+deviceCharacterModifier(card,loc);
  modifier+=registeredCharacterModifier('characterForfeit',card,slot);
- if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=12&&card.type==='Character'&&card.pilot){
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=12&&card.type==='Character'&&PremiereUnits.hasSkill(card,'pilot')){
   modifier+=pilotForfeitModifier(card,slot);
  }
  const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
@@ -3599,6 +3634,7 @@ function loseOwnedCard(card,fallback){
 function loseTableCard(side,slot,card,outOfPlay=false){
  if(!detachTableCard(side,slot,card))return false;
  PremiereUnits.remove(card,unit=>{
+  if(unit.training&&state.tableEffects?.length)state.tableEffects=state.tableEffects.filter(effect=>effect.card!==unit);
   if(unit.escortedCaptive){
    const captive=unit.escortedCaptive;
    delete unit.escortedCaptive;

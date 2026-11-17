@@ -3,7 +3,7 @@ const PremiereWeapons = (() => {
   const ground = ['Character','Creature','Vehicle'];
   const saberTargets = ['Character','Creature'];
   const space = ['Starship'];
-  const warrior = card => card.type === 'Character' && card.warrior === true;
+  const warrior = card => card.type === 'Character' && units.hasSkill(card, 'warrior');
   const title = card => (card?.name ?? '').trim().replace(/^[•*]+\s*/, '').toLowerCase();
   const persona = (card, name) => card.type === 'Character' &&
     (card.personas?.some(item=>item.toLowerCase()===name) || title(card)===name || title(card).startsWith(name+' '));
