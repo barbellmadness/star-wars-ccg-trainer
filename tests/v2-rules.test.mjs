@@ -1792,12 +1792,12 @@ test('registered Premiere locations apply their printed sides and exceptions',as
  run("state.locations[2]=card('Dark:2454')");
  assert.equal(run("cardPowerModifier(jawa,'Light',2)"),-1);
  assert.equal(run("battleForfeitValue(jawa,'Light')"),run('jawa.forfeit-1'));
- run("state.locations[2]=card('Dark:2465');state.locations[4]=card('Dark:682');state.dark[4]=[card('Dark:1027')]");
+ run("const rebel=card('Light:2052');state.light[2].push(rebel);state.locations[2]=card('Dark:2465');state.locations[4]=card('Dark:682');state.dark[4]=[card('Dark:1027')]");
  assert.equal(run("cardPowerModifier(spy,'Dark',2)"),1);
  assert.equal(run("battleForfeitValue(spy,'Dark')"),run('spy.forfeit+1'));
- assert.equal(run("battleForfeitValue(card('Light:2052'),'Light')"),run("card('Light:2052').forfeit-1"));
+ assert.equal(run("battleForfeitValue(rebel,'Light')"),run('rebel.forfeit-1'));
  run("state.light[4]=[card('Light:1593')]");
- assert.equal(run("battleForfeitValue(card('Light:2052'),'Light')"),run("card('Light:2052').forfeit"));
+ assert.equal(run("battleForfeitValue(rebel,'Light')"),run('rebel.forfeit'));
 });
 
 test('registered fleet power counts only ships at a controlled related system',async()=>{
@@ -2978,6 +2978,9 @@ test('selectable Premiere decks complete matches with legal decisions and conser
  const themes=JSON.parse(run(`JSON.stringify(deckChoices.light.slice(1).map(({deck:light},index)=>
   playMatch(index+6,latestCardRulesVersion,2,{light,dark:deckChoices.dark[index+1].deck})))`));
  assert.ok(themes.every(match=>match.winner&&match.botActions>0&&match.validated>0),JSON.stringify(themes.map(({trace,...summary})=>summary)));
+ const crossMatches=JSON.parse(run(`JSON.stringify(deckChoices.light.map(({deck:light},index)=>
+  playMatch(index+20,latestCardRulesVersion,2,{light,dark:deckChoices.dark[(index+2)%deckChoices.dark.length].deck})))`));
+ assert.ok(crossMatches.every(match=>match.winner&&match.botActions>0&&match.validated>0),JSON.stringify(crossMatches.map(({trace,...summary})=>summary)));
 });
 
 function startSavedGame(run,seed=0){
@@ -3173,7 +3176,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,24);
+ assert.equal(saved.cardRulesVersion,25);
  assert.equal(saved.botStrategyVersion,2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -5232,6 +5235,55 @@ test('both Barriers restrict only the card just deployed and expire with its tur
  }
 });
 
+test('Barrier on either card of a simultaneous deployment stops both the ship and pilot',async()=>{
+ for(const [side,shipId,pilotId,barrierId,target] of [
+  ['Light','Light:2060','Light:239','Dark:1263',0],
+  ['Dark','Dark:247','Dark:790','Light:2033',1],
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',other=PremiereGame.otherSide(side),fighter=card('${shipId}'),pilot=card('${pilotId}'),barrier=card('${barrierId}');
+   const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,other);
+   setupDecks=null;state.game=PremiereGame.actionState(270,0);state.game.cardRulesVersion=25;
+   state.activeSide=side;state.botTurn=side==='Dark'?{steps:[],index:0}:null;
+   own.hand.splice(0,own.hand.length,fighter,pilot);rival.hand.splice(0,rival.hand.length,barrier);
+   state.locations[0].icons={light:2,dark:2};rival.board[0]=[side==='Light'?tie:ship];`);
+  assert.equal(run(`requestAction('deployWithPilot',side,[0,0,1])&&requestAction('interruptResponse',other,[0,'barrier',${target}])`),true);
+  assert.equal(run("requestAction('passResponse',side)&&requestAction('passResponse',other)&&requestAction('passResponse',side)&&requestAction('passResponse',other)"),true);
+  assert.equal(run("rival.used.includes(barrier)&&rival.force.length===4&&barredThisTurn(fighter)&&barredThisTurn(pilot)&&confirmedPresence(side,0)"),true);
+  run('state.phase=3');
+  assert.equal(run("!requestAction('battle',side,[0])&&battleCandidates(side,0).length===0"),true);
+  run('PremiereGame.resetTurn(state,side);state.phase=3');
+  assert.equal(run("!movementPrevented(fighter)&&!movementPrevented(pilot)&&legalActions(state,side).some(option=>option.kind==='battle')"),true);
+ }
+});
+
+test('a pilot stopped by Barrier contributes neither ship stats nor battle destiny bonuses',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(271,0);state.game.cardRulesVersion=25;
+  const fighter=card('Light:2060'),biggs=card('Light:239'),barrier=card('Dark:1263');
+  state.light[0]=[ship,fighter];state.dark[0]=[tie];state.hand=[biggs];state.botHand=[barrier];`);
+ assert.equal(run(`const aboard=legalActions(state,'Light').find(option=>option.kind==='transport'&&option.args[0]==='deployAboard'&&option.carrier===fighter&&option.args[5]==='pilot');
+  !!aboard&&performAction(aboard)&&requestAction('interruptResponse','Dark',[0,'barrier',0])`),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.equal(run("barredThisTurn(biggs)&&!barredThisTurn(fighter)&&craftStats(fighter,0).powered"),true);
+ run('state.phase=3');
+ assert.equal(run("requestAction('battle','Light',[0])&&activeBattleUnits('Light').includes(fighter)&&!activeBattleUnits('Light').includes(biggs)"),true);
+ assert.equal(run("!craftStats(fighter,0).powered&&craftStats(fighter,0).maneuver===0&&battleAbilityAt(fighter,0)===0&&battleTotals(0).lightPower===craftStats(ship,0).power"),true);
+ assert.equal(run("battleDestinyDrawCount('Light',0,battleTotals(0).lightAbility)<1"),true);
+});
+
+test('C-3PO cannot pair its battle power bonus with a Rebel excluded by Imperial Barrier',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(272,0);state.game.cardRulesVersion=25;
+  const threepio=card('Light:343'),blocked=card('Light:2052'),rebel=card('Light:1593'),r2=card('Light:1995');
+  state.light[3]=[threepio,rebel];state.dark[3]=[card('Dark:2355')];state.hand=[blocked];state.botHand=[card('Dark:1263')];`);
+ assert.equal(run("requestAction('deploy','Light',[0,3])&&requestAction('interruptResponse','Dark',[0,'barrier',0])"),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ // A second active droid would form a second pair if the excluded Rebel still counted.
+ run('state.light[3].push(r2);state.phase=3');
+ assert.equal(run("requestAction('battle','Light',[3])&&battleTotals(3).lightPower===rebel.power+threepio.power+r2.power+2"),true);
+});
+
 test('Dark Collaboration counters Rebel Barrier or adds two Battle Destiny',async()=>{
  const {run}=await craftHarness();
  run(`const collaboration=card('Dark:613'),barrier=card('Light:2033'),unit=card('Dark:2355');
@@ -5270,6 +5322,36 @@ test('Expand The Empire copies one side and follows Revolution',async()=>{
  assert.equal(run("requestAction('revolution','Light',[0,4])&&PremiereLocations.ruleAt(state,3,'Light','weaponDestiny')?.amount===1&&!PremiereLocations.ruleAt(state,3,'Dark','weaponDestiny')&&PremiereLocations.icons(state,3,'Light')===icons"),true);
  run("cancelLocationEffect(4,state.locationEffects[4].find(effect=>effect.card.id==='Light:2110'));");
  assert.equal(run("PremiereLocations.ruleAt(state,3,'Dark','weaponDestiny')?.amount"),1);
+});
+
+test('an expanded War Room changes on-table forfeits but leaves Savrip hand forfeits intact',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(273,0);state.game.cardRulesVersion=25;
+  const expand=card('Dark:914'),leader=card('Dark:1061'),trooper=card('Light:2052'),inHand=card('Light:2052'),wing=card('Light:1050');
+  state.locations[4]=card('Dark:682');state.locations[5]=card('Dark:678');state.locationOrder=[2,3,4,5,6,0,1];
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[expand];state.dark[5]=[leader];
+  state.light[3]=[trooper];state.light[0]=[wing];state.hand=[inHand];`);
+ assert.equal(run("cardForfeitValueAt(trooper,'Light',3)===trooper.forfeit&&requestAction('deployLocationEffect','Dark',[0,4])"),true);
+ assert.equal(run("cardForfeitValueAt(trooper,'Light',3)===trooper.forfeit-1&&cardForfeitValueAt(wing,'Light',0)===wing.forfeit-1"),true);
+ run(`state.activeSide='Light';state.botTurn=null;state.phase=3;state.botHand=[];state.dark[3]=[card('Dark:634')];
+  state.tableEffects=[{card:card('Light:1643'),target:'Light'}];`);
+ assert.equal(run("requestAction('battle','Light',[3])&&requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')"),true);
+ assert.equal(run(`const forfeits=legalActions(state,'Light');
+  forfeits.find(option=>option.kind==='battleForfeit')?.value===trooper.forfeit-1&&
+  forfeits.find(option=>option.kind==='battleHandForfeit')?.value===inHand.forfeit&&requestAction('battleHandForfeit','Light',[0])&&state.lost.includes(inHand)`),true);
+});
+
+test('Expand The Empire adds a second printed drain bonus without copying Force icons',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(274,0);state.game.cardRulesVersion=25;
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[card('Dark:914')];state.hand=[];
+  state.locations[3]=card('Dark:2458');state.locations[4]=card('Light:2471');state.locationOrder=[2,3,4,5,6,0,1];
+  state.dark[4]=[card('Dark:2355')];const icons=PremiereLocations.icons(state,4,'Light');`);
+ assert.equal(run("requestAction('deployLocationEffect','Dark',[0,3])"),true);
+ run('state.phase=1');
+ assert.equal(run("forceDrainValue('Dark',4)"),run('icons+2'));
+ assert.equal(run("requestAction('drain','Dark',[4])"),true);
+ assert.equal(run('state.pendingForceLoss?.remaining'),run('icons+2'));
 });
 
 test('both Sentry cards apply the selected modifier',async()=>{
@@ -5651,6 +5733,20 @@ test('Lightsaber Proficiency adds battle power and optional Force drain',async()
  assert.equal(run("drainPlan('Light',3).optional===2"),true);
  run("loseTableCard('Light',3,saber);refreshSaberTraining();");
  assert.equal(run("!saberTraining(luke)&&state.lost.includes(effect)&&state.tableEffects.length===0"),true);
+});
+
+test('Disarmed removes Lightsaber Proficiency before any further Force drain',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(275,0);state.game.cardRulesVersion=25;
+  const effect=card('Light:1554'),luke=card('Light:1593'),saber=card('Light:1386'),trooper=card('Dark:2355');
+  luke.weapons=[saber];trooper.weapons=[card('Dark:1230')];state.light[3]=[luke];state.dark[3]=[trooper];
+  state.hand=[effect];state.botHand=[card('Dark:734')];`);
+ assert.equal(run("requestAction('deployTableEffect','Light',[0,0])&&saberTraining(luke).amount===3"),true);
+ run('state.phase=1');
+ assert.equal(run(`const disarm=legalActions(state,'Dark').find(option=>option.kind==='weaponEffect'&&option.args[0]==='disarm');
+  !!disarm&&performAction(disarm)&&state.lost.includes(saber)&&state.lost.includes(effect)&&!state.tableEffects.length`),true);
+ run('state.dark[3]=[]');
+ assert.equal(run("drainPlan('Light',3).optional===0&&!requestAction('drain','Light',[3,1])"),true);
 });
 
 test('Mantellian Savrip permits hand forfeits only after a loss',async()=>{

@@ -454,7 +454,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=24;
+const latestCardRulesVersion=25;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function deploymentSide(card){
@@ -588,8 +588,9 @@ function landedAt(card,slot){
 }
 
 function craftStats(card,slot,forMovement=false){
+ const rulesVersion=currentGame()?.cardRulesVersion??latestCardRulesVersion;
  const stats=PremiereUnits.stats(card,permanentPilotAbility(card),{landed:!forMovement&&landedAt(card,slot),
-  activePilotText:(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7});
+  activePilotText:rulesVersion>=7,excludesOccupant:forMovement?undefined:unit=>excludedAtBattle(unit,slot)});
  const attachments=card.attachments??[];
  if(!card.ionDamage){
   if(Number.isFinite(stats.maneuver)&&attachments.some(effect=>activeCardRules(effect,'doubleWeaponFire').length))stats.maneuver++;
@@ -604,13 +605,13 @@ function craftStats(card,slot,forMovement=false){
   if(!card.ionDamage&&Number.isFinite(stats.hyperspeed))stats.hyperspeed+=2;
   stats.power+=modifier.power;
  }
- stats.power+=falconModificationBonus(card);
+ stats.power+=falconModificationBonus(card,forMovement?undefined:slot);
  if(lateralDamage(card))stats.power=0;
  if(!stats.powered&&card.id==='Light:1677'&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10){
   stats.maneuver=0;
   stats.hyperspeed=0;
  }
- if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=24&&!stats.powered&&['Starship','Vehicle'].includes(card.type)){
+ if(rulesVersion>=24&&!stats.powered&&['Starship','Vehicle'].includes(card.type)){
   stats.power=0;
   stats.armor=Number.isFinite(card.armor)?(card.ionDamage?0:2):null;
   for(const attribute of ['maneuver','hyperspeed','landspeed']){
@@ -620,8 +621,9 @@ function craftStats(card,slot,forMovement=false){
  return stats;
 }
 
-function falconModificationBonus(card){
+function falconModificationBonus(card,slot){
  if(card.id!=='Light:1677'||!card.occupants?.some(({card,role})=>role==='pilot'&&PremiereUnits.active(card)&&
+  !excludedAtBattle(card,slot)&&
   /^(han solo|lando calrissian|chewbacca)$/.test(locationTitle(card))))return 0;
  return Math.max(0,...(card.attachments??[]).flatMap(effect=>activeCardRules(effect,'falconModification').map(rule=>rule.amount)));
 }
@@ -5015,7 +5017,8 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
    (battleSession?.site===i?battleSession.obiAssistance?.[side]??0:0));
   return values.some(value=>value===null)&&known<4?null:known;
  };
- const lightPresent=PremiereLocations.presentCards(state,'Light',i),darkPresent=PremiereLocations.presentCards(state,'Dark',i);
+ const presentAt=side=>PremiereLocations.presentCards(state,side,i).filter(card=>!excludedAtBattle(card,i));
+ const lightPresent=presentAt('Light'),darkPresent=presentAt('Dark');
  const cards=(side,present)=>present.filter(card=>!['Weapon','Device','Effect'].includes(card.type)&&
   PremiereUnits.active(card)&&(!battleSession?.segmented||battleSession.site!==i||battleSession.participants[side].includes(card)));
  const power=(cards,side,present)=>{
@@ -5101,10 +5104,19 @@ function fearPowerAtSite(side,slot){
  })?1:0;
 }
 
+function excludedFromCurrentBattle(card){
+ return card.excludedFromBattle||card.cannotBattle||barredThisTurn(card);
+}
+
+function excludedAtBattle(card,slot){
+ return (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=25&&battleSession?.segmented&&
+  battleSession.site===slot&&excludedFromCurrentBattle(card);
+}
+
 function battleCandidates(side,slot){
  const {board}=PremiereGame.zones(state,side);
  function units(card){
-  if(!PremiereUnits.active(card)||card.excludedFromBattle||card.cannotBattle||barredThisTurn(card)||['Weapon','Device','Effect'].includes(card.type))return [];
+  if(!PremiereUnits.active(card)||excludedFromCurrentBattle(card)||['Weapon','Device','Effect'].includes(card.type))return [];
   return [card,...(card.occupants??[]).filter(entry=>!['cargo','hangar'].includes(entry.role)).flatMap(entry=>units(entry.card))];
  }
  return (board?.[slot]??[]).flatMap(units);
@@ -5652,6 +5664,7 @@ function battleDestinyDrawCount(side,siteIndex,ability,initiator=battleSession?.
  const own=PremiereGame.zones(state,side).board?.[siteIndex]??[];
  const activeText=(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7;
  const backup=own.some(ship=>craftStats(ship,siteIndex).powered&&ship.occupants?.some(entry=>entry.role==='pilot'&&
+  !excludedAtBattle(entry.card,siteIndex)&&
   PremiereUnits.matchingBattleDestiny(ship,entry.card,activeText)&&PremiereUnits.active(entry.card)&&(!activeText||!PremiereUnits.textSuppressed(entry.card))));
  const spent=battleSession?.powerAbilitySpent?abilityPowerSources(side).reduce((sum,{card})=>
   sum+(battleSession.powerAbilitySpent.get(card)??0),0):0;
@@ -6349,12 +6362,13 @@ function battleImmunity(side,card){
  const x=battleSession,site=state.locations[x.site],rules=PremiereLocations.conditions(state,x.site,side);
  let limit=PremiereUnits.textSuppressed(card)?0:printedAttritionImmunityBelow(card)??0;
  const members=activeBattleUnits(side);
- const pilots=(card.occupants??[]).filter(entry=>entry.role==='pilot'&&PremiereUnits.active(entry.card)).map(entry=>locationTitle(entry.card));
+ const pilots=(card.occupants??[]).filter(entry=>entry.role==='pilot'&&PremiereUnits.active(entry.card)&&
+  !excludedAtBattle(entry.card,x.site)).map(entry=>locationTitle(entry.card));
  if(!PremiereUnits.textSuppressed(card)&&craftStats(card,x.site).powered){
   if(card.id==='Light:1677'&&pilots.some(name=>/^(han solo|chewbacca|lando calrissian)$/.test(name)))limit=Math.max(limit,5);
   if(card.id==='Dark:2700'&&pilots.includes('darth vader'))limit=Math.max(limit,4);
   if(PremiereUnits.capital(card)&&card.occupants?.some(entry=>entry.card.id==='Dark:1989'&&PremiereUnits.active(entry.card)&&
-     !PremiereUnits.textSuppressed(entry.card)))limit=Math.max(limit,3);
+    !PremiereUnits.textSuppressed(entry.card)&&!excludedAtBattle(entry.card,x.site)))limit=Math.max(limit,3);
  }
  if(card.id==='Dark:12'&&rules.night&&!PremiereUnits.textSuppressed(card))return Infinity;
  if(jungleBonus(card,side,x.site,members))return Infinity;
@@ -6402,7 +6416,7 @@ function cardForfeitValueAt(card,side,slot){
  const base=card.battleForfeit??card.forfeit;
  if(!Number.isFinite(base))return null;
  const loc=state.locations[slot];
- let modifier=(card.battleForfeitModifier??0)+registeredLocationModifier('forfeit',card,side,slot)+deviceCharacterModifier(card,loc)+falconModificationBonus(card);
+ let modifier=(card.battleForfeitModifier??0)+registeredLocationModifier('forfeit',card,side,slot)+deviceCharacterModifier(card,loc)+falconModificationBonus(card,slot);
  modifier+=registeredCharacterModifier('characterForfeit',card,slot);
  if(isArtoo(card)){
   const entry=PremiereLocations.findEntry(state,card);
@@ -6426,15 +6440,21 @@ function cardForfeitValueAt(card,side,slot){
    modifier+=version===0?crawlers:Math.min(crawlers,1);
   }
  }
- for(const [index,location] of state.locations.entries()){
-  for(const rule of PremiereCardRules.effects(location,'warRoomForfeit')){
-   if(matchesRegisteredTarget(card,rule.targets)&&PremiereGame.sides.some(player=>
-     PremiereLocations.printedSide(state,index,player)===rule.printedSide&&
-     PremiereLocations.control(state,player,index,cardAbility)===true&&
-     PremiereLocations.presentCards(state,player,index).some(unit=>characterTraits(unit).includes('leader'))))modifier+=rule.amount;
-  }
- }
+ modifier+=warRoomForfeitModifier(card,version);
  return Math.max(0,base+modifier-tacticalPenalty(card)+utinniGearBonus(card,slot)-lukeUtinniPenalty(card));
+}
+
+function warRoomForfeitModifier(card,version){
+ if(!matchesRegisteredTarget(card,'stormtrooper-or-tie')&&!matchesRegisteredTarget(card,'rebel-trooper-or-y-wing'))return 0;
+ let modifier=0;
+ for(const [slot,location] of state.locations.entries())for(const side of PremiereGame.sides){
+  const rules=version>=25?PremiereLocations.rulesAt(state,slot,side,'warRoomForfeit'):
+   PremiereCardRules.effects(location,'warRoomForfeit').filter(rule=>PremiereLocations.printedSide(state,slot,side)===rule.printedSide);
+  if(!rules.length||PremiereLocations.control(state,side,slot,cardAbility)!==true||
+     !PremiereLocations.presentCards(state,side,slot).some(unit=>characterTraits(unit).includes('leader')))continue;
+  modifier+=rules.filter(rule=>matchesRegisteredTarget(card,rule.targets)).reduce((sum,rule)=>sum+rule.amount,0);
+ }
+ return modifier&&version>=25&&!PremiereLocations.findEntry(state,card)?0:modifier;
 }
 
 function pilotForfeitModifier(card,slot){
@@ -7603,8 +7623,14 @@ function barrierOptions(side,window){
 
 function settleBarrier(frame){
  if(!frame.cancelled&&PremiereLocations.findEntry(state,frame.target)){
-  (state.barredCards??=new Map()).set(frame.target,state.game.timing.turn);
-  log(frame.target.name+' kann bis Zugende weder kämpfen noch sich bewegen.');
+  const deployment=PremiereGame.responseWindow(state.game);
+  const shared=(state.game.cardRulesVersion??latestCardRulesVersion)>=25&&deployment?.kind==='deployment'&&
+   deployment.targets.includes(frame.target);
+  for(const target of shared?deployment.targets:[frame.target]){
+   if(!PremiereLocations.findEntry(state,target))continue;
+   (state.barredCards??=new Map()).set(target,state.game.timing.turn);
+   log(target.name+' kann bis Zugende weder kämpfen noch sich bewegen.');
+  }
  }
  finishPileInterrupt(frame);
 }
