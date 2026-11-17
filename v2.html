@@ -199,7 +199,7 @@ a{color:#b6d8ff}
 .deck-card-link:hover,.deck-card-link:focus-visible{color:#ffe2a6}
 .deck-card-link:focus-visible{outline:2px solid #eac977;outline-offset:3px}
 html{scrollbar-gutter:stable}
-html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overflow:hidden}
+html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#movementDialog[open]){overflow:hidden}
 #movementDialog[open]{display:flex;flex-direction:column;gap:10px;overflow:hidden}
 #movementOptions{min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px;overflow-wrap:anywhere}
 #movementOptions details{padding:7px;border:1px solid #526782;border-radius:7px;margin-bottom:5px}
@@ -216,7 +216,8 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 .card-inspector-content img{display:block;width:100%;max-height:min(440px,54dvh);object-fit:contain}
 .card-inspector-copy>p:first-child{margin-top:0}
 .inspector-effect-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-#battleAnalysis{--dialog-width:65rem;border-color:#b6a169;background:#0c1423}
+#battleAnalysis,#battlePreview{--dialog-width:65rem;border-color:#b6a169;background:#0c1423}
+#battlePreviewConfirm{margin-top:12px;border-color:var(--gold)}
 #battleAnalysis[open]{display:flex;flex-direction:column;gap:10px;overflow:hidden}
 #battleContent{display:grid;gap:10px;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 2px 4px}
 #battleDetails{display:grid;gap:10px}
@@ -236,11 +237,23 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 .battle-card img{display:block;width:100%;aspect-ratio:5/7;object-fit:contain;background:#111c2d;border:1px solid #617490;border-radius:5px}
 .battle-card figcaption{margin-top:3px}.battle-card small{display:block;color:#ffbdc6;font-size:10px}
 .battle-totals,.battle-stats{font-variant-numeric:tabular-nums;font-size:13px}
+.battle-preview-arena .battle-side.dark{text-align:left;align-items:flex-start}
+.battle-preview-arena h4,.battle-breakdown h3{margin:5px 0 0;color:#f3d68b;font-size:13px}
+.battle-preview-arena p,.battle-preview-arena ul,.battle-breakdown p,.battle-breakdown ul{margin:0}
+.battle-preview-arena ul,.battle-breakdown ul{padding-inline-start:18px}
+.battle-preview-arena li,.battle-breakdown li{overflow-wrap:anywhere}
+.battle-preview-arena .hint,.battle-breakdown .hint{font-size:12px}
+.battle-breakdown{display:grid;gap:6px;padding:8px;border:1px solid #50617a;border-radius:9px;background:#131e31;color:var(--ink)}
+.battle-side .battle-draws{font-size:12px;margin:0;padding:0;list-style:none}
+.battle-draws li{overflow-wrap:anywhere}
+.battle-debt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.battle-debt section{min-width:0;padding:6px;border:1px solid #5e6a7d;border-radius:6px;overflow-wrap:anywhere}
+.battle-debt h4{margin:0 0 4px;color:#f3d68b;font-size:13px}
 .battle-events{margin:0;padding-left:18px;color:#b7c9e1;font-size:12px;overflow-wrap:anywhere}
 #battleResponses{margin:0}
 #battleControls:empty{display:none}
 #battleControls button,#battleResponses button{margin:2px}
-@media(max-width:650px){#battleAnalysis{padding:10px}.battle-timeline,.battle-stats,.battle-totals{font-size:11px}}
+@media(max-width:650px){#battleAnalysis,#battlePreview{padding:10px}.battle-timeline,.battle-stats,.battle-totals{font-size:11px}}
 @media(max-width:650px){.card-inspector-content{grid-template-columns:minmax(0,1fr)}.card-inspector-content img{justify-self:center;max-width:20rem}}
 @media(max-width:650px){main{padding:9px}.playmat-column{flex-basis:166px;width:166px;padding:6px}.playmat-location img,.playmat-location .location-fallback{width:140px}.playmat-location img{height:100px}}
 .lesson-panel{padding:8px 12px;margin-block:8px}
@@ -385,6 +398,16 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
     <p class="hint">Du und der Bot wählen verdeckt. Beide Startorte werden gleichzeitig aufgedeckt. Bei gleichem Ortsnamen wählt ihr erneut. Anschließend werden die Decks gemischt und je acht Karten gezogen.</p>
     <div id="setupOptions"></div>
   </div>
+  <dialog id="battlePreview" class="game-dialog" aria-labelledby="battlePreviewTitle">
+    <header class="dialog-header">
+      <h2 id="battlePreviewTitle" tabindex="-1" autofocus>Kampfvorschau</h2>
+      <form method="dialog"><button type="submit">Abbrechen</button></form>
+    </header>
+    <p id="battlePreviewHint" class="hint"></p>
+    <div id="battlePreviewSides" class="battle-arena battle-preview-arena"></div>
+    <p id="battlePreviewStatus" class="hint" role="status" hidden></p>
+    <button id="battlePreviewConfirm" type="button">Kampf beginnen</button>
+  </dialog>
   <dialog id="battleAnalysis" class="game-dialog" aria-labelledby="battleTitle">
     <header class="dialog-header">
       <div><h2 id="battleTitle" tabindex="-1" autofocus>Kampf</h2><p id="battlePriority" role="status"></p></div>
@@ -516,9 +539,9 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js?v=2.15.27"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.26';
+const trainerVersion='2.15.27';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -534,7 +557,7 @@ const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(optio
 function ruleClick(action,handler='dispatchUI'){
  if(!action)return 'disabled';
  const {kind,side,args,gameId,revision}=action;
- return 'onclick="'+escapeHTML(handler+'('+JSON.stringify({kind,side,args,gameId,revision})+')')+'"';
+ return 'onclick="'+escapeHTML((kind==='battle'?'openBattlePreview':handler)+'('+JSON.stringify({kind,side,args,gameId,revision})+')')+'"';
 }
 function dispatchUI(action){
  const hand=state&&PremiereGame.zones(state,playerSide()).hand,previous=hand?.[selected];
@@ -548,7 +571,7 @@ function dispatchUI(action){
  return result;
 }
 function ruleButton(action,label,handler){
- return '<button '+ruleClick(action,handler)+'>'+escapeHTML(label)+'</button>';
+ return '<button '+(action?.kind==='battle'?'aria-haspopup="dialog" ':'')+ruleClick(action,handler)+'>'+escapeHTML(label)+'</button>';
 }
 function actionForceCost({cost,opponentCost}){
  return cost+' Force'+(opponentCost?' + '+opponentCost+' gegnerische Force':'');
@@ -1088,6 +1111,64 @@ function playLocation(handIndex,position){
  if(dispatchUI(PremiereGame.offer(currentGame(),playerSide(),'deployLocation',[handIndex,position]))){selected=-1;render();}
 }
 
+function previewBattleOffer(request){
+ const game=currentGame();
+ if(!state||request?.kind!=='battle'||request.side!==playerSide()||request.gameId!==game?.id||request.revision!==game?.revision||
+    !Array.isArray(request.args)||request.args.length!==1)return null;
+ return findOffer(legalActions(state,playerSide()),'battle',request.args[0]);
+}
+
+function openBattlePreview(request){
+ const offer=previewBattleOffer(request);
+ if(!offer)return false;
+ const preview=battleOpeningPreview(offer.side,offer.args[0]);
+ if(!preview)return false;
+ const dialog=el('battlePreview'),confirmButton=el('battlePreviewConfirm'),status=el('battlePreviewStatus');
+ el('battlePreviewTitle').textContent='Kampfvorschau · '+state.locations[preview.site].name;
+ el('battlePreviewHint').textContent='Sichtbarer Stand vor Kampfbeginn. Die Waffenliste berücksichtigt die Startkosten. Reacts und Interrupts können die Werte ändern.';
+ el('battlePreviewSides').innerHTML=PremiereGame.sides.map(side=>battlePreviewSide(side,preview)).join('');
+ confirmButton.textContent='Kampf beginnen · '+preview.cost+' Force';
+ confirmButton.disabled=false;
+ status.hidden=true;
+ confirmButton.onclick=()=>{
+  const current=previewBattleOffer(offer);
+  if(!current||current.cost!==preview.cost){
+   status.textContent='Der Spielstand hat sich geändert. Öffne die Kampfvorschau erneut.';
+   status.hidden=false;
+   confirmButton.disabled=true;
+   return false;
+  }
+  dialog.close();
+  closeCard();
+  return dispatchUI(current);
+ };
+ if(!dialog.open)dialog.showModal();
+ scheduleAutomaticBot();
+ return true;
+}
+
+function battlePreviewSide(side,preview){
+ const {power,ability,draws,minimumAbility,weapons,immunity,attritionPrevented}=preview.sides[side];
+ const shots=new Map();
+ for(const shot of weapons){
+  const key=shot.weapon+' · '+shot.host+' · '+(shot.timing==='initiation'?'bei Initiierung':'im Waffen-Segment');
+  const location=shot.targetSlot!==preview.site?state.locations[shot.targetSlot]?.name:null;
+  const target=shot.target+(location?' bei '+location:'')+' ('+shot.cost+' Force)';
+  if(!shots.has(key))shots.set(key,new Set());
+  shots.get(key).add(target);
+ }
+ const ready=shots.size?'<ul>'+[...shots].map(([weapon,targets])=>'<li><strong>'+escapeHTML(weapon)+'</strong> → '
+  +escapeHTML([...targets].join(', '))+'</li>').join('')+'</ul>':'<p class="hint">Aktuell kein bezahlbarer Schuss mit zulässigem Ziel.</p>';
+ const protection=immunity.length?'<ul>'+immunity.map(({name,below,atThree})=>'<li>'+escapeHTML(name)+' · '
+  +(below===Infinity?'vollständig immun':escapeHTML([below?'unter '+below:null,atThree&&below<=3?'bei genau 3':null].filter(Boolean).join(' und ')))+'</li>').join('')+'</ul>':
+  '<p class="hint">Keine sichtbare Immunität.</p>';
+ const destiny=draws===null?'Anzahl offen (Ability unbekannt)':draws===0?'Aktuell keine Ziehung':draws+' möglich · Werte ausstehend';
+ return '<section class="battle-side '+side.toLowerCase()+'"><h3>'+side+' Side</h3><p class="battle-stats"><b>Power '+power+'</b> · Ability '+(ability??'?')
+  +'</p><p>Battle Destiny · '+destiny+'</p><p class="hint">Reguläre Ziehung ab Ability '+minimumAbility+'</p>'
+  +'<h4>Einsatzbereite Waffen</h4>'+ready+'<h4>Attrition-Immunität</h4>'+protection
+  +(attritionPrevented?'<p>Attrition wird an diesem Ort für diese Seite aufgehoben.</p>':'')+'</section>';
+}
+
 function lossPreview(side,available){
  const x=battleSession,cards=PremiereGame.zones(state,side).board[x.site],chosen=x[side==='Light'?'lightLoss':'darkLoss'];
  const plan=battleForfeitPlan(side),damage=battleDamagePreview();
@@ -1136,12 +1217,55 @@ function battleSideMarkup(side,power,ability,destiny,current,controls=''){
  const hits=battleHitCards(side,x.site);
  const figures=cards.map(card=>'<figure class="battle-card">'+(card.image?
   '<img src="'+escapeHTML(card.image)+'" alt="">':'')+'<figcaption>'+escapeHTML(card.name??'Karte')
-  +(hits.has(card)?'<small>Getroffen</small>':'')+'</figcaption></figure>').join('');
+  +(hits.has(card)?'<small>Getroffen · Pflicht-Forfeit '+(x.segmented?battleForfeitValue(card,side)??'?':card.forfeit??'?')+'</small>':'')+'</figcaption></figure>').join('');
  return '<section class="battle-side '+side.toLowerCase()+(current?' is-current':'')+'"><h3>'+side+' Side</h3><p class="battle-stats">Power '+power
-  +' · Ability '+(ability??'?')+' · Battle Destiny '+(destiny??'–')+'</p>'
-  +'<p class="battle-stats hint">Destiny-Draws '+(battleDestinyDrawCount(side,x.site,ability)??'–')
-  +' · Regulär ab Ability '+minimumBattleDestinyAbility(side,x.site)+'</p>'
+  +' · Ability '+(ability??'?')+'</p>'+battleDestinyMarkup(side,ability,destiny)
   +(figures?'<div class="battle-cards">'+figures+'</div>':'<p class="hint">Keine Einheiten beteiligt</p>')+controls+'</section>';
+}
+
+const destinyPurpose={battle:'Battle Destiny',power:'Power Destiny',attrition:'Attrition Destiny',weapon:'Waffen-Destiny'};
+
+function battleDestinyMarkup(side,ability,destiny){
+ const x=battleSession,key=side.toLowerCase(),decision=x[key+'Card'],draws=x[key+'DrawCards'];
+ const window=PremiereGame.responseWindow(state.game);
+ const revealed=window?.kind==='destiny'&&window.side===side?window:null;
+ const additional=(x.additionalDraws??[]).filter(entry=>entry.side===side).flatMap(entry=>entry.draws.map(draw=>({...draw,purpose:entry.purpose})));
+ const count=battleDestinyDrawCount(side,x.site,ability);
+ const text=decision?'Battle Destiny '+(destiny??'unbekannt')+(decision.name==='Freiwillig verzichtet'?' · verzichtet':
+  decision.name==='Reserve Deck leer'?' · Reserve Deck leer':''):
+  'Battle Destiny · '+(count===null?'Anzahl unbekannt':count===0?'aktuell keine Ziehung':count+' möglich, Werte ausstehend');
+ const entries=[...(draws??[]).map(draw=>({...draw,purpose:'battle'})),...additional];
+ const drawLine=({purpose,name,value,cancelled})=>escapeHTML((destinyPurpose[purpose]??'Destiny')+' · '+name+' · '+
+  (cancelled?'aufgehoben':value??'unbekannt'));
+ const openDraw=revealed?'<p>Gerade aufgedeckt · '+drawLine({purpose:revealed.purpose,...battleDrawInfo(revealed.draw)})+'</p>':'';
+ return '<p class="battle-stats">'+escapeHTML(text)+'</p>'+openDraw
+  +(entries.length?'<ul class="battle-draws" aria-label="Aufgedeckte Destiny-Karten">'+entries.map(draw=>'<li>'+drawLine(draw)+'</li>').join('')+'</ul>':'');
+}
+
+function battleBreakdown(result,parts,settled){
+ if(!result)return '<p class="hint">Gesamt-Power, Battle Damage und Attrition stehen nach den Destiny-Entscheidungen fest.</p>';
+ const winner=result.lightTotal===result.darkTotal?'Gleichstand':(result.lightTotal>result.darkTotal?'Light':'Dark')+' Side gewinnt';
+ const equations=PremiereGame.sides.map(side=>{
+  const power=parts[side],key=side.toLowerCase();
+  const adjusted=power.multiplier!==1?'('+power.base+' + '+power.modifier+') × '+power.multiplier:power.modifier?power.base+' + '+power.modifier:power.base;
+  const opponent=PremiereGame.otherSide(side),attrition=result[opponent.toLowerCase()+'Attrition'];
+  const attritionDelta=attrition-power.battle-power.attritionDestiny;
+  const combatDamage=result[key+'Damage'],baseDamage=Math.max(0,result[opponent.toLowerCase()+'Total']-result[key+'Total']);
+  return '<p class="battle-totals"><b>'+side+' Side</b> · '+adjusted+' Power + '+power.battle+' Battle Destiny + '+power.powerDestiny
+   +' weitere Power = <b>'+result[key+'Total']+'</b></p>'
+   +(Number.isFinite(attrition)?'<p class="hint">'+power.battle+' Battle Destiny + '+power.attritionDestiny+' Attrition-Bonus'
+    +(attritionDelta?' + '+attritionDelta+' durch Karteneffekte':'')+' = '+attrition+' Attrition gegen '+opponent+' Side.</p>':'')
+   +(baseDamage!==combatDamage?'<p class="hint">'+baseDamage+' Battle Damage aus der Power-Differenz → '+combatDamage+' nach Karteneffekten.</p>':'');
+ }).join('');
+ return '<section class="battle-breakdown" aria-label="Berechnung des Kampfergebnisses"><h3>'+(settled?'Kampfergebnis':'Vorläufiges Kampfergebnis')
+  +' · '+winner+'</h3>'+equations+'<p class="hint">Der Power-Unterschied bestimmt den Battle Damage. Battle Destiny und Attrition-Boni erzeugen Attrition auf der Gegenseite. Karteneffekte können beide Werte verändern.</p></section>';
+}
+
+function battleShotMarkup(shots){
+ if(!shots?.length)return '';
+ return '<details class="battle-breakdown"><summary>Waffenergebnisse · '+shots.length+'</summary><ul>'+shots.map(shot=>'<li>'
+  +escapeHTML(shot.side+' · '+shot.weapon+' → '+shot.target+' · Destiny '+(shot.total??'–')+' gegen Verteidigung '+shot.defense+' · '+shot.outcome)
+  +'</li>').join('')+'</ul></details>';
 }
 
 function renderBattle(){
@@ -1160,8 +1284,8 @@ function renderBattle(){
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
  const title=el('battleTitle');
  title.textContent=(isSystem(state.locations[i])?'Raumkampf':'Bodenkampf')+' · '+state.locations[i].name;
- el('battlePriority').textContent=(response?'Antwortfenster · ':steps[stage]+' · ')+(choiceSide===own?'Du bist dran':
-  choiceSide===bot?(el('autoBot').checked?'Bot entscheidet automatisch':'Bot ist dran'):'Kampf wird aufgelöst');
+ el('battlePriority').textContent=steps[stage]+' · '+(response?'Antwortfenster · ':'')+(choiceSide?'Priorität: '+choiceSide+' Side · ':'')+
+  (choiceSide===own?'Du bist dran':choiceSide===bot?(el('autoBot').checked?'Bot entscheidet automatisch':'Bot ist dran'):'Kampf wird aufgelöst');
  const help=el('battleLessonHint'),lesson=lessonProgress();
  help.hidden=!lesson?.hint;
  help.textContent=lesson?.hint??'';
@@ -1173,7 +1297,7 @@ function renderBattle(){
  el('battleDetails').innerHTML='<ol class="battle-timeline" aria-label="Kampfsegmente">'+Object.entries(steps)
   .map(([segment,label])=>'<li'+(stage===segment?' aria-current="step"':'')+'>'+escapeHTML(label)+'</li>').join('')+'</ol>'
   +'<div class="battle-arena">'+fighters.join('')+'</div>'
-  +(totals?'<p class="battle-totals">Gesamt-Power · Light '+totals.lightTotal+' / Dark '+totals.darkTotal+'</p>':'')
+  +battleBreakdown(totals,battlePowerBreakdown(t),!!x.damage)+battleShotMarkup(x.weaponResults)
   +(x.recentEvents?.length?'<ul class="battle-events" aria-label="Letzte Kampfaktionen">'
    +x.recentEvents.map(event=>'<li>'+escapeHTML(event)+'</li>').join('')+'</ul>':'')
   +(!waiting&&state.trainingBattle&&stage!=='damage'?modifierControls():'')
@@ -1215,12 +1339,25 @@ function renderBattle(){
 }
 function renderDamageDebt(damage){
  const summaries=PremiereGame.sides.map(side=>{
-  const debt=damage.debt[side];
-  return '<p>'+side+' · Battle Damage '+debt.damage+' · Attrition '+debt.attrition
-   +(debt.hits.length?' · Pflicht-Forfeits '+debt.hits.map(card=>escapeHTML(card.name)).join(', '):'')
-   +(debt.charged?.length?' · Trooper Charge '+debt.charged.map(card=>escapeHTML(card.name)).join(', '):'')+'</p>';
+  const debt=damage.debt[side],initial=damage.initial?.[side]??debt,units=activeBattleUnits(side);
+  const hits=debt.hits.map(card=>escapeHTML(card.name)+' (Forfeit '+(battleForfeitValue(card,side)??'?')+')');
+  const charged=(debt.charged??[]).map(card=>escapeHTML(card.name));
+  const immune=debt.immunity.filter(card=>units.includes(card)).map(card=>escapeHTML(card.name));
+  const baseAttrition=damage.result[side.toLowerCase()+'Attrition'];
+  const remainingAttrition=debt.attrition&&!units.some(card=>!debt.immunity.includes(card)&&battleForfeitValue(card,side)!==null)?
+   'Keine anfällige Karte mit Forfeit-Wert mehr im Kampf. Die übrige Attrition entfällt.':'';
+  return '<section><h4>'+side+' Side</h4><p>Battle Damage · '+debt.damage+' offen (zu Beginn '+initial.damage+')</p>'
+   +'<p>Attrition · '+debt.attrition+' offen (zu Beginn '+initial.attrition+')</p>'
+   +(baseAttrition>initial.attrition?'<p class="hint">Ein Karteneffekt schützt diese Seite vor '+baseAttrition+' Attrition.</p>':'')
+   +(debt.forceOnly?'<p>'+debt.forceOnly+' Battle Damage muss mit Force bezahlt werden.</p>':'')
+   +'<p>Pflicht-Forfeits '+(hits.length?hits.join(', '):'durch Treffer: keine offen')+'</p>'
+   +(charged.length?'<p>Pflicht-Forfeits durch Trooper Charge · '+charged.join(', ')+'</p>':'')
+   +(initial.attrition&&immune.length?'<p>Gegen diese Attrition immun · '+immune.join(', ')+'</p>':'')
+   +(remainingAttrition?'<p class="hint">'+remainingAttrition+'</p>':'')+'</section>';
  });
- return '<div class="panel"><b>Offene Verluste · '+damage.priority+' am Zug</b>'+summaries.join('')+'</div>';
+ return '<section class="battle-breakdown" aria-label="Offene Verluste"><h3>Offene Verluste</h3>'
+  +'<p class="hint">Forfeits mindern Battle Damage und Attrition. Force-Verluste mindern nur Battle Damage. Treffer können auch bei 0 Battle Damage einen Forfeit erzwingen.</p>'
+  +'<div class="battle-debt">'+summaries.join('')+'</div></section>';
 }
 function closeBattle(){
  if(battleSession&&!battleSession.resolved&&!state?.gameWinner)return false;
@@ -1345,7 +1482,7 @@ function inspectorActions(actions,card){
   const target=option.kind==='deployLocation'?(next?'vor '+next.name:'am Ende der Reihe'):
    option.target?.name??option.host?.name??option.carrier?.name??loc?.name;
   const verbs={deploy:'Ausspielen',deployWithPilot:'Mit Pilot ausspielen',deployLocation:'Location auslegen',
-   convertLocation:'Konvertieren',equip:'Ausrüsten',drain:'Force Drain',battle:'Battle beginnen',move:'Bewegen',
+   convertLocation:'Konvertieren',equip:'Ausrüsten',drain:'Force Drain',battle:'Kampfvorschau',move:'Bewegen',
    fireWeapon:'Feuern',custody:'Gefangenen verwalten',transport:'Besatzung wechseln'};
   const cost=Number.isFinite(option.cost)?' · '+actionForceCost(option):'';
   const label=option.label??[verbs[option.kind]??'Kartenaktion',target,option.pilot?.name,
@@ -1607,7 +1744,7 @@ function playmatActionLabel(option){
  const names={deploy:'Ausspielen',deployLocation:'Location auslegen',convertLocation:'Konvertieren',deployWithPilot:'Mit Pilot ausspielen',
   equip:'Ausrüsten',deployDevice:'Device anbringen',deployBolt:'Restraining Bolt anbringen',deployAutomated:'Waffe aufstellen',
   deployLostPileEffect:'Lost Pile verdecken',deployTableEffect:'Effect ausspielen',deployLocationEffect:'Effect ausspielen',
-  buryMineCard:'Karte verdeckt vergraben',revolution:'Force-Icons und Spieltext tauschen',move:'Bewegen',battle:'Kampf beginnen',
+  buryMineCard:'Karte verdeckt vergraben',revolution:'Force-Icons und Spieltext tauschen',move:'Bewegen',battle:'Kampfvorschau',
   react:'React bewegen',reactDeploy:'Als React ausspielen',interruptResponse:'Antwort ausspielen',passResponse:'Passen',
   drain:'Force Drain',fireWeapon:'Waffe abfeuern',gaderffii:'Gaderffii einsetzen',computerFire:'Waffe erneut abfeuern',
   combinedAttack:'Waffen kombiniert abfeuern',battleForfeit:'Karte forfeiten',toggleLoss:'Für Forfeit auswählen',
@@ -1659,7 +1796,7 @@ function renderPlaymatSelection(selection,available,side){
   if(location)targets.set(slot,!!targets.get(slot)||!reason);
   groups.get(slot).push(reason?'<div class="playmat-action-blocked"><strong>'+escapeHTML(label)+'</strong> · '+escapeHTML(reason)+'</div>':
    option.kind==='combinedAttack'?combinedAttackMarkup(option):option.choices&&['dockGroup','transitGroup'].includes(option.kind)?transportGroupMarkup(option):
-    '<button type="button" '+ruleClick(option)+'>'+caption+'</button>');
+    '<button type="button" '+(option.kind==='battle'?'aria-haspopup="dialog" ':'')+ruleClick(option)+'>'+caption+'</button>');
  }
  const showResponse=window&&(window.priority!==side?'Priorität hat '+window.priority+' Side.':
   'Du hast Priorität im Antwortfenster'+(state.locations[window.site]?' bei '+state.locations[window.site].name:'')+'.');
@@ -1751,7 +1888,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
  const actions=(deploy?ruleButton(deploy,'Ausspielen ('+actionForceCost(deploy)+')'):'')
-  +(battle?ruleButton(battle,'Battle ('+battle.cost+' Force)'):'')+extra;
+  +(battle?ruleButton(battle,'Kampfvorschau · '+battle.cost+' Force'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')
@@ -1909,7 +2046,7 @@ function runBotStep(action){
 const autoBotKey='swccg.v2.autoBot';
 let autoBotTimer=null;
 const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state&&!state.gameWinner&&
- !launchOpen&&!battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
+ !launchOpen&&!battleOnPlaymat&&!el('battlePreview').open&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
 
 function offTurnBotInterrupt(available){
  if(!plannedBot()||(currentGame()?.cardRulesVersion??0)<23||state.activeSide!==playerSide()||pendingActionReason())return null;
@@ -2499,6 +2636,7 @@ el('movementDialog').onclose=scheduleAutomaticBot;
 el('gameReview').onclose=scheduleAutomaticBot;
 el('viewBattlePlaymat').onclick=showBattlePlaymat;
 el('returnToBattle').onclick=returnToBattle;
+el('battlePreview').onclose=scheduleAutomaticBot;
 el('battleAnalysis').oncancel=event=>{if(!closeBattle())event.preventDefault();};
 load();
 </script></html>

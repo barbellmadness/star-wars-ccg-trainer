@@ -2511,7 +2511,7 @@ test('Playmat places Dark above location art and Light below and retains actions
  assert.ok(content.indexOf('DARK · 1')<content.indexOf('Location-Karte: Hoth: Echo Base'));
  assert.ok(content.indexOf('Location-Karte: Hoth: Echo Base')<content.indexOf('LIGHT · 1'));
  assert.doesNotMatch(content,/<button disabled>Ausspielen<\/button>/);
- assert.doesNotMatch(content,/<button disabled>Battle \(1 Force\)<\/button>/);
+ assert.doesNotMatch(content,/<button [^>]*disabled[^>]*>Kampfvorschau/);
 });
 
 test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
@@ -4249,6 +4249,45 @@ function segmentedBattleHarness(side='Light'){
  return fixture;
 }
 
+test('battle preview is read-only, quotes ready weapons after payment and checks the offer again on confirm',()=>{
+ const {run,elements}=segmentedBattleHarness();
+ run(`rebel.weapons=[rifle];rebel.ability=4;trooper.gametext='Immune to attrition < 4.';
+  const offer=()=>legalActions(state,'Light').find(action=>action.kind==='battle');
+  const snapshot=()=>JSON.stringify({force:state.force,used:state.used,deck:state.deck,random:state.game.randomState,
+   revision:state.game.revision,battle:battleSession,marked:state.battledCardsThisTurn});`);
+ const before=run('snapshot()');
+ assert.equal(run('openBattlePreview(offer())'),true);
+ assert.equal(elements.get('battlePreview').open,true);
+ assert.equal(run('snapshot()'),before);
+ const sides=elements.get('battlePreviewSides');
+ assert.match(sides.innerHTML,/Light Side.*Power 3.*1 möglich.*Blaster Rifle.*Rebel.*Trooper.*Dark Side.*Trooper · unter 4/s);
+ assert.doesNotMatch(sides.innerHTML,/Battle draw|Weapon draw|Bot battle draw|Bot weapon draw/);
+ assert.equal(elements.get('battlePreviewConfirm').textContent,'Kampf beginnen · 1 Force');
+ run(`el('battlePreview').close();state.force.length=1;openBattlePreview(offer());`);
+ assert.doesNotMatch(sides.innerHTML,/Blaster Rifle/);
+ assert.match(sides.innerHTML,/kein bezahlbarer Schuss/);
+ const gatedSnapshot=run('snapshot()');
+ assert.equal(run("state.game.revision++;el('battlePreviewConfirm').onclick()"),false);
+ assert.equal(elements.get('battlePreviewConfirm').disabled,true);
+ assert.match(elements.get('battlePreviewStatus').textContent,/Spielstand hat sich geändert/);
+ assert.equal(run('JSON.parse(snapshot()).force.length'),JSON.parse(gatedSnapshot).force.length);
+ run("el('battlePreview').close();openBattlePreview(offer())");
+ assert.equal(run("el('battlePreviewConfirm').onclick()"),true);
+ assert.ok(run('battleSession&&state.force.length===0&&state.used.length===1'));
+});
+
+test('the Dark player previews troop power and both sides before paying for a battle',()=>{
+ const {run,elements}=segmentedBattleHarness('Dark');
+ run(`state.game.playerSide='Dark';state.botTurn=null;trooper.weapons=[blaster];
+  openBattlePreview(legalActions(state,'Dark').find(action=>action.kind==='battle'))`);
+ const markup=elements.get('battlePreviewSides').innerHTML;
+ assert.match(markup,/Light Side.*Power 3.*Dark Side.*Power 3.*Imperial Blaster/s);
+ assert.equal(run('state.botForce.length'),5);
+ assert.equal(run("el('battlePreviewConfirm').onclick()"),true);
+ assert.equal(run('state.botForce.length'),4);
+ assert.match(elements.get('battlePriority').textContent,/Waffen · Priorität: Dark Side · Du bist dran/);
+});
+
 test('a regular battle advances from weapons through power to individual damage payments',()=>{
  const {run,elements}=segmentedBattleHarness();
  run('rebel.weapons=[rifle];');
@@ -4260,11 +4299,15 @@ test('a regular battle advances from weapons through power to individual damage 
  assert.equal(run("requestAction('fireWeapon','Light',[0,0,0])&&battleSession.lastHit.card===trooper"),true);
  assert.equal(run("requestAction('passWeapons','Dark')&&requestAction('passWeapons','Light')&&battleSession.segment==='power'"),true);
  assert.equal(run("requestAction('skipDestiny','Light')&&requestAction('skipDestiny','Dark')&&battleSession.segment==='damage'"),true);
+ assert.match(elements.get('battlePriority').textContent,/Schaden · Priorität: Light Side/);
+ assert.match(elements.get('battleDetails').innerHTML,/Kampfergebnis · Gleichstand.*Battle Destiny 0 · verzichtet|Battle Destiny 0 · verzichtet.*Kampfergebnis · Gleichstand/s);
  assert.equal(run("requestAction('passDamage','Light')"),true);
  assert.equal(run("requestAction('passDamage','Dark')"),false);
  assert.match(elements.get('battleDetails').innerHTML,/Pflicht-Forfeits Trooper/);
  assert.equal(run("botDamageAction().kind"),'battleForfeit');
  assert.equal(run("performAction(botDamageAction())&&state.botLost.includes(trooper)"),true);
+ assert.doesNotMatch(elements.get('battleDetails').innerHTML,/Pflicht-Forfeits Trooper/);
+ assert.match(elements.get('battleDetails').innerHTML,/Battle Damage · 0 offen \(zu Beginn 0\)/);
  assert.equal(run("requestAction('passDamage','Light')&&performAction(botDamageAction())&&battleSession===null"),true);
 });
 
@@ -4281,6 +4324,7 @@ test('the battle dialog shows facing participants, the current segment and activ
  assert.equal(run("requestAction('fireWeapon','Light',[0,0,0])"),true);
  assert.match(elements.get('battleDetails').innerHTML,/Trooper<small>Getroffen/);
  assert.match(elements.get('battleDetails').innerHTML,/Letzte Kampfaktionen.*feuert Blaster Rifle/);
+ assert.match(elements.get('battleDetails').innerHTML,/Waffenergebnisse.*Blaster Rifle.*Destiny 4 gegen Verteidigung 3.*Treffer/s);
  assert.match(elements.get('battlePriority').textContent,/Bot entscheidet automatisch/);
  assert.equal(tick(),true);
  assert.match(elements.get('battlePriority').textContent,/Du bist dran/);
@@ -4313,13 +4357,16 @@ test('Han can pay for one replacement after revealing destiny, and only the repl
 });
 
 test('Tarkin with Vader cancels an opposing draw without creating attrition',()=>{
- const {run}=segmentedBattleHarness();
+ const {run,elements}=segmentedBattleHarness();
  run(`rebel.ability=4;state.dark[0].push({id:'Dark:1061',type:'Character',name:'Grand Moff Tarkin',ability:3,power:2,forfeit:4},
   {id:'Dark:634',type:'Character',name:'Darth Vader',ability:6,power:6,forfeit:6});`);
  assert.equal(run("requestAction('battle','Light',[0])&&requestAction('destiny','Light')"),true);
+ assert.match(elements.get('battlePriority').textContent,/Power & Destiny · Antwortfenster · Priorität: Dark Side/);
+ assert.match(elements.get('battleDetails').innerHTML,/Gerade aufgedeckt · Battle Destiny · Weapon draw · 3/);
  assert.equal(run("requestAction('destinyResponse','Dark',['tarkinCancel'])"),true);
  assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
  assert.equal(run("battleSession.lightDestiny===0&&!battleSession.battleDrawSucceeded.Light&&state.used.at(-1).name==='Weapon draw'"),true);
+ assert.match(elements.get('battleDetails').innerHTML,/Battle Destiny · Weapon draw · aufgehoben/);
  assert.equal(run("requestAction('skipDestiny','Dark')&&battleSession.damage.debt.Dark.attrition===0"),true);
 });
 
@@ -4410,13 +4457,15 @@ test('damage freezes inherited immunity and an immune pilot may still forfeit to
 });
 
 test('Battle, Power and Attrition Destiny use separate totals and actually draw from the deck',()=>{
- const {run}=segmentedBattleHarness();
+ const {run,elements}=segmentedBattleHarness();
  run(`rebel.ability=4;state.deck=[{name:'Attrition',destiny:3},{name:'Power',destiny:2},{name:'Location',type:'Location'}];`);
  assert.equal(run("requestAction('battle','Light',[0])"),true);
  run("scheduleBattleDestiny('Light','power',1);scheduleBattleDestiny('Light','attrition',1);");
  assert.equal(run("requestAction('destiny','Light')&&requestAction('skipDestiny','Dark')"),true);
  assert.equal(run("battleSession.lightDestiny===0&&battleSession.damage.debt.Dark.damage===2&&battleSession.damage.debt.Dark.attrition===3"),true);
  assert.equal(run('state.deck.length===0&&state.used.length===4'),true);
+ assert.match(elements.get('battleDetails').innerHTML,/Battle Destiny · Location · 0.*Power Destiny · Power · 2.*Attrition Destiny · Attrition · 3/s);
+ assert.match(elements.get('battleDetails').innerHTML,/3 Power \+ 0 Battle Destiny \+ 2 weitere Power = <b>5.*3 Attrition gegen Dark Side/s);
 });
 
 test('damage payments alternate even when forfeiting removes all presence on the losing side',()=>{
@@ -4785,11 +4834,14 @@ test('Feltipern Trevagg resets the cost using icons present with him and checks 
  assert.equal(run("battleInitiationCost(2)"),3);
  assert.equal(run("requestAction('battle','Light',[2])"),false);
  run("state.force=forcePile();presentGame();");
- assert.match(elements.get('board').innerHTML,/Battle \(3 Force\)/);
+ assert.match(elements.get('board').innerHTML,/Kampfvorschau · 3 Force/);
+ assert.equal(run("battleOpeningPreview('Light',2).cost"),3);
  run("state.dark[2].push(droid)");
  assert.equal(run("battleInitiationCost(2)"),1);
  run("state.dark[2]=[crawler,trooper];PremiereUnits.add(crawler,trevagg,'passenger','Dark');state.force=[];");
- assert.equal(run("battleInitiationCost(2)===0&&requestAction('battle','Light',[2])&&state.used.length===0"),true);
+ assert.equal(run("openBattlePreview(findOffer(legalActions(state,'Light'),'battle',2))&&state.used.length===0"),true);
+ assert.equal(elements.get('battlePreviewConfirm').textContent,'Kampf beginnen · 0 Force');
+ assert.equal(run("el('battlePreviewConfirm').onclick()&&state.used.length===0"),true);
 });
 
 test('Garindan enables deployment and adjacent moves only with an eligible Rebel',async()=>{
