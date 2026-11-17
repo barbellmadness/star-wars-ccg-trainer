@@ -4,9 +4,9 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 
 ## Aktueller Stand
 - `index.html`: eigenständig lauffähige **Übungs-Alpha** mit einfacher Bot-Logik.
-- `v2.html` lädt den lokalen Premiere-Datensatz mit 324 Karten. Die Lernpartie unterstützt unter anderem Force-Verwaltung, Charaktere, ausgewählte Blaster, Banthas und Raumschiffe mit permanenten Piloten.
+- V2.15.17 lädt den Premiere-Datensatz mit 324 Karten. Die Spielengine unterstützt Force-Verwaltung, Charaktere, Fahrzeuge, Raumschiffe und alle 25 Premiere-Waffen. Der Dark-Side-Bot plant seine Züge anhand seiner Hand und der regelgerecht verfügbaren Informationen.
 - [`data/premiere-starter-decks.json`](data/premiere-starter-decks.json) enthält die beiden festen Lern-Decks mit je 60 Karten und jeweils drei Starting Locations. Im Startbildschirm lassen sich Stückzahlen und Karteneffekte ansehen. Beide Seiten wählen verdeckt und decken gemeinsam auf. Bei gleichem Ortsnamen wählen beide erneut und die beiseitegelegten Karten kommen vor dem Mischen zurück ins jeweilige Deck. Wer keine Alternative mehr hat, startet ohne eigenen Startort. Beide Seiten ziehen je acht Karten. [Decipher-Glossar zu Starting Locations](https://res.starwarsccg.org/rules/swccgglossary.pdf#page=124)
-- Die Lernpartie deckt einen Teil der Premiere-Regeln und Kartentexte ab. Die Kartenprüfung in V2 zeigt die Abdeckung. Kartenbilder werden von den im Datensatz hinterlegten URLs geladen.
+- Zusätzlich stehen pro Seite vier [Themendecks](data/premiere-themed-decks.json) zur Auswahl. Der Kartenkatalog bietet einen Inspektor für alle 324 Karten. Die [TODO.md](TODO.md) dokumentiert den Abschluss der vorgesehenen Premiere-Aufgaben.
 - Die Playmat gruppiert Sites und Systeme. Wähle beim Ausspielen einer Location einen angebotenen Einfügeplatz. Regulärer Landspeed folgt den benachbarten Sites innerhalb derselben Gruppe. [Spielregeln zur Location-Anordnung, Anhang E](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=181)
 
 ## Lokal testen
@@ -18,11 +18,13 @@ node scripts/serve-v2-local.mjs
 
 Die vollständige vorhandene Testsuite läuft in einem Terminal mit `node --test` (Node.js 22 oder neuer).
 
-Der Server liest die private Prüfdatei aus dem benachbarten Ordner `Star Wars CCG Premiere - Drucktexte lokal`. Bei einem anderen Speicherort gib den vollständigen Pfad zu `premiere-drucktexte-lokal.json` als Argument an. Die Datei bleibt außerhalb des Repositorys. Das Karten-Popup zeigt sichtgeprüfte Drucktexte getrennt vom aktiven Spieltext. Ohne Prüfdatei verwendet V2 die im Katalog vorhandenen Drucktexte.
+Alle 324 Premiere-Drucktexte wurden anhand der verlinkten Scans geprüft. 16 Transkriptionen stehen im Repository. Die übrigen 308 bleiben in der privaten Prüfdatei auf dem Laptop außerhalb des Repositorys.
 
-Für die lokale Abnahme prüft `node scripts/import_premiere.mjs --check` den fixierten Kartensatz und beide Decks. `node --test` spielt die Seeds 3, 4 und 9 bis zum Spielende und prüft Boden- und Raumbattles sowie Antwortaktionen. Die Suite spielt Seed 4 auch mit dem Regelstand und Bot älterer Spielstände durch. Für den Browser-Test mit installiertem Google Chrome führst du einmal `npm ci` und dann `npm run test:browser` aus. Mit `$env:SWCCG_CHROMIUM_CHANNEL = 'msedge'` kannst du Microsoft Edge verwenden.
+Der lokale Server liest die Prüfdatei aus dem benachbarten Ordner `Star Wars CCG Premiere - Drucktexte lokal`. Bei einem anderen Speicherort gib den vollständigen Pfad zu `premiere-drucktexte-lokal.json` als Argument an. Das Karten-Popup zeigt die geprüften Drucktexte getrennt vom aktiven Spieltext. Ohne Prüfdatei verwendet V2 die 16 im Katalog hinterlegten Drucktexte.
 
-In V2 zeigt „Kartenfähigkeiten: Vollständigkeitsprüfung“ die aktuellen Abdeckungszahlen und die offenen Karten. Die herangezogenen Regelquellen stehen im [Regelstand](PREMIERE-REGELSTAND.md).
+Für die lokale Abnahme prüft `node scripts/import_premiere.mjs --check` den fixierten Kartensatz und alle zehn Decks. `node --test` spielt die Seeds 3, 4 und 9 bis zum Spielende und prüft Boden- und Raumbattles sowie Antwortaktionen. Die Suite spielt Seed 4 auch mit dem Regelstand und Bot älterer Spielstände durch. Für den Browser-Test mit installiertem Google Chrome führst du einmal `npm ci` und dann `npm run test:browser` aus. Mit `$env:SWCCG_CHROMIUM_CHANNEL = 'msedge'` kannst du Microsoft Edge verwenden.
+
+In V2 zeigt „Kartenfähigkeiten: Vollständigkeitsprüfung“ den Umsetzungsstand der Karten.
 
 ## Geführte Übungen und Szenarien
 
@@ -40,14 +42,10 @@ Entwickle und teste lokal. Ausgangspunkt ist `automation/multi-deploy-growing-si
 
 Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen `node --test` aus und halte Commit, Testergebnis und offene Fehler im Pull Request fest. Pushe den Entwicklungsbranch ohne Force und verwende Pull Requests für Änderungen an der Basis.
 
-## Nächste Arbeitsschritte
-1. Drucktranskriptionen anhand der Kartenbilder prüfen und ergänzen.
-2. Regelengine auf Grundlage des Premiere-Regelstands weiter ausbauen und testen.
-3. Die Karteneffekte der beiden festen Starterdecks und die zugehörigen Bot-Entscheidungen vervollständigen.
-4. Erst nach rechtlicher Prüfung Bilder öffentlich ausliefern.
-
 ## Veröffentlichung
 
 GitHub Actions aktualisiert die [öffentliche V2-Seite](https://barbellmadness.github.io/star-wars-ccg-trainer/v2.html) bei Pushes auf Entwicklungsbranches mit dem Präfix `codex/`. Lege neue Branches von einem Entwicklungsstand an, der den Veröffentlichungsworkflow bereits enthält.
 
 Vor jeder Veröffentlichung prüft der Workflow die Premiere-Kartendaten und führt `node --test` aus. Für Pull Requests laufen dieselben Prüfungen. Das Deployment wird durch den erfolgreichen Push ausgelöst und folgt dem Stand des getesteten Commits.
+
+V2 lädt Kartenbilder von den im Datensatz hinterlegten URLs. Für die öffentliche Auslieferung eigener Bilddateien steht die rechtliche Prüfung aus.
