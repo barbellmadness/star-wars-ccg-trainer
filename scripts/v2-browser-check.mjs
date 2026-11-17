@@ -19,6 +19,25 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       ? route.continue() : route.abort());
     await page.goto(origin + '/v2.html');
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
+    const chooseSide = side => page.locator('#launchSides [data-side="' + side + '"]').click();
+    const deckTiles = page.locator('#launchDeckGrid [data-deck]');
+    assert.equal(await page.locator('#launchSides button').count(), 2);
+    assert.equal(await page.locator('#launchDeckGrid').isVisible(), false);
+    assert.match(await page.locator('#launchSides button').first().innerHTML(), /lightcardback\.png.*lukeskywalker\.gif/s);
+    await chooseSide('light');
+    assert.equal(await deckTiles.count(), 6);
+    await deckTiles.filter({hasText: 'Schmuggler auf dem Kessel Run'}).click();
+    assert.match(await deckTiles.locator('xpath=self::button[@aria-pressed="true"]').innerHTML(), /millenniumfalcon\.gif.*Millennium Falcon/s);
+    await page.getByRole('button', {name: 'Deckliste ansehen'}).click();
+    assert.match(await page.getByRole('dialog', {name: 'Schmuggler auf dem Kessel Run · 60 Karten'}).textContent(), /Millennium Falcon/);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', {name: 'Seite wechseln'}).click();
+    await chooseSide('dark');
+    assert.equal(await deckTiles.count(), 6);
+    assert.match(await deckTiles.filter({hasText: 'Blockade von Kessel'}).innerHTML(), /devastator\.gif.*Devastator/s);
+    await page.getByRole('button', {name: 'Seite wechseln'}).click();
+    await chooseSide('light');
+    await page.locator('#matchSettings summary').click();
     const lightDeck = page.getByLabel('Light Side', {exact: true});
     const darkDeck = page.getByLabel('Dark Side', {exact: true});
     assert.equal(await lightDeck.locator('option').count(), 6);
@@ -112,6 +131,13 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.ok(await page.locator('.location-art-button').first().getAttribute('aria-label'));
     assert.deepEqual(errors, []);
 
+    await page.locator('#configureGame').click();
+    await chooseSide('light');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.getByRole('button', {name: 'Zur laufenden Partie'}).click();
+    assert.ok(await page.locator('#gameTable').isVisible());
+    await page.locator('#configureGame').click();
+    await chooseSide('light');
     await page.locator('#gameSeed').fill('0');
     page.once('dialog', dialog => dialog.accept());
     await page.locator('#start').click();
@@ -267,7 +293,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.21'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.22'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -283,6 +309,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#resumeGame').isVisible(), false);
 
     await page.evaluate(() => {
+      launchOpen = false;
       start(4);
       const choice = legalActions(null, 'Light')[0];
       requestAction('chooseStart', 'Light', choice.args);
@@ -324,9 +351,11 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Traffic Control · Rebel Trooper auf Used Pile legen'}).click();
     assert.equal(await page.evaluate(() => state.used.at(-1).id), 'Light:2052');
 
+    await page.locator('#configureGame').click();
+    await page.locator('#matchSettings summary').click();
     await page.locator('#gameMode').selectOption('force');
     page.once('dialog', dialog => dialog.accept());
-    await page.getByRole('button', {name: 'Neue Partie'}).click();
+    await page.getByRole('button', {name: 'Übung starten'}).click();
     assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
     await page.getByRole('button', {name: 'Force aktivieren'}).click();
     await page.getByRole('button', {name: 'Schritt rückgängig'}).click();
@@ -356,11 +385,12 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await catalogCard.getByRole('button', {name: 'Schließen'}).click();
     await catalog.getByRole('button', {name: 'Schließen'}).click();
 
+    await page.locator('#configureGame').click();
     await page.locator('#gameMode').selectOption('');
-    await page.getByLabel('Du spielst').selectOption('Dark');
+    await chooseSide('dark');
     await page.locator('#gameSeed').fill('4');
     page.once('dialog', dialog => dialog.accept());
-    await page.getByRole('button', {name: 'Neue Partie'}).click();
+    await page.getByRole('button', {name: 'Startorte wählen'}).click();
     await page.locator('#setup button.start-location-option').first().click();
     for (let attempt = 0; attempt < 3 && await page.getByRole('button', {name: 'Erneut wählen'}).isVisible(); attempt++) {
       await page.getByRole('button', {name: 'Erneut wählen'}).click();
@@ -377,7 +407,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await darkCard.getByRole('button', {name: 'Schließen'}).click();
     await page.reload();
     await page.getByRole('button', {name: 'Partie fortsetzen'}).click();
-    assert.equal(await page.getByLabel('Du spielst').inputValue(), 'Dark');
+    assert.equal(await page.locator('#playerSideChoice').inputValue(), 'Dark');
     assert.equal(await page.locator('#inspectHandCard0').getAttribute('aria-label'), firstDarkCard);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));

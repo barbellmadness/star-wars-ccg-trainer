@@ -1051,6 +1051,7 @@ test('an empty Reserve Deck cannot hit and does not refund the weapon action',()
 async function craftHarness(){
  const {run,elements}=await premiereHarness();
  run(`
+ launchOpen=false;
  const card=id=>({...catalog.find(c=>c.id===id)});
  const ship=card('Light:2838'), scout=card('Dark:2602'), tie=card('Dark:2600');
  const bantha=card('Dark:191'), tusken=card('Dark:2648');

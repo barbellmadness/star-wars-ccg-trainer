@@ -230,11 +230,78 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 .catalog-search[hidden],.card-inspector-content img[hidden]{display:none}
 .review-events{max-height:44vh;overflow:auto;padding-left:1.5rem;overflow-wrap:anywhere}
 .review-events li{margin:5px 0}
+.match-settings{margin:5px 0;color:#c4d2e7}
+.match-settings>summary{cursor:pointer;width:max-content;max-width:100%}
+.match-settings[open]>.game-options{padding:8px 0 3px}
+.launch-toolbar{max-width:1120px;margin-inline:auto;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.launch-toolbar .match-settings{margin:0}
+.launch-toolbar .match-settings[open]{flex-basis:100%}
+.launch-toolbar #stats,.launch-toolbar #gameSaveStatus:empty{display:none}
+.launch-screen{max-width:1120px;margin:18px auto 24px;padding:clamp(16px,3vw,36px);border:1px solid #574c39;border-radius:16px;background:radial-gradient(ellipse at 48% 0,#1b273d 0,transparent 65%),#0b101a;box-shadow:0 20px 64px #0007}
+.launch-screen[hidden],.launch-screen [hidden],#matchArea[hidden]{display:none}
+.launch-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.launch-header h1{margin:0;font-size:clamp(22px,4vw,37px);letter-spacing:.025em;line-height:1.1}
+.launch-header h1:focus{outline:none}
+.launch-side-grid,.launch-deck-grid{display:grid;gap:clamp(9px,1.4vw,17px)}
+.launch-side-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.launch-deck-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.launch-tone-light{--launch-accent:#ddc792;--launch-glow:#819cb5;--launch-ink:#121e2b}
+.launch-tone-dark{--launch-accent:#efa7a8;--launch-glow:#a85260;--launch-ink:#281820}
+.launch-side,.launch-deck{position:relative;min-width:0;border:1px solid color-mix(in srgb,var(--launch-accent),#192232 57%);border-radius:12px;text-align:left;background-color:var(--launch-ink);color:#f1f4fb;isolation:isolate}
+.launch-side:hover,.launch-deck:hover,.launch-deck[aria-pressed=true]{border-color:var(--launch-accent)}
+.launch-side:focus-visible,.launch-deck:focus-visible{outline:2px solid var(--launch-accent);outline-offset:3px}
+.launch-side{min-height:clamp(210px,25vw,310px);padding:clamp(15px,2.7vw,32px);display:flex;align-items:end;overflow:hidden;background:radial-gradient(ellipse at 79% 40%,color-mix(in srgb,var(--launch-glow),transparent 37%),transparent 69%),linear-gradient(135deg,var(--launch-ink),#0b1018 80%)}
+.launch-side::before{content:"";position:absolute;inset:12px;border:1px solid color-mix(in srgb,var(--launch-accent),transparent 82%);border-radius:6px;pointer-events:none}
+.launch-side-copy{position:relative;z-index:1;display:grid;gap:4px;text-shadow:0 2px 12px #080b11,0 2px 4px #080b11}
+.launch-side-copy strong{font-size:clamp(22px,4.8vw,48px);line-height:1.06;letter-spacing:-.025em;color:var(--launch-accent)}
+.launch-side-copy small,.launch-deck small{font-size:12px;color:#cbd5e7}
+.launch-stack{position:absolute;width:clamp(92px,26%,146px);inset:auto 13% 13% auto;aspect-ratio:5/7;pointer-events:none}
+.launch-art{display:block;position:relative;aspect-ratio:5/7;border:1px solid color-mix(in srgb,var(--launch-accent),transparent 35%);border-radius:6px;background:repeating-linear-gradient(135deg,#ffffff09 0 1px,transparent 1px 9px),#0a111c;box-shadow:0 8px 22px #0009;overflow:hidden}
+.launch-stack>.launch-art{width:100%;height:100%;position:absolute;inset:0;transform:rotate(8deg)}
+.launch-stack>.launch-art:first-child{transform:translate(-28%,-8%) rotate(-16deg)}
+.launch-art img{display:block;width:100%;height:100%;object-fit:contain}
+.launch-art [hidden]{display:none}
+.launch-art-fallback{display:grid;place-items:center;padding:6px;text-align:center;height:100%;color:var(--launch-accent);font-size:clamp(10px,1.35vw,14px);font-weight:700}
+.launch-deck{display:flex;flex-direction:column;padding:0;overflow:hidden}
+.launch-deck[aria-pressed=true]{box-shadow:0 0 0 1px var(--launch-accent),0 6px 24px #0006}
+.launch-deck-visual{display:grid;place-items:center;position:relative;width:100%;min-height:145px;padding:11px;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--launch-glow),transparent 34%),transparent 75%),repeating-linear-gradient(120deg,#ffffff08 0 1px,transparent 1px 16px),#0c121c}
+.launch-deck-visual .launch-art{width:92px}
+.launch-deck-copy{display:grid;gap:3px;padding:10px 12px 12px}
+.launch-deck-copy strong{font-size:clamp(14px,1.5vw,19px);line-height:1.15;color:var(--launch-accent)}
+.launch-actions{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #465369}
+.launch-summary{flex:1 1 245px;margin:0;color:#cbd5e7;font-size:13px}
+.launch-summary strong{color:#f3db9f;display:block;margin-bottom:3px}
+.launch-primary{background:linear-gradient(#f5d98d,#bf9952);border-color:#e3c686;color:#17120a;font-weight:750}
+@media(max-width:620px){
+ .launch-deck-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .launch-side{min-height:178px}
+ .launch-stack{width:72px;inset:auto 11% 28% auto}
+ .launch-side-copy strong{font-size:20px}
+ .launch-side-copy small{font-size:10px}
+ .launch-deck-visual{min-height:120px;padding:8px}
+ .launch-deck-visual .launch-art{width:73px}
+ .launch-deck-copy{padding:9px}
+}
 </style>
 <main>
   <header class="brand-header"><img src="https://gemp.starwarsccg.org/gemp-swccg/epic-duel/logo.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header>
-  <div class="panel game-toolbar">
+  <div class="panel game-toolbar" id="gameToolbar">
     <div class="game-options">
+      <select id="playerSideChoice" hidden>
+        <option value="Light">Light Side</option>
+        <option value="Dark">Dark Side</option>
+      </select>
+      <button id="configureGame" type="button" hidden>Neue Partie</button>
+      <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
+      <button id="restartGame" type="button" hidden>Szenario neu starten</button>
+      <button id="reviewGame" type="button" aria-haspopup="dialog" hidden>Partie auswerten</button>
+      <button id="importGame" type="button">Szenario laden</button>
+      <input id="gameFile" type="file" accept=".json,application/json" hidden>
+      <button id="endGame" type="button" hidden></button>
+    </div>
+    <details class="match-settings" id="matchSettings">
+      <summary>Partieoptionen</summary>
+      <div class="game-options">
       <label>Partie-Seed <input id="gameSeed" type="number" min="0" max="4294967295" placeholder="Zufällig"></label>
       <label>Spielmodus <select id="gameMode">
         <option value="">Freie Partie</option>
@@ -242,17 +309,6 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
         <option value="battle">Lernen · Bodenkampf mit Blaster</option>
         <option value="movement">Lernen · Fahrzeug- und Raumbewegung</option>
       </select></label>
-      <label>Du spielst <select id="playerSideChoice">
-        <option value="Light">Light Side</option>
-        <option value="Dark">Dark Side</option>
-      </select></label>
-      <button id="start" disabled>Neue Partie</button>
-      <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
-      <button id="restartGame" type="button" hidden>Szenario neu starten</button>
-      <button id="reviewGame" type="button" aria-haspopup="dialog" hidden>Partie auswerten</button>
-      <button id="importGame" type="button">Szenario laden</button>
-      <input id="gameFile" type="file" accept=".json,application/json" hidden>
-      <button id="endGame" type="button" hidden></button>
       <label><input id="autoBot" type="checkbox"> Bot automatisch spielen lassen</label>
       <div class="starter-deck-actions" role="group" aria-label="Decks für eine neue Partie">
         <div class="starter-deck-choice">
@@ -266,10 +322,28 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
           <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
         </div>
       </div>
-    </div>
+      </div>
+    </details>
     <div id="stats"></div>
     <span id="gameSaveStatus" class="hint" role="status"></span>
   </div>
+  <section id="launchScreen" class="launch-screen" aria-labelledby="launchTitle" hidden>
+    <div class="launch-header">
+      <h1 id="launchTitle" tabindex="-1">Wähle deine Seite</h1>
+      <div class="game-options">
+        <button id="backToSide" type="button" hidden>Seite wechseln</button>
+        <button id="returnToGame" type="button" hidden>Zur laufenden Partie</button>
+      </div>
+    </div>
+    <div id="launchSides" class="launch-side-grid"></div>
+    <div id="launchDeckGrid" class="launch-deck-grid" role="group" aria-label="Decks deiner Seite" hidden></div>
+    <div id="launchActions" class="launch-actions" hidden>
+      <p id="launchSummary" class="launch-summary" aria-live="polite"></p>
+      <button id="viewLaunchDeck" type="button" aria-haspopup="dialog">Deckliste ansehen</button>
+      <button id="start" class="launch-primary" type="button" disabled>Startorte wählen</button>
+    </div>
+  </section>
+  <div id="matchArea">
   <div class="panel" id="gameMessage"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div>
   <p id="outOfPlay" class="hint" hidden></p>
   <section id="lessonPanel" class="panel lesson-panel" aria-labelledby="lessonTitle" hidden>
@@ -360,6 +434,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
       </section>
     </aside>
   </section>
+  </div>
   <details class="panel">
     <summary>Trainer-Optionen und Kartenprüfung</summary>
     <div class="trainer-options">
@@ -410,7 +485,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.21';
+const trainerVersion='2.15.22';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -624,15 +699,94 @@ function startingLocationMarkup(card){
 const sideName={light:'Light',dark:'Dark'};
 const deckSelector=side=>el('select'+sideName[side]+'Deck');
 const deckId=deck=>deck?.theme?.id??'starter';
+const launchFactions={
+ light:{caption:'Rebellion',hero:'Light:1593',covers:{'massassi-widerstand':'Light:1021','rote-staffel':'Light:2060',
+  'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343'}},
+ dark:{caption:'Galaktisches Imperium',hero:'Dark:634',covers:{'imperiale-garnison':'Dark:1061','schwarze-staffel':'Dark:2700',
+  'tusken-ueberfall':'Dark:2648','blockade-von-kessel':'Dark:723','imperiale-sondereinheit':'Dark:478'}},
+};
+let launchOpen=false,launchFaction=null;
+
 function selectedDeck(side){
  const options=deckChoices[side];
  return options.find(({deck})=>deckId(deck)===deckSelector(side).value)??options[0];
 }
 
+function launchArt(url,fallback){
+ const image=url?'<img src="'+escapeHTML(url)+'" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
+ return '<span class="launch-art">'+image+'<span class="launch-art-fallback"'+(image?' hidden':'')+'>'+escapeHTML(fallback)+'</span></span>';
+}
+
+function launchCover(side,deck){
+ const faction=launchFactions[side],id=deckId(deck)==='starter'?faction.hero:faction.covers[deckId(deck)];
+ return deck.cards.find(card=>card.id===id)??deck.cards.find(card=>card.type==='Character'&&card.image);
+}
+
+function renderLaunchSummary(){
+ const lesson=PremiereLearning.lesson(el('gameMode').value);
+ el('launchActions').hidden=!lesson&&!launchFaction;
+ el('viewLaunchDeck').hidden=!!lesson;
+ el('start').textContent=lesson?'Übung starten':'Startorte wählen';
+ if(lesson){
+  el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte Light-Side-Ausgangslage';
+ }else if(launchFaction){
+  const {deck}=selectedDeck(launchFaction);
+  el('launchSummary').innerHTML='<strong>'+escapeHTML(deck.theme?.name??'Premiere-Starterdeck')+' · '+deck.cards.length+' Karten</strong>'
+   +escapeHTML(deck.theme?.description??'Das feste Premiere-Deck für den Einstieg.');
+ }
+}
+
+function renderLaunch(){
+ const visible=launchOpen&&!!starterDecks&&!!deckChoices;
+ el('gameToolbar').className=visible?'panel game-toolbar launch-toolbar':'panel game-toolbar';
+ el('launchScreen').hidden=!visible;
+ el('matchArea').hidden=visible;
+ el('configureGame').hidden=visible||!starterDecks||!deckChoices;
+ if(!visible)return;
+ const lesson=PremiereLearning.lesson(el('gameMode').value);
+ const sideStep=!lesson&&!launchFaction;
+ el('launchTitle').textContent=lesson?'Geführte Übung':sideStep?'Wähle deine Seite':'Wähle dein Deck · '+sideName[launchFaction]+' Side';
+ el('launchSides').hidden=!sideStep;
+ el('backToSide').hidden=!!lesson||sideStep;
+ el('returnToGame').hidden=!state&&!activeSaveStored&&!activeSave?.commands.length;
+ const deckGrid=el('launchDeckGrid');
+ deckGrid.hidden=!!lesson||sideStep;
+ if(sideStep)el('launchSides').innerHTML=Object.entries(launchFactions).map(([side,{caption,hero}])=>{
+  const name=sideName[side],card=catalog.find(card=>card.id===hero);
+  return '<button type="button" class="launch-side launch-tone-'+side+'" data-side="'+side+'" onclick="chooseLaunchFaction(\''+side+'\')">'
+   +'<span class="launch-stack" aria-hidden="true">'+launchArt(cardBackUrls[name],name)+launchArt(card?.image,card?.name??name)+'</span>'
+   +'<span class="launch-side-copy"><strong>'+name+' Side</strong><small>'+caption+'</small></span></button>';
+ }).join('');
+ if(!deckGrid.hidden){
+  const side=launchFaction,selected=deckId(selectedDeck(side).deck);
+  deckGrid.innerHTML=deckChoices[side].map(({deck})=>{
+   const id=deckId(deck),name=deck.theme?.name??'Premiere-Starterdeck',cover=launchCover(side,deck);
+   const pick='chooseLaunchDeck('+JSON.stringify(id)+')';
+   return '<button type="button" class="launch-deck launch-tone-'+side+'" data-deck="'+escapeHTML(id)+'" aria-pressed="'+(id===selected)
+    +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchArt(cover?.image,cover?.name??name)+'</span>'
+    +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>';
+  }).join('');
+ }
+ renderLaunchSummary();
+}
+
+function chooseLaunchFaction(side){
+ launchFaction=side;
+ el('playerSideChoice').value=sideName[side];
+ renderLaunch();
+ el('launchTitle').focus();
+}
+
+function chooseLaunchDeck(id){
+ deckSelector(launchFaction).value=id;
+ for(const button of el('launchDeckGrid').querySelectorAll('[data-deck]'))button.setAttribute('aria-pressed',String(button.dataset.deck===id));
+ renderLaunchSummary();
+}
+
 function showStarterDeck(side){
  const {deck:selected}=selectedDeck(side);
  const active=currentGame()?.starterDecks?.[side];
- const deck=active&&deckId(active)===deckId(selected)?active:selected;
+ const deck=!launchOpen&&active&&deckId(active)===deckId(selected)?active:selected;
  const counts=new Map();
  for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
  el('starterDeckTitle').textContent=(deck.theme?.name??sideName[side]+' Side Deck')+' · '+deck.cards.length+' Karten';
@@ -1526,7 +1680,7 @@ function runBotStep(action){
 const autoBotKey='swccg.v2.autoBot';
 let autoBotTimer=null;
 const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state&&!state.gameWinner&&
- !battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
+ !launchOpen&&!battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
 
 function offTurnBotInterrupt(available){
  if(!plannedBot()||(currentGame()?.cardRulesVersion??0)<23||state.activeSide!==playerSide()||pendingActionReason())return null;
@@ -1574,8 +1728,8 @@ function setAutoBot(enabled){
 
 presentGame=()=>{
  if(replayingGame)return;
- el('endGame').hidden=!currentGame()||!!state?.gameWinner;
- el('restartGame').hidden=!activeSave&&!closedReview?.scenario;
+ el('endGame').hidden=launchOpen||!currentGame()||!!state?.gameWinner;
+ el('restartGame').hidden=(!activeSave&&!closedReview?.scenario)||(launchOpen&&!activeSaveStored&&!state&&!closedReview?.scenario);
  el('reviewGame').hidden=!state?.gameWinner&&!closedReview;
  if(battleOnPlaymat!==battleSession||battleSession?.resolved||state?.gameWinner)battleOnPlaymat=null;
  el('returnToBattle').hidden=!battleOnPlaymat;
@@ -1590,9 +1744,10 @@ presentGame=()=>{
   el('setup').style.display='none';
   render();
  }
- if(battleSession&&!state?.gameWinner){
+ if(battleSession&&!state?.gameWinner&&!launchOpen){
   if(!battleOnPlaymat)renderBattle();
  }else closeBattle();
+ renderLaunch();
  scheduleAutomaticBot();
 };
 
@@ -1730,7 +1885,7 @@ function activateSave(saved){
  el('playerSideChoice').disabled=!!saved.lesson;
 }
 
-function startNewGame(seed,trainingBattle=false,key){
+function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  const light=selectedDeck('light'),dark=selectedDeck('dark');
  const fixed=key?lessonDecks[key]:null;
  const decks=fixed?.decks??{light:light.deck,dark:dark.deck};
@@ -1742,14 +1897,15 @@ function startNewGame(seed,trainingBattle=false,key){
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
   seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{})});
  activeSaveStored=false;
+ launchOpen=keepLauncher;
  presentGame();
  return true;
 }
 
 function previewStartingLocations(){
- if(!setupDecks||!activeSave||activeSave.commands.length)return;
+ if(!setupDecks||!activeSave||activeSave.commands.length||PremiereLearning.lesson(el('gameMode').value)||launchOpen&&activeSaveStored)return;
  const stored=activeSaveStored;
- if(startNewGame(activeSave.seed,activeSave.trainingBattle)&&stored)saveActiveGame();
+ if(startNewGame(activeSave.seed,activeSave.trainingBattle,undefined,launchOpen)&&stored)saveActiveGame();
 }
 
 function replayScenario(saved,commands=saved.commands,verify=true){
@@ -1800,6 +1956,7 @@ function resumeGameFromUI(){
   return false;
  }
  activateSave(saved);
+ launchOpen=false;
  activeSaveStored=true;
  syncScenarioControls(saved);
  saveStatus('Gespeicherte Partie fortgesetzt');
@@ -1882,6 +2039,7 @@ function importScenario(value){
   return false;
  }
  activateSave(saved);
+ launchOpen=false;
  activeSaveStored=false;
  syncScenarioControls(saved);
  saveActiveGame();
@@ -1900,6 +2058,7 @@ function restartScenario(){
   return false;
  }
  activateSave(opening);
+ launchOpen=false;
  syncScenarioControls(opening);
  saveActiveGame();
  presentGame();
@@ -1930,6 +2089,9 @@ function endGameFromUI(){
  closedReview=review;
  resumeCandidate=otherSave?readSavedGame():null;
  state=setupDecks=battleSession=null;
+ launchOpen=true;
+ launchFaction=null;
+ el('gameMode').value='';
  presentGame();
  el('setup').style.display='none';
  el('gameTable').hidden=true;
@@ -1948,7 +2110,7 @@ function endGameFromUI(){
  el('hint').textContent='Du kannst die Partie auswerten, das Szenario neu starten oder eine neue Partie beginnen.';
  el('resumeGame').hidden=!resumeCandidate;
  saveStatus(otherSave?'Der Autosave wurde in einem anderen Tab geändert.':removed?'Lokaler Spielstand gelöscht':'');
- el('start').focus({preventScroll:true});
+ el('launchTitle').focus({preventScroll:true});
  return true;
 }
 
@@ -2007,27 +2169,49 @@ async function load(){try{
   selector.innerHTML=deckChoices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deck.theme?.name??'Premiere-Starterdeck')+'</option>').join('');
   selector.value='starter';
   selector.disabled=false;
-  selector.onchange=previewStartingLocations;
+  selector.onchange=()=>{previewStartingLocations();renderLaunch();};
  }
  catalog=cards;
  el('start').disabled=false;
  auditData();
+ launchOpen=true;
+ launchFaction=null;
  resumeCandidate=readSavedGame();
  if(resumeCandidate){
   el('resumeGame').hidden=false;
   el('instruction').textContent='Gespeicherte Partie verfügbar';
- }else startNewGame();
+  renderLaunch();
+ }else startNewGame(undefined,false,undefined,true);
  el('viewLightDeck').disabled=false;
  el('viewDarkDeck').disabled=false;
  el('viewCatalog').disabled=false;
  }catch(e){
   starterDecks=null;
   el('start').disabled=true;
+ renderLaunch();
   el('instruction').textContent='Premiere-Kartendaten oder Decklisten nicht bereit';
   el('hint').textContent=e.message;
  }}
 
 el('auditBtn').onclick=auditData;el('start').onclick=startFromUI;
+el('configureGame').onclick=()=>{
+ launchOpen=true;
+ launchFaction=null;
+ presentGame();
+ el('launchTitle').focus();
+};
+el('backToSide').onclick=()=>{launchFaction=null;renderLaunch();el('launchTitle').focus();};
+el('returnToGame').onclick=()=>{
+ if(activeSave){
+  el('gameMode').value=activeSave.lesson??'';
+  el('playerSideChoice').value=activeSave.playerSide??'Light';
+  syncScenarioControls(activeSave);
+ }
+ launchOpen=false;
+ presentGame();
+ el('configureGame').focus();
+};
+el('viewLaunchDeck').onclick=()=>{if(launchFaction)showStarterDeck(launchFaction);};
 el('resumeGame').onclick=resumeGameFromUI;
 el('restartGame').onclick=restartScenario;
 el('reviewGame').onclick=openGameReview;
@@ -2046,6 +2230,8 @@ el('gameMode').onchange=()=>{
  const lesson=PremiereLearning.lesson(el('gameMode').value);
  el('playerSideChoice').disabled=!!lesson;
  if(lesson){el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value='Light';}
+ else if(launchFaction)el('playerSideChoice').value=sideName[launchFaction];
+ renderLaunch();
 };
 el('playerSideChoice').onchange=previewStartingLocations;
 for(const id of ['endGame','endBattleGame']){
