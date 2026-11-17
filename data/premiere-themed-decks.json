@@ -84,8 +84,9 @@
           { "id": "Light:1803", "count": 2 },
           { "id": "Light:1813", "count": 1 },
           { "id": "Light:1883", "count": 3 },
-          { "id": "Light:2052", "count": 4 },
+          { "id": "Light:2052", "count": 3 },
           { "id": "Light:2100", "count": 2 },
+          { "id": "Light:2161", "count": 1 },
           { "id": "Light:2250", "count": 2 },
           { "id": "Light:2297", "count": 1 },
           { "id": "Light:2307", "count": 4 },
@@ -217,6 +218,7 @@
           { "id": "Dark:1264", "count": 2 },
           { "id": "Dark:1922", "count": 1 },
           { "id": "Dark:2099", "count": 2 },
+          { "id": "Dark:2160", "count": 1 },
           { "id": "Dark:2355", "count": 4 },
           { "id": "Dark:2360", "count": 2 },
           { "id": "Dark:2373", "count": 1 },
@@ -226,7 +228,7 @@
           { "id": "Dark:2458", "count": 3 },
           { "id": "Dark:2461", "count": 2 },
           { "id": "Dark:2465", "count": 2 },
-          { "id": "Dark:2648", "count": 16 },
+          { "id": "Dark:2648", "count": 15 },
           { "id": "Dark:2660", "count": 2 }
         ]
       },

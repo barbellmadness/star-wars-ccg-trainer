@@ -156,11 +156,19 @@ function isPlanetSystem(c){return !!c&&isSystem(c)&&c.locationTags?.includes('Pl
 
 function isExteriorPlanetSite(c){return !!c&&isSite(c)&&c.locationTags?.includes('Planet')&&c.locationTags.includes('Exterior')}
 
+function cardUniquenessLimit(card){
+ return card.uniquenessLimit??card.name?.match(/^[*•]+/)?.[0].length??(card.unique===true?1:Infinity);
+}
+
+function sameTitleOrPersona(card,unit){
+ return locationTitle(unit)===locationTitle(card)||card.personas?.some(persona=>
+  unit.personas?.some(name=>name.toLowerCase()===persona.toLowerCase()));
+}
+
 function withinDeploymentLimit(card,side){
- const limit=card.uniquenessLimit??card.name?.match(/^[*•]+/)?.[0].length??(card.unique===true?1:Infinity);
+ const limit=cardUniquenessLimit(card);
  if(limit===Infinity)return true;
- const identity=card.personas?.map(persona=>persona.toLowerCase())??[];
- const matches=unit=>locationTitle(unit)===locationTitle(card)||identity.some(persona=>unit.personas?.some(name=>name.toLowerCase()===persona));
+ const matches=unit=>sameTitleOrPersona(card,unit);
  if(state.outOfPlay?.some(unit=>(unit.owner??unit.side)===side&&matches(unit)))return false;
  const effects=[...Object.values(state.locationEffects??{}).flat(),...(state.tableEffects??[])]
   .map(effect=>effect.card).filter(unit=>(unit.owner??unit.side)===side);
@@ -189,7 +197,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=13;
+const latestCardRulesVersion=14;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -316,7 +324,12 @@ function groundReach(card,from,to,range){
   if(sitePlanet(loc)!==region)return false;
   if(PremiereUnits.tube(card))return tags.includes('Interior')&&tags.includes('Mobile');
   if(PremiereUnits.bantha(card))return isExteriorPlanetSite(loc);
-  if(card.type==='Vehicle')return tags.includes('Exterior')&&(!PremiereUnits.crawler(card)||tags.includes('Planet'));
+  if(PremiereUnits.crawler(card)){
+   const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+   if(version<14)return tags.includes('Exterior')&&tags.includes('Planet');
+   return tags.includes('Exterior')&&(card.id==='Dark:2160'?!tags.includes('Mobile'):tags.includes('Planet'));
+  }
+  if(card.type==='Vehicle')return tags.includes('Exterior');
   return true;
  });
 }
@@ -420,7 +433,8 @@ function transportOptions(side){
   if(!move&&['Starship','Vehicle'].includes(host.type)){
    for(const [h,card] of (hand??[]).entries()){
     const splitDeploy=expandedDeploy&&jawaCosts.has(card.id);
-    if((card.side&&card.side!==side)||(!splitDeploy&&!Number.isFinite(card.deploy))||!withinDeploymentLimit(card,side)||!hasDeployPresence(side,here))continue;
+    const owner=card.owner??card.side;
+    if((owner&&owner!==side)||(!splitDeploy&&!Number.isFinite(card.deploy))||!withinDeploymentLimit(card,side)||!hasDeployPresence(side,here))continue;
     if(card.type==='Character'&&!characterLocationAllowed(card,here))continue;
     const payment=splitDeploy?jawaDeployPayment(card,here,side):null;
     if(splitDeploy&&(!payment||payment.opposing>(PremiereGame.zones(state,PremiereGame.otherSide(side)).force?.length??0)))continue;
@@ -717,6 +731,12 @@ function isDroid(c){return String(c?.type||'').toLowerCase()==='character'&&Stri
 
 function isPowerDroid(c){return isDroid(c)&&(c.id==='Dark:816'||(c.extraText||[]).some(tag=>/\bpower droid\b/i.test(String(tag))))}
 
+function tooexNightRule(side,slot,event,present=PremiereLocations.presentCards(state,side,slot)){
+ const site=state.locations[slot];
+ if(!sitePlanet(site)||!PremiereLocations.conditions(state,slot,side).night)return null;
+ return present.flatMap(unit=>activeCardRules(unit,event))[0]??null;
+}
+
 function cardPowerModifier(c,side,siteIndex,ownPresent){
  const disarmed=PremiereWeapons.disarmed(c)?-1:0;
  if(!state||!['Light','Dark'].includes(side))return disarmed;
@@ -733,9 +753,11 @@ function cardPowerModifier(c,side,siteIndex,ownPresent){
  if(tuskenRule&&(same.some(card=>card!==c&&isNonUniqueTusken(card))||
     ((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7&&PremiereLocations.presentCards(state,PremiereGame.otherSide(side),siteIndex)
      .some(isNonUniqueTusken))))bonus+=tuskenRule.amount;
- if(side==='Light'&&PremiereLocations.conditions(state,siteIndex,side).night&&sitePlanet(state.locations[siteIndex])&&
-    same.some(x=>x.id==='Light:2'&&!PremiereUnits.textSuppressed(x)&&/nighttime conditions/i.test(x.gametext||''))&&
-    characterTraits(c).some(x=>/\brebel\b|\balien\b/.test(x)))bonus+=2;
+ if(matchesRegisteredTarget(c,'rebel-or-alien')||characterTraits(c).some(x=>/\brebel\b|\balien\b/.test(x))){
+  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=14)bonus+=tooexNightRule(side,siteIndex,'nighttimeRebelAlien',same)?.amount??0;
+  else if(side==='Light'&&PremiereLocations.conditions(state,siteIndex,side).night&&sitePlanet(state.locations[siteIndex])&&
+    same.some(x=>x.id==='Light:2'&&!PremiereUnits.textSuppressed(x)&&/nighttime conditions/i.test(x.gametext||'')))bonus+=2;
+ }
  // EG-6 gives +1 power to each other allied droid at its site, except power droids.
  if(isDroid(c)&&!isPowerDroid(c))
    bonus+=same.filter(x=>x.id==='Dark:816'&&!PremiereUnits.textSuppressed(x)&&/adds 1 to power of each of your droids/i.test(x.gametext||'')).length;
@@ -895,7 +917,9 @@ function payOpposingJawaCost(side,cost){
 }
 
 function boardDeployCost(card,loc,side){
- if(!state||!card||!loc||(card.side&&card.side!==side))return null;
+ if(!state||!card||!loc)return null;
+ const owner=card.owner??card.side;
+ if(owner&&owner!==side)return null;
  if(jawaCosts.has(card.id)){
   const payment=jawaDeployPayment(card,loc,side);
   if(!payment||!canPayBoardDeploy(card,side,payment.own))return null;
@@ -1407,17 +1431,28 @@ function deviceActions(side){
  return droids.flatMap((target,targetIndex)=>{
   const bolt=PremiereUnits.restrainingBolt(target.card);
   const caller=callers.find(entry=>entry.slot===target.slot);
-  return target.side===opposing&&bolt&&caller&&withinDeploymentLimit(target.card,side)?[{
+  if(target.side!==opposing||!bolt||!caller)return [];
+  const reassign=caller.card.attachments.some(item=>activeCardRules(item,'droidTheftOwnership').length);
+  const canDeploy=withinDeploymentLimit(target.card,side);
+  if(!reassign&&!canDeploy)return [];
+  const option={
    args:['stealDroid',targetIndex],site:target.slot,target,bolt,cost:0,
    label:'Caller · '+target.card.name+' mit '+caller.card.name+' übernehmen',
-  }]:[];
+   reassign,
+  };
+  if(canDeploy||cardUniquenessLimit(target.card)!==1)return [option];
+  const conflicts=PremiereLocations.entries(state,side)
+   .filter(entry=>sameTitleOrPersona(target.card,entry.card));
+  if(!conflicts.length)return [option];
+  return [...conflicts,target].map((lostDroid,index)=>({...option,lostDroid,args:[...option.args,index],
+   label:option.label+' · '+lostDroid.card.name+(lostDroid===target?' (neu)':' (bereits bei dir)')+' verlieren'}));
  });
 }
 
 function performDeviceAction(side,...args){
  const option=deviceActions(side).find(choice=>choice.args.length===args.length&&choice.args.every((value,i)=>value===args[i]));
  if(!option)return false;
- const {source,target,bolt,site}=option;
+ const {source,target,bolt,site,reassign,lostDroid}=option;
  if(source){
   source.card.attachments.splice(source.card.attachments.indexOf(bolt),1);
   (target.card.attachments??=[]).push(bolt);
@@ -1426,7 +1461,12 @@ function performDeviceAction(side,...args){
   target.card.attachments.splice(target.card.attachments.indexOf(bolt),1);
   PremiereGame.zones(state,bolt.owner??bolt.side).hand.push(bolt);
   target.card.controller=side;
+  if(reassign)target.card.owner=side;
   PremiereGame.zones(state,side).board[site].push(target.card);
+  if(lostDroid){
+   loseTableCard(side,lostDroid.slot,lostDroid.card);
+   log(lostDroid.card.name+' geht wegen des Persona-Konflikts verloren.');
+  }
  }
  log(option.label+'.');
  return true;
@@ -3396,8 +3436,12 @@ function battleImmunity(side,card){
  if((card.type==='Vehicle'||isDroid(card))&&(board?.[x.site]??[]).some(mechanic))limit=Math.max(limit,2);
  if(PremiereUnits.fighter(card)&&isPlanetSystem(site)&&state.locations.some((loc,slot)=>loc&&sitePlanet(loc)===locationGroup(site)&&
    PremiereLocations.conditions(state,slot,side).dockingBay&&(board?.[slot]??[]).some(mechanic)))limit=Math.max(limit,3);
- if(rules.night&&characterTraits(card).some(trait=>/rebel|alien/.test(trait))&&members.some(unit=>unit.id==='Light:2'&&!PremiereUnits.textSuppressed(unit))&&
-    PremiereLocations.effectsAt(state,x.site).some(effect=>effect.card.id==='Light:1196'))limit=Math.max(limit,3);
+ const devices=PremiereLocations.effectsAt(state,x.site);
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=14){
+  const tooex=matchesRegisteredTarget(card,'rebel-or-alien')&&tooexNightRule(side,x.site,'nighttimeRebelAlienImmunity');
+  if(tooex&&devices.some(effect=>activeCardRules(effect.card,'activationDraw').length))limit=Math.max(limit,tooex.below);
+ }else if(rules.night&&characterTraits(card).some(trait=>/rebel|alien/.test(trait))&&members.some(unit=>unit.id==='Light:2'&&!PremiereUnits.textSuppressed(unit))&&
+    devices.some(effect=>effect.card.id==='Light:1196'))limit=Math.max(limit,3);
  return limit;
 }
 
@@ -3411,9 +3455,15 @@ function battleForfeitValue(card,side){
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=12&&card.type==='Character'&&card.pilot){
   modifier+=pilotForfeitModifier(card,slot);
  }
- if(isExteriorPlanetSite(loc)&&matchesRegisteredTarget(card,'jawa')){
-  const crawlers=PremiereGame.sides.reduce((total,actor)=>total+PremiereLocations.presentCards(state,actor,slot).filter(PremiereUnits.crawler).length,0);
-  modifier+=currentGame()?.cardRulesVersion===0?crawlers:Math.min(crawlers,1);
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ const exterior=version>=14?isSite(loc)&&loc.locationTags?.includes('Exterior'):isExteriorPlanetSite(loc);
+ if(exterior&&matchesRegisteredTarget(card,'jawa')){
+  const present=PremiereGame.sides.flatMap(actor=>PremiereLocations.presentCards(state,actor,slot));
+  if(version>=14)modifier+=present.flatMap(unit=>activeCardRules(unit,'jawaForfeit'))[0]?.amount??0;
+  else{
+   const crawlers=present.filter(PremiereUnits.crawler).length;
+   modifier+=version===0?crawlers:Math.min(crawlers,1);
+  }
  }
  for(const [index,location] of state.locations.entries()){
   for(const rule of PremiereCardRules.effects(location,'warRoomForfeit')){

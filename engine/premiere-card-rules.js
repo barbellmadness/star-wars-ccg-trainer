@@ -125,6 +125,12 @@ const PremiereCardRules = (() => {
     register([id], [{ event: 'freeSiteDeploy', cost: 0, targets: ally, duration: 'instant', expires: 'after deploy',
       summary: 'Deploy frei an einer Site mit einem eigenen ' + ally + ' mit Ability über 2.', test: 'registered free deployment' }], true);
   }
+  register(['Light:2'], [
+    continuous('nighttimeRebelAlien', 'Bei Nacht erhalten deine Rebels und Aliens an derselben Planetensite +2 Power.',
+      'allied Rebels and aliens', 'Tooex grants power and station immunity only under nighttime conditions', { amount:2, since:14 }),
+    continuous('nighttimeRebelAlienImmunity', 'Ist Hydroponics Station dort anwesend, sind diese Karten zusätzlich immun gegen Attrition unter 3.',
+      'allied Rebels and aliens', 'Tooex grants power and station immunity only under nighttime conditions', { below:3, since:14 }),
+  ],true);
   register(['Light:1883'], [
     { event: 'freeSiteDeploy', cost: 0, targets: 'moisture-farm', duration: 'instant', expires: 'after deploy',
       summary: 'Owen Lars wird an Lars’ Moisture Farm frei ausgespielt.', test: 'registered free deployment' },
@@ -338,7 +344,9 @@ const PremiereCardRules = (() => {
       continuous('device', 'Caller wird an einen eigenen berechtigten Träger angelegt.', targets, 'Caller steals', { since: 3 }),
       { event: 'stealDroid', summary: 'In deiner Control Phase kannst du einen gegnerischen Droiden mit Restraining Bolt an derselben Site übernehmen. Der Bolt geht auf die Hand seines Besitzers.',
         targets: 'opposing restrained droid at same site', cost: 0, duration: 'permanent', expires: 'when control changes', test: 'Caller steals', since: 3 },
-    ]);
+      continuous('droidTheftOwnership', 'Der Droide gehört dir für die restliche Partie oder bis er erneut gestohlen wird. Bei einem Persona-Konflikt wählst du, welche Kopie verloren geht.',
+        'stolen droid', 'both Callers update ownership and resolve duplicate personas', { since:14 }),
+    ],true);
   }
   register(['Light:2100', 'Dark:2099'], [
     continuous('restrainDroid', 'Kostet keine Force. Wird an einen Droiden an einer Site angelegt und sperrt dessen Bewegung und Kartentext.', 'droid at site',
@@ -602,6 +610,16 @@ const PremiereCardRules = (() => {
   register(['Light:2250'], [
     {...battleDrainReact, summary: 'Kann als React zu einer benachbarten Site ziehen.', targets: 'adjacent site'},
   ], true);
+  for(const [id,movement] of [['Light:2161','Nur zu Planetensites verlegbar.'],['Dark:2160','Darf nicht zu mobilen Sites ziehen.']]){
+    register([id], [
+      continuous('sandcrawlerDeploy', 'Nur an einer Tatooine-Site ausspielbar. '+movement,
+        'Tatooine site', 'both Sandcrawlers enforce their destination and capacity', { since:14 }),
+      continuous('crewCapacity', 'Kann einen Fahrer und sieben Passagiere aufnehmen.',
+        'driver and passengers aboard', 'both Sandcrawlers enforce their destination and capacity', { capacity:{driver:1,passenger:7}, legacy:true }),
+      continuous('jawaForfeit', 'Jeder Jawa an derselben Außen-Site erhält +1 Forfeit. Der Bonus stapelt sich nicht.',
+        'Jawa at the same exterior site', 'both Sandcrawlers enforce their destination and capacity', { amount:1, since:14 }),
+    ],true);
+  }
   register(['Light:1548','Dark:1547'], [
     battleDrainReact,
     continuous('liftTubeMovement', 'Kann vier Passagiere tragen. Einsatz und Bewegung sind auf innere mobile Sites beschränkt. Es braucht keinen Fahrer.',
