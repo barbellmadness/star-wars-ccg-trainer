@@ -60,7 +60,7 @@ test('both sides have four distinct, valid 60-card themed decks with playable st
       assert.equal(deck.cards.length, 60);
       assert.deepEqual([...new Set(deck.startingIndices.map(index => deck.cards[index].id))], definition.startingLocations);
       assert.ok(deck.cards.every(card => card.side.toLowerCase() === side &&
-        (card.set === '1' || (card.id === 'Dark:2915' && deck.theme.id === 'imperiale-garnison'))));
+        (card.set === '1' || (['Dark:2915','Dark:654','Dark:667','Dark:2103'].includes(card.id) && deck.theme.id === 'imperiale-garnison'))));
     }
   }
   const garrison = sets.dark.find(({deck}) => deck.theme.id === 'imperiale-garnison').deck;
@@ -119,8 +119,7 @@ test('starter decks allow legal duplicate copies while enforcing the edition and
   assert.equal(readStarterDecks(extra, catalog).light.cards.filter(card => card.id === 'Light:1593').length, 2);
   const luke = catalog.find(card => card.id === 'Light:1593');
   assert.throws(() => readStarterDecks(extra, catalog.map(card => card === luke ? {...card, set: '2'} : card)), /anderen Edition/);
-  extra.decks.Light.cards.find(card => card.id === 'Light:1593').id = 'Light:1373';
-  assert.throws(() => readStarterDecks(extra, catalog), /nicht ausgespielt/);
+  assert.throws(() => readStarterDecks(extra, catalog.map(card => card === luke ? {...card, deploy: null} : card)), /nicht ausgespielt/);
 });
 
 test('source import filters out other editions and rejects a mismatched side or prior version', () => {

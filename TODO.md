@@ -16,18 +16,7 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 ## 7. Kartentexte für alle Kartentypen
 
-Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. Central Core ermöglicht den kostenlosen Deploy von Wrong Turn. Bei Kontrolle hebt die Light-Seite der Central Core den Tractor Beam auf, und der Detention Block Control Room befreit auf dem Todesstern inhaftierte Figuren. Für die Tonnika Sisters ist der einfache Mos-Eisley-Bonus gemäß aktueller Kombikarten-Regel geprüft.
-
-- [ ] Pro Karten-ID einen Eintrag mit Regelquelle, gültigem Text, einzelnen Effekten, Ereignis, Kosten, Zielen, Dauer, Ablauf und Testreferenzen führen. Dieselbe Karte kann mehrere offene und bereits ausführbare Abschnitte haben.
-- [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. Die übrigen im Code verstreuten Regeln in das Register überführen.
-- [ ] Charakterfähigkeiten für Einsatzbeschränkungen, Merkmale, Droiden, Spione, Nachtbedingungen, Pilotboni, Zielwahl, Forfeit und passende Kombinationen vervollständigen. Häufige Karten der Starterdecks gezielt testen.
-- [ ] Retract The Bridge und Death Star Tractor Beam aus A New Hope vollständig umsetzen. Weitere Gefangennahmekarten und Carbonit-Gefangene bleiben Teil künftiger Erweiterungen.
-- [ ] Weitere Devices mit Ausspielen, Trägern, Einsatzkosten, Nutzungsgrenzen, automatischen Effekten und Zielwechseln abbilden. Offene Kombinationen umfassen Deploy-React über Comlink und den Kontrollwechsel mit einem bereits vorhandenen einzigartigen Droiden.
-- [ ] Weitere Effects mit Aufstellungsziel, Dauer, laufenden Modifikatoren, Triggern, Aufheben und Ablauf umsetzen. Die Ziel- und Ortsverfolgung von Death Star Plans, Kessel Run und Our Most Desperate Hour auf weitere Utinni Effects ausweiten.
-- [ ] Weitere Interrupts mit Used- und Lost-Verhalten, Auswahl zwischen gedruckten Optionen, Antwortfenstern, Zielbedingungen und Kosten implementieren. Alter und Sense für neue Effect- und Interrupt-Aktionen anbinden.
-- [ ] Weitere Varianten von Suche und Offenlegen, gezieltem Stapelwechsel, Kartentausch, Retrieval, Verlust, Out of Play, Schutz, Kontrollwechsel und Aufheben als prüfbare Aktionen abbilden.
-- [ ] Weitere Kartensonderfälle mit eigenem Ablauf abdecken, etwa Ausrüstung aufheben, einen Weg sperren und geschützte Ziele behandeln.
-- [ ] Die verbleibenden Karteneffekte pro Typ bearbeiten. Mit den Karten der beiden Starterdecks beginnen, dann die übrigen Karten und ihre Kombinationen vervollständigen. Für jede neue Kartenregel einen zulässigen und einen abgelehnten Fall prüfen.
+V2.15.14 führt alle 324 Premiere-Karten im [Kartenregelregister](engine/premiere-card-rules.js). Die Testsuite prüft die Abdeckung des Katalogs und spielt Regel- und Kombinationsfälle nach. Das Deck Imperiale Garnison enthält außerdem den Todesstern, Retract The Bridge und Death Star Tractor Beam aus A New Hope für die Interaktionen mit Central Core.
 
 ## 8. Bot
 

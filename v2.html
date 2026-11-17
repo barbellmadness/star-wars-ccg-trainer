@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.14.0';
+const trainerVersion='2.15.14';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -401,7 +401,10 @@ function botRuleButton(action,label){
  return el('autoBot').checked?'':ruleButton(action,label);
 }
 function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
- return dispatchUI({kind:'activate',side:'Light',args:[Number(el('activateAmount').value)],gameId,revision});
+ const count=Number(el('activateAmount').value),allowance=activationDrawAllowance('Light');
+ const mask=(allowance>0&&count>0&&el('activateFirstCard').checked?1:0)|
+  (allowance>1&&count>1&&el('activateSecondCard').checked?2:0);
+ return dispatchUI({kind:'activate',side:'Light',args:mask?[count,mask]:[count],gameId,revision});
 }
 function reactResponse(){
  if(state.gameWinner||state.automatedPending||state.game?.timing.pending)return null;
@@ -410,8 +413,11 @@ function reactResponse(){
 }
 
 function responseMarkup(window,available){
- const title=window.kind==='destiny'?'Destiny':window.card&&window.kind!=='react'?window.card.name
-  :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
+ const titles={weaponTarget:'Waffenziel',weaponDefense:'Waffenverteidigung',evazanWindow:'Gerade getroffen oder entwaffnet',
+  evazanOperation:'Dr. Evazan operiert',battleForceLost:'Force-Verlust aus dem Battle',shipLoss:window.ship?.name+' geht verloren',
+  characterLost:window.fallen?.name+' ging verloren',equipmentLost:window.fallen?.name+' ging verloren',finishedBattle:'Battle beendet',battleOutcome:'Kampfausgang',justFired:'Waffe abgefeuert'};
+ const title=window.kind==='destiny'?'Destiny':window.kind==='battleDestinyResults'?'Battle Destiny':window.card&&window.kind!=='react'?window.card.name
+  :window.kind==='react'?'React':window.kind==='battle'?'Battle':titles[window.kind]??'Force Drain';
  const loc=state.locations[window.site];
  const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
   +(window.kind==='destiny'?'<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>':'');
@@ -419,8 +425,8 @@ function responseMarkup(window,available){
   const option=legalActions(state,'Dark')[0];
   return description+(battleOnPlaymat?ruleButton(option,'Antwort des Bots zeigen'):botRuleButton(option,'Antwort des Bots zeigen'));
  }
- return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,['react','reactDeploy'].includes(option.kind)
-  ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.label??option.card?.name??'Passen')).join(' ')+'</div>';
+ return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label??(['react','reactDeploy'].includes(option.kind)
+  ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.card?.name??'Passen'))).join(' ')+'</div>';
 }
 
 function renderPlayerReact(window,available){
@@ -454,6 +460,15 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  if(state.pendingCustody?.length){
   box.innerHTML='';box.style.display='none';return;
  }
+ if(state.pendingCardView){
+  box.innerHTML=cardInformationMarkup(available);
+  const peek=box.querySelector?.('[data-scomp-peek]');
+  if(peek){
+   const wait=Math.max(0,state.pendingCardView.expiresAt-Date.now());
+   setTimeout(()=>peek.remove(),wait);
+  }
+  box.style.display='block';return;
+ }
  if(state.automatedPending){
   const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
@@ -482,9 +497,9 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const pending=state.pendingForceLoss;
  if(pending?.payer==='Light'&&!state.gameWinner){
-  const label={battleDamage:'Battle Damage',assault:'Assault'}[pending.reason]??'Force Drain';
+  const label={battleDamage:'Battle Damage',assault:'Assault',limitedResources:'Limited Resources'}[pending.reason]??'Force Drain';
   const names={deck:'Reserve Deck',force:'Force Pile',used:'Used Pile'};
-  const choices=available.map(option=>ruleButton(option,option.card?'Hand · '+option.card.name:names[option.args[0]]+' (oberste Karte)')).join(' ');
+  const choices=available.map(option=>ruleButton(option,option.label??(option.card?'Hand · '+option.card.name:names[option.args[0]]+' (oberste Karte)'))).join(' ');
   if(pending.reason==='drain'&&box===el('controlPanel')){
    const loc=state.locations[pending.locationIndex];
    drainArea.innerHTML='<b id="drainLossTitle">Force Drain'+(loc?' · '+escapeHTML(loc.name):'')+'</b>'
@@ -503,15 +518,41 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
- const tableEffects=available.filter(option=>['deployTableEffect','cancelTableEffect'].includes(option.kind)&&option.args[0]===selected)
+ const tableEffects=available.filter(option=>['deployTableEffect','deployReserveInsert','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
- const equipment=available.filter(option=>['weaponEffect','moveSeeker','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect','cardInformation','pileInterrupt','groupRelocation','dodonnaCounter','lateralMechanic','lateralRepair','cancelNamedWeapon','memorialExchange'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
- const rack=state.blasterRack;
- const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
+ const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
+ const rackView=racks.map(rack=>'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>').join('');
  const extra=[retrieval,shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
+}
+
+function cardInformationMarkup(available){
+ const frame=state.pendingCardView,light=frame.side==='Light';
+ const isPeek=frame.mode==='scompPeek';
+ const shown=isPeek&&Date.now()>=frame.expiresAt?[]:light||frame.mode==='labria'||frame.publicView?frame.shown:[];
+ let markup='<b>'+escapeHTML(frame.card.name)+'</b>';
+ if(shown.length)markup+='<ol'+(isPeek?' data-scomp-peek':'')+'>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
+ if(!light){
+  const choice=legalActions(state,'Dark')[0];
+  return markup+botRuleButton(choice,'Entscheidung des Bots zeigen');
+ }
+ if(frame.mode==='leesub'){
+  const {gameId,revision}=available[0];
+  const positions=[...new Set(available.map(option=>option.args[1]))];
+  return markup+'<div class="pile-action"><label>Kartentyp <select id="leesubType">'+informationCardTypes
+   .map(type=>'<option>'+type+'</option>').join('')+'</select></label>'
+   +'<label>Verdeckte Position <select id="leesubPosition">'+positions.map(index=>'<option value="'+index+'">Karte '+(index+1)+'</option>').join('')
+   +'</select></label><button onclick="submitLeesubGuess('+gameId+','+revision+')">Tipp abgeben</button></div>';
+ }
+ return markup+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label)).join(' ')+'</div>';
+}
+
+function submitLeesubGuess(gameId,revision){
+ return dispatchUI({kind:'finishCardInformation',side:'Light',gameId,revision,
+  args:[el('leesubType').value,Number(el('leesubPosition').value)]});
 }
 
 function auditData(){
@@ -786,8 +827,9 @@ function changeModifier(side,kind,value,gameId,revision){
 
 function battleHitCards(side,slot){
  const x=battleSession;
- if(!x||x.resolved||x.site!==slot)return new Set();
- if(x.hitUnits)return new Set(x.hitUnits[side]);
+ const scoped=(state.scopeHits??[]).filter(card=>PremiereLocations.findEntry(state,card)?.side===side&&PremiereLocations.findEntry(state,card)?.slot===slot);
+ if(!x||x.resolved||x.site!==slot)return new Set(scoped);
+ if(x.hitUnits)return new Set([...x.hitUnits[side],...scoped]);
  const row=PremiereGame.zones(state,side).board[slot];
  return new Set((x.weaponHits?.[side]??[]).map(index=>row[index]).filter(Boolean));
 }
@@ -816,7 +858,7 @@ function renderBattle(){
  const react=reactResponse();
  const reactControls=state.pendingCustody?.length?'<section class="react-controls" aria-label="Gefangenenentscheidung">'+custodyMarkup(available)+'</section>':
   react?'<section class="react-controls" aria-label="Deine React-Aktionen">'+responseMarkup(react,available)+'</section>':'';
- const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending||state.pendingCustody?.length);
+ const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending||state.pendingCardView||state.pendingCustody?.length);
  const stage=x.segment??(x.weaponTurn?'weapons':'power');
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
  const title=el('battleTitle');
@@ -841,8 +883,9 @@ function renderBattle(){
  }else if(x.segment==='damage'){
   const labels={deck:'Reserve Deck',used:'Used Pile',force:'Force Pile'};
   buttons=x.damage.priority==='Dark'?botRuleButton(botDamageAction(),'Schadensentscheidung des Bots zeigen'):
-   available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':''):
-    option.kind==='battleForceLoss'?'Force verlieren · '+(option.card?.name??labels[option.args[0]]):'Im Damage-Segment passen')).join(' ');
+   available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':'')+
+    (option.charged?' · Trooper Charge':''):
+    option.kind==='battleForceLoss'?'Force verlieren · '+(option.card?.name??labels[option.args[0]]):option.label??'Im Damage-Segment passen')).join(' ');
   if(x.damage.priority==='Light'&&!available.some(option=>option.kind==='passDamage'))buttons+='<p class="hint">Du musst noch Treffer, Attrition oder Battle Damage abwickeln.</p>';
  }else if(x.weaponTurn==='Dark'){
   buttons=botRuleButton(botWeaponAction(),'Waffenaktion des Bots zeigen');
@@ -850,7 +893,8 @@ function renderBattle(){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>option.kind==='computerFire').map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','alterLocationEffect','alterLostPileEffect','gravelStorm','cardInformation','pileInterrupt','dodonnaCounter','lateralMechanic','lateralRepair','abilityPower','cancelNamedWeapon','holocamPower','obiAssist'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
@@ -869,7 +913,8 @@ function renderDamageDebt(damage){
  const summaries=PremiereGame.sides.map(side=>{
   const debt=damage.debt[side];
   return '<p>'+side+' · Battle Damage '+debt.damage+' · Attrition '+debt.attrition
-   +(debt.hits.length?' · Pflicht-Forfeits '+debt.hits.map(card=>escapeHTML(card.name)).join(', '):'')+'</p>';
+   +(debt.hits.length?' · Pflicht-Forfeits '+debt.hits.map(card=>escapeHTML(card.name)).join(', '):'')
+   +(debt.charged?.length?' · Trooper Charge '+debt.charged.map(card=>escapeHTML(card.name)).join(', '):'')+'</p>';
  });
  return '<div class="panel"><b>Offene Verluste · '+damage.priority+' am Zug</b>'+summaries.join('')+'</div>';
 }
@@ -985,7 +1030,7 @@ function effectInspectorMarkup(card,index){
  if(state.gameWinner)reason='Die Partie ist beendet.';
  else if(state.phase===2&&state.activeSide==='Light'&&!state.botTurn){
   if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.pendingForceLoss||
-     state.pendingReserveSearch||state.automatedPending)reason='Schließe zuerst die laufende Aktion ab.';
+     state.pendingReserveSearch||state.automatedPending||state.pendingCardView)reason='Schließe zuerst die laufende Aktion ab.';
   else if(card.id==='Light:2110'&&state.force.length<3)reason='Revolution braucht 3 Force. Du hast '+state.force.length+' in der Force Pile.';
   else reason='Für diesen Effect gibt es gerade kein gültiges Ziel.';
  }
@@ -1138,7 +1183,8 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
- const deviceActions=available.filter(option=>option.kind==='deviceAction'?option.site===i:
+ const deviceActions=available.filter(option=>['deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark'].includes(option.kind)?option.site===i:
+  option.kind==='navSabotage'?option.site===i&&option.args[0]===selected:
   ['deployDevice','deployBolt'].includes(option.kind)&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.label??(option.host.name+' ausrüsten ('+option.cost+' Force)'))).join('');
  const locationEffects=available.filter(option=>option.kind==='deployLocationEffect'&&option.args[0]===selected&&option.args[1]===i)
@@ -1158,7 +1204,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
- const actions=(![1,4].includes(state.phase)||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
+ const actions=(![1,4].includes(state.phase)||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle ('+(battle?.cost??1)+' Force)'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)
@@ -1205,9 +1251,9 @@ function cardBackMarkup(side){
 }
 
 function renderDeckPiles(side,player){
- const slot=(label,count)=>'<div class="pile-slot">'+(count?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
-  +label+' <strong>'+count+'</strong></div>';
- const lifeForce=PremiereGame.lifeForce(state,side);
+ const slot=(label,count)=>'<div class="pile-slot">'+(count!==0?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
+  +label+' <strong>'+(count??'?')+'</strong></div>';
+ const lifeForce=player.reserveCount===null?'?':PremiereGame.lifeForce(state,side);
  const top=player.lostTop;
  if(player.lostFaceDown&&inspectedLostSide===side)closeCard();
  const cover=player.lostFaceDown?'<div class="lost-pile-covered">'+(player.lostCount?cardBackMarkup(side):'')
@@ -1266,6 +1312,8 @@ function render(){
   const {unknown}=forceFromLocations('Light');
   controls.innerHTML='<div class="pile-action"><label>Anzahl (max. '+max+') <input id="activateAmount" type="number" min="0" max="'+max
    +'" value="'+max+'"></label><button onclick="activateMe('+gameId+','+revision+')">Force aktivieren</button></div>'
+   +(activationDrawAllowance('Light')>0&&max>0?'<label><input id="activateFirstCard" type="checkbox"> Erste aktivierte Karte auf die Hand</label>':'')
+   +(activationDrawAllowance('Light')>1&&max>1?'<label><input id="activateSecondCard" type="checkbox"> Zweite aktivierte Karte auf die Hand</label>':'')
    +(unknown?'<p class="hint">Unbekannte Force-Icons an '+unknown+' Locations.</p>':'');
  }else controls.innerHTML=draw?ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
@@ -1304,14 +1352,14 @@ function automaticBotAction(){
  if(!dark.length)return null;
  if(state.pendingCustody?.length)return botCustodyAction(dark);
  if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||
-    state.pendingForceLoss||state.pendingReserveSearch)return dark[0];
+    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return dark[0];
  if(battleSession){
   if(dark.some(action=>action.kind==='battlePrediction'))return botPredictionAction(dark);
   if(battleSession.weaponTurn==='Dark')return botWeaponAction();
   if(battleSession.damage?.priority==='Dark')return botDamageAction();
   return dark.find(action=>action.kind==='destiny')??dark.find(action=>action.kind==='skipDestiny');
  }
- return dark.find(action=>action.kind==='botStep'||action.kind==='botDecision');
+ return dark.find(action=>action.kind==='botStep'||action.kind==='botDecision')??chooseBotSeekerMove(dark.filter(action=>action.kind==='moveSeeker'));
 }
 
 function scheduleAutomaticBot(){
@@ -1372,7 +1420,7 @@ function readSavedGame(){
   const saved=JSON.parse(lastSavedValue);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
-     (saved.cardRulesVersion!==undefined&&![0,1,2,3,4,5,latestCardRulesVersion].includes(saved.cardRulesVersion))||
+     (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }

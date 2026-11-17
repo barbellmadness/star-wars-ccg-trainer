@@ -257,7 +257,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.14.0'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.14'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -298,6 +298,21 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await release.getByRole('button', {name: /Rally/}).click();
     assert.equal(await release.isVisible(), false);
     assert.ok(await prison.locator('.light-zone').getByRole('button', {name: /Leia Organa ansehen/}).isVisible());
+
+    await page.evaluate(() => {
+      state.phase = 2;
+      state.activeSide = 'Light';
+      state.botTurn = null;
+      state.hand = ['Light:2625','Light:2052'].map(id => catalog.find(card => card.id === id));
+      state.force.push(state.deck.pop());
+      presentGame();
+    });
+    await page.getByRole('button', {name: 'Traffic Control auswählen'}).click();
+    await page.getByRole('button', {name: 'Traffic Control · Light Side (1 Force)'}).click();
+    await page.evaluate(() => { state.phase = 1; presentGame(); });
+    await page.getByRole('button', {name: 'Rebel Trooper auswählen'}).click();
+    await page.getByRole('button', {name: 'Traffic Control · Rebel Trooper auf Used Pile legen'}).click();
+    assert.equal(await page.evaluate(() => state.used.at(-1).id), 'Light:2052');
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();

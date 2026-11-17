@@ -3,7 +3,7 @@ const PremiereWeapons = (() => {
   const ground = ['Character','Creature','Vehicle'];
   const saberTargets = ['Character','Creature'];
   const space = ['Starship'];
-  const warrior = card => card.type === 'Character' && card.warrior === true;
+  const warrior = card => card.type === 'Character' && units.hasSkill(card, 'warrior');
   const title = card => (card?.name ?? '').trim().replace(/^[•*]+\s*/, '').toLowerCase();
   const persona = (card, name) => card.type === 'Character' &&
     (card.personas?.some(item=>item.toLowerCase()===name) || title(card)===name || title(card).startsWith(name+' '));
@@ -93,7 +93,7 @@ const PremiereWeapons = (() => {
     if(!rule||card.type!=='Character'||!Number.isFinite(ability))return false;
     const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin');
     if(matching&&ability<(rule.primary??rule.limit))return true;
-    return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':card[rule.fallback]===true);
+    return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':units.hasSkill(card,rule.fallback));
   }
 
   return {defense,definition,deployCost,disarmed,mine,miningDroid,projector,seeker,seekerTarget,shot};
