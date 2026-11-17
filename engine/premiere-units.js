@@ -76,6 +76,8 @@ const PremiereUnits = (() => {
     const ability = permanentAbility ?? 0;
     const navComputer = !!card.navComputer || occupants.some(({card,role}) => rUnit(card) && ['passenger','astromech'].includes(role));
     if (powered && card.type === 'Starship') for (const pilot of pilots) {
+      // Canceling a pilot's game text removes its printed ship bonuses, but not its Pilot icon or ability.
+      if (textSuppressed(pilot)) continue;
       const text = pilot.gametext ?? '';
       const bonus = Number(text.match(/Adds (\d+) to power of anything he pilots/i)?.[1] ?? 0);
       power += pilot.id === 'Dark:634' && card.id === 'Dark:2700' ? 4 : bonus;
