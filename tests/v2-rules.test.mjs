@@ -819,7 +819,7 @@ test('starter deck buttons open only the selected 60-card list on demand',async(
   assert.equal(elements.get('starterDeckTitle').textContent,side+' Side Deck · 60 Karten');
   assert.ok(list.innerHTML.includes('10 × '+card));
   assert.ok(!list.innerHTML.includes('10 × '+otherCard));
-  assert.equal([...list.innerHTML.matchAll(/<li>(\d+) × /g)].reduce((total,entry)=>total+Number(entry[1]),0),60);
+  assert.equal([...list.innerHTML.matchAll(/<li><button [^>]*>(\d+) × /g)].reduce((total,entry)=>total+Number(entry[1]),0),60);
  }
 
  run('showEffectCoverage()');

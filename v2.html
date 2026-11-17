@@ -174,6 +174,15 @@ a{color:#b6d8ff}
 #selectInspectorCard{border-color:var(--gold);background:linear-gradient(#604b29,#3b2e1e)}
 #starterDeckCards{max-height:min(55vh,28rem);overflow:auto;margin:12px 0 0;padding-inline-start:24px}
 #starterDeckCards li{padding-block:4px}
+.deck-strategy{margin-block:12px;padding:12px 14px;background:#19263c;border:1px solid #546079;border-radius:9px}
+.deck-strategy h3{margin:0 0 8px;color:#f3d68b;font-size:16px}
+.deck-strategy dl{margin:0}
+.deck-strategy dt{margin-top:8px;color:#e8c981;font-size:13px;font-weight:700}
+.deck-strategy dd{margin:2px 0 0;line-height:1.4}
+.deck-strategy:not([hidden]) ~ #starterDeckCards{max-height:min(40dvh,23rem)}
+.deck-card-link{padding:2px 0;border:0;background:none;color:#c3d9ff;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.deck-card-link:hover,.deck-card-link:focus-visible{color:#ffe2a6}
+.deck-card-link:focus-visible{outline:2px solid #eac977;outline-offset:3px}
 html{scrollbar-gutter:stable}
 html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overflow:hidden}
 #movementDialog[open]{display:flex;flex-direction:column;gap:10px;overflow:hidden}
@@ -262,7 +271,10 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 .launch-art img{display:block;width:100%;height:100%;object-fit:contain}
 .launch-art [hidden]{display:none}
 .launch-art-fallback{display:grid;place-items:center;padding:6px;text-align:center;height:100%;color:var(--launch-accent);font-size:clamp(10px,1.35vw,14px);font-weight:700}
-.launch-deck{display:flex;flex-direction:column;padding:0;overflow:hidden}
+.launch-deck-tile{display:grid;grid-template-rows:1fr auto;gap:4px;min-width:0}
+.launch-deck{display:flex;flex-direction:column;width:100%;padding:0;overflow:hidden}
+.launch-deck-guide{width:100%;padding:5px 6px;font-size:12px;background:#141e2f;border-color:#536481}
+.launch-deck-guide:hover,.launch-deck-guide:focus-visible{color:#ffe2a6;border-color:#cba969}
 .launch-deck[aria-pressed=true]{box-shadow:0 0 0 1px var(--launch-accent),0 6px 24px #0006}
 .launch-deck-visual{display:grid;place-items:center;position:relative;width:100%;min-height:145px;padding:11px;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--launch-glow),transparent 34%),transparent 75%),repeating-linear-gradient(120deg,#ffffff08 0 1px,transparent 1px 16px),#0c121c}
 .launch-deck-visual .launch-art{width:92px}
@@ -463,6 +475,10 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
     <form method="dialog"><button autofocus>Schließen</button></form>
   </header>
   <p id="starterDeckDescription" class="hint" hidden></p>
+  <section id="starterDeckStrategy" class="deck-strategy" aria-labelledby="starterDeckStrategyTitle" hidden>
+    <h3 id="starterDeckStrategyTitle">Strategie-Einweisung</h3>
+    <dl id="starterDeckStrategySteps"></dl>
+  </section>
   <label id="catalogSearchBox" class="catalog-search" hidden>Karte suchen <input id="catalogSearch" type="search"></label>
   <ul id="starterDeckCards" tabindex="0"></ul>
 </dialog>
@@ -486,7 +502,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.23';
+const trainerVersion='2.15.24';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -765,9 +781,12 @@ function renderLaunch(){
   deckGrid.innerHTML=deckChoices[side].map(({deck})=>{
    const id=deckId(deck),name=deck.theme?.name??'Premiere-Starterdeck',cover=launchCover(side,deck);
    const pick='chooseLaunchDeck('+JSON.stringify(id)+')';
-   return '<button type="button" class="launch-deck launch-tone-'+side+'" data-deck="'+escapeHTML(id)+'" aria-pressed="'+(id===selected)
+   const preview='showStarterDeck('+JSON.stringify(side)+','+JSON.stringify(id)+')';
+   return '<div class="launch-deck-tile launch-tone-'+side+'"><button type="button" class="launch-deck" data-deck="'+escapeHTML(id)+'" aria-pressed="'+(id===selected)
     +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchArt(cover?.image,cover?.name??name)+'</span>'
-    +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>';
+    +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>'
+    +'<button type="button" class="launch-deck-guide" aria-haspopup="dialog" aria-label="Strategie und Karten zu '+escapeHTML(name)
+    +' ansehen" onclick="'+escapeHTML(preview)+'">Strategie &amp; Karten</button></div>';
   }).join('');
  }
  renderLaunchSummary();
@@ -786,8 +805,10 @@ function chooseLaunchDeck(id){
  renderLaunchSummary();
 }
 
-function showStarterDeck(side){
- const {deck:selected}=selectedDeck(side);
+function showStarterDeck(side,id){
+ const choice=id===undefined?selectedDeck(side):deckChoices[side].find(({deck})=>deckId(deck)===id);
+ if(!choice)return;
+ const {deck:selected}=choice;
  const active=currentGame()?.starterDecks?.[side];
  const deck=!launchOpen&&active&&deckId(active)===deckId(selected)?active:selected;
  const counts=new Map();
@@ -797,13 +818,22 @@ function showStarterDeck(side){
  el('catalogSearchBox').hidden=true;
  description.hidden=!deck.theme;
  description.textContent=deck.theme?.description??'';
+ const strategy=deck.strategy;
+ el('starterDeckStrategy').hidden=!strategy;
+ el('starterDeckStrategySteps').innerHTML=strategy?[
+  ['Startort',strategy.start],['Erste Züge',strategy.opening],['Schlüsselzüge',strategy.tactics],
+ ].map(([heading,step])=>'<dt>'+heading+'</dt><dd>'+escapeHTML(step)+'</dd>').join(''):'';
  const list=el('starterDeckCards');
  list.innerHTML=[...counts].map(([card,count])=>{
   const status=cardEffectStatus(card);
   const coverage=status.startsWith('OFFEN:')?' · Kartentext offen':status.startsWith('TEILWEISE:')?' · teilweise umgesetzt':'';
-  return '<li>'+count+' × '+escapeHTML(card.name)+coverage+'</li>';
+  const inspect='inspectDeckCard('+JSON.stringify(card.id)+')';
+  return '<li><button type="button" class="deck-card-link" aria-haspopup="dialog" onclick="'+escapeHTML(inspect)+'">'
+   +count+' × '+escapeHTML(card.name)+'</button>'+coverage+'</li>';
  }).join('');
- el('starterDeckDialog').showModal();
+ const dialog=el('starterDeckDialog');
+ dialog.showModal();
+ dialog.scrollTop=0;
  list.scrollTop=0;
 }
 
@@ -817,6 +847,7 @@ function renderCatalog(){
 function showCatalog(){
  el('starterDeckTitle').textContent='Premiere-Kartenkatalog · '+catalog.length+' Karten';
  el('starterDeckDescription').hidden=true;
+ el('starterDeckStrategy').hidden=true;
  el('catalogSearchBox').hidden=false;
  el('catalogSearch').value='';
  renderCatalog();
@@ -826,6 +857,11 @@ function showCatalog(){
 
 function inspectCatalogCard(index){
  if(Number.isInteger(index)&&catalog[index])showCardWithStats(catalog[index]);
+}
+
+function inspectDeckCard(id){
+ const card=catalog.find(entry=>entry.id===id)??supplementalCatalog.find(entry=>entry.id===id);
+ if(card)showCardWithStats(card);
 }
 
 function renderSetup(){

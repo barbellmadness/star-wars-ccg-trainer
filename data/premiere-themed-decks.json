@@ -4,6 +4,11 @@
     "Light": [
       {
         "theme": { "id": "massassi-widerstand", "name": "Massassi-Widerstand", "description": "Dodonna verteidigt Yavin 4. Der Detention Block Control Room ermöglicht die Befreiung von Gefangenen auf dem Todesstern." },
+        "strategy": {
+          "start": "Massassi War Room gibt dir zwei eigene Force-Icons. Die Docking Bay ist eine Ausweichwahl, wenn du Raumschiffe und Besatzung früh verbinden möchtest.",
+          "opening": "Setze Dodonna mit günstigen Rebellen an einer Yavin-4-Site ein. Ein Rebel Guard eignet sich zum Halten einer Site, an der der Bot wahrscheinlich einen Kampf beginnt.",
+          "tactics": "Rebel Planners gibt dir eine zweite Linie im Raumkampf. Den Detention Block Control Room kannst du nutzen, um gefangene Figuren vom Todesstern zu befreien, wenn du die Site kontrollierst."
+        },
         "startingLocations": ["Light:2859", "Light:2855", "Light:2853", "Light:2858", "Light:672"],
         "cards": [
           { "id": "Light:68", "count": 1 },
@@ -62,6 +67,11 @@
       },
       {
         "theme": { "id": "rote-staffel", "name": "Rote Staffel", "description": "Biggs und Red Leader führen X-Wings und Torpedos über Dantooine und Yavin 4." },
+        "strategy": {
+          "start": "Wähle Dantooine für günstigere Jäger. Yavin 4 ist eine Alternative, wenn dort deine Flotte und die zugehörigen Sites zusammenspielen sollen.",
+          "opening": "Bring früh einen X-wing ins Spiel. Gib Biggs nach Möglichkeit das Cockpit von Red 3 und setze Red Leader auf Red 1 ein. Rebel Pilot kann freie Pilotenplätze besetzen.",
+          "tactics": "Rüste verfügbare Jäger gezielt mit Proton Torpedoes aus. Halte Force für einen Angriff oder die Waffe bereit und stütze deine Sites mit Rebel Troopern."
+        },
         "startingLocations": ["Light:608", "Light:2849", "Light:2853"],
         "cards": [
           { "id": "Light:24", "count": 1 },
@@ -94,6 +104,11 @@
       },
       {
         "theme": { "id": "tatooine-verbuendete", "name": "Tatooines Verbündete", "description": "Aliens aus der Cantina und die Lars-Familie halten Tatooine mit Landspeedern und Utility Belts." },
+        "strategy": {
+          "start": "Beginne auf Lars’ Moisture Farm, wenn du mit der Lars-Familie und Luke spielen willst. Obi-Wan’s Hut ist eine Alternative für einen günstigen Einsatz von Obi-Wan.",
+          "opening": "Platziere Beru, Owen oder Luke im SoroSuub V-35 Landspeeder, damit er frei fahren kann. Stelle eine zweite Figur an einer Nachbar-Site auf, damit du zwischen den Orten wechseln kannst.",
+          "tactics": "Halte Tatooines Sites mit Fahrzeugen und Figuren. Bewahre eine bewegliche Einheit für einen React auf, damit der Gegner beim Force Drain mit Verstärkung rechnen muss."
+        },
         "startingLocations": ["Light:2471", "Light:2440", "Light:2462"],
         "cards": [
           { "id": "Light:2", "count": 2 },
@@ -147,6 +162,11 @@
       },
       {
         "theme": { "id": "falcon-kessel", "name": "Schmuggler auf dem Kessel Run", "description": "Han und BoShek fliegen den Kessel Run mit dem Millennium Falcon. Korvetten und X-Wings sichern die Route." },
+        "strategy": {
+          "start": "Beginne bei Dantooine oder Yavin 4 für den Aufbau im Raum. Docking Bay 94 bietet eine Alternative, wenn du den Falcon zuerst am Boden vorbereitest.",
+          "opening": "Bring Han Solo oder BoShek als Schmuggler an Bord des Millennium Falcon. Eskorte durch X-wings oder eine Korvette hilft, das Ausgangssystem zu sichern.",
+          "tactics": "Spiele Kessel Run auf Kessel und wähle den Schmuggler an einem anderen System. Plane Force für Hin- und Rückweg ein. Erst nach der Rückkehr kann die Mission verlorene Force zurückholen."
+        },
         "startingLocations": ["Light:2447", "Light:608", "Light:2849"],
         "cards": [
           { "id": "Light:80", "count": 1 },
@@ -188,6 +208,11 @@
       },
       {
         "theme": { "id": "rebellen-spezialeinsatz", "name": "Rebellen-Spezialeinsatz", "description": "Droiden sichern die Todessternpläne, Gold 1 schützt den Rückweg und die Jedi unterstützen an den Sites. Enthält die bisher fehlenden Light-Side-Karten." },
+        "strategy": {
+          "start": "Docking Bay 94 ist ein flexibler Start. Docking Bay 327 ist eine Option, wenn du auf dem Todesstern früh einen Zugang zu weiteren Sites brauchst.",
+          "opening": "Nutze Rebel Trooper, um den Aufbau zu sichern. Halte dir Gold 1 und passende Besatzung für ein System bereit. Suche bei Bedarf mit Han’s Back oder Leia’s Back nach der passenden Figur.",
+          "tactics": "Spiele Death Star Plans auf eine Todesstern-Site außerhalb einer Docking Bay und wähle einen Droiden außerhalb des Todessterns. Plane die Route zum Ziel und danach zu einer Yavin-4-Site, damit die Mission Force zurückholt."
+        },
         "startingLocations": ["Light:2447", "Light:676", "Light:2853", "Light:608"],
         "cards": [
           { "id": "Light:95", "count": 1 },
@@ -249,6 +274,11 @@
       },
       {
         "theme": { "id": "jedi-auf-tatooine", "name": "Jedi auf Tatooine", "description": "Obi-Wan und Luke halten Tatooines Sites. Gift Of The Mentor bringt Lichtschwerter auf die Hand. Sense und Alter schützen wichtige Aktionen." },
+        "strategy": {
+          "start": "Obi-Wan’s Hut senkt den Deploy von Obi-Wan. Lars’ Moisture Farm ist die Alternative für Luke und frühe Unterstützung durch Rebel Trooper.",
+          "opening": "Nutze Gift Of The Mentor, wenn dir ein Lichtschwert fehlt. Obi-Wan kann sein eigenes Schwert führen. Das Jedi Lightsaber ist eine weitere Option für deine Warriors.",
+          "tactics": "Sichere wichtige Aktionen mit Sense und Alter. Nimm mit Nabrun Leids einen anderen Anlauf, wenn der Gegner eine Site zu stark besetzt hat und ein erlaubtes Ziel frei ist."
+        },
         "startingLocations": ["Light:2471", "Light:2462", "Light:2440"],
         "cards": [
           { "id": "Light:95", "count": 2 },
@@ -286,6 +316,11 @@
       },
       {
         "theme": { "id": "droidenstuetzpunkt", "name": "Droidenstützpunkt", "description": "C-3PO stärkt die Rebellen am Boden. R2-X2 unterstützt Red 3 oder Gold 5, während Mantellian Savrip bei verlorenen Kämpfen Forfeits aus der Hand erlaubt." },
+        "strategy": {
+          "start": "Wähle den Massassi War Room für einen Bodenstart. Die Yavin-4-Docking Bay ist eine Option, wenn du zuerst Piloten und Astromechs einsetzen willst.",
+          "opening": "Platziere C-3PO mit einem Rebellen an derselben Site. Weitere passende Droiden-Rebellen-Paare erhöhen dort die Power. R2-X2 kannst du für Red 3 oder Gold 5 zurückhalten.",
+          "tactics": "Nutze Mantellian Savrip, um nach verlorenen Battles zulässige Karten aus der Hand zu forfeiten. Reserviere Droid Shutdown für einen deiner wichtigen Droiden, wenn ihn der Gegner direkt angreift."
+        },
         "startingLocations": ["Light:2859", "Light:2853", "Light:2447"],
         "cards": [
           { "id": "Light:95", "count": 1 },
@@ -329,6 +364,11 @@
     "Dark": [
       {
         "theme": { "id": "imperiale-garnison", "name": "Imperiale Garnison", "description": "Tarkin sichert den Todesstern und seinen Traktorstrahl. Kopfgeldjäger können mit Zuckuss’ Fanggewehr Gefangene in den Detention Block bringen." },
+        "strategy": {
+          "start": "Beginne im Death Star War Room für Force oder im Detention Block Corridor, wenn du direkt einen Haftort sichern willst. Lege passende Todesstern-Sites daneben.",
+          "opening": "Verteidige deine Sites mit Todesstern-Truppen und Offizieren. Rüste einen geeigneten Kopfgeldjäger mit Zuckuss’ Snare Rifle aus und sichere den Weg zum Detention Block.",
+          "tactics": "Nutze Festnahmen, sobald ein geeignetes Ziel vorhanden ist. Der Death Star Tractor Beam bietet eine zweite Möglichkeit gegen Raumschiffe, wenn Docking Bay 327 und das Death Star System im Spiel sind."
+        },
         "startingLocations": ["Dark:673", "Dark:682", "Dark:678"],
         "cards": [
           { "id": "Dark:22", "count": 1 },
@@ -393,6 +433,11 @@
       },
       {
         "theme": { "id": "schwarze-staffel", "name": "Schwarze Staffel", "description": "Black 2 und Black 3 fliegen mit Vader und TIE Advanced x1. TIE-Jäger sichern die Systeme." },
+        "strategy": {
+          "start": "Wähle Kessel, Tatooine oder Yavin 4 und sichere zuerst ein System, bevor du deine Staffel aufteilst.",
+          "opening": "Setze Vader nach Möglichkeit in Vader’s Custom TIE. DS-61-2 gehört auf Black 2 und DS-61-3 auf Black 3, wenn du die passenden Kombinationen ziehst.",
+          "tactics": "Rüste einen TIE Advanced x1 mit einer Boosted TIE Cannon aus, sobald ein passendes Ziel absehbar ist. Halte Force zum Feuern bereit und nutze Stormtrooper für die wichtigsten Boden-Sites."
+        },
         "startingLocations": ["Dark:2429", "Dark:2848", "Dark:1426"],
         "cards": [
           { "id": "Dark:60", "count": 2 },
@@ -426,6 +471,11 @@
       },
       {
         "theme": { "id": "tusken-ueberfall", "name": "Überfall im Jundland", "description": "Tusken Raiders kämpfen mit Banthas und Gaderffii-Stöcken. Die Cantina liefert Verstärkung für den Boden." },
+        "strategy": {
+          "start": "Beginne bei Jundland Wastes für frühe Kämpfe an Außen-Sites. Cantina ist die Alternative, wenn du zuerst Aliens ausspielen willst.",
+          "opening": "Bring Tusken Raider und Bantha in dieselbe Region. Ein Gaderffii Stick auf einem Tusken Raider ist eine Möglichkeit, schon bei der Kampferöffnung einzugreifen.",
+          "tactics": "Lass einen Bantha für einen React bereit und nutze die günstigeren Stormtrooper für weniger umkämpfte Sites. Dr. Evazan kann bei passenden Treffern zusätzlichen Druck machen."
+        },
         "startingLocations": ["Dark:2458", "Dark:2439", "Dark:2465"],
         "cards": [
           { "id": "Dark:191", "count": 5 },
@@ -471,6 +521,11 @@
       },
       {
         "theme": { "id": "blockade-von-kessel", "name": "Blockade von Kessel", "description": "Devastator und Sternzerstörer blockieren Kessel mit Ion Cannons und Turbolasern. TIEs dienen als Eskorte." },
+        "strategy": {
+          "start": "Beginne auf Kessel, wenn du das System früh halten willst. Tatooine bietet eine zweite Raumachse. Docking Bay 327 hilft beim Aufbau am Boden.",
+          "opening": "Sichere Kessel mit günstigen TIEs. Spare anschließend für Devastator oder einen Imperial-Class Star Destroyer. Admiral Motti und Commander Praji können deine Flotte verstärken.",
+          "tactics": "Verteile Ion Cannon und Turbolaser Battery auf geeignete Träger. Halte Force zum Feuern zurück und baue die Flotte erst aus, wenn du ihre Position sichern kannst."
+        },
         "startingLocations": ["Dark:1426", "Dark:2429", "Dark:675"],
         "cards": [
           { "id": "Dark:60", "count": 3 },
@@ -508,6 +563,11 @@
       },
       {
         "theme": { "id": "imperiale-sondereinheit", "name": "Imperiale Sondereinheit", "description": "Vaders Offiziere sichern die Todesstern-Sites. Nacht, Suchaktionen und Sonderausrüstung ergänzen die Garnison. Enthält die bisher fehlenden Dark-Side-Karten." },
+        "strategy": {
+          "start": "Starte an einer Docking Bay für flexible Deploys oder bei Kessel, wenn du Devastator früh einsetzen kannst. Der Detention Block Corridor ist die Option für einen Todesstern-Start.",
+          "opening": "Stelle mit Offizieren und günstigen Truppen die Kontrolle sicher. Nutze Sunsdown am zugehörigen System, wenn du an den Sites von Nachtbedingungen profitierst.",
+          "tactics": "Warte mit Dark Hours auf eine Site mit gegnerischen Figuren niedriger Ability. Die Karte kann auch eigene Figuren treffen. The Empire’s Back hilft dir bei der Suche nach Vader oder bei der Rückholung aus dem Lost Pile."
+        },
         "startingLocations": ["Dark:2446", "Dark:673", "Dark:2852", "Dark:1426"],
         "cards": [
           { "id": "Dark:12", "count": 1 },
@@ -574,6 +634,11 @@
       },
       {
         "theme": { "id": "vaders-jagd", "name": "Vaders Jagd", "description": "Vader, Tarkin und die Offiziere suchen Bodenkämpfe. Dark Collaboration und I Have You Now verstärken passende Kämpfe. The Circle Is Now Complete bringt Vader ins Duell mit Obi-Wan." },
+        "strategy": {
+          "start": "Der Death Star War Room liefert dir Force für Vader. Cantina oder Mos Eisley eignen sich, wenn du die gegnerischen Hauptfiguren auf Tatooine stellen willst.",
+          "opening": "Setze günstige Stormtrooper zur Sicherung ein und spare für Vader und Tarkin am selben Ort. Wenn beide mitkämpfen, kann Tarkin einen gegnerischen Destiny-Draw aufheben.",
+          "tactics": "Halte Imperial Barrier und Sense für wichtige Antworten bereit. Setze The Circle Is Now Complete ein, wenn Vader und Obi-Wan am selben Ort stehen und du das Duell mit ausreichender Power angehen kannst."
+        },
         "startingLocations": ["Dark:2439", "Dark:682", "Dark:2465"],
         "cards": [
           { "id": "Dark:60", "count": 1 },
@@ -612,6 +677,11 @@
       },
       {
         "theme": { "id": "sturmtruppen-offensive", "name": "Sturmtruppen-Offensive", "description": "Günstige Stormtrooper und Todesstern-Truppen besetzen früh mehrere Sites. Tagge und Tarkin führen die Truppen. Trooper Charge verstärkt einen Angriff auf Kosten des gewählten Troopers." },
+        "strategy": {
+          "start": "Starte im Death Star War Room für einen Aufbau mit Todesstern-Truppen. Cantina oder Mos Eisley sind Alternativen für frühe Stormtrooper auf Tatooine.",
+          "opening": "Bring Tagge oder einen anderen Imperialen mit Ability über 2 ins Spiel und spiele Stormtrooper an seiner Site kostenlos aus. Verteile danach günstige Figuren auf die benachbarten Sites.",
+          "tactics": "Nutze Imperial Blaster und Blaster Rifle, um einen wichtigen Kampf vorzubereiten. Trooper Charge lohnt sich, wenn der Powergewinn den Pflicht-Forfeit des gewählten Troopers aufwiegt."
+        },
         "startingLocations": ["Dark:682", "Dark:2439", "Dark:2465"],
         "cards": [
           { "id": "Dark:146", "count": 1 },

@@ -20,7 +20,14 @@ test('the checked-in catalog and starter decks validate against the pinned editi
   for (const side of ['Light', 'Dark']) {
     assert.equal(audit.decks[side].cards, 60);
     assert.deepEqual(audit.decks[side].startingLocations, definitions.decks[side].startingLocations);
+    assert.deepEqual(decks[side.toLowerCase()].strategy, definitions.decks[side].strategy);
+    assert.ok(decks[side.toLowerCase()].strategy.tactics.trim());
   }
+  const withoutGuide = structuredClone(definitions);
+  delete withoutGuide.decks.Light.strategy;
+  assert.equal(readStarterDecks(withoutGuide, catalog).light.strategy, undefined);
+  withoutGuide.decks.Light.strategy = {...definitions.decks.Light.strategy, opening: ' '};
+  assert.throws(() => readStarterDecks(withoutGuide, catalog), /Strategie/);
   assert.ok(audit.errata.every(card => card.slip && card.activeText === 'pinned-front' && card.decision === 'accepted-as-reference-text'));
   const historical = catalog.filter(card => card.texts.preErrata !== null);
   assert.deepEqual(historical.map(card => [card.id, card.preErrataSourceId]), [['Dark:1767', 20016]]);
@@ -58,6 +65,8 @@ test('both sides have seven distinct, valid 60-card themed decks with playable s
     assert.equal(new Set(lineups).size, sets[side].length);
     for (const {deck, definition} of sets[side]) {
       assert.equal(deck.cards.length, 60);
+      assert.deepEqual(deck.strategy, definition.strategy);
+      assert.ok(deck.strategy.tactics.trim());
       assert.deepEqual([...new Set(deck.startingIndices.map(index => deck.cards[index].id))], definition.startingLocations);
       assert.ok(deck.cards.every(card => card.side.toLowerCase() === side &&
         (card.set === '1' || (['Dark:2915','Dark:654','Dark:667','Dark:2103'].includes(card.id) && deck.theme.id === 'imperiale-garnison'))));
