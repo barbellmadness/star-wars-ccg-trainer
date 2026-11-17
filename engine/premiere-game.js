@@ -27,6 +27,18 @@ const PremiereGame = (() => {
     return shuffled;
   }
 
+  const isReserveInsert = card => !!card?.insertedIntoReserveBy;
+  const reserveCards = deck => (deck ?? []).filter(card => !isReserveInsert(card));
+
+  function shuffleReserve(deck, game) {
+    const hasPlayableCard = deck.some(card => !isReserveInsert(card));
+    let shuffled;
+    do {
+      shuffled = shuffle(deck, game);
+    } while (hasPlayableCard && isReserveInsert(shuffled.at(-1)));
+    return shuffled;
+  }
+
   function copyDeck(deck, side) {
     return {...deck, cards: deck.cards.map((card, index) => ({...card,
       instanceId: `${side}:${index + 1}`, owner: side})), setAside: new Set()};
@@ -71,7 +83,7 @@ const PremiereGame = (() => {
 
   function lossChoices(state, side, preferred) {
     const {hand, deck, force, used} = zones(state, side);
-    const piles = {deck, force, used};
+    const piles = {deck: isReserveInsert(deck?.at(-1)) ? [] : deck, force, used};
     if (Object.hasOwn(piles, preferred) && piles[preferred]?.length) return [{args: [preferred]}];
     const cards = (hand ?? []).map((card, i) => ({args: ['hand', i], card}));
     if (preferred === 'hand' && cards.length) return cards;
@@ -88,7 +100,7 @@ const PremiereGame = (() => {
       return card;
     }
     const piles = {deck, force, used};
-    if (!Object.hasOwn(piles, zone) || !piles[zone]?.length) return null;
+    if (!Object.hasOwn(piles, zone) || !piles[zone]?.length || isReserveInsert(piles[zone].at(-1))) return null;
     return moveTop(piles[zone], lost)[0];
   }
 
@@ -115,7 +127,8 @@ const PremiereGame = (() => {
     const players = Object.fromEntries(sides.map(player => {
       const piles = zones(state, player);
       const faceDown = lostPileFaceDown(state, player);
-      return [player, {handCount: piles.hand?.length ?? 0, reserveCount: piles.deck?.length ?? 0,
+      const reserveCount = (piles.deck ?? []).some(isReserveInsert) ? null : piles.deck?.length ?? 0;
+      return [player, {handCount: piles.hand?.length ?? 0, reserveCount,
         forceCount: piles.force?.length ?? 0, usedCount: piles.used?.length ?? 0,
         lostCount: piles.lost?.length ?? 0, lostFaceDown: faceDown,
         lostTop: faceDown ? null : clone(piles.lost?.at(-1)) ?? null,
@@ -140,7 +153,7 @@ const PremiereGame = (() => {
   function lifeForce(state, side) {
     const {deck, force, used} = zones(state, side);
     const draws = state.game?.responses.filter(frame=>frame.kind==='destiny'&&frame.side===side&&frame.draw).length??0;
-    return (deck?.length ?? 0) + (force?.length ?? 0) + (used?.length ?? 0) + draws;
+    return reserveCards(deck).length + (force?.length ?? 0) + (used?.length ?? 0) + draws;
   }
 
   function outcome(state) {
@@ -294,7 +307,7 @@ const PremiereGame = (() => {
   return {actionState, answer, cancelResponse, checkpoint, copyDeck, createState, execute, expire,
     lifeForce, lossChoices, loseForce, lostPileFaceDown, moveTop, offer, openResponse, otherSide, outcome, passResponse, playerView, random,
     recirculate, registerTrigger, removeCancelledResponse, resetTurn, resolveTrigger, responseWindow,
-    retrieveCard, retrieveForce, setPhase, setupView, shuffle, sides, triggerOptions, useOnce, wasUsed, zones};
+    retrieveCard, retrieveForce, setPhase, setupView, shuffle, shuffleReserve, isReserveInsert, reserveCards, sides, triggerOptions, useOnce, wasUsed, zones};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereGame;

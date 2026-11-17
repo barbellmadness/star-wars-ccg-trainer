@@ -99,10 +99,29 @@ const PremiereLocations = (() => {
       ? opposite(side) : side;
   }
 
-  function ruleAt(state, slot, side, event) {
+  function rulesAt(state, slot, side, event) {
     const registry = typeof PremiereCardRules === 'undefined' ? require('./premiere-card-rules.js') : PremiereCardRules;
-    const printed = printedSide(state, slot, side);
-    return registry.effects(state.locations[slot], event).find(rule => rule.printedSide === printed);
+    const version = state.game?.cardRulesVersion ?? Infinity;
+    const card = state.locations?.[slot], printed = printedSide(state, slot, side);
+    const activeRules = (location, textSide) => registry.effects(location,event).filter(rule => rule.printedSide===textSide &&
+      (!rule.printedClause || (location.gametext ?? '').split(/[.!?]\s+/).some(line =>
+        line.trim().replace(/[.!?]$/, '').toLowerCase() === (textSide + ': ' + rule.printedClause).toLowerCase())));
+    const local = units.textSuppressed(card)?[]:activeRules(card,printed);
+    if(version<21||!card||system(card)||event==='dockingTransit'||!state.locationEffects) return local;
+    const order=state.locationOrder??state.locations.map((_,index)=>index),position=order.indexOf(slot);
+    if(position<0)return local;
+    const expanded=[order[position-1],order[position+1]].flatMap(neighbor=>{
+      const source=state.locations[neighbor];
+      if(!source||system(source)||region(source)!==region(card)||units.textSuppressed(source))return [];
+      const modifier=effectsAt(state,neighbor).find(({card})=>card.id==='Dark:914'&&!units.textSuppressed(card));
+      if(!modifier||printedSide(state,neighbor,modifier.card.side)!==side)return [];
+      return activeRules(source,modifier.card.side);
+    });
+    return local.concat(expanded);
+  }
+
+  function ruleAt(state, slot, side, event) {
+    return rulesAt(state,slot,side,event)[0];
   }
 
   function icons(state, slot, side) {
@@ -157,7 +176,7 @@ const PremiereLocations = (() => {
     if (effects.some(effect => effect.drainForbiddenFor === side)) return null;
     const base = icons(state, slot, opposing);
     if (base === null) return null;
-    let modifier = ruleAt(state, slot, side, 'forceDrain')?.amount ?? 0;
+    let modifier = rulesAt(state, slot, side, 'forceDrain').reduce((sum,rule)=>sum+rule.amount,0);
     const controlledSiteBonus = ruleAt(state, slot, side, 'controlSiteDrain');
     if (controlledSiteBonus) {
       modifier += state.locations.filter((card, index) => card && !system(card) && region(card) === controlledSiteBonus.region &&
@@ -173,7 +192,7 @@ const PremiereLocations = (() => {
   }
 
   return {aboard, activeCards, at, cardsOnTable, entries, physicalPlace, conditions, control, drain, effectsAt, forceGeneration, icons, presence, prison,
-    findEntry: find, nightEffectsAt, occupy: presence, present, presentCards, printedSide, ruleAt};
+    findEntry: find, nightEffectsAt, occupy: presence, present, presentAt, presentCards, printedSide, ruleAt, rulesAt};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereLocations;

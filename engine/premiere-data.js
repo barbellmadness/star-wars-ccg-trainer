@@ -139,7 +139,13 @@ const PremiereData = (() => {
         payload.card?.id !== 'Dark:2915' || payload.card.gempId !== '4_180') {
       throw new Error('Ungültiger Datensatz für Zuckuss’ Fanggewehr.');
     }
-    return [normalizeCard(payload.card, '4')];
+    const expected = new Map([['Dark:654','2_143'],['Dark:667','2_111'],['Dark:2103','2_138']]);
+    const additions = (payload.additions ?? []).map(record => {
+      if (record.set !== '2' || expected.get(record.id) !== record.gempId) throw new Error('Unbekannte Zusatzkarte aus A New Hope.');
+      expected.delete(record.id);
+      return normalizeCard(record, '2');
+    });
+    return [normalizeCard(payload.card, '4'), ...additions];
   }
 
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
@@ -153,7 +159,20 @@ const PremiereData = (() => {
        'Light:1039','Dark:2357','Dark:1555','Dark:1691','Dark:391','Light:2297','Light:2531','Light:2740','Light:1389','Dark:621',
        'Light:994','Light:1455','Dark:1576','Dark:1578','Dark:2701','Light:1104','Light:1874','Dark:1215','Dark:2406','Dark:2634',
        'Light:1196','Light:2705','Dark:1064','Light:826','Dark:190','Light:2157','Dark:1430','Light:2141',
-       'Light:68','Dark:1208','Light:695','Light:1380','Dark:1378','Light:1373','Dark:1372','Light:821','Dark:1617'].includes(card.id)) return true;
+       'Light:68','Dark:1208','Light:695','Light:1380','Dark:1378','Light:1373','Dark:1372','Light:821','Dark:1617',
+       'Dark:1579','Dark:2176','Light:2011','Dark:2632','Dark:2650',
+       'Light:352','Light:468','Dark:649','Light:985','Dark:467',
+       'Light:24','Dark:622','Light:1120','Light:2423','Light:2325','Light:1810','Light:1707','Light:1755','Light:1197',
+       'Light:2033','Dark:1263','Light:2041','Light:2110','Dark:914','Light:2860','Dark:665','Dark:932','Dark:304','Light:781',
+       'Light:761','Dark:2884','Light:1236','Light:1331','Dark:1338','Light:38','Dark:22','Light:222','Light:2764','Dark:2762',
+       'Light:483','Dark:1932','Light:758','Light:1749','Dark:824','Light:1321','Dark:253','Dark:993',
+       'Light:882','Dark:888','Light:1827','Dark:1440','Dark:1237','Light:1893','Dark:830','Light:2043','Dark:1282',
+       'Dark:1480','Dark:2214','Dark:2397','Light:1402','Dark:1688','Light:1554','Light:1643',
+       'Dark:2242','Dark:2410','Dark:1904','Dark:1767','Dark:2901','Dark:1238',
+       'Light:2180','Dark:1265','Light:1187','Light:2319','Light:2509',
+       'Light:1913','Light:2646','Dark:1599','Dark:1401','Dark:619','Dark:266','Dark:1815',
+       'Light:1834','Light:1794','Light:2689','Dark:2688','Light:1125','Light:2570','Dark:1565','Light:585','Light:2863',
+       'Dark:1857','Light:215','Dark:667','Dark:2103'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 
@@ -166,7 +185,7 @@ const PremiereData = (() => {
     for (const entry of definition.cards) {
       const {id, count} = entry ?? {}, card = byId.get(id);
       if (!card || card.side !== side) throw error('Unbekannte oder seitenfremde Premiere-Karte ' + id + '.');
-      if (card.set !== EDITION && !(id === 'Dark:2915' && definition.theme?.id === 'imperiale-garnison')) {
+      if (card.set !== EDITION && !(definition.theme?.id === 'imperiale-garnison' && ['Dark:2915','Dark:654','Dark:667','Dark:2103'].includes(id))) {
         throw error(id + ' stammt aus einer anderen Edition.');
       }
       if (ids.has(id)) throw error('Doppelter Eintrag für ' + id + '.');
