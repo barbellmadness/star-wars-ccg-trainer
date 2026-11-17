@@ -4,15 +4,15 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 ## 4. Charaktere, Fahrzeuge, Schiffe und Bewegung
 
-- [ ] Weitere individuelle Deploy-, Besatzungs- und React-Texte sowie Kontrollwechsel durch einzelne Karteneffekte umsetzen. Siehe Abschnitt 7.
+In V2.15.15 abgeschlossen. Die Tests decken Deploy, Besatzung, Reacts, Bewegung und das erneute Ausspielen gestohlener Karten durch ihren neuen Besitzer ab.
 
 ## 5. Battle, Destiny und Schadensauflösung
 
-- [ ] Weitere kartenspezifische Interrupt-Modi und Destiny- oder Immunitätseffekte ergänzen und prüfen. Siehe Abschnitte 6 und 7.
+In V2.15.15 abgeschlossen. Die Tests decken Antwortfenster, Destiny, Immunität und Schadensauflösung ab. Bei vorzeitigem Kampfende gehen bereits getroffene Karten verloren.
 
 ## 6. Premiere-Waffen vervollständigen
 
-- [ ] Weitere Kombinationen zwischen Waffen und Kartentexten abdecken. Siehe Abschnitt 7.
+In V2.15.15 abgeschlossen. Die Tests prüfen die 25 Premiere-Waffen und Kombinationen mit Karteneffekten, darunter umgelenkte Treffer, Forfeit-Ersatz mit Talz und gestohlene Waffen.
 
 ## 7. Kartentexte für alle Kartentypen
 

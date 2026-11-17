@@ -2956,7 +2956,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,21);
+ assert.equal(saved.cardRulesVersion,22);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -5388,6 +5388,46 @@ test('the Tonnika Sisters require a two and pick a single equipment type',async(
  run("setupDecks=null;state.game=PremiereGame.actionState(218,0);state.phase=1;state.activeSide='Dark';state.botTurn={steps:[],index:0};const sisters=card('Dark:2613'),luke=card('Light:1593'),leia=card('Light:1495'),saber=card('Light:1386'),saber2=card('Light:1386'),device={type:'Device',name:'Test device',owner:'Light'};luke.weapons=[saber];leia.weapons=[saber2];leia.attachments=[device];state.light[3]=[luke,leia];state.dark[3]=[sisters];state.hand=[];state.botHand=[];state.botDeck=[{name:'Destiny',destiny:3},{name:'Destiny',destiny:2}];");
  assert.equal(run("requestAction('controlTheft','Dark',[0])&&requestAction('finishCardInformation','Dark',['steal',0])&&state.pendingCardView.category==='Weapon'"),true);
  assert.equal(run("!legalActions(state,'Dark').some(option=>option.label?.includes(device.name))&&saber.owner==='Dark'"),true);
+});
+
+test('Kabe’s stolen blaster can be recovered and redeployed by its new owner',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(250,0);state.phase=1;
+  const kabe=card('Light:1406'),luke=card('Light:1593'),trooper=card('Dark:2355'),blaster=card('Dark:1264');
+  trooper.weapons=[blaster];state.light[3]=[kabe,luke];state.dark[3]=[trooper];
+  state.hand=[];state.botHand=[];state.deck=[{name:'Theft destiny',destiny:0}];`);
+ assert.equal(run("requestAction('controlTheft','Light',[0,0])&&kabe.weapons.includes(blaster)&&blaster.kabeHeld"),true);
+ assert.equal(run("loseTableCard('Light',3,kabe)&&state.lost.includes(blaster)&&!state.botLost.includes(blaster)"),true);
+ run("PremiereGame.retrieveCard(state,'Light',state.lost.indexOf(blaster));recirculate('Light');activateReserve('Light',1);state.phase=5;");
+ assert.equal(run("requestAction('draw','Light')&&state.hand[0]===blaster"),true);
+ run("state.phase=2;");
+ assert.equal(run("!weaponPlacementOptions('Dark',blaster,3).length&&requestAction('equip','Light',[0,3,0])&&luke.weapons.includes(blaster)&&!blaster.kabeHeld"),true);
+});
+
+test('a weapon hit still loses the droid when Set For Stun ends the battle early',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(251,0);state.phase=3;
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  const luke=card('Light:1593'),droid=card('Light:343'),trooper=card('Dark:2355');
+  trooper.weapons=[card('Dark:1264')];state.light[3]=[luke,droid];state.dark[3]=[trooper];
+  state.hand=[];state.botHand=[card('Dark:2242')];state.botDeck=[{name:'Stun destiny',destiny:6},{name:'Blaster destiny',destiny:1}];`);
+ assert.equal(run("requestAction('battle','Dark',[3])&&requestAction('fireWeapon','Dark',[0,0,1])&&battleSession.hitUnits.Light.includes(droid)&&state.light[3].includes(droid)"),true);
+ assert.equal(run("requestAction('passWeapons','Light')&&requestAction('pileInterrupt','Dark',[0,'setStun',0])"),true);
+ assert.equal(run("battleSession===null&&state.hand.includes(luke)&&state.lost.includes(droid)&&state.light[3].length===0"),true);
+});
+
+test('Talz restores a droid’s own forfeit after a redirected weapon shot',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(252,0);state.phase=3;
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  const luke=card('Light:1593'),droid=card('Light:343'),talz=card('Light:2412'),trooper=card('Dark:2355');
+  trooper.weapons=[card('Dark:1264')];state.light[3]=[luke,droid,talz];state.dark[3]=[trooper];
+  state.hand=[card('Light:2570')];state.botHand=[];state.botDeck=[{name:'Blaster destiny',destiny:1}];`);
+ assert.equal(run("requestAction('battle','Dark',[3])&&requestAction('fireWeapon','Dark',[0,0,0])"),true);
+ assert.equal(run("performAction(legalActions(state,'Light').find(action=>action.args[1]==='droidRedirect'))"),true);
+ assert.equal(run("for(let i=0;i<4;i++)requestAction('passResponse',PremiereGame.responseWindow(state.game).priority);battleSession.hitUnits.Light.includes(droid)&&!battleSession.hitUnits.Light.includes(luke)&&battleForfeitValue(droid,'Light')===luke.forfeit"),true);
+ assert.equal(run("requestAction('passWeapons','Light')&&requestAction('passWeapons','Dark')&&requestAction('skipDestiny','Dark')&&requestAction('skipDestiny','Light')&&requestAction('battleForceLoss','Dark',['force'])"),true);
+ assert.equal(run("requestAction('talzForfeit','Light',[2,1])&&state.lost.includes(talz)&&state.light[3].includes(droid)&&battleForfeitValue(droid,'Light')===droid.forfeit"),true);
 });
 
 test('navigation sabotage removes only the chosen navigator',async()=>{
