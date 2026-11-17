@@ -364,9 +364,9 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.15';
+const trainerVersion='2.15.16';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -422,7 +422,7 @@ function responseMarkup(window,available){
  const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
   +(window.kind==='destiny'?'<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>':'');
  if(window.priority==='Dark'){
-  const option=legalActions(state,'Dark')[0];
+  const option=botPromptAction();
   return description+(battleOnPlaymat?ruleButton(option,'Antwort des Bots zeigen'):botRuleButton(option,'Antwort des Bots zeigen'));
  }
  return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label??(['react','reactDeploy'].includes(option.kind)
@@ -470,14 +470,14 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.style.display='block';return;
  }
  if(state.automatedPending){
-  const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
+  const pending=state.automatedPending,controls=pending.side==='Light'?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
    (pending.kind==='mine'?'Noch zu verlierende Charaktere: '+pending.remaining:pending.kind==='defuse'?'Mine ausgelöst':'Wähle das Ziel des Seekers.')+'</p>'+controls.map(option=>
    option.side==='Dark'?botRuleButton(option,'Entscheidung des Bots zeigen'):ruleButton(option,option.label??option.card.name)).join(' ');
   box.style.display='block';return;
  }
  if(state.game?.timing.pending){
-  const options=available.length?available:legalActions(state,'Dark').slice(0,1);
+  const options=available.length?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>Ausgelöste Effekte</b><p>Wähle den nächsten Effekt.</p>'
    +options.map(option=>option.side==='Dark'?botRuleButton(option,'Bot: '+option.label):ruleButton(option,option.label)).join(' ');
   box.style.display='block';return;
@@ -489,7 +489,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  if(state.pendingReserveSearch){
   const frame=state.pendingReserveSearch,light=frame.side==='Light';
-  const options=light?available:legalActions(state,'Dark').slice(0,1);
+  const options=light?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>'+escapeHTML(frame.card.name)+' · Reserve Deck</b><p>'
    +(light?'Wähle eine passende Karte. Danach wird das Deck gemischt.':'Der Bot durchsucht sein Reserve Deck.')+'</p>'
    +options.map(option=>light?ruleButton(option,option.label):botRuleButton(option,'Suche des Bots abschließen')).join(' ');
@@ -536,7 +536,7 @@ function cardInformationMarkup(available){
  let markup='<b>'+escapeHTML(frame.card.name)+'</b>';
  if(shown.length)markup+='<ol'+(isPeek?' data-scomp-peek':'')+'>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
  if(!light){
-  const choice=legalActions(state,'Dark')[0];
+  const choice=botPromptAction();
   return markup+botRuleButton(choice,'Entscheidung des Bots zeigen');
  }
  if(frame.mode==='leesub'){
@@ -1352,7 +1352,7 @@ function automaticBotAction(){
  if(!dark.length)return null;
  if(state.pendingCustody?.length)return botCustodyAction(dark);
  if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||
-    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return dark[0];
+    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return botPromptAction(dark);
  if(battleSession){
   if(dark.some(action=>action.kind==='battlePrediction'))return botPredictionAction(dark);
   if(battleSession.weaponTurn==='Dark')return botWeaponAction();
@@ -1421,7 +1421,7 @@ function readSavedGame(){
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
-     (saved.botStrategyVersion!==undefined&&![0,1].includes(saved.botStrategyVersion))){
+     (saved.botStrategyVersion!==undefined&&![0,1,2].includes(saved.botStrategyVersion))){
    throw new Error('Unbekannter Spielstand');
   }
   return saved;
