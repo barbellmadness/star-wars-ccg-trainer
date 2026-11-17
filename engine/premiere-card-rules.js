@@ -299,6 +299,25 @@ const PremiereCardRules = (() => {
     continuous('globalJawaForfeit','Alle eigenen Jawas erhalten +1 Forfeit.',
       'friendly Jawas on table','both Jawa effects charge each player and add forfeit',{amount:1,since:19}),
   ],true);
+  register(['Light:821'],[
+    continuous('device','Für 1 Force an einem Warrior einer beliebigen Seite anlegen.','warrior',
+      'Electrobinoculars only shows the owner the top card',{cost:1,allowOpponent:true,since:20}),
+    continuous('cardInformation','Für 2 Force die oberste Karte des eigenen Reserve Decks ansehen und wahlweise oben auf die eigene Force Pile legen.',
+      'top of own Reserve Deck','Electrobinoculars only shows the owner the top card',{mode:'electrobinoculars',cost:2,since:20}),
+  ],true);
+  register(['Dark:1617'],[
+    continuous('tableEffect','Für 2 Force beim gegnerischen Reserve Deck ausspielen.','opposing reserve',
+      'Macroscan keeps its peek private and expands it at night',{cost:2,since:20}),
+    continuous('cardInformation','Für 1 Force die oberste Reserve-Karte des Gegners ansehen. Bei Nachtbedingungen dürfen bis zu drei Karten angesehen werden.',
+      'opposing reserve','Macroscan keeps its peek private and expands it at night',{mode:'macroscan',cost:1,since:20}),
+  ],true);
+  for(const [id,mode,cost,description,test] of [
+    ['Dark:1460','labria',0,'Einmal je eigener Control Phase die oberste eigene Reserve-Karte offen zeigen. Fahrzeuge und Schiffe gehen verloren. Andere Karten oben auf eine der drei eigenen Force-Piles legen.','Labria reveals a card and chooses a valid pile'],
+    ['Light:1489','leesub',1,'Einmal je eigener Control Phase für 1 Force einen Kartentyp und eine verdeckte Position in der gegnerischen Hand wählen. Die gewählte Karte wird aufgedeckt. Bei richtiger Wahl geht sie verloren.','Leesub chooses a card position without seeing the hand'],
+    ['Dark:1613','miiyoom',0,'Einmal je eigener Control Phase für jede gegnerische Handkarte 1 Force ausgeben. Die Hand wird offengelegt. Alle einzigartigen männlichen Rebels und Aliens darin gehen verloren.','M’iiyoom reveals the hand and loses only unique male Rebels and aliens'],
+  ]){
+    register([id],[continuous('cardInformation',description,'own Control phase',test,{mode,cost,ownControl:true,since:20})],true);
+  }
   register(['Light:2102', 'Dark:2833'], [
     continuous('tableEffect', 'Liegt auf der gegnerischen Tischseite. Die Warriors dieser Seite kosten beim Deploy 1 Force mehr.',
       'opposing table', 'Central Core waives Wrong Turn', { since: 5, cost: 3, warriorDeploy: 1, expires: 'when canceled' }),

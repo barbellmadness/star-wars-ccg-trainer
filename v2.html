@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.12';
+const trainerVersion='2.15.13';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -457,6 +457,10 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  if(state.pendingCustody?.length){
   box.innerHTML='';box.style.display='none';return;
  }
+ if(state.pendingCardView){
+  box.innerHTML=cardInformationMarkup(available);
+  box.style.display='block';return;
+ }
  if(state.automatedPending){
   const pending=state.automatedPending,controls=pending.side==='Light'?available:legalActions(state,'Dark').slice(0,1);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
@@ -508,13 +512,38 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
  const tableEffects=available.filter(option=>['deployTableEffect','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
- const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect','cardInformation'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
  const rackView=racks.map(rack=>'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>').join('');
  const extra=[retrieval,shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
+}
+
+function cardInformationMarkup(available){
+ const frame=state.pendingCardView,light=frame.side==='Light';
+ const shown=light||frame.mode==='labria'?frame.shown:[];
+ let markup='<b>'+escapeHTML(frame.card.name)+'</b>';
+ if(shown.length)markup+='<ol>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
+ if(!light){
+  const choice=legalActions(state,'Dark')[0];
+  return markup+botRuleButton(choice,'Entscheidung des Bots zeigen');
+ }
+ if(frame.mode==='leesub'){
+  const {gameId,revision}=available[0];
+  const positions=[...new Set(available.map(option=>option.args[1]))];
+  return markup+'<div class="pile-action"><label>Kartentyp <select id="leesubType">'+informationCardTypes
+   .map(type=>'<option>'+type+'</option>').join('')+'</select></label>'
+   +'<label>Verdeckte Position <select id="leesubPosition">'+positions.map(index=>'<option value="'+index+'">Karte '+(index+1)+'</option>').join('')
+   +'</select></label><button onclick="submitLeesubGuess('+gameId+','+revision+')">Tipp abgeben</button></div>';
+ }
+ return markup+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label)).join(' ')+'</div>';
+}
+
+function submitLeesubGuess(gameId,revision){
+ return dispatchUI({kind:'finishCardInformation',side:'Light',gameId,revision,
+  args:[el('leesubType').value,Number(el('leesubPosition').value)]});
 }
 
 function auditData(){
@@ -819,7 +848,7 @@ function renderBattle(){
  const react=reactResponse();
  const reactControls=state.pendingCustody?.length?'<section class="react-controls" aria-label="Gefangenenentscheidung">'+custodyMarkup(available)+'</section>':
   react?'<section class="react-controls" aria-label="Deine React-Aktionen">'+responseMarkup(react,available)+'</section>':'';
- const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending||state.pendingCustody?.length);
+ const waiting=!!(response||state.game?.timing.pending||state.pendingForceLoss||state.pendingReserveSearch||state.automatedPending||state.pendingCardView||state.pendingCustody?.length);
  const stage=x.segment??(x.weaponTurn?'weapons':'power');
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
  const title=el('battleTitle');
@@ -854,7 +883,7 @@ function renderBattle(){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','gravelStorm'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','gravelStorm','cardInformation'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
@@ -990,7 +1019,7 @@ function effectInspectorMarkup(card,index){
  if(state.gameWinner)reason='Die Partie ist beendet.';
  else if(state.phase===2&&state.activeSide==='Light'&&!state.botTurn){
   if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.pendingForceLoss||
-     state.pendingReserveSearch||state.automatedPending)reason='Schließe zuerst die laufende Aktion ab.';
+     state.pendingReserveSearch||state.automatedPending||state.pendingCardView)reason='Schließe zuerst die laufende Aktion ab.';
   else if(card.id==='Light:2110'&&state.force.length<3)reason='Revolution braucht 3 Force. Du hast '+state.force.length+' in der Force Pile.';
   else reason='Für diesen Effect gibt es gerade kein gültiges Ziel.';
  }
@@ -1311,7 +1340,7 @@ function automaticBotAction(){
  if(!dark.length)return null;
  if(state.pendingCustody?.length)return botCustodyAction(dark);
  if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||
-    state.pendingForceLoss||state.pendingReserveSearch)return dark[0];
+    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return dark[0];
  if(battleSession){
   if(dark.some(action=>action.kind==='battlePrediction'))return botPredictionAction(dark);
   if(battleSession.weaponTurn==='Dark')return botWeaponAction();

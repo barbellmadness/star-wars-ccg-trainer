@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,19);
+ assert.equal(saved.cardRulesVersion,20);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -4610,4 +4610,73 @@ test('both Jawa effects charge each player and add forfeit only to their own Jaw
   run("cancelTableEffect(state.tableEffects[0]);");
   assert.equal(run("battleForfeitValue(jawa,side)===jawa.forfeit&&own.lost.includes(effect)"),true);
  }
+});
+
+test('Electrobinoculars only shows the owner the top card and can move it to Force',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const binoculars=card('Light:821'),enemy=card('Dark:2355'),droid=card('Light:1995'),secret={name:'Own blind top'};
+  setupDecks=null;state.game=PremiereGame.actionState(144,0);state.hand=[binoculars];state.dark[3]=[enemy];state.light[3]=[droid];
+  state.deck=[{name:'Own later card'},secret];`);
+ assert.equal(run("!requestAction('deployDevice','Light',[0,3,0])&&requestAction('deployDevice','Light',[0,3,0,'Dark'])"),true);
+ assert.equal(run("const look=()=>legalActions(state,'Light').find(action=>action.kind==='cardInformation');performAction(look())"),true);
+ assert.equal(run("!legalActions(state,'Dark').length&&state.force.length===2"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Own blind top/);
+ assert.doesNotMatch(run("state.log.join(' ')"),/Own blind top/);
+ assert.equal(run("requestAction('finishCardInformation','Light',['force'])&&state.force.at(-1)===secret"),true);
+ assert.equal(run("performAction(look())&&requestAction('finishCardInformation','Light',['deck'])&&state.deck.at(-1).name==='Own later card'"),true);
+});
+
+test('Macroscan keeps its peek private and expands it at night',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const scan=card('Dark:1617');
+  setupDecks=null;state.game=PremiereGame.actionState(145,0);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.botHand=[scan];state.hand=[];state.deck=[{name:'Hidden Bottom'},{name:'Hidden Third'},{name:'Hidden Second'},{name:'Hidden Top'}];`);
+ assert.equal(run("requestAction('deployTableEffect','Dark',[0])&&state.botForce.length===3"),true);
+ run("state.activeSide='Light';state.phase=5;state.botTurn=null;");
+ assert.equal(run("const scanDeck=()=>legalActions(state,'Dark').find(action=>action.kind==='cardInformation');performAction(scanDeck())"),true);
+ assert.equal(run("state.pendingCardView.shown.length===1&&state.pendingCardView.shown[0].name==='Hidden Top'"),true);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Hidden Top/);
+ assert.equal(run("requestAction('finishCardInformation','Dark',['deck'])"),true);
+ run("state.nightConditions=true;");
+ assert.equal(run("performAction(scanDeck())&&state.pendingCardView.shown.map(card=>card.name).join() === 'Hidden Top,Hidden Second,Hidden Third'"),true);
+ assert.equal(run("requestAction('finishCardInformation','Dark',['deck'])&&state.deck.length===4&&state.botForce.length===1"),true);
+});
+
+test('Labria reveals a card and chooses a valid pile once per Control phase',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const labria=card('Dark:1460'),rebel=card('Dark:2355'),fighter=card('Dark:2600');
+  setupDecks=null;state.game=PremiereGame.actionState(146,0);state.activeSide='Dark';state.phase=1;state.botTurn={steps:[],index:0};
+  state.dark[3]=[labria];state.botDeck=[fighter,rebel];`);
+ assert.equal(run("const look=()=>legalActions(state,'Dark').find(action=>action.kind==='cardInformation');performAction(look())&&state.pendingCardView.shown[0]===rebel"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Stormtrooper/);
+ assert.equal(run("requestAction('finishCardInformation','Dark',['used'])&&state.botUsed.at(-1)===rebel&&!look()"),true);
+ run("PremiereGame.resetTurn(state,'Dark');state.phase=1;");
+ assert.equal(run("performAction(look())&&!state.pendingCardView&&state.botLost.includes(fighter)"),true);
+});
+
+test('Leesub chooses a card position without seeing the hand',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const leesub=card('Light:1489'),target=card('Dark:2355'),vehicle=card('Dark:2660');
+  setupDecks=null;state.game=PremiereGame.actionState(147,0);state.phase=1;
+  state.light[3]=[leesub];state.botHand=[target,vehicle];`);
+ assert.equal(run("const guess=()=>legalActions(state,'Light').find(action=>action.kind==='cardInformation');performAction(guess())"),true);
+ assert.match(elements.get('controlPanel').innerHTML,/Tipp abgeben/);
+ assert.doesNotMatch(elements.get('controlPanel').innerHTML,/Stormtrooper|Ubrikkian/);
+ assert.equal(run("!requestAction('finishCardInformation','Light',['Weapon',2])&&requestAction('finishCardInformation','Light',['Starship',0])"),true);
+ assert.equal(run("state.botHand[0]===target&&state.botHand[1]===vehicle&&state.force.length===4&&!guess()"),true);
+ run("PremiereGame.resetTurn(state,'Light');state.phase=1;");
+ assert.equal(run("performAction(guess())&&requestAction('finishCardInformation','Light',['Character',0])&&state.botLost.includes(target)"),true);
+});
+
+test('M’iiyoom reveals the hand and loses only unique male Rebels and aliens',async()=>{
+ const {run}=await craftHarness();
+ run(`const onith=card('Dark:1613'),han=card('Light:1098'),leia=card('Light:1495'),owen=card('Light:1883'),
+   trooper=card('Light:2052'),r2=card('Light:1995');
+  setupDecks=null;state.game=PremiereGame.actionState(148,0);state.activeSide='Dark';state.phase=1;
+  state.botTurn={steps:[],index:0};state.dark[3]=[onith];state.hand=[han,leia,owen,trooper,r2];
+  const extra=state.botForce.pop();`);
+ assert.equal(run("const reveal=()=>legalActions(state,'Dark').find(action=>action.kind==='cardInformation');!reveal()"),true);
+ assert.equal(run("state.botForce.push(extra);performAction(reveal())&&state.botUsed.length===5&&state.botForce.length===0"),true);
+ assert.equal(run("state.lost.includes(han)&&state.lost.includes(owen)&&state.hand.length===3&&[leia,trooper,r2].every(card=>state.hand.includes(card))"),true);
+ assert.match(run("state.log.join(' ')"),/deckt die Hand auf.*Han Solo.*Leia Organa.*Owen Lars/);
 });
