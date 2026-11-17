@@ -528,8 +528,9 @@ function finishSetup(){
  const deck=PremiereGame.shuffle(setup.light.cards.filter((card,index)=>index!==lightChoice?.index),setup.game);
  const botDeck=PremiereGame.shuffle(setup.dark.cards.filter((card,index)=>index!==darkChoice?.index),setup.game);
  const lesson=setup.game.lesson;
- if(lesson)PremiereLearning.arrangeHand(lesson,deck);
- const firstSide=lesson||activeCardRules(lightChoice?.card,'firstTurn').length||activeCardRules(darkChoice?.card,'mobileSystem').length?'Light':'Dark';
+ if(lesson)PremiereLearning.arrangeHands(lesson,deck,botDeck);
+ const firstSide=lesson?PremiereLearning.lesson(lesson).side??'Light':
+  activeCardRules(lightChoice?.card,'firstTurn').length||activeCardRules(darkChoice?.card,'mobileSystem').length?'Light':'Dark';
  state=PremiereGame.createState(setup.game,deck,botDeck,locations,initialLocationOrder(locations),firstSide);
  if(lesson){
   PremiereLearning.prepare(lesson,state,PremiereGame,PremiereUnits);

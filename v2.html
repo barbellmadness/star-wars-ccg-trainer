@@ -351,6 +351,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
         <option value="force">Lernen · Force und Deploy</option>
         <option value="battle">Lernen · Bodenkampf mit Blaster</option>
         <option value="movement">Lernen · Fahrzeug- und Raumbewegung</option>
+        <option value="dark-control">Lernen · Dark Side: Kontrolle und Kampf</option>
       </select></label>
       <label><input id="autoBot" type="checkbox"> Bot automatisch spielen lassen</label>
       <label><input id="autoBotDeck" type="checkbox" checked> Bot wählt ein Themendeck</label>
@@ -546,9 +547,10 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js?v=2.15.28"></script><script>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.29"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.28';
+const trainerVersion='2.15.29';
+const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -796,7 +798,7 @@ function renderLaunchSummary(){
  el('botStyleHint').textContent=(PremiereBot.styles[el('botPlayStyle').value]??PremiereBot.styles.balanced).description;
  el('start').textContent=lesson?'Übung starten':'Startorte wählen';
  if(lesson){
-  el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte Light-Side-Ausgangslage';
+  el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte '+(lesson.side??'Light')+'-Side-Ausgangslage';
  }else if(launchFaction){
   const {deck}=selectedDeck(launchFaction);
   el('launchSummary').innerHTML='<strong>'+escapeHTML(deckName(deck))+' · '+deck.cards.length+' Karten</strong>'
@@ -809,6 +811,7 @@ function renderLaunch(){
  const lesson=PremiereLearning.lesson(el('gameMode').value);
  const opponent=PremiereGame.otherSide(el('playerSideChoice').value||'Light').toLowerCase();
  el('autoBotDeck').disabled=!!lesson;
+ el('gameSeed').disabled=!!lesson?.fixedSeed;
  for(const side of Object.keys(sideName)){
   const automatic=!lesson&&el('autoBotDeck').checked&&side===opponent;
   el('label'+sideName[side]+'Deck').hidden=automatic;
@@ -1298,8 +1301,8 @@ function renderBattle(){
  el('battlePriority').textContent=steps[stage]+' · '+(response?'Antwortfenster · ':'')+(choiceSide?'Priorität: '+choiceSide+' Side · ':'')+
   (choiceSide===own?'Du bist dran':choiceSide===bot?(el('autoBot').checked?'Bot entscheidet automatisch':'Bot ist dran'):'Kampf wird aufgelöst');
  const help=el('battleLessonHint'),lesson=lessonProgress();
- help.hidden=!lesson?.hint;
- help.textContent=lesson?.hint??'';
+ help.hidden=!lesson;
+ help.textContent=lesson?(lesson.hint??lessonCompleteMessage):'';
  const totals=battleDamagePreview();
  const fighters=[own,bot].map(side=>{
   const key=side.toLowerCase();
@@ -2146,7 +2149,7 @@ function renderLearning(){
  if(!active)return;
  const title=PremiereLearning.lesson(state.game?.lesson)?.title??'Lernmodus';
  el('lessonTitle').textContent=title+(progress?' · '+Math.min(progress.index+1,progress.total)+' / '+progress.total:'');
- el('lessonHint').textContent=progress?(progress.hint??'Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.'):'';
+ el('lessonHint').textContent=progress?(progress.hint??lessonCompleteMessage):'';
  const canUndo=undoAvailable&&activeSave?.commands.length>(activeSave.exposureRevision??0)&&!showLearningBotHand();
  el('undoGame').disabled=!canUndo;
  el('undoStatus').textContent=canUndo?'':showLearningBotHand()?'Die offene Bot-Hand verhindert Rückgängig.':
@@ -2191,15 +2194,17 @@ function saveStatus(message){
 
 function parseSavedGame(value){
   const saved=JSON.parse(value);
+  const lesson=PremiereLearning.lesson(saved?.lesson);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      saved.commands.length>30000||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1,2,latestBotStrategyVersion].includes(saved.botStrategyVersion))||
      (saved.botStrategyVersion===latestBotStrategyVersion?!PremiereBot.isStyle(saved.botPlayStyle):saved.botPlayStyle!==undefined)||
-     (saved.lesson!==undefined&&!PremiereLearning.lesson(saved.lesson))||
+     (saved.lesson!==undefined&&(!lesson||(saved.playerSide??'Light')!==(lesson.side??'Light')||
+      lesson.fixedSeed&&saved.seed!==lesson.seed))||
      (saved.playerSide!==undefined&&!PremiereGame.sides.includes(saved.playerSide))||
-     (saved.playerSide==='Dark'&&(saved.lesson||!usesBotPlanner(saved.botStrategyVersion)))||
+     (saved.playerSide==='Dark'&&!usesBotPlanner(saved.botStrategyVersion))||
      (saved.peekDeadline!==undefined&&(!Number.isSafeInteger(saved.peekDeadline)||saved.peekDeadline<0))||
      (saved.exposureRevision!==undefined&&(!Number.isInteger(saved.exposureRevision)||saved.exposureRevision<0||
       saved.exposureRevision>saved.commands.length))){
@@ -2248,11 +2253,12 @@ function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrate
  if(!key)return true;
  setupDecks.game.lesson=key;
  const lesson=PremiereLearning.lesson(key);
- for(const [side,id] of [['Dark',lesson.darkStart],['Light','Light:2447']]){
-  const choice=legalActions(null,side).find(option=>option.card?.id===id);
+ const startingLocations={Dark:lesson.darkStart,Light:'Light:2447'};
+ for(const chooser of [botSide(),playerSide()]){
+  const choice=legalActions(null,chooser).find(option=>option.card?.id===startingLocations[chooser]);
   if(!performAction(choice,false))return false;
  }
- return requestAction('beginGame','Light',[],false);
+ return requestAction('beginGame',playerSide(),[],false);
 }
 
 function activateSave(saved){
@@ -2266,10 +2272,11 @@ function activateSave(saved){
 }
 
 function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
- const side=key?'Light':el('playerSideChoice').value||'Light';
+ const lesson=PremiereLearning.lesson(key);
+ const side=lesson?(lesson.side??'Light'):el('playerSideChoice').value||'Light';
  const fixed=key?lessonDecks[key]:null;
  const choices={light:selectedDeck('light'),dark:selectedDeck('dark')};
- let matchSeed=seed??PremiereLearning.lesson(key)?.seed;
+ let matchSeed=lesson?.fixedSeed?lesson.seed:seed??lesson?.seed;
  if(!fixed&&!keepLauncher&&el('autoBotDeck').checked){
   const opponent=PremiereGame.otherSide(side).toLowerCase();
   const themes=deckChoices[opponent].filter(({deck})=>deck.theme);
@@ -2555,7 +2562,7 @@ async function load(){try{
  movementDeck.decks.Light.cards.find(card=>card.id==='Light:2907').count--;
  movementDeck.decks.Light.cards.push({id:'Light:1609',count:1});
  const fixed={decks:starterDecks,definition:deckLists};
- lessonDecks={force:fixed,battle:fixed,movement:{decks:readStarterDecks(movementDeck,cards),definition:movementDeck}};
+ lessonDecks={force:fixed,battle:fixed,'dark-control':fixed,movement:{decks:readStarterDecks(movementDeck,cards),definition:movementDeck}};
  localPrintTexts=await loadLocalPrintTexts(cards);
  deckChoices=Object.fromEntries(Object.keys(sideName).map(side=>[side,[
   {deck:starterDecks[side],definition:deckLists.decks[sideName[side]]},...themes[side]
@@ -2626,7 +2633,7 @@ el('gameFile').onchange=async()=>{
 el('gameMode').onchange=()=>{
  const lesson=PremiereLearning.lesson(el('gameMode').value);
  el('playerSideChoice').disabled=!!lesson;
- if(lesson){el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value='Light';}
+ if(lesson){el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value=lesson.side??'Light';}
  else if(launchFaction)el('playerSideChoice').value=sideName[launchFaction];
  renderLaunch();
 };
