@@ -1445,6 +1445,104 @@ test('Wuher clears the Cantina and acts only at the start of Control elsewhere',
  assert.equal(run('state.lost.includes(later)'),true);
 });
 
+test('Gift of the Mentor searches only for a lightsaber',async()=>{
+ const {run}=await craftHarness();
+ run(`const gift=card('Light:1039'),lightsaber=card('Light:1386'),blaster=card('Light:259');
+  state.game=PremiereGame.actionState(82,1);state.game.cardRulesVersion=10;
+  state.hand=[gift];state.deck=[blaster,lightsaber,card('Light:1593')];state.activeSide='Dark';
+  const before=state.force.length;`);
+ assert.equal(run("requestAction('searchReserve','Light',[0])&&state.force.length===before-1"),true);
+ assert.equal(run("legalActions(state,'Light').length===1&&legalActions(state,'Light')[0].card===lightsaber"),true);
+ assert.equal(run("requestAction('takeFromReserve','Light',[1])"),false);
+ assert.equal(run("requestAction('takeFromReserve','Light',[0])&&state.hand.includes(lightsaber)&&state.deck.includes(blaster)&&state.lost.includes(gift)"),true);
+});
+
+test('Gift of the Mentor pairs Luke with a mentor',async()=>{
+ const {run}=await craftHarness();
+ run(`const luke=card('Light:1593'),obi=card('Light:1803'),gift=card('Light:1039'),yoda={...obi,name:'•Yoda'};
+  state.game=PremiereGame.actionState(83,1);state.game.cardRulesVersion=10;
+  state.light[2]=[luke,obi];state.dark[2]=[card('Dark:2355')];state.hand=[gift];state.phase=3;`);
+ assert.equal(run("requestAction('battle','Light',[2])&&battleEffectOptions('Light').some(option=>option.card===gift)"),true);
+ run('state.light[2][1]=yoda;refreshBattleParticipants()');
+ assert.equal(run("requestAction('battleEffect','Light',[0])&&battleSession.extraDraws.Light===2"),true);
+});
+
+test('Named Premiere retrieval and searches work during either turn',async()=>{
+ const {run}=await craftHarness();
+ for(const [interruptId,targetId,side,cost] of [
+  ['Light:1102','Light:1098','Light',1],['Light:1500','Light:1495','Light',1],['Light:1600','Light:1593','Light',1],
+  ['Light:2105','Light:1803','Light',1],['Dark:2528','Dark:1061','Dark',2],
+ ]){
+  assert.equal(run(`(()=>{
+   const side='${side}',target=card('${targetId}'),second=card('${targetId}'),wrong=card('Light:2052');
+   const own=PremiereGame.zones(state,side);
+   state.game=PremiereGame.actionState(81,1);state.game.cardRulesVersion=10;
+   state.activeSide=PremiereGame.otherSide(side);state.phase=1;
+   own.force.splice(0,own.force.length,...forcePile(),...forcePile());
+   own.hand.splice(0,own.hand.length,card('${interruptId}'),card('${interruptId}'));
+   own.lost.splice(0,own.lost.length,wrong,target);own.deck.splice(0,own.deck.length,wrong,second);
+   if(requestAction('retrieve',side,[0,0]))return false;
+   if(!requestAction('retrieve',side,[0,1])||own.used.at(-1)!==target||own.force.length!==10-${cost})return false;
+   if(!requestAction('searchReserve',side,[0])||own.force.length!==8-2*${cost})return false;
+   if(requestAction('takeFromReserve',side,[1])||!requestAction('takeFromReserve',side,[0]))return false;
+   return own.hand.includes(second)&&own.deck.includes(wrong)&&!own.deck.includes(second);
+  })()`),true,interruptId);
+ }
+});
+
+test('Falcon requires an active pilot and its namesake pilots grant immunity',async()=>{
+ const {run}=await craftHarness();
+ run(`const falcon=card('Light:1677'),han=card('Light:1098');
+  state.light[0]=[falcon];battleSession={site:0,participants:{Light:[falcon],Dark:[]}};`);
+ assert.equal(run("craftStats(falcon,0).power===0&&craftStats(falcon,0).hyperspeed===0&&PremiereWeapons.defense(falcon,0,craftStats(falcon,0))===0"),true);
+ run("PremiereUnits.add(falcon,han,'passenger','Light')");
+ assert.equal(run("!craftStats(falcon,0).powered&&battleImmunity('Light',falcon)===0"),true);
+ run("falcon.occupants[0].role='pilot'");
+ assert.equal(run("craftStats(falcon,0).powered&&battleImmunity('Light',falcon)===5&&PremiereUnits.hasDock(falcon)"),true);
+});
+
+test('Stormtrooper Backpack expands weapon use and offers planet-site immunity',async()=>{
+ const {run}=await craftHarness();
+ run(`const trooper=card('Dark:2355'),pilot=card('Dark:1279'),backpack=card('Dark:2357'),blaster=card('Dark:1264'),rifle=card('Dark:264');
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[backpack];state.dark[2]=[trooper,pilot];`);
+ assert.equal(run("deviceHosts('Dark',0).map(option=>option.host.id).join(',')"),'Dark:2355');
+ assert.equal(run("requestAction('deployDevice','Dark',[0,2,0])&&trooper.attachments[0]===backpack"),true);
+ run("PremiereUnits.recordWeaponUse(state,trooper,blaster);battleSession={site:2,participants:{Light:[],Dark:[trooper]}}");
+ assert.equal(run("PremiereUnits.canUseWeapon(state,trooper,rifle)&&battleImmunity('Dark',trooper)===3"),true);
+ run('battleSession.site=0;state.dark[2]=[];state.dark[0]=[trooper]');
+ assert.equal(run("battleImmunity('Dark',trooper)"),0);
+});
+
+test('Limited Resources applies hand size, turn and ship tanks',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const limited=card('Dark:1555'),tank=card('Light:997');
+  setupDecks=null;state.game=PremiereGame.actionState(93,1);state.game.cardRulesVersion=10;state.activeSide='Dark';
+  state.botHand=[limited];state.hand=[ship,card('Light:1593'),card('Light:1373')];`);
+ assert.equal(run("requestAction('limitedResources','Dark',[0])"),false);
+ run('state.hand.pop();state.activeSide="Light"');
+ assert.equal(run("limitedResourcesOptions('Dark')[0].amount"),2);
+ run('ship.attachments=[tank];state.light[0]=[ship];state.hand.shift()');
+ assert.equal(run("limitedResourcesOptions('Dark').length"),0);
+ run('state.activeSide="Dark"');
+ assert.equal(run("botBegin();botNextStep()&&state.pendingForceLoss.remaining===2&&state.botLost.includes(limited)"),true);
+ run('renderControlPanel()');
+ assert.match(elements.get('controlPanel').innerHTML,/Limited Resources/);
+});
+
+test('both Premiere Restraining Bolts block boarding moves and transfer for free',async()=>{
+ const {run}=await craftHarness();
+ run(`const lightBolt=card('Light:2100'),darkBolt=card('Dark:2099'),droid=card('Light:2000'),other=card('Dark:2001');
+  const landspeeder=card('Light:1609');PremiereUnits.add(landspeeder,droid,'passenger','Light');
+  state.light[2]=[landspeeder];state.dark[2]=[other];state.hand=[lightBolt];`);
+ const light=run("legalActions(state,'Light').find(action=>action.kind==='deployBolt'&&action.host===droid).args");
+ assert.equal(run(`requestAction('deployBolt','Light',${JSON.stringify(light)})`),true);
+ assert.equal(run("transportOptions('Light').some(option=>option.card===droid)"),false);
+ assert.equal(run("performAction(legalActions(state,'Light').find(option=>option.kind==='deviceAction'&&option.args[0]==='transferBolt'))"),true);
+ run("state.activeSide='Dark';state.botHand=[darkBolt];state.botTurn={steps:[],index:0}");
+ assert.equal(run("performAction(legalActions(state,'Dark').find(action=>action.kind==='deployBolt'&&action.host===droid))"),true);
+ assert.equal(run("PremiereUnits.restrainingBolt(droid)===darkBolt&&PremiereUnits.restrainingBolt(other)===lightBolt"),true);
+});
+
 test('registered Premiere locations apply their printed sides and exceptions',async()=>{
  const {run}=await craftHarness();
  run(`const jawa=card('Light:1373'),spy=card('Dark:1011');
@@ -2669,7 +2767,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,9);
+ assert.equal(saved.cardRulesVersion,10);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -3107,6 +3205,16 @@ test('Surprise Assault replaces a Force Drain with the destiny comparison and sh
  assert.equal(run("requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
  assert.equal(run(`state.lost[0].name==='Surprise Assault'&&state.used.map(card=>card.name).join()===
   'React cost,Assault Destiny'&&state.botLost.length===1&&state.pendingForceLoss===null`),true);
+});
+
+test('both Premiere Assault cards compare destiny against present power',()=>{
+ const {run}=reactHarness();
+ run(`state.activeSide='Light';state.botTurn=null;wolfman.power=2;
+  state.botHand=[{id:'Dark:575',name:'Counter Assault'}];state.botForce=[{name:'Counter cost'}];
+  state.botDeck.push({name:'Counter Destiny',destiny:3});`);
+ assert.equal(run("requestAction('drain','Light',[0])&&requestAction('interruptResponse','Dark',[0])"),true);
+ assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
+ assert.equal(run("state.botLost[0].name==='Counter Assault'&&state.pendingForceLoss.payer==='Light'&&state.pendingForceLoss.remaining===1"),true);
 });
 
 test('Force loss respects a required pile and retrieval preserves the remaining pile order',async()=>{

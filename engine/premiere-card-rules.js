@@ -153,6 +153,10 @@ const PremiereCardRules = (() => {
       'Tatooine site and both Force Piles', 'Dathcha pays with both Force Piles even when deploying aboard',
       { cost: 2, opposingCost: 2, duration: 'instant', expires: 'after deploy', legacy: true }),
   ], true);
+  register(['Light:1373','Dark:1372'], [
+    continuous('jawaDeploy', 'Kann nur auf Tatooine ausgespielt werden. Normalerweise bezahlen beide Spieler je 1 Force. Jawa Camp kann die Kosten ersetzen.',
+      'Tatooine site and both Force Piles', 'Jawa deployment honors the Tatooine restriction', { cost: 1, opposingCost: 1, duration: 'instant', expires: 'after deploy', legacy: true }),
+  ], true);
   register(['Dark:668'], [
     characterStat('characterPower', -1, 'Der Death Star Trooper verliert außerhalb der Death-Star-Sites 1 Power.', { outsideRegion: 'death star' }),
     continuous('deployRegion', 'Nur auf dem Death Star ausspielbar. Spätere Bewegung an andere erlaubte Orte bleibt möglich.',
@@ -229,6 +233,24 @@ const PremiereCardRules = (() => {
     { event: 'cancelTableEffect', summary: 'Kann Wrong Turn beim Ausspielen oder auf dem Tisch als Lost Interrupt aufheben.',
       targets: ['Dark:2833'], cost: 0, duration: 'instant', expires: 'after cancellation', test: 'Skywalkers cancels Wrong Turn', since: 5 },
   ]);
+  register(['Light:1039'], [
+    continuous('extraBattleDestiny', 'Kämpft Luke zusammen mit Obi-Wan oder Yoda, können zwei Battle Destiny hinzugefügt werden.',
+      'Luke and Obi-Wan or Yoda participating in same battle', 'Gift of the Mentor pairs Luke with a mentor', { amount: 2, duration: 'rest of battle', legacy: true }),
+    continuous('searchLightsaber', 'Für 1 Force ein Lichtschwert aus dem Reserve Deck aufdecken und auf die Hand nehmen. Danach wird das Reserve Deck gemischt.',
+      'lightsaber in own Reserve Deck', 'Gift of the Mentor searches only for a lightsaber', { cost: 1, duration: 'instant', expires: 'after resolving', since: 10 }),
+  ], true);
+  for(const [id, characters, cost] of [
+    ['Light:1102','Han',1],['Light:1500','Leia',1],['Light:1600','Luke',1],
+    ['Light:2105','Obi-Wan',1],['Dark:2528','Vader, Tarkin, Motti oder Tagge',2],
+  ]){
+    const test='Named Premiere retrieval and searches work during either turn';
+    register([id], [
+      continuous('retrieveNamedCharacter', 'Für '+cost+' Force eine der genannten Figuren aus dem Lost Pile auf den Used Pile holen.',
+        characters,test,{ cost, duration: 'instant', expires: 'after resolving', since: 10 }),
+      continuous('searchNamedCharacter', 'Für '+(cost+2)+' Force eine der genannten Figuren aus dem Reserve Deck aufdecken und auf die Hand nehmen. Danach das Deck mischen.',
+        characters,test,{ cost: cost+2, duration: 'instant', expires: 'after resolving', since: 10 }),
+    ],true);
+  }
   register(['Dark:613'], [
     { event: 'cancelTableEffect', summary: 'Kann Restricted Deployment beim Ausspielen oder auf dem Tisch als Lost Interrupt aufheben.',
       targets: ['Light:2102'], cost: 0, duration: 'instant', expires: 'after cancellation', test: 'Skywalkers cancels Wrong Turn', since: 5 },
@@ -245,7 +267,17 @@ const PremiereCardRules = (() => {
       'Restraining Bolt blocks', { since: 3 }),
     { event: 'transferBolt', summary: 'In deiner Deploy Phase kannst du den Bolt kostenlos an einen anderen Droiden an derselben Site übertragen.',
       targets: 'another droid at same site', cost: 0, duration: 'instant', expires: 'after transfer', test: 'Restraining Bolt blocks', since: 3 },
-  ]);
+  ], true);
+  register(['Light:2385','Dark:575'], [
+    continuous('assault', 'Für 1 Force einen gegnerischen Force Drain aufheben. Pro gegnerischer anwesender Figur, Schiff oder Fahrzeug eine Destiny ziehen und die Summe mit der gegnerischen Power vergleichen. Die Seite mit dem niedrigeren Wert verliert die Differenz an Force.',
+      'opposing Force drain and units present', 'both Premiere Assault cards compare destiny against present power',
+      { cost: 1, duration: 'instant', expires: 'after resolving', legacy: true }),
+  ], true);
+  register(['Dark:1555'], [
+    continuous('limitedResources', 'Hat die Gegenseite höchstens zwei Handkarten, verliert sie in deinem Zug 4 Force und in ihrem Zug 2 Force. Mit Fusion Generator Supply Tanks an Bord eines Starships verliert sie 2 Force weniger.',
+      'opponent with at most two cards in hand', 'Limited Resources applies hand size, turn and ship tanks',
+      { duration: 'instant', expires: 'after resolving', since: 10 }),
+  ], true);
   register(['Dark:777'], [
     continuous('locationEffect', 'Der unbewegliche Droid Detector sperrt Droiden-Deploy an einer Innen-Site. Ab dem folgenden Zug gehen dort anwesende Droiden jeweils am Zugende verloren.',
       'interior site', 'Droid Detector bars', { since: 3, siteDevice: 'droid-detector', requiredTag: 'Interior' }),
@@ -390,6 +422,25 @@ const PremiereCardRules = (() => {
   register(['Light:2907'], [permanentPilot, capacityRule('Kann einen zusätzlichen Piloten oder Passagier aufnehmen.', { shared: 1 })], true);
   register(['Light:2057'], [capacityRule('Kann einen Piloten aufnehmen.', { pilot: 1 })], true);
   register(['Light:2060'], [capacityRule('Kann einen Piloten und einen Astromech aufnehmen.', { pilot: 1, astromech: 1 })], true);
+  register(['Light:1677'], [
+    continuous('crewCapacity', 'Kann zwei Piloten und zwei Passagiere aufnehmen und auf dem System andocken.',
+      'pilot and passenger capacity and docking', 'Falcon requires an active pilot and its namesake pilots grant immunity',
+      { capacity: { pilot: 2, passenger: 2 }, legacy: true }),
+    continuous('pilotedImmunity', 'Mit Han, Chewie oder Lando als Pilot ist der Falcon immun gegen Attrition unter 5.',
+      'Han, Chewie or Lando piloting', 'Falcon requires an active pilot and its namesake pilots grant immunity',
+      { below: 5, legacy: true }),
+    continuous('requiresPilot', 'Ohne aktiven Piloten kann der Falcon seine Power, Maneuver und Hyperspeed nicht nutzen.',
+      'active pilot aboard', 'Falcon requires an active pilot and its namesake pilots grant immunity', { legacy: true }),
+  ], true);
+  register(['Dark:2357'], [
+    continuous('device', 'Wird kostenlos auf einem eigenen Trooper ausgespielt.', 'own trooper',
+      'Stormtrooper Backpack expands weapon use and offers planet-site immunity', { legacy: true }),
+    continuous('multipleWeapons', 'Der Trooper darf mehrere Waffen und Devices einsetzen.',
+      'equipped trooper', 'Stormtrooper Backpack expands weapon use and offers planet-site immunity', { legacy: true }),
+    continuous('planetImmunity', 'An einer Planetensite ist der Trooper immun gegen Attrition unter 3.',
+      'equipped trooper at planet site', 'Stormtrooper Backpack expands weapon use and offers planet-site immunity',
+      { below: 3, legacy: true }),
+  ], true);
   register(['Light:1045'], [
     continuous('crewCapacity', 'Kann insgesamt bis zu zwei Piloten oder Passagiere aufnehmen.', 'up to two pilots and passengers combined',
       'Gold 1, Custom TIE and Ubrikkian follow their individual rules', { capacity: { shared: 2 }, legacy: true }),
