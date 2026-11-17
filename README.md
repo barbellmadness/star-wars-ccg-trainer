@@ -24,6 +24,12 @@ Für die lokale Abnahme prüft `node scripts/import_premiere.mjs --check` den fi
 
 In V2 zeigt „Kartenfähigkeiten: Vollständigkeitsprüfung“ die aktuellen Abdeckungszahlen und die offenen Karten. Die herangezogenen Regelquellen stehen im [Regelstand](PREMIERE-REGELSTAND.md).
 
+## Geführte Übungen und Szenarien
+
+Wähle oben einen Lernmodus und starte eine neue Partie. Force und Deploy, Bodenkampf mit Blaster sowie Fahrzeug- und Raumbewegung verwenden feste Ausgangslagen und eine feste Light-Side-Starthand. Unter der Spielübersicht steht das nächste Ziel. Rückgängig ist für geführte Übungen und die Battle-Lernübung verfügbar, wenn eine Aktivierung, ein Phasenwechsel oder eine Bewegung keine neuen Informationen aufgedeckt hat. Nach einem Blick auf die Bot-Hand ist ein weiterer sicherer Schritt nötig.
+
+„Szenario neu starten“ setzt die Partie auf den Anfang mit denselben Decks und demselben Seed. Nach Spielende zeigt „Partie auswerten“ die öffentlichen Ereignisse in ihrer Reihenfolge. Aus dieser Ansicht kannst du ein Szenario als JSON speichern. „Szenario laden“ spielt dessen Aktionsfolge mit den gespeicherten Decks und dem Seed nach.
+
 ## Premiere Kartenbasis
 
 Der [Regelstand](PREMIERE-REGELSTAND.md) dokumentiert die fixierte Kartenrevision, die behandelten Klarstellungen und die Herkunft der Errata. `node scripts/import_premiere.mjs --check` prüft Karten und Decks offline. `--report` gibt den Prüfbericht aus. `--verify-source` reproduziert den Snapshot aus den Originalquellen, um ihn mit der versionierten Datei zu vergleichen.

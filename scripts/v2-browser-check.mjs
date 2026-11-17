@@ -59,6 +59,8 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       return image?.complete && !image.naturalWidth;
     });
     assert.match(await inspector.textContent(), /Aktiver Spieltext/);
+    assert.match(await inspector.textContent(), /Deutsche Erklärung.*Auslösezeitpunkt.*Beispiel/s);
+    assert.ok(await inspector.locator('.inspector-fallback').isVisible());
     assert.ok(await inspector.evaluate(dialog => {
       const luminance = color => color.match(/\d+/g).slice(0, 3).map(Number)
         .map(channel => channel / 255).map(channel => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4)
@@ -92,7 +94,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#cardInspector').isVisible(), false);
     const targets = page.locator('.playmat-actions').getByRole('button', {name: 'Ausspielen'});
     assert.ok(await targets.locator('xpath=self::button[not(@disabled)]').count() > 0);
-    assert.ok(await targets.locator('xpath=self::button[@disabled]').count() > 0);
+    assert.equal(await targets.locator('xpath=self::button[@disabled]').count(), 0);
     const handBefore = await page.locator('#hand .card-face').count();
     await targets.locator('xpath=self::button[not(@disabled)]').first().click();
     assert.equal(await page.locator('#hand .card-face').count(), handBefore - 1);
@@ -257,7 +259,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.16'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.17'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -313,6 +315,38 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Rebel Trooper auswählen'}).click();
     await page.getByRole('button', {name: 'Traffic Control · Rebel Trooper auf Used Pile legen'}).click();
     assert.equal(await page.evaluate(() => state.used.at(-1).id), 'Light:2052');
+
+    await page.locator('#gameMode').selectOption('force');
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', {name: 'Neue Partie'}).click();
+    assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
+    await page.getByRole('button', {name: 'Force aktivieren'}).click();
+    await page.getByRole('button', {name: 'Schritt rückgängig'}).click();
+    assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
+    assert.equal(await page.locator('#pilesLight .pile-slot').nth(1).textContent(), 'Force Pile 0');
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#endGame').click();
+    await page.getByRole('button', {name: 'Partie auswerten'}).click();
+    const review = page.getByRole('dialog', {name: 'Partieauswertung'});
+    assert.ok(await review.isVisible());
+    assert.match(await review.textContent(), /Partie manuell beendet.*Seed 1091/s);
+    const [download] = await Promise.all([page.waitForEvent('download'), review.getByRole('button', {name: 'Szenario als JSON speichern'}).click()]);
+    assert.equal(download.suggestedFilename(), 'swccg-partie-1091.json');
+    const exported = await download.path();
+    await review.getByRole('button', {name: 'Schließen'}).click();
+    await page.locator('#gameFile').setInputFiles(exported);
+    await page.locator('#lessonHint').waitFor({state: 'visible'});
+    assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
+
+    await page.getByText('Trainer-Optionen und Kartenprüfung', {exact: true}).click();
+    await page.getByRole('button', {name: 'Premiere-Kartenkatalog öffnen'}).click();
+    const catalog = page.getByRole('dialog', {name: /Premiere-Kartenkatalog · 324 Karten/});
+    await catalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Stormtrooper');
+    await catalog.getByRole('button', {name: 'Stormtrooper · Dark', exact: true}).click();
+    const catalogCard = page.getByRole('dialog', {name: 'Stormtrooper', exact: true});
+    assert.match(await catalogCard.textContent(), /Stand der Umsetzung/);
+    await catalogCard.getByRole('button', {name: 'Schließen'}).click();
+    await catalog.getByRole('button', {name: 'Schließen'}).click();
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();

@@ -12,6 +12,7 @@ const locationScript=readFileSync(new URL('../engine/premiere-locations.js',impo
 const cardRulesScript=readFileSync(new URL('../engine/premiere-card-rules.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
 const botScript=readFileSync(new URL('../engine/premiere-bot.js',import.meta.url),'utf8');
+const learningScript=readFileSync(new URL('../engine/premiere-learning.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>true}={}){
@@ -36,6 +37,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  vm.runInContext(cardRulesScript,context);
  vm.runInContext(weaponScript,context);
  vm.runInContext(botScript,context);
+ vm.runInContext(learningScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
@@ -703,7 +705,8 @@ test('the card inspector separates rules text, print scan, lore, German notes an
  const {run,elements}=await premiereHarness();
  assert.match(html,/<dialog id="cardInspector"[^>]+aria-labelledby="cardInspectorTitle">/);
  assert.equal(elements.get('cardInspector').open,false);
- run(`state={botHand:[catalog.find(card=>card.id==='Dark:816'),catalog.find(card=>card.id==='Dark:1767')]};inspectCard('Dark',0,'hand')`);
+ run(`state={trainingBattle:true,botHand:[catalog.find(card=>card.id==='Dark:816'),catalog.find(card=>card.id==='Dark:1767')]};
+  el('showBotHand').checked=true;inspectCard('Dark',0,'hand')`);
  assert.equal(elements.get('cardInspector').open,true);
  assert.equal(elements.get('cardInspectorTitle').textContent,run("state.botHand[0].name"));
  const eg6=elements.get('cardInspectorBody').innerHTML;
@@ -730,7 +733,7 @@ test('the local inspector uses scan-matched print text and keeps both location s
  assert.equal(run('state.hand[0].texts.print'),null);
  run(`showCardWithStats(catalog.find(card=>card.id==='Light:672'))`);
  assert.match(body.innerHTML,/<h3>Drucktext<\/h3>.*Light Side<\/b><br>Printed Light Side text.*Dark Side<\/b><br>Feld im Scan leer/);
- run(`inspectCard('Dark',0,'hand')`);
+ run(`state.trainingBattle=true;el('showBotHand').checked=true;inspectCard('Dark',0,'hand')`);
  assert.match(body.innerHTML,/Drucktext im Kartenscan · Transkription offen/);
 
  const publicPage=await premiereHarness(starterLists,{hostname:'example.com',localPrintReport});
@@ -2434,8 +2437,8 @@ test('Playmat places Dark above location art and Light below and retains actions
  const content=run("renderPlaymatColumn(state.locations[0],0)");
  assert.ok(content.indexOf('DARK · 1')<content.indexOf('Location-Karte: Hoth: Echo Base'));
  assert.ok(content.indexOf('Location-Karte: Hoth: Echo Base')<content.indexOf('LIGHT · 1'));
- assert.match(content,/<button disabled>Ausspielen<\/button>/);
- assert.match(content,/<button disabled>Battle \(1 Force\)<\/button>/);
+ assert.doesNotMatch(content,/<button disabled>Ausspielen<\/button>/);
+ assert.doesNotMatch(content,/<button disabled>Battle \(1 Force\)<\/button>/);
 });
 
 test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
@@ -2456,7 +2459,7 @@ test('the hand phase lists follow the current turn through setup, play and game 
   }
  };
 
- run('start(1,true,false,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ run('start(1,true,true,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
  assert.equal(elements.get('gameTable').hidden,false);
  assert.equal(elements.get('gameMessage').hidden,true);
  assert.equal(elements.get('forceControls').hidden,true);
@@ -2928,6 +2931,115 @@ function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
   el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
+
+test('every Premiere card has a visible inspector guide and a readable image fallback',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`catalog.length===324&&catalog.every(card=>{
+  const details=cardTextDetails(card);
+  return ['Aktiver Spieltext','Deutsche Erklärung','Auslösezeitpunkt','Beispiel','Stand der Umsetzung'].every(label=>
+   details.includes('<h3>'+label+'</h3><p'));
+ })`),true);
+ assert.match(run(`showCardWithStats(catalog[0]);el('cardInspectorBody').innerHTML`),/inspector-fallback.*Kartenbild nicht verfügbar/);
+});
+
+test('playmat shows a public active location effect only where it applies',()=>{
+ const {run}=reactHarness();
+ run(`state.locationEffects[0]=[{card:{name:'Expand The Empire'}}];state.drainedSitesThisTurn=[1];`);
+ const column=slot=>run(`renderPlaymatColumn(state.locations[${slot}],${slot})`);
+ assert.match(column(0),/Aktive Bedingungen.*Expand The Empire/);
+ assert.doesNotMatch(column(1),/Expand The Empire/);
+ assert.match(column(1),/Force Drain in diesem Zug angesagt/);
+ assert.doesNotMatch(column(0),/Force Drain in diesem Zug angesagt/);
+});
+
+test('Force and Deploy exercise preserves the fixed hand, replays safe Undo and records the completed goal',async()=>{
+ const storage=autosaveStorage();
+ const fixture=await premiereHarness(starterLists,{storage});
+ const {run}=fixture;
+ run(`startNewGame(undefined,false,'force');saveActiveGame();
+ const playLesson=(kind,filter=()=>true)=>dispatchUI(legalActions(state,'Light').find(action=>action.kind===kind&&filter(action)));`);
+ const opening=run('JSON.stringify(state.hand.map(card=>card.id))');
+ const cursor=run('state.game.randomState');
+ assert.equal(run("state.activeSide==='Light'&&state.phase===0&&state.hand[0].id==='Light:1593'"),true);
+ assert.equal(run("playLesson('activate',action=>action.args[0]===3)&&undoAvailable"),true);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run('resumeGameFromUI()&&undoLearningStep()'),true);
+ assert.equal(reload.run('state.game.randomState'),cursor);
+ assert.equal(reload.run('JSON.stringify(state.hand.map(card=>card.id))'),opening);
+ assert.equal(reload.run("state.force.length===0&&state.game.seed===1091&&!state.activated&&activeSave.commands.length===0"),true);
+ assert.ok(run(`lastSavedValue=localStorage.getItem(saveKey);
+  playLesson('advance')&&playLesson('advance')&&playLesson('deploy',a=>a.args[1]===0&&a.card.id==='Light:1593')&&
+  playLesson('deploy',a=>a.args[1]===0&&a.card.id==='Light:2052'&&a.cost===0)`));
+ assert.match(fixture.elements.get('lessonHint').textContent,/Übung abgeschlossen/);
+ assert.equal(run('undoLearningStep()'),false);
+});
+
+test('ground-battle exercise fires its assigned weapon and finishes real battle damage',async()=>{
+ const {run}=await premiereHarness();
+ run(`startNewGame(undefined,false,'battle');
+ const playLesson=(kind,filter=()=>true)=>dispatchUI(legalActions(state,'Light').find(action=>action.kind===kind&&filter(action)));`);
+ assert.equal(run("playLesson('battle',a=>a.args[0]===0)&&playLesson('fireWeapon')"),true);
+ assert.equal(run("battleSession.hitUnits.Dark.some(card=>card.id==='Dark:2355')"),true);
+ assert.equal(run(`for(let step=0;battleSession&&step<40;step++){
+  const light=legalActions(state,'Light');
+  const preferred=['passResponse','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage'];
+  const offer=preferred.map(kind=>light.find(action=>action.kind===kind)).find(Boolean)??botPromptAction();
+  if(!offer||!dispatchUI(offer))break;
+ }!battleSession&&lessonProgress().index===3&&!undoAvailable&&state.botLost.some(card=>card.id==='Dark:2355')`),true);
+});
+
+test('movement exercise uses both real movement rules and can restart and reload the exact action trace',async()=>{
+ const {run,elements}=await premiereHarness(starterLists,{storage:autosaveStorage()});
+ run("startNewGame(undefined,false,'movement');saveActiveGame()");
+ assert.equal(run(`const moves=()=>legalActions(state,'Light').filter(action=>action.kind==='move');
+  const go=(from,to)=>dispatchUI(moves().find(action=>action.from===from&&action.to===to));
+  moves().some(action=>action.from===0&&action.to===2&&action.cost===0)&&go(0,2)&&
+  moves().some(action=>action.from===3&&action.to===1&&action.cost===1)&&go(3,1)&&lessonProgress().index===2`),true);
+ const snapshot=run('JSON.stringify(scenarioSnapshot())');
+ run(`const recorded=${JSON.stringify(snapshot)}`);
+ assert.equal(run('endGameFromUI()&&openGameReview()'),true);
+ assert.match(elements.get('gameReviewEvents').innerHTML,/Landspeed.*Hyperspeed/);
+ assert.equal(run("!state&&closedReview.scenario.seed===1093&&JSON.stringify(closedReview.scenario)===recorded"),true);
+ assert.equal(run('restartScenario()&&state.phase===4&&lessonProgress().index===0&&activeSave.commands.length===0'),true);
+ assert.equal(run("importScenario(recorded)&&lessonProgress().index===2&&state.light[1][0].id==='Light:2838'"),true);
+ assert.equal(run('undoLearningStep()&&lessonProgress().index===1'),true);
+});
+
+test('free play gates learning reveals and the review omits covered losses and private card views',async()=>{
+ const {run,elements}=await premiereHarness(starterLists,{storage:autosaveStorage()});
+ run(`startNewGame(0);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame();
+  state.botHand[0]={name:'Secret Bot Hand'};
+  state.botDeck.push({name:'Secret Lost Card'});
+  el('showBotHand').checked=true;
+  state.lostPileEffects=[{target:'Dark',card:{name:'Your Eyes Can Deceive You'}}];
+  beginForceLoss('Dark',1,{reason:'drain',from:'deck'});
+  state.pendingCardView={side:'Dark',mode:'macroscan',card:{name:'Macro Scan'},shown:[{name:'Secret Deck Peek'}]};
+  render();inspectCard('Dark',0,'hand');inspectLostTop('Dark');`);
+ assert.equal(elements.get('phaseHelp').hidden,true);
+ assert.equal(elements.get('lessonPanel').hidden,true);
+ assert.equal(elements.get('cardInspector').open,false);
+ for(const id of ['controlPanel','botHand','pilesDark','log','botHistory']){
+  assert.doesNotMatch((elements.get(id).innerHTML??'')+(elements.get(id).textContent??''),/Secret/);
+ }
+ assert.equal(run('undoLearningStep()'),false);
+ assert.equal(run('endGameFromUI()&&openGameReview()'),true);
+ assert.doesNotMatch(elements.get('gameReviewEvents').innerHTML,/Secret/);
+ assert.match(elements.get('gameReviewEvents').innerHTML,/verdeckte Karte/);
+});
+
+test('learning Undo stops at a voluntarily revealed bot hand and at a private draw',async()=>{
+ const {run}=await premiereHarness(starterLists,{storage:autosaveStorage()});
+ run(`startNewGame(undefined,false,'force');saveActiveGame();
+ const playLesson=(kind,filter=()=>true)=>dispatchUI(legalActions(state,'Light').find(action=>action.kind===kind&&filter(action)));
+ playLesson('activate',action=>action.args[0]===3);
+ el('showBotHand').checked=true;el('showBotHand').onchange();
+ el('showBotHand').checked=false;el('showBotHand').onchange();`);
+ assert.equal(run('undoLearningStep()'),false);
+ assert.equal(run("playLesson('advance')&&undoLearningStep()&&state.phase===0&&state.activated"),true);
+ assert.equal(run('undoLearningStep()'),false);
+ assert.equal(run(`for(let step=0;step<5;step++)playLesson('advance');
+  playLesson('draw')&&state.hand.length===9&&!undoLearningStep()`),true);
+});
 
 test('selected theme decks set the starting locations and are saved, replayed and previewed',async()=>{
  const storage=autosaveStorage();
