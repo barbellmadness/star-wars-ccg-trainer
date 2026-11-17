@@ -153,9 +153,21 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     const targets = page.locator('.playmat-actions').getByRole('button', {name: 'Ausspielen'});
     assert.ok(await targets.locator('xpath=self::button[not(@disabled)]').count() > 0);
     assert.equal(await targets.locator('xpath=self::button[@disabled]').count(), 0);
+    const playmatActions = page.getByRole('region', {name: 'Kartenaktionen und Ziele'});
+    assert.ok(await playmatActions.isVisible());
+    assert.match(await playmatActions.locator('.playmat-action-cost').first().textContent(), /\d+ Force/);
+    const goToTarget = playmatActions.getByRole('button', {name: /Zielort .* zeigen/}).first();
+    await goToTarget.click();
+    assert.match(await page.evaluate(() => document.activeElement.id), /^playmatLocation\d+$/);
+    assert.ok(await page.locator('.playmat-action-target').count());
     const handBefore = await page.locator('#hand .card-face').count();
-    await targets.locator('xpath=self::button[not(@disabled)]').first().click();
+    await playmatActions.getByRole('button', {name: /^Ausspielen/}).first().click();
     assert.equal(await page.locator('#hand .card-face').count(), handBefore - 1);
+    const tableCard = page.locator('#board .light-zone .playmat-card-select').first();
+    await tableCard.click();
+    assert.equal(await tableCard.getAttribute('aria-pressed'), 'true');
+    await playmatActions.getByRole('button', {name: 'Auswahl aufheben'}).click();
+    assert.equal(await tableCard.getAttribute('aria-pressed'), 'false');
 
     await page.setViewportSize({width: 390, height: 844});
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -228,7 +240,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.keyboard.press('Escape');
 
     const moveTrigger = originColumn.getByRole('button', {name: /Bewegen.*6 Optionen/});
-    assert.equal(await originColumn.locator('.playmat-location button').count(), 2);
+    assert.equal(await originColumn.locator('.playmat-location .movement-trigger').count(), 1);
     await moveTrigger.click();
     const movement = page.getByRole('dialog', {name: /Bewegung.*Tatooine: Dune Sea/});
     assert.ok(await movement.isVisible());
@@ -324,7 +336,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.25'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.26'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -376,10 +388,10 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       presentGame();
     });
     await page.getByRole('button', {name: 'Traffic Control auswählen'}).click();
-    await page.getByRole('button', {name: 'Traffic Control · Light Side (1 Force)'}).click();
+    await playmatActions.getByRole('button', {name: /^Traffic Control · Light Side.*1 Force/}).click();
     await page.evaluate(() => { state.phase = 1; presentGame(); });
     await page.getByRole('button', {name: 'Rebel Trooper auswählen'}).click();
-    await page.getByRole('button', {name: 'Traffic Control · Rebel Trooper auf Used Pile legen'}).click();
+    await playmatActions.getByRole('button', {name: /^Traffic Control · Rebel Trooper auf Used Pile legen/}).click();
     assert.equal(await page.evaluate(() => state.used.at(-1).id), 'Light:2052');
 
     await page.locator('#configureGame').click();

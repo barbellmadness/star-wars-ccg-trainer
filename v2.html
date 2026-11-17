@@ -70,6 +70,21 @@ a{color:#b6d8ff}
 .playmat-location .location-name{font-size:12px;line-height:1.2;text-align:center;max-width:min(176px,100%)}
 .location-night{padding:3px 6px;border:1px solid #7892ce;border-radius:5px;background:#1b2a4e;color:#e0e9ff;font-size:11px;font-weight:700;line-height:1.3;text-align:center}
 .playmat-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}.playmat-actions button{padding:6px;font-size:11px}
+.playmat-action-panel{margin:0 2px 8px;padding:8px 10px;border:1px solid #7a725b;border-radius:9px;background:#121f32;overflow-wrap:anywhere;font-size:12px}
+.playmat-action-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.playmat-action-heading h2{margin:0;font-size:14px}.playmat-action-panel p{margin:5px 0}
+.playmat-action-panel button{padding:5px 8px;font-size:12px;text-align:start}
+.playmat-action-list{max-height:min(24dvh,13rem);overflow:auto;overscroll-behavior:contain}
+.playmat-action-group{display:grid;gap:4px;margin-top:5px}.playmat-action-group+.playmat-action-group{border-top:1px solid #43536a;padding-top:5px}
+.playmat-action-group strong{color:#d3e2f8}.playmat-action-group button{width:fit-content;max-width:100%}
+.playmat-action-cost{display:inline-block;margin-inline-start:7px;color:#ffe1a1;font-weight:700}
+.playmat-action-blocked{padding:4px 7px;border-inline-start:2px solid #cb8468;color:#f2cebd}
+.playmat-action-site{color:#c1deff;background:none;border:0;text-decoration:underline}
+.playmat-action-target{outline:2px solid #d6b66c;outline-offset:-2px}
+.playmat-action-target.blocked-target{outline-color:#be826c}
+.playmat-action-target-label{font-size:10px;color:#ffe4a0;font-weight:700}
+.playmat-card-select{background:#1d2c43;border:1px solid #6c81a2;color:#d7e5fb;border-radius:5px;padding:3px 6px;font-size:10px}
+.playmat-card-select[aria-pressed=true]{border-color:var(--gold);color:#fff0ac;background:#48391f}
 .playmat-drain-actions{display:grid;gap:4px;width:100%}
 .playmat-drain-actions button{border-color:var(--gold);padding:6px 4px;font-size:11px}
 .playmat-location .movement-trigger{padding:6px 9px;font-size:12px}
@@ -408,13 +423,13 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
     </div>
     <div class="playmat-shell">
       <button id="returnToBattle" type="button" aria-haspopup="dialog" hidden>Zurück zum Kampf</button>
-      <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
+      <section id="playmatSelection" class="playmat-action-panel" aria-label="Kartenaktionen und Ziele" hidden></section>
+      <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld" tabindex="-1"></div></div>
     </div>
     <div id="playerSeat" class="panel player-hand light-hand">
       <div>
         <div class="hand-heading">
           <h2 id="playerHandTitle">Deine Hand · Light Side</h2>
-          <small id="selectedActionHint" class="hint" role="status" hidden></small>
         </div>
         <section id="playerReactControls" class="react-controls" aria-label="Deine React-Aktionen" tabindex="-1" hidden></section>
         <section id="playerCustodyControls" class="react-controls" aria-label="Gefangenenentscheidung" tabindex="-1" hidden></section>
@@ -503,7 +518,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.25';
+const trainerVersion='2.15.26';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -512,7 +527,7 @@ const cardBackUrls={
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','In der Phase „Kontrolle“ stehen verfügbare Force Drains mit ihrer Force-Menge direkt an der jeweiligen Location. Du brauchst dort eigene Presence ohne gegnerische Presence. Pro Location ist ein Drain je Zug möglich, auch für 0 Force.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let selected=-1, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
+let selected=-1, selectedTableCard=null, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
 let localPrintTexts=new Map();
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
@@ -1346,15 +1361,38 @@ const inspectorOwnCardOffers=(available,card)=>available.filter(option=>
  &&!['loseForce','battleForceLoss','battleHandForfeit','toggleLoss','combinedAttack','dockGroup','transitGroup'].includes(option.kind));
 
 function unavailableCardAction(card,inHand){
+ const window=PremiereGame.responseWindow(state.game),side=playerSide();
+ if(!state.gameWinner&&window?.priority===side){
+  if(!inHand&&['battle','drain'].includes(window.kind)&&reactMovementUsed(card))return 'Diese Karte ist in diesem Zug bereits als React gezogen.';
+  return 'Diese Karte hat in diesem Antwortfenster kein zulässiges Ziel oder keinen passenden Auslöser.';
+ }
  const pending=pendingActionReason();
  if(pending)return pending;
  if(state.activeSide===botSide())return botSide()+' Side ist am Zug. Eigene Aktionen erscheinen im passenden Antwortfenster.';
- if(inHand&&state.phase!==2)return 'Ausspielen ist in der Deploy-Phase möglich. Interrupts brauchen ihren eigenen Auslöser.';
- if(inHand&&Number.isFinite(card.deploy)&&card.deploy>forceBudget(playerSide()))return 'Für einen regulären Deploy braucht '+card.name+
-  ' '+card.deploy+' Force. Verfügbar sind '+forceBudget(playerSide())+'. Ortsrabatte können die Kosten senken.';
- if(!inHand&&state.phase===4&&state.movedThisTurn?.includes(card))return 'Diese Karte hat sich in diesem Zug bereits regulär bewegt.';
- return inHand?'Es gibt gerade kein zulässiges Ziel für diese Karte. Prüfe Ort, Presence, Kartentext und verfügbare Force.':
-  'Für diese Karte ist gerade keine eigene Aktion verfügbar. Passive Regeln gelten automatisch.';
+ if(inHand){
+  if(card.type==='Interrupt')return 'Für diesen Interrupt fehlt gerade ein passender Auslöser oder ein zulässiges Ziel.';
+  if(state.phase!==2)return 'Diese Karte kann regulär in deiner Ausspielen-Phase ausgespielt werden.';
+  if(!withinDeploymentLimit(card,side))return 'Das Ausspiellimit dieser Karte ist bereits erreicht.';
+  if(isDeployableCharacter(card)){
+   const sites=state.locations.filter(loc=>isSite(loc)&&characterLocationAllowed(card,loc));
+   if(!sites.length)return 'Es liegt keine Site aus, an der dieser Charakter ausgespielt werden darf.';
+   if(!isSpyCharacter(card)&&!sites.some(loc=>hasDeployPresence(side,loc)))return 'An den zulässigen Sites fehlen eigene Presence und eigene Force-Icons.';
+  }
+  if(['Vehicle','Starship'].includes(card.type)&&!state.locations.some(loc=>loc&&hasDeployPresence(side,loc)))
+   return 'Es fehlt ein Ort mit eigener Presence oder einem eigenen Force-Icon für den Deploy.';
+  return 'Die Regeln bieten für diese Karte derzeit kein zulässiges Ziel an.';
+ }
+ if(state.phase===4&&['Character','Vehicle','Starship'].includes(card.type)){
+  if(regularMovementUsed(card))return 'Diese Karte hat sich in diesem Zug bereits regulär bewegt.';
+  const restriction=movementRestriction(card);
+  if(restriction)return restriction;
+  const entry=PremiereLocations.findEntry(state,card);
+  if(entry?.unavailable)return 'Die Karte ist gefangen, vermisst oder außer Gefecht.';
+  if(entry?.carriers.length)return 'Die Karte ist an Bord. Nutze eine zulässige Aktion zum Aussteigen oder für einen Besatzungswechsel.';
+  if(entry&&card.type==='Starship'&&!craftStats(card,entry.slot,true).powered)return 'Das Raumschiff braucht einen einsatzbereiten Piloten.';
+  return 'Von dieser Position gibt es kein zulässiges Bewegungsziel.';
+ }
+ return 'Die Regeln bieten für diese Karte in der aktuellen Phase keine Aktion an.';
 }
 
 function effectInspectorMarkup(card,offers){
@@ -1392,12 +1430,13 @@ function inspectCard(side,i,zone,site){
   inspectorOwnCardOffers(legalActions(state,playerSide()),card):[];
  const extra=effect?effectInspectorMarkup(card,options):inspectorActions(options,card);
  showCardWithStats(card,extra||(side===playerSide()?'<p class="hint">'+escapeHTML(unavailableCardAction(card,ownHand))+'</p>':''));
- if(ownHand&&!effect){
+ if((ownHand&&!effect)||zone==='field'){
   const selectButton=el('selectInspectorCard'),gameId=currentGame()?.id,revision=currentGame()?.revision;
   selectButton.hidden=false;
   selectButton.onclick=()=>{
    closeCard();
-   select(i,gameId,revision);
+   if(ownHand)select(i,gameId,revision);
+   else selectTableCard('unit',i,site,side,null,gameId,revision);
   };
  }
 }
@@ -1463,6 +1502,12 @@ function inspectStackLayer(side,site,host,index){
  if(layer){
   const card=layer.card,options=side===playerSide()?inspectorOwnCardOffers(legalActions(state,playerSide()),card):[];
   showCardWithStats(card,inspectorActions(options,card));
+  const selectButton=el('selectInspectorCard'),gameId=currentGame()?.id,revision=currentGame()?.revision;
+  selectButton.hidden=false;
+  selectButton.onclick=()=>{
+   closeCard();
+   selectTableCard('unit',host,site,side,index,gameId,revision);
+  };
  }
 }
 
@@ -1497,15 +1542,142 @@ function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
  const custody=c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:'';
- return '<div class="card">'+art+(custody?'<span class="custody-label">'+escapeHTML(custody)+'</span>':'')+equip+'</div>';
+ const source=zone==='field'?tableActionCard('unit',idx,site,side):null;
+ return '<div class="card'+(source&&source===selectedTableCard?' chosen':'')+'">'+art
+  +(source?tableActionButton(source,'unit',idx,site,side):'')+(custody?'<span class="custody-label">'+escapeHTML(custody)+'</span>':'')+equip+'</div>';
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
  if(gameId!==currentGame()?.id||revision!==currentGame()?.revision||!(state&&PremiereGame.zones(state,playerSide()).hand?.[i]))return false;
+ selectedTableCard=null;
  selected=i;
  render();
  el('handCard'+i)?.focus({preventScroll:true});
  return true;
+}
+
+function tableActionCard(zone,index,slot,side,layer){
+ const root=zone==='unit'?PremiereGame.zones(state,side).board?.[slot]?.[index]:null;
+ if(zone==='unit')return root&&(layer==null?root:stackedCards(root)[layer]?.card);
+ if(zone==='location')return state.locations[slot];
+ if(zone==='locationEffect')return state.locationEffects?.[slot]?.[index]?.card;
+ if(zone==='locationWeapon')return state.locationWeapons?.[slot]?.[index];
+ if(zone==='effect')return state.tableEffects?.[index]?.card;
+ if(zone==='lostEffect')return state.lostPileEffects?.[index]?.card;
+ return null;
+}
+
+function selectTableCard(zone,index,slot,side,layer,gameId,revision){
+ if(!state||gameId!==currentGame()?.id||revision!==currentGame()?.revision)return false;
+ const card=tableActionCard(zone,index,slot,side,layer);
+ if(!card)return false;
+ selected=-1;
+ selectedTableCard=card;
+ render();
+ el('playmatActionTitle')?.focus({preventScroll:true});
+ return true;
+}
+
+function tableActionButton(card,zone,index,slot=null,side=null,label='Aktionen'){
+ const game=currentGame(),args=[zone,index,slot,side,null,game?.id,game?.revision];
+ return '<button type="button" class="playmat-card-select" aria-label="Aktionen für '+escapeHTML(card.name)+'" aria-pressed="'
+  +(selectedTableCard===card)+'" onclick="'+escapeHTML('selectTableCard('+JSON.stringify(args).slice(1,-1)+')')+'">'+escapeHTML(label)+'</button>';
+}
+
+function clearCardSelection(){
+ selected=-1;
+ selectedTableCard=null;
+ render();
+ el('board').focus({preventScroll:true});
+}
+
+function selectedPlaymatCard(side){
+ const hand=PremiereGame.zones(state,side).hand?.[selected];
+ if(hand)return {card:hand,inHand:true};
+ const card=selectedTableCard;
+ if(!card)return null;
+ const visible=state.locations.includes(card)||PremiereLocations.findEntry(state,card)||
+  [state.tableEffects,state.lostPileEffects,...Object.values(state.locationEffects??{})].some(group=>group?.some(effect=>effect.card===card))||
+  Object.values(state.locationWeapons??{}).some(group=>group.includes(card));
+ if(!visible){selectedTableCard=null;return null;}
+ return {card,inHand:false};
+}
+
+function playmatActionLabel(option){
+ const names={deploy:'Ausspielen',deployLocation:'Location auslegen',convertLocation:'Konvertieren',deployWithPilot:'Mit Pilot ausspielen',
+  equip:'Ausrüsten',deployDevice:'Device anbringen',deployBolt:'Restraining Bolt anbringen',deployAutomated:'Waffe aufstellen',
+  deployLostPileEffect:'Lost Pile verdecken',deployTableEffect:'Effect ausspielen',deployLocationEffect:'Effect ausspielen',
+  buryMineCard:'Karte verdeckt vergraben',revolution:'Force-Icons und Spieltext tauschen',move:'Bewegen',battle:'Kampf beginnen',
+  react:'React bewegen',reactDeploy:'Als React ausspielen',interruptResponse:'Antwort ausspielen',passResponse:'Passen',
+  drain:'Force Drain',fireWeapon:'Waffe abfeuern',gaderffii:'Gaderffii einsetzen',computerFire:'Waffe erneut abfeuern',
+  combinedAttack:'Waffen kombiniert abfeuern',battleForfeit:'Karte forfeiten',toggleLoss:'Für Forfeit auswählen',
+  loseForce:'Auf die Lost Pile legen',battleForceLoss:'Für Battle Damage verlieren',takeFromReserve:'Aus dem Reserve Deck nehmen',
+  custody:'Gefangenen verwalten',prisonerTransfer:'Gefangenen übergeben',deployReserveInsert:'Ins Reserve Deck einschleusen'};
+ if(option.label)return option.label;
+ const target=option.target?.card?.name??option.target?.name??option.host?.name??option.item?.name??option.mount?.host?.name??
+  option.pilot?.name??(PremiereGame.sides.includes(option.target)?option.target+' Side':null);
+ const card=option.kind==='react'||option.kind==='reactDeploy'||option.kind==='interruptResponse'||option.kind==='fireWeapon'?
+  (option.weapon??option.card)?.name:null;
+ const placement=option.kind==='deployLocation'?(state.locations[cardActionSlot(option)]?'hier davor':'am Ende der Reihe'):null;
+ return [names[option.kind]??option.card?.name??'Kartenaktion',card,target,placement,option.movementKind??option.movement,
+  option.kind==='drain'?option.amount+' Force Verlust':null].filter(Boolean).join(' · ');
+}
+
+function playmatActionCost(option){
+ const cost=cardActionForceCost(option),opponentCost=option.opponentCost??option.opposingCost;
+ if(cost!==null)return actionForceCost({cost,opponentCost});
+ if(option.kind==='groupRelocation')return 'Kosten laut Destiny';
+ if(['loseForce','battleForceLoss','battleHandForfeit','battleForfeit','toggleLoss','takeFromReserve','custody','finishCardInformation'].includes(option.kind))return '';
+ return '0 Force';
+}
+
+function showPlaymatTarget(slot){
+ const target=el('playmatLocation'+slot);
+ target?.scrollIntoView?.({block:'nearest',inline:'center'});
+ target?.focus?.({preventScroll:true});
+}
+
+function renderPlaymatSelection(selection,available,side){
+ const area=el('playmatSelection'),window=state.gameWinner||state.pendingCardView||state.pendingCustody?.length||
+  state.automatedPending||state.game?.timing.pending?null:PremiereGame.responseWindow(state.game);
+ const frame=state.pendingCardView;
+ const targetChoice=frame?.side===side&&['bridgeOrder','tractorRelease','necklacePass','wiosleaPurchase','tonnikaTheft','emergencyDeploy',
+  'relocateGroup','relocationCost','retreatTargets','retreatMove','computerAim','deadJawaTarget','tableLossChoice'].includes(frame.mode)?frame:null;
+ area.hidden=!selection&&!window&&!targetChoice;
+ if(area.hidden){area.innerHTML='';return new Map();}
+ const card=targetChoice?.card??selection?.card;
+ const related=option=>targetChoice?option.kind==='finishCardInformation':card?cardActionMatches(option,card):option.kind!=='passResponse';
+ const legal=available.filter(related);
+ const blocked=window&&window.priority!==side?[]:unaffordableCardOffers(side,related,legal);
+ const groups=new Map(),targets=new Map();
+ for(const {option,reason} of [...legal.map(option=>({option})),...blocked]){
+  const slot=cardActionSlot(option),location=state.locations[slot];
+  const cost=playmatActionCost(option),label=playmatActionLabel(option);
+  const suffix=' ('+cost+')',captionLabel=cost&&label.endsWith(suffix)?label.slice(0,-suffix.length):label;
+  const caption=escapeHTML(captionLabel)+(cost?' <span class="playmat-action-cost">'+escapeHTML(cost)+'</span>':'');
+  if(!groups.has(slot))groups.set(slot,[]);
+  if(location)targets.set(slot,!!targets.get(slot)||!reason);
+  groups.get(slot).push(reason?'<div class="playmat-action-blocked"><strong>'+escapeHTML(label)+'</strong> · '+escapeHTML(reason)+'</div>':
+   option.kind==='combinedAttack'?combinedAttackMarkup(option):option.choices&&['dockGroup','transitGroup'].includes(option.kind)?transportGroupMarkup(option):
+    '<button type="button" '+ruleClick(option)+'>'+caption+'</button>');
+ }
+ const showResponse=window&&(window.priority!==side?'Priorität hat '+window.priority+' Side.':
+  'Du hast Priorität im Antwortfenster'+(state.locations[window.site]?' bei '+state.locations[window.site].name:'')+'.');
+ let reason='';
+ if(selection&&!targetChoice&&!legal.length&&!blocked.length)reason=unavailableCardAction(card,selection.inHand);
+ else if(selection&&!targetChoice&&!selection.inHand&&!window&&state.phase===4&&state.activeSide===side&&regularMovementUsed(card))
+  reason='Diese Karte hat sich in diesem Zug bereits regulär bewegt.';
+ const pass=window?.priority===side?findOffer(available,'passResponse'):null;
+ area.innerHTML='<div class="playmat-action-heading"><h2 id="playmatActionTitle" tabindex="-1">'
+  +(card?escapeHTML(card.name):targetChoice?'Ziele auswählen':'Antwortfenster auf der Playmat')+'</h2>'
+  +(selection?'<button type="button" onclick="clearCardSelection()">Auswahl aufheben</button>':'')+'</div>'
+  +(showResponse?'<p>'+escapeHTML(showResponse)+'</p>':'')+(reason?'<p class="playmat-action-blocked" role="status">'+escapeHTML(reason)+'</p>':'')
+  +(groups.size?'<div class="playmat-action-list">'+[...groups].map(([slot,options])=>{
+   const location=state.locations[slot];
+   return '<div class="playmat-action-group">'+(location?'<button type="button" class="playmat-action-site" aria-label="Zielort '+escapeHTML(location.name)
+    +' zeigen" onclick="showPlaymatTarget('+slot+')">'+escapeHTML(location.name)+'</button>':'')+options.join('')+'</div>';
+  }).join('')+'</div>':'')+(pass?ruleButton(pass,'Passen'):'');
+ return targets;
 }
 
 function locationCardVisual(loc){
@@ -1536,20 +1708,20 @@ function locationConditionsMarkup(slot){
  const conditions=PremiereLocations.conditions(state,slot,'Light');
  const labels=new Set();
  if(conditions.scompLink)labels.add('Scomp Link · '+location.name);
- for(const {card,target} of PremiereLocations.effectsAt(state,slot)){
-  labels.add(card.name+(target?.name?' · '+target.name:''));
- }
  if(state.drainedSitesThisTurn?.includes(slot))labels.add('Force Drain in diesem Zug angesagt');
  if(state.battledSitesThisTurn?.includes(slot))labels.add(battleSession?.site===slot?'Battle läuft':'Battle in diesem Zug');
  if(state.fullScaleAlert?.turn===state.game?.timing.turn&&state.fullScaleAlert&&
     PremiereLocations.entries(state,state.fullScaleAlert.target).some(entry=>entry.slot===slot&&!entry.unavailable&&movementBlockedByAlert(entry.card))){
   labels.add('Full Scale Alert · Bewegung eingeschränkt');
  }
- return labels.size?'<ul class="location-conditions" aria-label="Aktive Bedingungen">'+
-  [...labels].map(label=>'<li>'+escapeHTML(label)+'</li>').join('')+'</ul>':'';
+ const effects=(state.locationEffects?.[slot]??[]).map(({card,target},index)=>'<li>'+tableActionButton(card,'locationEffect',index,slot,null,
+  card.name+(target?.name?' · '+target.name:''))+'</li>');
+ const weapons=(state.locationWeapons?.[slot]??[]).map((card,index)=>'<li>'+tableActionButton(card,'locationWeapon',index,slot,null,card.name)+'</li>');
+ const markup=[...labels].map(label=>'<li>'+escapeHTML(label)+'</li>').concat(effects,weapons);
+ return markup.length?'<ul class="location-conditions" aria-label="Aktive Bedingungen">'+markup.join('')+'</ul>':'';
 }
 
-function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide())){
+function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide()),actionTarget){
  const own=playerSide(),bot=botSide(),ownCards=view.players[own].board[i]||[],botCards=view.players[bot].board[i]||[];
  const equipActions=new Map(available.filter(x=>x.kind==='equip'&&x.args[0]===selected&&x.args[1]===i).map(x=>[x.hostIndex,x]));
  const conversion=findOffer(available,'convertLocation',selected,i),revolution=findOffer(available,'revolution',selected,i);
@@ -1582,8 +1754,12 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
   +(battle?ruleButton(battle,'Battle ('+battle.cost+' Force)'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
- return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone(bot,botCards)
+ return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')
+ +(actionTarget===true?' playmat-action-target':actionTarget===false?' playmat-action-target blocked-target':'')
+ +'" tabindex="-1" id="playmatLocation'+i+'">'+zone(bot,botCards)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
+ +(loc?tableActionButton(state.locations[i],'location',0,i):'')
+ +(actionTarget===undefined?'':'<span class="playmat-action-target-label">'+(actionTarget?'Aktionsziel':'Ziel nicht bezahlbar')+'</span>')
  +(loc&&isSite(loc)?locationNightMarkup(i):'')
  +locationConditionsMarkup(i)
  +(PremiereLocations.prison(loc)?'<span class="custody-label">Gefängnis</span>':'')
@@ -1593,7 +1769,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
  +zone(own,ownCards)+'</div>';
 }
 
-function renderPlaymat(available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide())){
+function renderPlaymat(available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide()),targets=new Map()){
  const order=boardLocationOrder();
  const insertButton=position=>{
   const option=findOffer(available,'deployLocation',selected,position);
@@ -1605,7 +1781,7 @@ function renderPlaymat(available=legalActions(state,playerSide()),view=PremiereG
  const columns=order.map((slot,position)=>{
   const card=state.locations[slot],previous=state.locations[order[position-1]];
   const startsGroup=!!previous&&locationGroup(previous)!==locationGroup(card);
-  return insertButton(position)+renderPlaymatColumn(card,slot,startsGroup,available,view);
+  return insertButton(position)+renderPlaymatColumn(card,slot,startsGroup,available,view,targets.get(slot));
  });
  return columns.join('')+insertButton(order.length)||'<p class="hint">Auf der Playmat liegt noch keine Location.</p>';
 }
@@ -1635,8 +1811,9 @@ function renderDeckPiles(side,player){
  const lifeForce=player.reserveCount===null?'?':PremiereGame.lifeForce(state,side);
  const top=player.lostTop;
  if(player.lostFaceDown&&inspectedLostSide===side)closeCard();
+ const effectButtons=(effects,zone)=>(effects??[]).map(({card,target},index)=>target===side?tableActionButton(card,zone,index,null,null,card.name):'').join(' ');
  const cover=player.lostFaceDown?'<div class="lost-pile-covered">'+(player.lostCount?cardBackMarkup(side):'')
-  +'<span><strong>Lost Pile verdeckt</strong><small>'+player.lostEffects.map(card=>escapeHTML(card.name)).join(', ')+'</small></span></div>':'';
+  +'<span><strong>Lost Pile verdeckt</strong><small>'+effectButtons(state.lostPileEffects,'lostEffect')+'</small></span></div>':'';
  const lostTop=top?'<button class="lost-top-card" type="button" aria-haspopup="dialog" onclick="inspectLostTop(\''+side+'\')">'
   +(top.image?'<img src="'+escapeHTML(top.image)+'" alt="" loading="lazy">':'')
   +'<span><small>Oben auf der Lost Pile</small><strong>'+escapeHTML(top.name)+'</strong></span></button>':'';
@@ -1644,7 +1821,7 @@ function renderDeckPiles(side,player){
  piles.setAttribute?.('aria-label','Kartenstapel der '+side+' Side');
  piles.innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
-  +(player.tableEffects?.length?'<p class="hint">Effects · '+player.tableEffects.map(card=>escapeHTML(card.name)).join(', ')+'</p>':'')
+  +(player.tableEffects?.length?'<div class="hint">Effects · '+effectButtons(state.tableEffects,'effect')+'</div>':'')
   +(own?lost:'')
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
@@ -1709,11 +1886,9 @@ function render(){
  el('botTurnPanel').style.display=state.botTurn&&!view.winner?'flex':'none';
  if(state.botTurn)el('botStepText').textContent=automatic?'Bot spielt automatisch':'Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
   +' · Nächster Abschnitt: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
- el('board').innerHTML=renderPlaymat(available,view);
+ const selection=selectedPlaymatCard(side),targets=renderPlaymatSelection(selection,available,side);
+ el('board').innerHTML=renderPlaymat(available,view,targets);
  el('hand').innerHTML=own.hand.map(handCardMarkup).join('');
- const selectedCard=PremiereGame.zones(state,side).hand?.[selected],blocked=selectedCard&&!inspectorOwnCardOffers(available,selectedCard).length;
- el('selectedActionHint').hidden=!blocked;
- el('selectedActionHint').textContent=blocked?unavailableCardAction(selectedCard,true):'';
  el('showBotHand').disabled=!learningMode();
  const showBotHand=showLearningBotHand();
  el('botHandCount').textContent=bot.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
@@ -1789,6 +1964,7 @@ presentGame=()=>{
  el('returnToBattle').hidden=!battleOnPlaymat;
  if(shownGame!==currentGame()){
   selected=-1;
+  selectedTableCard=null;
   shownGame=currentGame();
   closeCard();
   if(el('movementDialog').open)el('movementDialog').close();

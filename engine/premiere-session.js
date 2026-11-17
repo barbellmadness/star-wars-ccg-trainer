@@ -136,7 +136,7 @@ function necklacePassChoices(frame){
   const {card,slot}=entry;
   if(card.subType!=='Imperial'||!adjacentSites(slot,frame.site)||!PremiereLocations.presentAt(entry,slot)||
      PremiereLocations.control(state,frame.side,slot,cardAbility)!==true)return [];
-  return [{args:['passNecklace',index],label:'Kette an '+card.name+' bei '+state.locations[slot].name+' weitergeben'}];
+  return [{args:['passNecklace',index],target:card,to:slot,label:'Kette an '+card.name+' bei '+state.locations[slot].name+' weitergeben'}];
  });
  return [...options,{args:['done'],label:'Kette behalten'}];
 }
@@ -241,9 +241,9 @@ function beggarCredit(side){
  return Math.min(selected.amount,PremiereGame.zones(state,PremiereGame.otherSide(side)).force.length);
 }
 
-function forceBudget(side){
- return (PremiereGame.zones(state,side).force?.length??0)+beggarCredit(side);
-}
+let quotingForce=false;
+const ownForceBudget=side=>quotingForce?Infinity:(PremiereGame.zones(state,side).force?.length??0);
+const forceBudget=side=>ownForceBudget(side)+beggarCredit(side);
 
 function spendForce(side,amount=1,reservedOpponentForce=0){
  const {force,used}=PremiereGame.zones(state,side);
@@ -634,9 +634,16 @@ function falconModificationBonus(card,slot){
  return Math.max(0,...(card.attachments??[]).flatMap(effect=>activeCardRules(effect,'falconModification').map(rule=>rule.amount)));
 }
 
-function movementPrevented(card){
- return card.asleep||PremiereUnits.restrainingBolt(card)||activeCardRules(card,'cannotMove').length>0||barredThisTurn(card)||movementBlockedByAlert(card);
+function movementRestriction(card){
+ if(card.asleep)return 'Die Karte schläft und kann sich nicht bewegen.';
+ if(PremiereUnits.restrainingBolt(card))return 'Ein Restraining Bolt verhindert die Bewegung.';
+ if(activeCardRules(card,'cannotMove').length)return 'Der Kartentext erlaubt keine Bewegung.';
+ if(barredThisTurn(card))return 'Imperial Barrier verhindert die Bewegung in diesem Zug.';
+ if(movementBlockedByAlert(card))return 'Full Scale Alert verhindert die Bewegung in diesem Zug.';
+ return '';
 }
+
+const movementPrevented=card=>!!movementRestriction(card);
 
 function wagerOptions(side){
  if(state.activeSide!==side||state.phase!==1||!state.game||!forceBudget(side))return [];
@@ -738,6 +745,8 @@ function travelOptions(card,side,from,to,react=false){
 
 function regularMoveKind(card,from,to){return travelOptions(card,card.side??state.activeSide??'Light',from,to)[0]?.kind??null}
 
+const regularMovementUsed=card=>state.movedThisTurn?.includes(card);
+
 function movementOptionsFor(side){
  if(!state||state.gameWinner||state.pendingForceLoss||!PremiereGame.sides.includes(side)||
     (state.activeSide&&state.activeSide!==side)||![1,4].includes(state.phase))return [];
@@ -745,7 +754,7 @@ function movementOptionsFor(side){
  const {force,board}=PremiereGame.zones(state,side);
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
-  if(state.movedThisTurn?.includes(card))return [];
+  if(regularMovementUsed(card))return [];
   return state.locations.flatMap((location,to)=>travelOptions(card,side,from,to)
    .filter(travel=>travel.cost<=forceBudget(side))
    .map(travel=>({...travel,from,to,index,card,name:card.name})));
@@ -1501,15 +1510,19 @@ function jawaDeployPayment(card,loc,side){
 
 function canPayJawaDeploy(side,payment,free=false){
  if(!payment)return false;
- const actor=PremiereGame.zones(state,side),opponent=PremiereGame.zones(state,PremiereGame.otherSide(side));
- const opponentsForce=opponent.force?.length??0;
+ const opponentsForce=ownForceBudget(PremiereGame.otherSide(side));
  if(payment.opposing>opponentsForce)return false;
- const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
  if(free)return true;
- if(version<23)return payment.own<=forceBudget(side);
- const available=actor.force?.length??0;
- const loan=version>=24?Math.min(beggarCredit(side),opponentsForce-payment.opposing):0;
- return payment.own<=available+loan;
+ return payment.own<=jawaForceBudget(side,payment.opposing);
+}
+
+function jawaForceBudget(side,opposing){
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ if(version<23)return forceBudget(side);
+ const available=ownForceBudget(side);
+ const opponentsForce=ownForceBudget(PremiereGame.otherSide(side));
+ const loan=version>=24?Math.min(beggarCredit(side),Math.max(0,opponentsForce-opposing)):0;
+ return available+loan;
 }
 
 function spendJawaDeployForce(side,amount,opposing=0){
@@ -2595,8 +2608,7 @@ function tableEffectOptions(side){
   const free=waived||withThreepio;
   const cost=free?0:rule.cost;
   const opposingCost=rule.opposingCost??0;
-  const rival=opposingCost?PremiereGame.zones(state,PremiereGame.otherSide(side)).force:[];
-  return cost<=forceBudget(side)&&opposingCost<=(rival?.length??0)?[{args:[index],card,target,cost,opposingCost,
+  return cost<=forceBudget(side)&&opposingCost<=ownForceBudget(PremiereGame.otherSide(side))?[{args:[index],card,target,cost,opposingCost,
    label:card.name+' · '+target+' Side ('+cost+' Force'+(opposingCost?' pro Seite':'')+')'+(waived?' · Central Core':withThreepio?' · C-3PO':'')}]:[];
  });
 }
@@ -4236,7 +4248,7 @@ function cardInformationChoices(frame){
   return namedLostTargets(frame.side,lostRetrieval.get(frame.card.id))
    .map(({card,index})=>({args:['recover',index],label:card.name+' zurückholen'}));
  }
- if(frame.mode==='bridgeOrder')return frame.sites.map(slot=>({args:['orderSite',slot],label:'Als Nächstes: '+state.locations[slot].name}));
+ if(frame.mode==='bridgeOrder')return frame.sites.map(slot=>({args:['orderSite',slot],site:slot,label:'Als Nächstes: '+state.locations[slot].name}));
  if(frame.mode==='tractorRelease')return [{args:['launch'],label:'Schiff im Todesstern-System starten'},{args:['escape'],label:'Schiff und Besatzung auf die Used Pile legen'}];
  if(frame.mode==='beggarAmount')return [...beggarPaymentOptions(frame.side),{args:['done'],label:'Schließen'}];
  if(frame.mode==='necklacePass')return necklacePassChoices(frame);
@@ -4244,12 +4256,13 @@ function cardInformationChoices(frame){
  if(frame.mode==='optionalRetrieval')return [{args:['retrieve'],label:frame.amount+' Force zurückholen'},{args:['done'],label:'Auf Rückholung verzichten'}];
  if(frame.mode==='wagerRetrieval')return [{args:['retrieve'],label:'Zufällige Karte zurückholen'},{args:['done'],label:'Auf Rückholung verzichten'}];
  if(frame.mode==='scompPeek')return [{args:['done'],label:'Reserve Deck mischen und zurücklegen'}];
- if(frame.mode==='wiosleaPurchase')return [{args:['purchase'],label:'Für '+frame.target.card.deploy+' Force kaufen'},{args:['done'],label:'Auf Kauf verzichten'}];
+ if(frame.mode==='wiosleaPurchase')return [{args:['purchase'],target:frame.target,cost:frame.target.card.deploy,
+  label:frame.target.card.name+' kaufen'},{args:['done'],label:'Auf Kauf verzichten'}];
  if(frame.mode==='tonnikaTheft'){
   const targets=theftTargets(frame.actor,'tonnika');
   const options=targets.flatMap((entry,index)=>!frame.category||entry.card.type===frame.category?[
-   ...(entry.stealable?[{args:['steal',index],label:entry.card.name+' stehlen'}]:[]),
-   {args:['destroy',index],label:entry.card.name+' zerstören'},
+   ...(entry.stealable?[{args:['steal',index],target:entry,label:entry.card.name+' stehlen'}]:[]),
+   {args:['destroy',index],target:entry,label:entry.card.name+' zerstören'},
   ]:[]);
   return [...options,{args:['done'],label:'Auswahl abschließen'}];
  }
@@ -4258,11 +4271,11 @@ function cardInformationChoices(frame){
   const choices=reinforcementTargets(frame.interruptFrame).map((card,index)=>({args:['recover',index],label:card.name+' zurückholen'}));
   return frame.interruptFrame.rule.optional?[...choices,{args:['done'],label:'Rückholung abschließen'}]:choices;
  }
- if(frame.mode==='relocationCost')return [{args:['pay'],label:frame.cost+' Force für die Verlegung einsetzen'},
+ if(frame.mode==='relocationCost')return [{args:['pay'],site:frame.destination,cost:frame.cost,label:frame.cost+' Force für die Verlegung einsetzen'},
   {args:['decline'],label:frame.card.name+' verloren geben'}];
  if(frame.mode==='relocateGroup'){
-  const choices=frame.targets.map(({card},index)=>({args:['toggle',index],label:(frame.selected.includes(index)?'✓ ':'')+card.name}));
-  if(frame.selected.length)choices.push(...frame.destinations.map(slot=>({args:['relocate',slot],label:'Nach '+state.locations[slot].name+' verlegen'})));
+  const choices=frame.targets.map(({card,slot},index)=>({args:['toggle',index],site:slot,card,label:(frame.selected.includes(index)?'✓ ':'')+card.name}));
+  if(frame.selected.length)choices.push(...frame.destinations.map(slot=>({args:['relocate',slot],to:slot,label:'Nach '+state.locations[slot].name+' verlegen'})));
   return [...choices,{args:['cancel'],label:'Abbrechen'}];
  }
  if(frame.mode==='beruOrder')return PremiereGame.sides.map(side=>({args:['first',side],label:side+' aktiviert zuerst'}));
@@ -4275,7 +4288,8 @@ function cardInformationChoices(frame){
  if(frame.mode==='retreatTargets')return frame.targets.flatMap((entry,index)=>frame.selected.includes(entry)?[]:
   [{args:['choose',index],label:entry.card.name+' fortschicken'}]);
  if(frame.mode==='retreatMove')return retreatChoices(frame);
- if(frame.mode==='computerAim')return frame.shots.map((shot,index)=>({args:['shoot',index],label:shot.target.name+' · zweiter Schuss ('+shot.cost+' Force)'}));
+ if(frame.mode==='computerAim')return frame.shots.map((shot,index)=>({args:['shoot',index],target:shot.target,cost:shot.cost,
+  label:shot.target.name+' · zweiter Schuss ('+shot.cost+' Force)'}));
  if(frame.mode==='deadJawaTarget'){
   const choices=frame.shown.map((card,index)=>({args:['toggle',index],
    label:(frame.selected.includes(index)?'✓ ':'')+card.name}));
@@ -4492,10 +4506,11 @@ function retreatChoices(frame){
  return frame.targets.flatMap((entry,index)=>{
   if(entry.slot!==PremiereLocations.findEntry(state,entry.card)?.slot)return [];
   const moves=state.locations.flatMap((location,to)=>travelOptions(entry.card,entry.side,entry.slot,to)
-   .filter(option=>['Landspeed','Hyperspeed'].includes(option.kind)&&!state.movedThisTurn?.includes(entry.card))
+    .filter(option=>['Landspeed','Hyperspeed'].includes(option.kind)&&!regularMovementUsed(entry.card))
    .map(option=>({...option,to,cost:frame.free?0:option.cost})))
    .filter(option=>option.cost<=forceBudget(entry.side));
-  return moves.length?moves.map(move=>({args:[index,move.to],move,label:entry.card.name+' zu '+state.locations[move.to].name+' ('+move.cost+' Force)'})):
+  return moves.length?moves.map(move=>({args:[index,move.to],move,to:move.to,cost:move.cost,
+   label:entry.card.name+' zu '+state.locations[move.to].name+' ('+move.cost+' Force)'})):
    [{args:[index,null],label:entry.card.name+(frame.free?' muss verloren gehen':' kann sich nicht entfernen')}];
  });
 }
@@ -5446,7 +5461,7 @@ function printedWarRoomExtraBattleDestiny(side,siteIndex,initiator=battleSession
 }
 
 function duelOptions(side){
- if(side!=='Dark'||!state.game||!state.botForce?.length)return [];
+ if(side!=='Dark'||!state.game||!ownForceBudget(side))return [];
  const copies=state.botHand.flatMap((card,index)=>card.id==='Dark:2517'?[{card,index}]:[]);
  if(!copies.length)return [];
  return state.locations.flatMap((loc,site)=>{
@@ -5455,7 +5470,7 @@ function duelOptions(side){
    .find(card=>card.type==='Character'&&locationTitle(card)===name&&(PremiereUnits.active(card)||card.undercover)&&Number.isFinite(card.power));
   const vader=character('Dark','darth vader'),obi=character('Light','obi-wan kenobi');
   if(!vader||!obi)return [];
-  return copies.map(({card,index})=>({args:[index,site],card,site,vader,obi,
+  return copies.map(({card,index})=>({args:[index,site],card,site,vader,obi,cost:1,
    label:card.name+' · Duell bei '+loc.name+' (1 Force)'}));
  });
 }
@@ -5712,14 +5727,15 @@ function destinyResponses(side,frame){
  const {hand,deck}=PremiereGame.zones(state,side);
  const members=x.participants[side].filter(card=>battleCandidates(side,x.site).includes(card));
  const offers=[];
- if(side===frame.side&&forceBudget(side)&&members.some(card=>card.id==='Light:1098'&&
-    ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||activeCardRules(card,'redrawOwnDestiny').length))&&
-    !PremiereGame.wasUsed(state.game,'battle','hanRedraw')){
-  offers.push({kind:'hanRedraw',label:'Han Solo: Destiny neu ziehen (1 Force)'});
+ const han=members.find(card=>card.id==='Light:1098'&&
+  ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||activeCardRules(card,'redrawOwnDestiny').length));
+ if(side===frame.side&&forceBudget(side)&&han&&!PremiereGame.wasUsed(state.game,'battle','hanRedraw')){
+  offers.push({kind:'hanRedraw',card:han,cost:1,label:'Han Solo: Destiny neu ziehen (1 Force)'});
  }
- if(side!==frame.side&&members.some(card=>activeCardRules(card,'cancelBattleDraw').length)&&members.some(card=>card.id==='Dark:634')&&
+ const tarkin=members.find(card=>activeCardRules(card,'cancelBattleDraw').length);
+ if(side!==frame.side&&tarkin&&members.some(card=>card.id==='Dark:634')&&
     !PremiereGame.wasUsed(state.game,'battle','tarkinCancel')){
-  offers.push({kind:'tarkinCancel',label:'Tarkin: gegnerisches Destiny aufheben'});
+  offers.push({kind:'tarkinCancel',card:tarkin,cost:0,label:'Tarkin: gegnerisches Destiny aufheben'});
  }
  if(side===frame.side&&frame.purpose==='battle'&&forceBudget(side)&&deck?.length&&
     members.some(card=>card.type==='Character'&&cardAbility(card)>2)){
@@ -6200,7 +6216,8 @@ function combinedAttackOptions(side,shots,request,offer){
        plan.reduce((sum,shot)=>sum+shot.cost,0)>forceBudget(side)||
        plan.some((a,i)=>plan.slice(i+1).some(b=>!compatible(a,b))))continue;
    }
-   options.push(offer('combinedAttack',choosing?request.args:base,{card,target:choices[0].target,choices,plan,pair}));
+   options.push(offer('combinedAttack',choosing?request.args:base,{card,target:choices[0].target,choices,plan,pair,
+    cost:pair.reduce((sum,index)=>sum+choices[index].cost,0)}));
   }
  }
  return options;
@@ -6815,17 +6832,19 @@ function resolveBattleLosses(){
 
 function commitDemoLoss(){return resolveBattleLosses()}
 
+const reactMovementUsed=card=>state.reactedThisTurn?.includes(card)||card.occupants?.some(entry=>state.reactedThisTurn?.includes(entry.card));
+
 function reactOptions(side, window){
  if(!window||window.cancelled||!['battle','drain'].includes(window.kind)||side===window.side)return [];
  const {board,force}=PremiereGame.zones(state,side);
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
-  if(state.reactedThisTurn?.includes(card)||(card.occupants??[]).some(entry=>state.reactedThisTurn?.includes(entry.card)))return [];
+  if(reactMovementUsed(card))return [];
   const dantooine=card.type==='Starship'&&PremiereLocations.ruleAt(state,window.site,side,'shipReact');
   if(!dantooine&&!['Light:2250','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
   if(!dantooine&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7&&PremiereUnits.textSuppressed(card))return [];
   return travelOptions(card,side,from,window.site,true).filter(option=>option.cost<=forceBudget(side))
-   .map(option=>({from,index,card,cost:option.cost,movement:option.kind}));
+   .map(option=>({from,to:window.site,index,card,cost:option.cost,movement:option.kind}));
  }));
 }
 
@@ -6879,7 +6898,7 @@ function reactDeployOptions(side,window){
     }
    }
   }
-  return offer.map(option=>({...option,comlinkHost}));
+  return offer.map(option=>({...option,site:window.site,comlinkHost}));
  });
 }
 
@@ -8127,12 +8146,12 @@ function legalActions(position,side,request){
   for(const option of automatedDeployOptions(side))actions.push(offer('deployAutomated',[option.index,option.slot],option));
   for(const [i,card] of (hand??[]).entries()){
    if(card.side===side&&isLostPileEffect(card))for(const target of PremiereGame.sides){
-    actions.push(offer('deployLostPileEffect',[i,target],{card,target}));
+    actions.push(offer('deployLostPileEffect',[i,target],{card,target,cost:0}));
    }
    for(const option of locationEffectOptions(side,i))actions.push(offer('deployLocationEffect',option.args,option));
-   for(const slot of locationDeployPositions(side,i))actions.push(offer('deployLocation',[i,slot],{card}));
+   for(const slot of locationDeployPositions(side,i))actions.push(offer('deployLocation',[i,slot],{card,cost:0}));
    const conversion=conversionTarget(side,i);
-   if(conversion>=0)actions.push(offer('convertLocation',[i,conversion],{card}));
+   if(conversion>=0)actions.push(offer('convertLocation',[i,conversion],{card,cost:0,site:conversion}));
    for(const slot of revolutionOptions(side,i))actions.push(offer('revolution',[i,slot],{card,cost:3+sentryModifier(side,slot,'deploy')}));
    for(const option of weaponDeployOptions(side,i))actions.push(offer('equip',[i,option.siteIndex,option.hostIndex],
     {...option,card,contested:confirmedPresence(PremiereGame.otherSide(side),option.siteIndex)===true}));
@@ -8146,7 +8165,7 @@ function legalActions(position,side,request){
     const cost=boardDeployCost(card,location,side);
     if(cost!==null)actions.push(offer('deploy',[i,slot],{card,location,cost,
      ...(jawaCosts.has(card.id)?{opponentCost:jawaDeployPayment(card,location,side).opposing}:{})}));
-    if(isExteriorPlanetSite(location)&&mineLayers(side,slot))actions.push(offer('buryMineCard',[i,slot]));
+    if(isExteriorPlanetSite(location)&&mineLayers(side,slot))actions.push(offer('buryMineCard',[i,slot],{card,cost:0,site:slot}));
     for(const pilot of deployPilotOptions(side,i,slot))actions.push(offer('deployWithPilot',[i,slot,pilot.index],pilot));
    }
   }
@@ -8163,6 +8182,64 @@ function legalActions(position,side,request){
   actions.push(offer('transitGroup',choosing?request.args:[from,to],{from,to,cost,choices:group,plan}));
  }
  return actions;
+}
+
+function cardActionSlot(option){
+ const fields=[option.to,option.siteIndex,option.site,option.slot,option.locationIndex,option.destination,option.destination?.slot];
+ const slot=fields.find(value=>Number.isInteger(value)&&value>=0);
+ if(slot!==undefined)return slot;
+ if(['battle','drain'].includes(option.kind))return option.args[0];
+ if(['deploy','deployWithPilot','convertLocation','revolution','deployLocationEffect','deployDevice','deployBolt'].includes(option.kind))return option.args[1];
+ if(option.kind==='deployLocation')return (state.locationOrder??initialLocationOrder(state.locations))[option.args[1]];
+ const target=[option.target?.card,option.target,option.host,option.mount?.host,option.item,option.carrier,option.card,option.weapon,option.fromCard];
+ for(const card of target){
+  if(!card||typeof card!=='object')continue;
+  const entry=PremiereLocations.findEntry(state,card);
+  if(entry)return entry.slot;
+  const index=state.locations.indexOf(card);
+  if(index>=0)return index;
+ }
+ return PremiereGame.responseWindow(state.game)?.site??battleSession?.site;
+}
+
+function cardActionMatches(option,card){
+ if(['passResponse','passWeapons','passDamage','trainingModifier','trainingNight','advance','draw','activate'].includes(option.kind))return false;
+ if([option.card,option.ship,option.weapon,option.host,option.carrier,option.source,option.target,option.pilot,option.item,
+   option.mount?.host,option.target?.card,option.entry?.card,option.source?.card,option.comlinkHost,option.effect?.card,
+   option.counterCharacter,option.vader,option.obi].includes(card))return true;
+ if(option.ships?.includes(card)||option.choices?.some(choice=>choice.card===card||choice.weapon===card||choice.host===card))return true;
+ const slot=state.locations.indexOf(card);
+ return slot>=0&&cardActionSlot(option)===slot;
+}
+
+function cardActionForceCost(option){
+ if(Number.isFinite(option.cost))return option.cost;
+ if(Number.isFinite(option.rule?.cost))return option.rule.cost;
+ const printed=option.label?.match(/\((\d+) Force\)/);
+ return printed?Number(printed[1]):null;
+}
+
+function unaffordableCardOffers(side,related,available){
+ if(quotingForce||state.gameWinner||state.game?.executing)return [];
+ let quotes;
+ // Relax only payment checks to find otherwise legal targets. These offers are for display only.
+ quotingForce=true;
+ try{
+  quotes=legalActions(state,side).filter(related);
+ }finally{
+  quotingForce=false;
+ }
+ const own=ownForceBudget(side),rival=ownForceBudget(PremiereGame.otherSide(side)),budget=forceBudget(side);
+ return quotes.flatMap(option=>{
+  const cost=cardActionForceCost(option),opposing=option.opponentCost??option.opposingCost??0;
+  const usable=option.kind==='duel'?own:jawaCosts.has(option.card?.id)?jawaForceBudget(side,opposing):budget;
+  const reasons=[];
+  if(cost>usable)reasons.push('Benötigt '+cost+' Force. Verfügbar: '+usable+' Force.');
+  if(opposing>rival)reasons.push('Die Gegenseite braucht '+opposing+' Force. Verfügbar: '+rival+' Force.');
+  if(!reasons.length||available.some(legal=>legal.kind===option.kind&&legal.args.length===option.args.length&&
+   legal.args.every((arg,index)=>arg===option.args[index])))return [];
+  return [{option,reason:reasons.join(' ')}];
+ });
 }
 
 function executeAction(action){
