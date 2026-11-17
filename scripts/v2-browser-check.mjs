@@ -25,6 +25,9 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#launchDeckGrid').isVisible(), false);
     assert.match(await page.locator('#launchSides button').first().innerHTML(), /lightcardback\.png.*lukeskywalker\.gif/s);
     await chooseSide('light');
+    const botStyle = page.getByLabel('Bot-Spielstil', {exact: true});
+    assert.equal(await botStyle.inputValue(), 'balanced');
+    assert.deepEqual(await botStyle.locator('option').allTextContents(), ['Defensiv', 'Ausgewogen', 'Offensiv']);
     assert.equal(await deckTiles.count(), 8);
     assert.match(await deckTiles.filter({hasText: 'Jedi auf Tatooine'}).innerHTML(), /obiwankenobi\.gif.*Obi-Wan Kenobi/s);
     assert.match(await deckTiles.filter({hasText: 'Droidenstützpunkt'}).innerHTML(), /c3po\.gif.*C-3PO/s);
@@ -356,7 +359,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.27'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.28'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -417,6 +420,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.locator('#configureGame').click();
     await page.locator('#matchSettings summary').click();
     await page.locator('#gameMode').selectOption('force');
+    assert.equal(await botStyle.isVisible(), false);
     page.once('dialog', dialog => dialog.accept());
     await page.getByRole('button', {name: 'Übung starten'}).click();
     assert.match(await page.locator('#lessonHint').textContent(), /Aktiviere 3 Force/);
@@ -451,6 +455,8 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.locator('#configureGame').click();
     await page.locator('#gameMode').selectOption('');
     await chooseSide('dark');
+    await botStyle.selectOption('defensive');
+    assert.match(await page.locator('#botStyleHint').textContent(), /spart Force für Antworten/);
     await autoDeck.check();
     assert.equal(await page.locator('#selectLightDeck').isVisible(), false);
     assert.ok(await darkDeck.isVisible());
@@ -460,6 +466,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     const botTheme = await page.evaluate(() => currentGame().starterDecks.light.theme?.name);
     assert.ok(botTheme);
     assert.ok((await page.locator('#stats').textContent()).includes('Bot-Deck: ' + botTheme));
+    assert.match(await page.locator('#stats').textContent(), /Bot-Spielstil: Defensiv/);
     await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
     assert.ok(await page.getByRole('dialog', {name: botTheme + ' · 60 Karten'}).isVisible());
     await page.keyboard.press('Escape');
@@ -482,6 +489,8 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#playerSideChoice').inputValue(), 'Dark');
     assert.equal(await page.locator('#inspectHandCard0').getAttribute('aria-label'), firstDarkCard);
     assert.equal(await page.evaluate(() => currentGame().starterDecks.light.theme?.name), botTheme);
+    assert.equal(await botStyle.inputValue(), 'defensive');
+    assert.match(await page.locator('#botHistoryTitle').textContent(), /Defensiv/);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
