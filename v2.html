@@ -558,9 +558,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.32"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.32"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js?v=2.15.32"></script><script src="engine/premiere-card-rules.js?v=2.15.32"></script><script src="engine/premiere-bot.js?v=2.15.32"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.32"></script><script>
+<script src="engine/premiere-data.js?v=2.15.33"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.33"></script><script src="engine/premiere-locations.js?v=2.15.33"></script><script src="engine/premiere-weapons.js?v=2.15.33"></script><script src="engine/premiere-card-rules.js?v=2.15.33"></script><script src="engine/premiere-bot.js?v=2.15.33"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.33"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.32';
+const trainerVersion='2.15.33';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -616,7 +616,7 @@ function responseMarkup(window,available){
  const titles={weaponTarget:'Waffenziel',weaponDefense:'Waffenverteidigung',evazanWindow:'Gerade getroffen oder entwaffnet',
   evazanOperation:'Dr. Evazan operiert',battleForceLost:'Force-Verlust aus dem Battle',shipLoss:window.ship?.name+' geht verloren',
   characterLost:window.fallen?.name+' ging verloren',equipmentLost:window.fallen?.name+' ging verloren',finishedBattle:'Battle beendet',battleOutcome:'Kampfausgang',justFired:'Waffe abgefeuert'};
- const title=window.kind==='destiny'?'Destiny':window.kind==='battleDestinyResults'?'Battle Destiny':window.card&&window.kind!=='react'?window.card.name
+ const title=window.kind==='destiny'?'Destiny':['battleDestinyResults','beforeBattleDestiny'].includes(window.kind)?'Battle Destiny':window.card&&window.kind!=='react'?window.card.name
   :window.kind==='react'?'React':window.kind==='battle'?'Battle':titles[window.kind]??'Force Drain';
  const loc=state.locations[window.site];
  const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
@@ -721,7 +721,7 @@ function renderControlPanel(available=legalActions(state,playerSide()),box=el('c
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
  const tableEffects=available.filter(option=>['deployTableEffect','deployReserveInsert','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
- const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect','cardInformation','pileInterrupt','groupRelocation','dodonnaCounter','lateralMechanic','lateralRepair','cancelNamedWeapon','memorialExchange','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','passSpyMovement','alterLocationEffect','cardInformation','pileInterrupt','groupRelocation','dodonnaCounter','lateralMechanic','lateralRepair','cancelNamedWeapon','memorialExchange','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
@@ -1759,7 +1759,7 @@ function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
    +' ansehen'+hitLabel(layerHit)+'" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role,layerHit)+'</button>';
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
- const custody=c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:'';
+ const custody=c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:c.undercover&&c.type==='Character'?'Undercover':'';
  const source=zone==='field'?tableActionCard('unit',idx,site,side):null;
  return '<div class="card'+(source&&source===selectedTableCard?' chosen':'')+'">'+art
   +(source?tableActionButton(source,'unit',idx,site,side):'')+(custody?'<span class="custody-label">'+escapeHTML(custody)+'</span>':'')+equip+'</div>';
@@ -1941,13 +1941,14 @@ function locationConditionsMarkup(slot){
 
 function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide()),actionTarget){
  const own=playerSide(),bot=botSide(),ownCards=view.players[own].board[i]||[],botCards=view.players[bot].board[i]||[];
+ const entries=[...botCards.map((card,index)=>({card,index,owner:bot})),...ownCards.map((card,index)=>({card,index,owner:own}))];
  const equipActions=new Map(available.filter(x=>x.kind==='equip'&&x.args[0]===selected&&x.args[1]===i).map(x=>[x.hostIndex,x]));
  const conversion=findOffer(available,'convertLocation',selected,i),revolution=findOffer(available,'revolution',selected,i);
  const piloted=available.filter(option=>option.kind==='deployWithPilot'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
- const deviceActions=available.filter(option=>['deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark','unitReserveSearch','unitTableCancel'].includes(option.kind)?option.site===i:
+ const deviceActions=available.filter(option=>['spyAction','deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark','unitReserveSearch','unitTableCancel'].includes(option.kind)?option.site===i:
   option.kind==='navSabotage'?option.site===i&&option.args[0]===selected:
   ['deployDevice','deployBolt'].includes(option.kind)&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.label??(option.host.name+' ausrüsten ('+option.cost+' Force)'))).join('');
@@ -1960,11 +1961,13 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
   +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+deviceActions
   +otherMounts.map(option=>ruleButton(option,option.host.name+' ausrüsten ('+option.cost+' Force)')).join('');
  const totals=loc?battleTotals(i):null,stat=value=>Number.isFinite(value)?value.toLocaleString('de-DE'):'?';
- const zone=(side,cards)=>{
-  const key=side.toLowerCase(),hits=battleHitCards(side,i);
+ const zone=side=>{
+  const cards=entries.filter(({card,owner})=>(card.undercover&&card.type==='Character'?card.tableSide:owner)===side);
+  const key=side.toLowerCase();
   return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span>'
    +(loc?locationStatusMarkup(side,i):'')+'<div class="cards">'
-   +cards.map((card,index)=>mini(card,index,side,'field',i,{equipAction:side===own?equipActions.get(index):null,hits})).join('')+'</div>'
+   +cards.map(({card,index,owner})=>mini(card,index,owner,'field',i,
+    {equipAction:owner===own?equipActions.get(index):null,hits:battleHitCards(owner,i)})).join('')+'</div>'
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
@@ -1975,7 +1978,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
    (option.cost?' · kostet '+option.cost+' Force':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')
  +(actionTarget===true?' playmat-action-target':actionTarget===false?' playmat-action-target blocked-target':'')
- +'" tabindex="-1" id="playmatLocation'+i+'">'+zone(bot,botCards)
+ +'" tabindex="-1" id="playmatLocation'+i+'">'+zone(bot)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
  +(loc?tableActionButton(state.locations[i],'location',0,i):'')
  +(actionTarget===undefined?'':'<span class="playmat-action-target-label">'+(actionTarget?'Aktionsziel':'Ziel nicht bezahlbar')+'</span>')
@@ -1985,7 +1988,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
  +(loc?.id==='Light:672'?'<span class="custody-label">Light-Kontrolle befreit Gefangene auf dem Todesstern</span>':'')
  +(drains?'<div class="playmat-drain-actions" role="group" aria-label="Force Drain bei '+escapeHTML(loc.name)+'">'+drains+'</div>':'')
  +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
- +zone(own,ownCards)+'</div>';
+ +zone(own)+'</div>';
 }
 
 function renderPlaymat(available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide()),targets=new Map()){

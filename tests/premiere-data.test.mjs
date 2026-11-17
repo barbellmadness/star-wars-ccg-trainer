@@ -157,7 +157,8 @@ test('both formats have legal decks for either side and offer every released exp
   const decks = {schema: 1, decks: {Light: mixed.light.at(-1).definition, Dark: mixed.dark[1].definition}};
   assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:25}), /noch nicht für das Spiel freigegeben/);
   assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:26}), /noch nicht für das Spiel freigegeben/);
-  assert.equal(readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:27}).light.cards.length, 60);
+  assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:27}), /noch nicht für das Spiel freigegeben/);
+  assert.equal(readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:28}).light.cards.length, 60);
 });
 
 test('the selectable decks include all 324 Premiere cards, including the nine previously rejected cards', () => {

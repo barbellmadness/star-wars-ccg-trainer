@@ -38,7 +38,8 @@ const PremiereUnits = (() => {
     ['Light:2161', {driver:1, passenger:7}], ['Light:2307', {driver:1, passenger:3}], ['Light:2418', {pilot:3, passenger:4}],
     ['Light:2907', {shared:1}],
     ['Dark:191', {passenger:2}], ['Dark:247', {pilot:1}], ['Dark:249', {pilot:1}], ['Dark:250', {pilot:1}],
-    ['Dark:723', {pilot:6, passenger:8, cargo:2, hangar:4}], ['Dark:1291', {pilot:6, passenger:8, cargo:2, hangar:4}],
+    ['Dark:519', {pilot:6, passenger:8, cargo:2, hangar:4}], ['Dark:723', {pilot:6, passenger:8, cargo:2, hangar:4}],
+    ['Dark:1291', {pilot:6, passenger:8, cargo:2, hangar:4}],
     ['Dark:1547', {passenger:4}], ['Dark:2160', {driver:1, passenger:7}],
     ['Dark:2602', {pilot:1, passenger:2, crew:2}], ['Dark:2660', {driver:1, passenger:2}], ['Dark:2700', {pilot:1}],
     ['Dark:2715', {pilot:4, passenger:6, cargo:1, hangar:3}]
@@ -48,7 +49,10 @@ const PremiereUnits = (() => {
 
   function accepts(host, card, role, ignored = null, captiveSeats = Number(!!card?.escortedCaptive)) {
     if (!active(host) || !active(card) || host === card) return false;
-    const printed = capacity.get(host.id);
+    const base = capacity.get(host.id);
+    const added = host.pilotsEjected ?? 0;
+    const printed = added ? { ...base, pilot: (base?.pilot ?? base?.shared ?? 0) + added,
+      passenger: base?.passenger ?? base?.shared, shared: base?.shared === undefined ? undefined : base.shared + added } : base;
     const navLost=host.attachments?.some(card=>card.id==='Dark:1238'&&!textSuppressed(card));
     const spec = navLost&&host.type==='Starship'?{...printed,astromech:Math.max(1,printed?.astromech??0)}:printed;
     if (!spec) return false;
@@ -172,6 +176,8 @@ const PremiereUnits = (() => {
     delete card.ionDamage;
     delete card.armedTurn;
     delete card.tableSide;
+    delete card.undercover;
+    delete card.pilotsEjected;
     process(card);
     for (const attachment of attachments) remove(attachment, process, survive);
     for (const entry of occupants) {

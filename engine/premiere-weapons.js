@@ -4,6 +4,7 @@ const PremiereWeapons = (() => {
   const saberTargets = ['Character','Creature'];
   const space = ['Starship'];
   const warrior = card => card.type === 'Character' && units.hasSkill(card, 'warrior');
+  const jawa = card => card.type === 'Character' && card.characteristics?.some(trait=>trait.toLowerCase()==='jawa');
   const title = card => (card?.name ?? '').trim().replace(/^[•*]+\s*/, '').toLowerCase();
   const persona = (card, name) => card.type === 'Character' &&
     (card.personas?.some(item=>item.toLowerCase()===name) || title(card)===name || title(card).startsWith(name+' '));
@@ -28,6 +29,9 @@ const PremiereWeapons = (() => {
       targets:saberTargets,bonus:(_,category)=>category==='Creature'?2:1,onlyPrintedTargets:true}],
     ['Light:1606', huntingRifle('luke','owen lars')],
     ['Dark:2687', huntingRifle("urorrur'r'r",'chief bast')],
+    ['Light:1377', {deploy:host=>jawa(host)?1:warrior(host)?3:null,cost:1,targets:['Character'],onlyPrintedTargets:true,
+      effect:target=>target.subType==='Droid'?'jawaSteal':'exclude'}],
+    ['Dark:1376', {deploy:withHost(jawa,0),cost:0,bonus:-1,targets:saberTargets,onlyPrintedTargets:true}],
     ['Light:1386', saber(genericSaber,amount,'hit')], ['Dark:620', saber(genericSaber,amount,'hit')],
     ['Light:1813', saber(byPersona('obi-wan',0),0,'zero')], ['Dark:2702', saber(byPersona('vader',0),0,'zero')],
     ['Dark:146', {...blaster(2,1),deploy:withHost(warrior,3),adjacent:true}],
@@ -52,7 +56,9 @@ const PremiereWeapons = (() => {
     ['Light:2400', {persona:'tagge',fallback:'warrior',limit:3}],
     ['Light:2426', {persona:'tarkin',fallback:'alien',limit:3}],
     ['Dark:1096', {persona:'han',fallback:'alien',limit:3}],
-    ['Dark:1592', {persona:'luke',fallback:'pilot',primary:4,limit:3}]
+    ['Dark:1592', {persona:'luke',fallback:'pilot',primary:4,limit:3}],
+    ['Light:1705', {persona:'motti',fallback:'pilot',limit:3}],
+    ['Dark:1496', {persona:'leia',fallback:'warrior',limit:3}],
   ]);
   const projector = card => card?.id === 'Dark:1479';
   const mine = card => ['Light:2610','Dark:2609'].includes(card?.id);
@@ -102,7 +108,8 @@ const PremiereWeapons = (() => {
   function seekerTarget(weapon, card, ability) {
     const rule=seekers.get(weapon.id);
     if(!rule||card.type!=='Character'||!Number.isFinite(ability))return false;
-    const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin');
+    const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin')||
+      (rule.persona==='motti'&&title(card)==='admiral motti');
     if(matching&&ability<(rule.primary??rule.limit))return true;
     return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':units.hasSkill(card,rule.fallback));
   }

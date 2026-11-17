@@ -1215,19 +1215,21 @@ const PremiereCardRules = (() => {
     continuous('mineExplosion', 'Die ausgelegte Mine explodiert am Anfang deines nächsten Zugs. Destiny gibt die Anzahl gegnerischer Figuren an derselben Site vor, die der Gegner verliert. Der Gegner wählt. Die Mine geht ebenfalls verloren.',
       'opposing characters present with mine', 'each Timer Mine waits for its owner', { duration: 'instant', expires: 'after resolving', legacy: true }),
   ], true);
-  for(const [id,description] of [
+  for(const [id,description,since] of [
     ['Light:2400','Tagge oder einen Warrior mit Ability unter 3'],
     ['Light:2426','Tarkin oder einen Alien mit Ability unter 3'],
     ['Dark:1096','Han oder einen Alien mit Ability unter 3'],
     ['Dark:1592','Luke mit Ability unter 4 oder einen Piloten mit Ability unter 3'],
+    ['Light:1705','Motti oder einen Piloten mit Ability unter 3',28],
+    ['Dark:1496','Leia oder einen Warrior mit Ability unter 3',28],
   ]){
     register([id],[
       continuous('seekerDeploy','Für 1 Force an einer unbesetzten Site auf der Gegenseite auslegen.',
-        'unoccupied site','all four seekers use the opposing Move phase', {cost:1,legacy:true}),
+        'unoccupied site','seekers use the opposing Move phase', {cost:1,since,legacy:true}),
       continuous('seekerMove','Bewegt sich in der gegnerischen Move Phase wie ein Undercover Spy. Der Docking-Bay-Text der eigenen Seite gilt.',
-        'site movement in opponent move phase','all four seekers use the opposing Move phase',{since:17}),
+        'site movement in opponent move phase','seekers use the opposing Move phase',{since:since??17}),
       continuous('seekerStrike','Wählt '+description+' am selben physischen Ort. Ziel und Seeker gehen sofort verloren.',
-        'eligible character on either side','seekers automatically resolve their chosen target',{legacy:true}),
+        'eligible character on either side','seekers automatically resolve their chosen target',{since,legacy:true}),
     ],true);
   }
   register(['Dark:1479'],[
@@ -1473,6 +1475,204 @@ const PremiereCardRules = (() => {
     capacityRule('Kann einen Piloten aufnehmen.', {pilot:1}),
     continuous('problemTargetBonus','Wer I’ve Got A Problem Here auf Red 6 spielt, darf zum Destiny-Draw +2 addieren.', 'Red 6 targeted by that interrupt',
       'Red 6 gives a choice for the extra destiny on A Problem Here', {since:27}),
+  ],true);
+
+  register(['Light:2673','Dark:2672'], [
+    continuous('tableEffect','Auf eigenen Spion an einer Site ausspielen. In der eigenen Deploy Phase an einer Site kann der Spion die Tarnung aufgeben. Gegen Alter immun.',
+      'friendly spy at a site','Undercover spies cross the table and move during the opposing turn',{characterTarget:'undercover',ownSide:true,since:28}),
+    continuous('undercoverEffect','Lässt den Spion die gegnerische Seite infiltrieren. Bei Enttarnung geht der Effect verloren.',
+      'attached spy','Undercover spies cross the table and move during the opposing turn',{since:28}),
+  ],true);
+  register(['Dark:2659'], [
+    continuous('deployUndercover','Wird ausschließlich an einer Site als Undercover-Spion eingesetzt.','site',
+      'U-3PO deploys under cover and Light can take him',{since:28}),
+    continuous('spyBattlePower','Untercover steuert U-3PO seine Power zu Light im Battle an seiner Site bei.','Light at the battle',
+      'U-3PO deploys under cover and Light can take him',{since:28}),
+    continuous('stealOnBrokenCover','Wird er enttarnt, darf Light ihn übernehmen.','Light Side',
+      'U-3PO deploys under cover and Light can take him',{since:28}),
+  ],true);
+  register(['Dark:1587'], [
+    continuous('detectSpy','Einmal pro eigener Control Phase darf er einen Undercover-Spion an derselben Site bei Destiny gleich Ability enttarnen.',
+      'undercover spy at the same site','Treidum exposes a spy only on matching ability',{since:28}),
+    continuous('dockingControlPower','Aus dem Docking Control Room 327 erhält die eigene Seite +2 Gesamt-Power an Docking Bay 327.',
+      'Docking Bay 327','Treidum exposes a spy only on matching ability',{amount:2,since:28}),
+  ],true);
+  register(['Light:762'], [
+    continuous('pileInterrupt','Bei beiden Spionen an derselben Site geht der gegnerische Spion bei Destiny über 2 verloren. Gegen Undercover zählt +2.',
+      'opposing spy at the same site','Double Agent targets spies or converts the Tonnika Sisters',{mode:'nevar',physical:true,pile:'Lost',since:28}),
+    continuous('pileInterrupt','Alternativ wechseln die gegnerischen Tonnika Sisters an einer Site mitsamt Ausrüstung zu Light.',
+      'opposing Tonnika Sisters at a site','Double Agent targets spies or converts the Tonnika Sisters',{mode:'tonnikaConvert',pile:'Lost',since:28}),
+  ],true);
+
+  register(['Light:282'], [
+    continuous('pileInterrupt','Die gewählte Seite aktiviert 1 Force.','either player',
+      'Blue Milk chooses a player or cancels Juri Juice and Hypo',{mode:'blueMilk',pile:'Used',since:28}),
+    continuous('namedCancellation','Hebt Juri Juice oder Hypo auf und geht auf die Lost Pile.','Juri Juice or Hypo',
+      'Blue Milk chooses a player or cancels Juri Juice and Hypo',{names:['juri juice','hypo'],since:28}),
+  ],true);
+  register(['Light:1872'], [
+    continuous('pileInterrupt','Für 2 Force in der eigenen Control Phase ein eingefangenes Schiff freigeben. Mit Central Core im Spiel ist der Death Star Tractor Beam ausgenommen.',
+      'captured starship','Out Of Commission releases a ship or removes a random card',{mode:'outOfCommissionRelease',cost:2,pile:'Used',since:28}),
+    continuous('pileInterrupt','Eine zufällige Karte der gegnerischen Lost Pile oder von einem gegnerischen Blaster Rack aus dem Spiel nehmen.', 'opposing Lost Pile or Blaster Rack',
+      'Out Of Commission releases a ship or removes a random card',{mode:'outOfCommissionRemove',pile:'Used',since:28}),
+  ],true);
+  register(['Dark:2577'], [
+    continuous('namedCancellation','Hebt I’m Here To Rescue You, Plastoid Armor, Out Of Commission, Alternatives To Fighting, Cell 2187 oder Ewok Rescue auf.',
+      'listed Interrupts and Effects','This Is Some Rescue cancels the listed cards',{names:["i'm here to rescue you",'plastoid armor','out of commission','alternatives to fighting','cell 2187','ewok rescue'],since:28}),
+  ],true);
+  register(['Light:1413'], [
+    printed('Light','kashyyykDeploy','Eigene Wookiees und Schmuggler werden hier für 2 Force weniger eingesetzt.',{amount:2,since:28},'Kashyyyk applies its modifiers to the printed side'),
+    printed('Dark','minimumBattleAbility','Dark benötigt hier mindestens Ability 6 für reguläre Battle Destiny.',{amount:6,since:28},'Kashyyyk applies its modifiers to the printed side'),
+  ],true);
+  register(['Dark:1412'], [
+    drain('Dark'),
+    printed('Dark','kashyyykForfeit','Bei Kontrolle verlieren alle Wookiees auf dem Tisch 3 Forfeit.',{amount:3,since:28},'Kashyyyk applies its modifiers to the printed side'),
+    printed('Light','kashyyykCrew','Eigene Schiffe mit einem Wookiee an Bord erhalten +2 Power und Forfeit.',{amount:2,since:28},'Kashyyyk applies its modifiers to the printed side'),
+  ],true);
+
+  register(['Light:127'], [
+    continuous('nightPower','Unter Nachtbedingungen +1 Power.','site under nighttime conditions','Arcona retreats as a react and gains power at night',{amount:1,since:28}),
+    continuous('reactAway','Kann bei Beginn eines gegnerischen Battles an derselben Site als React wegziehen.','battle at the same site',
+      'Arcona retreats as a react and gains power at night',{since:28}),
+  ],true);
+  register(['Light:1605'], [
+    continuous('tableEffect','Für 2 Force an einen eigenen Rebel oder Alien anlegen.','friendly Rebel or Alien',
+      'Luke’s Cape grants Force and attrition immunity',{characterTarget:'cape',cost:2,since:28}),
+    continuous('capeGeneration','Außerhalb Tatooines erzeugt der Umhang 1 zusätzliche Force.','carrying character outside Tatooine',
+      'Luke’s Cape grants Force and attrition immunity',{amount:1,since:28}),
+    continuous('grantedAttritionImmunity','Der Träger ist immun gegen Attrition unter 3.','carrying character',
+      'Luke’s Cape grants Force and attrition immunity',{below:3,since:28}),
+  ],true);
+  register(['Light:2658'], [
+    continuous('deployPhaseLandspeed','Kann Landspeed nur in der eigenen Deploy Phase nutzen. Bewegt sich dabei für 1 Force bis zu zwei Sites weit. Andere Bewegungsarten bleiben verfügbar.',
+      'landspeed between sites','Tzizvvt flies during Deploy and retains other movement',{range:2,since:28}),
+    continuous('tzizvvtPower','Hat +1 Power im Trash Compactor, an einer Dagobah-Site oder an derselben Site wie Dark Waters oder Tarkin.',
+      'listed sites or cards','Tzizvvt flies during Deploy and retains other movement',{amount:1,since:28}),
+  ],true);
+
+  register(['Light:2173'], [
+    continuous('saurinUnbolt','Für 1 Force einen Restraining Bolt an derselben Site verlieren lassen.','restraining bolt at the same site',
+      'Saurin removes bolts and receives extra power from Sai’torr',{cost:1,since:28}),
+    continuous('saurinProtection','Erhält durch angelegtes Sai’torr Kal Fas zusätzlich +1 Power.','host of Sai’torr Kal Fas',
+      'Saurin removes bolts and receives extra power from Sai’torr',{amount:1,since:28}),
+  ],true);
+  register(['Dark:519'], [
+    permanentPilot,
+    capacityRule('Kann 6 Piloten, 8 Passagiere, 2 Fahrzeuge und 4 TIEs aufnehmen und an andere Schiffe andocken.',
+      {pilot:6,passenger:8,cargo:2,hangar:4}),
+    continuous('conquestPeek','Darf direkt nach Eröffnung eines Battles gegen den Millennium Falcon die gegnerische Hand ansehen.',
+      'opposing hand','Conquest peeks privately after initiating against Falcon',{since:28}),
+  ],true);
+  register(['Dark:626'], [
+    continuous('locationEffect','Auf einer Außen-Site außer Hoth oder einer Innen-Site eines Fahrzeugs ausspielen. Gegnerische Force Drains sind hier −1. Ein anwesendes Sumpfwesen schützt vor Alter.',
+      'exterior planet site or interior vehicle site','Dark Waters dampens drains and swamp creatures protect it from Alter',{darkWaters:true,since:28}),
+  ],true);
+  register(['Dark:1994'], [
+    continuous('astromechShipStats','An Bord eines Starfighters +1 Power, Maneuver und Hyperspeed.','starfighter',
+      'ANH astromech stats and R2-Q2’s private Reserve view',{fighter:true,power:1,maneuver:1,hyperspeed:1,since:28}),
+    continuous('cardInformation','Für 1 Force während der eigenen Draw Phase an einem Scomp Link die obersten drei Karten des eigenen Reserve Deck ansehen.',
+      'own Reserve Deck','ANH astromech stats and R2-Q2’s private Reserve view',{mode:'q2Peek',cost:1,since:28}),
+  ],true);
+  register(['Dark:1999'], [
+    continuous('astromechShipStats','An Bord des eigenen Capitals +1 Power und +2 Hyperspeed.','friendly capital starship',
+      'ANH astromech stats and R2-Q2’s private Reserve view',{capital:true,power:1,hyperspeed:2,below:4,since:28}),
+    continuous('deathStarHyperspeed','An Central Core erhält der Todesstern Hyperspeed 2.','Death Star system',
+      'R3-T6 doubles the Death Star movement range from Central Core',{amount:2,since:28}),
+  ],true);
+
+  register(['Light:1668','Dark:2392'], [
+    continuous('tableEffect','Auf eine eigene Figur ohne Thief-Skill oder auf eine Waffe ausspielen. Gegen Alter immun.','own non-thief or any weapon',
+      'Merc Sunlet and Swilla Corey can grant theft or protect a weapon',{thiefTraining:true,since:28}),
+    continuous('thiefTraining','Der Träger wird Thief und darf einmal pro eigener Control Phase ein Device an derselben Site bei Destiny unter dessen Destiny-Zahl stehlen.',
+      'character carrying the effect','Merc Sunlet and Swilla Corey can grant theft or protect a weapon',{since:28}),
+    continuous('protectWeaponFromTheft','Eine mit diesem Effect belegte Waffe kann nicht gestohlen werden.','weapon carrying the effect',
+      'Merc Sunlet and Swilla Corey can grant theft or protect a weapon',{since:28}),
+  ],true);
+  register(['Light:2151'], [
+    continuous('pileInterrupt','In der eigenen Control Phase bei einem eigenen Undercover-Spion Ausrüstung oder Fahrzeuge bei Destiny über Deploy verlieren lassen. Ein Thief kann ein zulässiges Ziel stattdessen stehlen.',
+      'weapon, device or vehicle at an undercover spy’s site','Sabotage removes or steals equipment and Informant can cancel it',
+      {mode:'spySabotage',pile:'Used',since:28}),
+    continuous('namedCancellation','Hebt Informant auf.','Informant','Sabotage removes or steals equipment and Informant can cancel it',
+      {names:['informant'],since:28}),
+  ],true);
+  register(['Dark:1308'], [
+    continuous('informantReact','Beginnt der Gegner ein Battle bei einem eigenen Undercover-Spion, dürfen eigene Figuren kostenlos von angrenzenden Sites dorthin reagieren.',
+      'friendly characters at adjacent sites','Informant offers a free react for selected adjacent characters',{mode:'informantReact',pile:'Used',since:28}),
+    continuous('namedCancellation','Hebt Sabotage auf.','Sabotage','Sabotage removes or steals equipment and Informant can cancel it',
+      {names:['sabotage'],since:28}),
+  ],true);
+  register(['Light:1229'], [
+    continuous('pileInterrupt','Ein Spion im Detention Block Corridor versucht, einen Gefangenen dort zu befreien. Schlägt der Vergleich fehl, wird der Spion gefangen genommen.',
+      'spy and captive at the Detention Block Corridor','I’m Here To Rescue You resolves the ability contest and unblocks captives',
+      {mode:'spyRescue',pile:'Used',since:28}),
+    continuous('namedCancellation','Hebt Spice Mines Of Kessel auf und lässt dessen Gefangenen frei.','Spice Mines Of Kessel',
+      'I’m Here To Rescue You resolves the ability contest and unblocks captives',{names:['spice mines of kessel'],since:28}),
+  ],true);
+
+  register(['Light:1136'], [
+    continuous('jawaPayment','Wird nur an Tatooine-Sites für je 2 Force von beiden Spielern ausgespielt.','Tatooine site',
+      'Het Nkik pays both sides and counts stormtroopers unless Reegesk is present',{cost:2,since:28}),
+    continuous('hetStormtrooperPower','Erhält +1 Power pro Stormtrooper am selben Site, außer wenn Reegesk anwesend ist.','stormtroopers or Reegesk at Het’s site',
+      'Het Nkik pays both sides and counts stormtroopers unless Reegesk is present',{since:28}),
+  ],true);
+  register(['Light:1189'], [
+    continuous('hunchback','Bei einem gegnerischen Force Drain an einer Nachbar-Site für 1 Force die gegnerische Force Pile nach einem Titel mit „back“ durchsuchen. Eine passende Karte aus dem Spiel nehmen und die Pile mischen.',
+      'opposing Force Pile','Hunchback searches a neighboring drainer’s Force Pile privately',{cost:1,since:28}),
+  ],true);
+  register(['Light:1377'], [
+    continuous('weapon','Kostet bei einem Jawa 1 Force, bei einem Warrior 3. Für 1 Force auf einen Character schießen. Ein Droid wechselt bei Destiny +1 über Forfeit die Seite. Ein anderer Character wird bei Destiny gleich Verteidigung vom Battle ausgeschlossen.',
+      'opposing character','Jawa Ion Gun steals droids or excludes ordinary characters',{since:28}),
+  ],true);
+  register(['Dark:1376'], [
+    continuous('weapon','Kostenlos auf einen eigenen Jawa ausspielen und gegen Characters oder Creatures feuern. Bei Destiny minus 1 über Verteidigung getroffen. Bei Destiny 0 gehen Waffe und Schütze verloren.',
+      'opposing character or creature','Jawa Blaster explodes on zero destiny',{since:28}),
+  ],true);
+  register(['Dark:2075'], [
+    continuous('reegeskSalvage','Einmal pro eigener Control Phase 1 Force verlieren, um ein zulässiges Fahrzeug, einen Droiden, eine Charakterwaffe oder ein Device aus der gegnerischen Lost Pile oder vom Crash Site Memorial als eigene Karte auf die Hand zu nehmen.',
+      'opposing Lost Pile or Crash Site Memorial','Reegesk pays a Force loss before taking eligible salvage',{since:28}),
+  ],true);
+
+  register(['Light:529'],[
+    continuous('corellianEquipment','Einmal pro Zug kostet eine Waffe oder ein Device auf einem Rebel an derselben Site 1 Force weniger.',
+      'equipment deployment on a Rebel at the same site','Corellian reduces one Rebel equipment deployment each turn',{amount:1,since:28}),
+  ],true);
+  for(const [id,mode,limit,label,targets] of [
+    ['Light:2174','radar',14,'Radar Scanner','Jawas, Tusken Raiders und Stormtrooper'],
+    ['Dark:1198','scanning',13,'Scanning Crew','Karten mit „Rebel“ im Titel'],
+  ]){
+    register([id],[
+      continuous('tableEffect','Wird auf der eigenen Tischseite ausgespielt.','own side','Scanner support applies immunity and correct hand thresholds',
+        {ownSide:true,since:28}),
+      continuous('scannerSupport',label+' ist gegen Sense immun. Ab '+limit+' Handkarten verliert der Gegner '+targets+' in seiner Hand.',
+        'opposing hand','Scanner support applies immunity and correct hand thresholds',{mode,limit,since:28}),
+    ],true);
+  }
+  register(['Light:2222'],[
+    continuous('device','Für 1 Force auf ein eigenes Nicht-Kreatur-Fahrzeug ausspielen.','friendly non-creature vehicle',
+      'Sensor Panel improves its vehicle and adds an optional Radar Scanner target',{targets:'non-creature-vehicle',cost:1,since:28}),
+    continuous('sensorPanel','Das Fahrzeug erhält +1 Power und +1 Landspeed. Einmal pro Zug für 1 Force einen weiteren Effect oder Interrupt aus einer durch Radar Scanner aufgedeckten Gegnerhand auf Used legen.',
+      'host vehicle and Radar Scanner’s revealed hand','Sensor Panel improves its vehicle and adds an optional Radar Scanner target',{since:28}),
+  ],true);
+  register(['Dark:1275'],[
+    continuous('locationEffect','Beim Deploy festlegen: Entweder bei einem gegnerischen Vorsprung von mindestens 4 Force die Force-Generierung am Ort aufheben oder den Ort gegen Revolution immun machen.',
+      'target location','Imperial Justice chooses a single function and leaves drain icons intact',{imperialJustice:true,since:28}),
+  ],true);
+
+  register(['Light:819','Dark:487'], [
+    continuous('tableEffect','Für 1 Force einen Starfighter mit permanentem Piloten wählen. Bei Destiny über 2 ausspielen, sonst verlieren. Gegen Alter immun.',
+      'starfighter with permanent pilots','Both pilot ejection Effects replace permanent pilots with capacity',{ejectPilot:true,cost:1,since:28}),
+    continuous('removePermanentPilots','Permanente Piloten fallen aus. Je entfernter Pilot entsteht ein zusätzlicher Pilotenplatz.',
+      'host starfighter','Both pilot ejection Effects replace permanent pilots with capacity',{since:28}),
+  ],true);
+  for(const [id,trigger,name] of [['Light:1752','Light:2514','Bith Shuffle'],['Dark:2490','Dark:1831','Ommni Box']]){
+    register([id],[
+      continuous('shufflePeek','Nach '+name+' entweder nochmals blind mischen oder pro weiterem am selben Site anwesenden Musiker eine Karte oben ansehen.',
+        'deck or pile just shuffled','Both shuffle musicians can privately peek or reshuffle',{trigger,since:28}),
+    ],true);
+  }
+  register(['Light:2916'], [
+    continuous('beforeBattleDestiny','Für 1 Force direkt vor dem ersten gegnerischen Battle-Destiny-Draw am selben Ort dessen Gesamt-Battle-Destiny um 1 senken.',
+      'opponent about to draw battle destiny','Zutton reduces the total once before a battle destiny draw',{cost:1,amount:1,since:28}),
   ],true);
 
   // The four original Sense/Alter registrations retain their earlier version for saved games.

@@ -151,7 +151,7 @@ const PremiereLocations = (() => {
   function forceGeneration(state, side) {
     let count = 1, unknown = 0;
     state.locations.forEach((card, slot) => {
-      if (!card) return;
+      if (!card || effectsAt(state, slot).some(effect => effect.justiceMode === 'generation')) return;
       const value = icons(state, slot, side);
       if (value === null) unknown++;
       else count += value;
@@ -159,6 +159,7 @@ const PremiereLocations = (() => {
     for (const {card, slot, unavailable} of entries(state, side)) {
       const location = state.locations[slot];
       if (!unavailable && card.id === 'Light:1593' && location &&
+          !effectsAt(state, slot).some(effect => effect.justiceMode === 'generation') &&
           !(state.game?.cardRulesVersion >= 7 && units.textSuppressed(card)) &&
           (system(location) || region(location) !== 'Tatooine')) count++;
     }
