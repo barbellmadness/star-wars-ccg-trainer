@@ -323,14 +323,15 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
         <option value="movement">Lernen · Fahrzeug- und Raumbewegung</option>
       </select></label>
       <label><input id="autoBot" type="checkbox"> Bot automatisch spielen lassen</label>
+      <label><input id="autoBotDeck" type="checkbox" checked> Bot wählt ein Themendeck</label>
       <div class="starter-deck-actions" role="group" aria-label="Decks für eine neue Partie">
         <div class="starter-deck-choice">
-          <label for="selectLightDeck">Light Side</label>
+          <label id="labelLightDeck" for="selectLightDeck">Light Side</label>
           <select id="selectLightDeck" disabled></select>
           <button id="viewLightDeck" type="button" aria-haspopup="dialog" disabled>Light Side Deck ansehen</button>
         </div>
         <div class="starter-deck-choice">
-          <label for="selectDarkDeck">Dark Side</label>
+          <label id="labelDarkDeck" for="selectDarkDeck">Dark Side</label>
           <select id="selectDarkDeck" disabled></select>
           <button id="viewDarkDeck" type="button" aria-haspopup="dialog" disabled>Dark Side Deck ansehen</button>
         </div>
@@ -502,7 +503,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.24';
+const trainerVersion='2.15.25';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -716,6 +717,7 @@ function startingLocationMarkup(card){
 const sideName={light:'Light',dark:'Dark'};
 const deckSelector=side=>el('select'+sideName[side]+'Deck');
 const deckId=deck=>deck?.theme?.id??'starter';
+const deckName=deck=>deck?.theme?.name??'Premiere-Starterdeck';
 const launchFactions={
  light:{caption:'Rebellion',hero:'Light:1593',covers:{'massassi-widerstand':'Light:1021','rote-staffel':'Light:2060',
   'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343',
@@ -750,19 +752,30 @@ function renderLaunchSummary(){
   el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte Light-Side-Ausgangslage';
  }else if(launchFaction){
   const {deck}=selectedDeck(launchFaction);
-  el('launchSummary').innerHTML='<strong>'+escapeHTML(deck.theme?.name??'Premiere-Starterdeck')+' · '+deck.cards.length+' Karten</strong>'
+  el('launchSummary').innerHTML='<strong>'+escapeHTML(deckName(deck))+' · '+deck.cards.length+' Karten</strong>'
    +escapeHTML(deck.theme?.description??'Das feste Premiere-Deck für den Einstieg.');
  }
 }
 
 function renderLaunch(){
  const visible=launchOpen&&!!starterDecks&&!!deckChoices;
+ const lesson=PremiereLearning.lesson(el('gameMode').value);
+ const opponent=PremiereGame.otherSide(el('playerSideChoice').value||'Light').toLowerCase();
+ el('autoBotDeck').disabled=!!lesson;
+ for(const side of Object.keys(sideName)){
+  const automatic=!lesson&&el('autoBotDeck').checked&&side===opponent;
+  el('label'+sideName[side]+'Deck').hidden=automatic;
+  deckSelector(side).hidden=automatic;
+  deckSelector(side).disabled=automatic||!deckChoices;
+  const view=el('view'+sideName[side]+'Deck');
+  view.hidden=automatic&&(launchOpen||!currentGame());
+  view.disabled=view.hidden||!deckChoices;
+ }
  el('gameToolbar').className=visible?'panel game-toolbar launch-toolbar':'panel game-toolbar';
  el('launchScreen').hidden=!visible;
  el('matchArea').hidden=visible;
  el('configureGame').hidden=visible||!starterDecks||!deckChoices;
  if(!visible)return;
- const lesson=PremiereLearning.lesson(el('gameMode').value);
  const sideStep=!lesson&&!launchFaction;
  el('launchTitle').textContent=lesson?'Geführte Übung':sideStep?'Wähle deine Seite':'Wähle dein Deck · '+sideName[launchFaction]+' Side';
  el('launchSides').hidden=!sideStep;
@@ -779,7 +792,7 @@ function renderLaunch(){
  if(!deckGrid.hidden){
   const side=launchFaction,selected=deckId(selectedDeck(side).deck);
   deckGrid.innerHTML=deckChoices[side].map(({deck})=>{
-   const id=deckId(deck),name=deck.theme?.name??'Premiere-Starterdeck',cover=launchCover(side,deck);
+   const id=deckId(deck),name=deckName(deck),cover=launchCover(side,deck);
    const pick='chooseLaunchDeck('+JSON.stringify(id)+')';
    const preview='showStarterDeck('+JSON.stringify(side)+','+JSON.stringify(id)+')';
    return '<div class="launch-deck-tile launch-tone-'+side+'"><button type="button" class="launch-deck" data-deck="'+escapeHTML(id)+'" aria-pressed="'+(id===selected)
@@ -810,7 +823,8 @@ function showStarterDeck(side,id){
  if(!choice)return;
  const {deck:selected}=choice;
  const active=currentGame()?.starterDecks?.[side];
- const deck=!launchOpen&&active&&deckId(active)===deckId(selected)?active:selected;
+ const automatic=id===undefined&&el('autoBotDeck').checked&&side===botSide().toLowerCase();
+ const deck=!launchOpen&&active&&(automatic||deckId(active)===deckId(selected))?active:selected;
  const counts=new Map();
  for(const card of deck.cards)counts.set(card,(counts.get(card)??0)+1);
  el('starterDeckTitle').textContent=(deck.theme?.name??sideName[side]+' Side Deck')+' · '+deck.cards.length+' Karten';
@@ -884,7 +898,8 @@ function renderSetup(){
  el('botHandCount').textContent='';
  el('botHistory').textContent='';
  el('log').textContent='';
- el('stats').textContent='Du spielst '+playerSide()+' Side · Partie-Seed '+setup.seed;
+ const opponentDeck=setupDecks.game.starterDecks?.[botSide().toLowerCase()];
+ el('stats').textContent='Du spielst '+playerSide()+' Side'+(opponentDeck?' · Bot-Deck: '+deckName(opponentDeck):'')+' · Partie-Seed '+setup.seed;
  const reveal=setup.revealed;
  if(!reveal){
   const realChoice=available.some(option=>option.card);
@@ -1925,13 +1940,24 @@ function activateSave(saved){
 }
 
 function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
- const light=selectedDeck('light'),dark=selectedDeck('dark');
+ const side=key?'Light':el('playerSideChoice').value||'Light';
  const fixed=key?lessonDecks[key]:null;
+ const choices={light:selectedDeck('light'),dark:selectedDeck('dark')};
+ let matchSeed=seed??PremiereLearning.lesson(key)?.seed;
+ if(!fixed&&!keepLauncher&&el('autoBotDeck').checked){
+  const opponent=PremiereGame.otherSide(side).toLowerCase();
+  const themes=deckChoices[opponent].filter(({deck})=>deck.theme);
+  if(themes.length){
+   matchSeed??=Math.floor(Math.random()*4294967296);
+   const roll=PremiereGame.random({randomState:matchSeed});
+   choices[opponent]=themes[Math.floor(roll*themes.length)];
+  }
+ }
+ const {light,dark}=choices;
  const decks=fixed?.decks??{light:light.deck,dark:dark.deck};
  const definition=fixed?.definition??{schema:1,decks:{Light:light.definition,Dark:dark.definition}};
- const side=key?'Light':el('playerSideChoice').value||'Light';
  el('showBotHand').checked=false;
- if(!beginSavedScenario(seed??PremiereLearning.lesson(key)?.seed,trainingBattle,decks,undefined,undefined,key,side))return false;
+ if(!beginSavedScenario(matchSeed,trainingBattle,decks,undefined,undefined,key,side))return false;
  undoAvailable=false;
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
   seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{})});
@@ -2205,7 +2231,7 @@ async function load(){try{
  ]]));
  for(const side of Object.keys(sideName)){
   const selector=deckSelector(side);
-  selector.innerHTML=deckChoices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deck.theme?.name??'Premiere-Starterdeck')+'</option>').join('');
+  selector.innerHTML=deckChoices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deckName(deck))+'</option>').join('');
   selector.value='starter';
   selector.disabled=false;
   selector.onchange=()=>{previewStartingLocations();renderLaunch();};
@@ -2221,8 +2247,6 @@ async function load(){try{
   el('instruction').textContent='Gespeicherte Partie verfügbar';
   renderLaunch();
  }else startNewGame(undefined,false,undefined,true);
- el('viewLightDeck').disabled=false;
- el('viewDarkDeck').disabled=false;
  el('viewCatalog').disabled=false;
  }catch(e){
   starterDecks=null;
@@ -2273,6 +2297,7 @@ el('gameMode').onchange=()=>{
  renderLaunch();
 };
 el('playerSideChoice').onchange=previewStartingLocations;
+el('autoBotDeck').onchange=renderLaunch;
 for(const id of ['endGame','endBattleGame']){
  el(id).textContent='Partie beenden · v'+trainerVersion;
  el(id).onclick=endGameFromUI;

@@ -61,6 +61,10 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Seite wechseln'}).click();
     await chooseSide('light');
     await page.locator('#matchSettings summary').click();
+    const autoDeck = page.getByRole('checkbox', {name: 'Bot wählt ein Themendeck'});
+    assert.ok(await autoDeck.isChecked());
+    assert.equal(await page.locator('#selectDarkDeck').isVisible(), false);
+    await autoDeck.uncheck();
     const lightDeck = page.getByLabel('Light Side', {exact: true});
     const darkDeck = page.getByLabel('Dark Side', {exact: true});
     assert.equal(await lightDeck.locator('option').count(), 8);
@@ -320,7 +324,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.24'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.25'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -415,9 +419,18 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.locator('#configureGame').click();
     await page.locator('#gameMode').selectOption('');
     await chooseSide('dark');
+    await autoDeck.check();
+    assert.equal(await page.locator('#selectLightDeck').isVisible(), false);
+    assert.ok(await darkDeck.isVisible());
     await page.locator('#gameSeed').fill('4');
     page.once('dialog', dialog => dialog.accept());
     await page.getByRole('button', {name: 'Startorte wählen'}).click();
+    const botTheme = await page.evaluate(() => currentGame().starterDecks.light.theme?.name);
+    assert.ok(botTheme);
+    assert.ok((await page.locator('#stats').textContent()).includes('Bot-Deck: ' + botTheme));
+    await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
+    assert.ok(await page.getByRole('dialog', {name: botTheme + ' · 60 Karten'}).isVisible());
+    await page.keyboard.press('Escape');
     await page.locator('#setup button.start-location-option').first().click();
     for (let attempt = 0; attempt < 3 && await page.getByRole('button', {name: 'Erneut wählen'}).isVisible(); attempt++) {
       await page.getByRole('button', {name: 'Erneut wählen'}).click();
@@ -436,6 +449,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.getByRole('button', {name: 'Partie fortsetzen'}).click();
     assert.equal(await page.locator('#playerSideChoice').inputValue(), 'Dark');
     assert.equal(await page.locator('#inspectHandCard0').getAttribute('aria-label'), firstDarkCard);
+    assert.equal(await page.evaluate(() => currentGame().starterDecks.light.theme?.name), botTheme);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
