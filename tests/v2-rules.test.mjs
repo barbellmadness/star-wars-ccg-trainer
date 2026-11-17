@@ -1396,6 +1396,55 @@ test('Gold 1, Custom TIE and Ubrikkian follow their individual rules',async()=>{
  assert.equal(run("!PremiereUnits.accepts(ubrikkian,trooper,'driver')&&PremiereUnits.accepts(ubrikkian,trooper,'passenger')"),true);
 });
 
+test('Fivedesix taxes opposing droids and friendly mouse droids at the location',async()=>{
+ const {run}=await craftHarness();
+ run(`const five=card('Dark:12'),mouse=card('Dark:1709'),droid=card('Light:1995'),friendly=card('Dark:2001');
+  const base=(droid,slot)=>crewDeployCost(droid,droid.side,state.locations[slot]);
+  state.dark[2]=[five];`);
+ assert.equal(run('base(mouse,2)-base(mouse,3)'),1);
+ assert.equal(run('base(droid,2)-base(droid,3)'),1);
+ assert.equal(run('base(friendly,2)-base(friendly,3)'),0);
+ run("state.nightSites=[2];battleSession={site:2,participants:{Light:[],Dark:[five]}}");
+ assert.equal(run("battleImmunity('Dark',five)"),Infinity);
+ run('five.gameTextCancelled=true');
+ assert.equal(run('base(mouse,2)-base(mouse,3)'),0);
+ assert.equal(run("battleImmunity('Dark',five)"),0);
+});
+
+test('Dathcha pays with both Force Piles even when deploying aboard',async()=>{
+ const {run}=await craftHarness();
+ run(`const crawler=card('Dark:2160'),dathcha=card('Dark:643');state.dark[2]=[crawler];
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.botHand=[dathcha];state.force=state.force.slice(0,1);
+  const deployAboard=()=>legalActions(state,'Dark').find(option=>option.kind==='transport'&&option.args[0]==='deployAboard'&&option.args[5]==='passenger');`);
+ assert.equal(run('Boolean(deployAboard())'),false);
+ run('state.force.push(...forcePile().slice(0,2));const lightBefore=state.force.length,darkBefore=state.botForce.length');
+ assert.equal(run('deployAboard().cost===2&&deployAboard().opponentCost===2&&performAction(deployAboard())'),true);
+ assert.equal(run('state.force.length===lightBefore-2&&state.botForce.length===darkBefore-2&&crawler.occupants[0].card===dathcha'),true);
+});
+
+test('Death Star Trooper can deploy only on the Death Star',async()=>{
+ const {run}=await craftHarness();
+ run("const trooper=card('Dark:668');state.locations[3]=card('Dark:673');state.dark[2]=[trooper]");
+ assert.equal(run("characterDeployCost(trooper,state.locations[2],'Dark')"),null);
+ assert.equal(run("characterDeployCost(trooper,state.locations[3],'Dark')"),run("trooper.deploy"));
+ assert.equal(run("cardPowerModifier(trooper,'Dark',2)"),-1);
+ assert.equal(run("cardPowerModifier(trooper,'Dark',3)"),0);
+});
+
+test('Wuher clears the Cantina and acts only at the start of Control elsewhere',async()=>{
+ const {run}=await craftHarness();
+ run(`const wuher=card('Dark:2834'),droid=card('Light:1995'),later=card('Light:2000'),blaster=card('Dark:1264');
+  const trooper=card('Dark:2355');trooper.weapons=[blaster];
+  state.game=PremiereGame.actionState(135,1);state.game.cardRulesVersion=9;
+  state.activeSide='Dark';state.botTurn={steps:[],index:0};state.phase=0;
+  state.dark[2]=[wuher,trooper];state.light[2]=[droid];`);
+ assert.equal(run('changePhase(1);state.lost.includes(droid)&&state.botLost.includes(blaster)'),true);
+ run('state.light[2]=[later];findAutomatedWeapons()');
+ assert.equal(run('state.light[2].includes(later)'),true);
+ run("state.locations[2]=card('Light:2440');findAutomatedWeapons()");
+ assert.equal(run('state.lost.includes(later)'),true);
+});
+
 test('registered Premiere locations apply their printed sides and exceptions',async()=>{
  const {run}=await craftHarness();
  run(`const jawa=card('Light:1373'),spy=card('Dark:1011');
@@ -2620,7 +2669,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,8);
+ assert.equal(saved.cardRulesVersion,9);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

@@ -139,16 +139,33 @@ const PremiereCardRules = (() => {
   register(['Dark:478'], [
     characterStat('characterPower', 1, 'Yularen erhält an derselben Site wie Tarkin, Bast oder Dodonna Power +1.',
       { companions: ['Dark:1061', 'Dark:406', 'Light:1021'] }),
-  ]);
+  ], true);
   register(['Dark:12'], [
     characterStat('characterPower', 1, 'Fivedesix erhält an derselben Site wie Motti oder Yularen Power +1.', { companions: ['Dark:60', 'Dark:478'] }),
-  ]);
+    continuous('droidDeployTax', 'Verteuert gegnerische Droiden und eigene Mouse Droids beim Ausspielen an dieselbe Location um 1 Force.',
+      'opposing droid or friendly mouse droid at same location', 'Fivedesix taxes opposing droids and friendly mouse droids at the location', { amount: 1, since: 9 }),
+    continuous('nightImmunity', 'Bei Nacht immun gegen Attrition.', 'Fivedesix at a nighttime site',
+      'Fivedesix taxes opposing droids and friendly mouse droids at the location', { legacy: true }),
+  ], true);
   register(['Dark:643'], [
     characterStat('characterPower', 2, 'Dathcha erhält an Sites außerhalb von Tatooine Power +2.', { outsideRegion: 'tatooine' }),
-  ]);
+    continuous('jawaDeploy', 'An einer Tatooine-Site können beide Spieler je 2 Force für seinen Deploy bezahlen. Jawa Camp kann diese Kosten ersetzen.',
+      'Tatooine site and both Force Piles', 'Dathcha pays with both Force Piles even when deploying aboard',
+      { cost: 2, opposingCost: 2, duration: 'instant', expires: 'after deploy', legacy: true }),
+  ], true);
   register(['Dark:668'], [
     characterStat('characterPower', -1, 'Der Death Star Trooper verliert außerhalb der Death-Star-Sites 1 Power.', { outsideRegion: 'death star' }),
-  ]);
+    continuous('deployRegion', 'Nur auf dem Death Star ausspielbar. Spätere Bewegung an andere erlaubte Orte bleibt möglich.',
+      'Death Star site', 'Death Star Trooper can deploy only on the Death Star', { region: 'death star', legacy: true }),
+  ], true);
+  register(['Dark:2834'], [
+    continuous('wuherControl', 'Zu Beginn der eigenen Control-Phase gehen alle an derselben Site anwesenden Waffen und Droiden verloren.',
+      'all weapons and droids present at same site', 'Wuher clears the Cantina and acts only at the start of Control elsewhere',
+      { duration: 'instant', expires: 'after resolving', legacy: true }),
+    continuous('wuherCantina', 'Wenn Wuher in der Cantina ist, gehen Waffen und Droiden dort sofort verloren.',
+      'all weapons and droids at Cantina', 'Wuher clears the Cantina and acts only at the start of Control elsewhere',
+      { duration: 'instant', expires: 'after resolving', legacy: true }),
+  ], true);
   register(['Dark:1027'], [
     characterStat('characterForfeit', 1, 'Tagge erhält an einer Site Forfeit +1 je anwesendem Imperial Trooper.', { eachPresent: 'imperial-trooper' }),
   ], true);
