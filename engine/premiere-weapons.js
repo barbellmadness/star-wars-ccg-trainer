@@ -12,6 +12,11 @@ const PremiereWeapons = (() => {
   const withHost = (accepts, cost) => host => accepts(host) ? cost : null;
   const amount = ability => Number.isFinite(ability) ? Math.max(0, 7 - ability) : null;
   const genericSaber = (host, ability) => warrior(host) ? amount(ability) : null;
+  const bowcasterCost = (_, power) => Number.isFinite(power) ? Math.max(1, 7-power) : null;
+  const huntingRifle = (...preferred) => ({
+    deploy:host=>preferred.some(name=>persona(host,name))?1:host.type==='Character'&&host.subType!=='Droid'?3:null,
+    cost:1, targets:saberTargets, bonus:(_,category)=>category==='Creature'?2:-1, onlyPrintedTargets:true
+  });
 
   const blaster = (cost, bonus) => ({deploy:withHost(warrior,cost), cost, bonus, targets:ground});
   const saber = (deploy, cost, effect, extra = {}) => ({deploy, cost, draws:2, targets:saberTargets, effect, saber:true, ...extra});
@@ -19,6 +24,10 @@ const PremiereWeapons = (() => {
     ['Light:259', blaster(1,0)], ['Light:265', blaster(2,1)], ['Dark:264', blaster(2,1)], ['Dark:1264', blaster(1,0)],
     ['Light:1106', {deploy:byPersona('han',1,3),cost:1,bonus:1,targets:ground,zeroBy:'han'}],
     ['Light:1503', {deploy:byPersona('leia',1,2),cost:0,bonus:-1,targets:ground,zeroBy:'leia'}],
+    ['Light:318', {deploy:(host,ability,power)=>warrior(host)?bowcasterCost(ability,power):null,cost:bowcasterCost,
+      targets:saberTargets,bonus:(_,category)=>category==='Creature'?2:1,onlyPrintedTargets:true}],
+    ['Light:1606', huntingRifle('luke','owen lars')],
+    ['Dark:2687', huntingRifle("urorrur'r'r",'chief bast')],
     ['Light:1386', saber(genericSaber,amount,'hit')], ['Dark:620', saber(genericSaber,amount,'hit')],
     ['Light:1813', saber(byPersona('obi-wan',0),0,'zero')], ['Dark:2702', saber(byPersona('vader',0),0,'zero')],
     ['Dark:146', {...blaster(2,1),deploy:withHost(warrior,3),adjacent:true}],
@@ -57,19 +66,19 @@ const PremiereWeapons = (() => {
     return attached.get(card.id) ?? null;
   }
 
-  function deployCost(weapon, host, ability) {
+  function deployCost(weapon, host, ability, power = host?.power) {
     if (disarmed(host)) return null;
-    return definition(weapon)?.deploy?.(host,ability) ?? null;
+    return definition(weapon)?.deploy?.(host,ability,power) ?? null;
   }
 
-  function shot(weapon, host, target, ability, defense) {
+  function shot(weapon, host, target, ability, defense, power = host?.power) {
     const rule=definition(weapon);
     if(rule?.timing==='initiation'&&target.type!=='Character')return null;
     const category=target.type==='Vehicle'&&target.subType==='Creature'?'Creature':target.type;
     if (rule?.onlyPrintedTargets && (projector(target) || seeker(target))) return null;
     if (!rule || (!rule.targets.includes(category) && !projector(target) && !(rule.projector&&seeker(target)))) return null;
-    const cost=typeof rule.cost==='function'?rule.cost(ability):rule.cost;
-    const bonus=typeof rule.bonus==='function'?rule.bonus(target):rule.bonus??0;
+    const cost=typeof rule.cost==='function'?rule.cost(ability,power):rule.cost;
+    const bonus=typeof rule.bonus==='function'?rule.bonus(target,category):rule.bonus??0;
     const threshold=rule.threshold??defense;
     if (cost===null||!Number.isFinite(threshold)) return null;
     const effect=rule.effect==='block'?'block':projector(target)||seeker(target)?'destroy':

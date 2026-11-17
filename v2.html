@@ -558,9 +558,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.31"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.31"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js?v=2.15.31"></script><script src="engine/premiere-card-rules.js?v=2.15.31"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.31"></script><script>
+<script src="engine/premiere-data.js?v=2.15.32"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.32"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js?v=2.15.32"></script><script src="engine/premiere-card-rules.js?v=2.15.32"></script><script src="engine/premiere-bot.js?v=2.15.32"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.32"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.31';
+const trainerVersion='2.15.32';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -1401,7 +1401,7 @@ function renderBattle(){
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
    +' '+available.filter(option=>option.kind==='computerFire').map(option=>ruleButton(option,option.label)).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','alterLocationEffect','alterLostPileEffect','gravelStorm','cardInformation','pileInterrupt','dodonnaCounter','lateralMechanic','lateralRepair','abilityPower','cancelNamedWeapon','holocamPower','obiAssist','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','unitReserveSearch','unitTableCancel','shufflePile','cancelTableEffect','alterLocationEffect','alterLostPileEffect','gravelStorm','cardInformation','pileInterrupt','dodonnaCounter','lateralMechanic','lateralRepair','abilityPower','cancelNamedWeapon','holocamPower','obiAssist','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),own+' Battle Destiny ziehen')+' '
@@ -1947,7 +1947,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
- const deviceActions=available.filter(option=>['deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark'].includes(option.kind)?option.site===i:
+ const deviceActions=available.filter(option=>['deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark','unitReserveSearch','unitTableCancel'].includes(option.kind)?option.site===i:
   option.kind==='navSabotage'?option.site===i&&option.args[0]===selected:
   ['deployDevice','deployBolt'].includes(option.kind)&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.label??(option.host.name+' ausrüsten ('+option.cost+' Force)'))).join('');
@@ -1971,7 +1971,8 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
  const actions=(deploy?ruleButton(deploy,'Ausspielen ('+actionForceCost(deploy)+')'):'')
   +(battle?ruleButton(battle,'Kampfvorschau · '+battle.cost+' Force'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
-  .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
+  .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':'')+
+   (option.cost?' · kostet '+option.cost+' Force':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')
  +(actionTarget===true?' playmat-action-target':actionTarget===false?' playmat-action-target blocked-target':'')
  +'" tabindex="-1" id="playmatLocation'+i+'">'+zone(bot,botCards)

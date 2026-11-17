@@ -110,6 +110,7 @@ const PremiereBot = (() => {
       case 'reduceForceLoss': return 14 + action.amount * 1.2 - cost(view, action);
       case 'pileInterrupt': return action.effectValue > 0 ? 26 + action.effectValue - cost(view, action) : -Infinity;
       case 'passDamage': return 70;
+      case 'damageRelief': return 92;
       default: return -Infinity;
     }
   }
