@@ -802,6 +802,7 @@ test('fixed starter lists load 60 cards per side and each new game gets independ
 
 test('starter deck buttons open only the selected 60-card list on demand',async()=>{
  const {run,elements}=await premiereHarness();
+ run("el('autoBotDeck').checked=false;renderLaunch()");
  const dialog=run("el('starterDeckDialog')");
  const list=run("el('starterDeckCards')");
  assert.match(html,/<dialog id="starterDeckDialog"[^>]+aria-labelledby="starterDeckTitle">/);
@@ -2993,7 +2994,7 @@ test('selectable Premiere decks complete matches with legal decisions and conser
 
 function startSavedGame(run,seed=0){
  run(`const act=(kind,side='Light',args=[])=>dispatchUI(PremiereGame.offer(currentGame(),side,kind,args));
-  el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
+  el('autoBotDeck').checked=false;el('gameSeed').value='${seed}';el('trainingBattle').checked=false;el('start').onclick();`);
 }
 
 test('every Premiere card has a visible inspector guide and a readable image fallback',async()=>{
@@ -3108,6 +3109,7 @@ test('learning Undo stops at a voluntarily revealed bot hand and at a private dr
 test('selected theme decks set the starting locations and are saved, replayed and previewed',async()=>{
  const storage=autosaveStorage();
  const {run,elements}=await premiereHarness(starterLists,{storage});
+ run("el('autoBotDeck').checked=false;renderLaunch()");
  assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,8);
  assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,8);
  run("el('selectLightDeck').value='falcon-kessel';el('selectLightDeck').onchange();el('viewLightDeck').onclick()");
@@ -3131,6 +3133,32 @@ test('selected theme decks set the starting locations and are saved, replayed an
  assert.equal(reload.run(zones),original);
  assert.equal(reload.elements.get('selectLightDeck').value,'falcon-kessel');
  assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-garnison');
+});
+
+test('the bot picks a seeded theme from the opposite side and autosave preserves its choice',async()=>{
+ const storage=autosaveStorage();
+ const {run,elements}=await premiereHarness(starterLists,{storage});
+ for(const [side,ownDeck,opponent] of [['Light','falcon-kessel','Dark'],['Dark','vaders-jagd','Light']]){
+  run(`el('playerSideChoice').value='${side}';deckSelector('${side.toLowerCase()}').value='${ownDeck}';
+   deckSelector('${opponent.toLowerCase()}').value='starter';startNewGame(4)`);
+  const botDeck="currentGame().starterDecks[botSide().toLowerCase()]";
+  const chosen=run(`deckId(${botDeck})`);
+  assert.notEqual(chosen,'starter');
+  assert.equal(run(`deckId(currentGame().starterDecks[playerSide().toLowerCase()])`),ownDeck);
+  assert.equal(run(`${botDeck}.cards.length===60&&${botDeck}.cards.every(card=>card.side==='${opponent}')`),true);
+  assert.ok(elements.get('stats').textContent.includes(run(`deckName(${botDeck})`)));
+  assert.equal(run(`startNewGame(4);deckId(${botDeck})`),chosen);
+  const varied=run(`new Set([0,1,2,3,4,5,6].map(seed=>{startNewGame(seed);return deckId(${botDeck})})).size`);
+  assert.ok(varied>1);
+  run('startNewGame(4);saveActiveGame()');
+  const saved=JSON.parse(storage.getItem(run('saveKey')));
+  assert.equal(saved.decks.decks[opponent].theme.id,chosen);
+  const reload=await premiereHarness(starterLists,{storage});
+  assert.equal(reload.run('resumeGameFromUI()'),true);
+  assert.equal(reload.run(`deckId(${botDeck})`),chosen);
+  reload.run(`showStarterDeck('${opponent.toLowerCase()}')`);
+  assert.equal(reload.elements.get('starterDeckTitle').textContent,reload.run(`deckName(${botDeck})+' · 60 Karten'`));
+ }
 });
 
 test('the two additional Premiere decks start together and preserve their cards through autosave',async()=>{
