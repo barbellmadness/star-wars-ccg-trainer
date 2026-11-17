@@ -707,7 +707,7 @@ const PremiereCardRules = (() => {
   register(['Dark:253'], [
     continuous('tableEffect','Auf der eigenen Tischseite ausspielen.','own side of table','Blast Door Controls cancels the listed interrupts',{ownSide:true,since:21}),
     continuous('autoCancelNamed','Hebt Into The Garbage Chute, Flyboy, Narrow Escape, Blast The Door, Kid! und Rebel Barrier auf.',
-      'listed Light Side Interrupt','Blast Door Controls cancels the listed interrupts',{ids:['Light:1321','Light:1755','Light:2033'],
+      'listed Light Side Interrupt','Blast Door Controls cancels the listed interrupts',{ids:['Light:1321','Light:1755','Light:2033','Light:255'],
         names:['blast the door, kid!'],since:21}),
   ]);
   register(['Dark:993'], [
@@ -1303,6 +1303,177 @@ const PremiereCardRules = (() => {
     continuous('matchingPilot', 'Auf Black 2, Black 3 und Black 4 gibt der Reserve Pilot +1 Maneuver und einen Battle-Destiny-Draw, falls sonst kein Draw möglich ist.',
       'Black 2, Black 3 or Black 4', 'A New Hope ships deploy and dock with their printed limits', { amount:1, since:26 }),
   ], true);
+
+  register(['Light:318'], [
+    continuous('weapon', 'Bowcaster wird am eigenen Warrior ausgelegt und kostet beim Auslegen und Feuern 7 minus seine Power, mindestens 1 Force. Ein Destiny-Draw mit +1 gegen Charaktere oder +2 gegen Creatures muss die Verteidigung übertreffen.',
+      'opposing character or creature', 'A New Hope ground weapons distinguish bearers and creature targets', { since:27 }),
+  ], true);
+  for(const [id,preferred] of [['Light:1606','Luke oder Owen Lars'],['Dark:2687','URoRRuR’R’R oder Chief Bast']]){
+    register([id],[continuous('weapon', 'Kostet 1 Force auf '+preferred+', 3 auf einem anderen eigenen Nicht-Droiden. Ein Schuss kostet 1 Force. Destiny erhält gegen Charaktere −1 beziehungsweise gegen Creatures +2 und muss die Verteidigung übertreffen.',
+      'opposing character or creature', 'A New Hope ground weapons distinguish bearers and creature targets', { since:27 })],true);
+  }
+  register(['Light:2059'], [
+    capacityRule('Red 2 bietet Platz für einen Piloten und einen Astromech.', {pilot:1,astromech:1}),
+    continuous('pilotAttritionImmunity', 'Mit Wedge als Pilot ist Red 2 immun gegen Attrition unter 3.', 'Red 2',
+      'A New Hope starships enforce matching pilots and noncumulative orbital support', { pilot:'wedge', below:3, since:27 }),
+  ], true);
+  register(['Dark:2715'], [
+    capacityRule('Bietet Platz für vier Piloten, sechs Passagiere, ein Fahrzeug und drei TIEs. Hat Ship Docking und einen permanenten Piloten mit Ability 1.',
+      {pilot:4,passenger:6,cargo:1,hangar:3}),
+    continuous('orbitalSupportPower', 'Erhöht die Gesamt-Power in Battles an den Sites des umkreisten Planeten um 1.', 'related planet site',
+      'A New Hope starships enforce matching pilots and noncumulative orbital support', { amount:1, since:27 }),
+  ], true);
+  register(['Light:2003','Dark:2002'], [
+    continuous('ionRepair', 'Das Schiff erhält +1 Power und +1 Maneuver. An Bord eines eigenen, ionengeschädigten Schiffs repariert der Droide in deiner Kontrollphase Verteidigung und Hyperspeed.',
+      'starship carrying this astromech', 'A New Hope pilots and droids add bonuses in the correct seat and phase', { since:27 }),
+  ], true);
+  register(['Dark:362'], [
+    continuous('unitReserveSearch', 'Einmal pro eigener Kontrollphase für 2 Force einen Scanning Crew im Reserve Deck suchen, aufdecken, auf die Hand nehmen und mischen.',
+      'Scanning Crew in own Reserve Deck', 'A New Hope officers search without discarding themselves',
+      { cost:2, names:['scanning crew'], display:'Scanning Crew', controlOnly:true, since:27 }),
+  ], true);
+  register(['Dark:611'], [
+    continuous('pilotPower', 'Gibt einem von Danz Borin pilotierten Schiff +3 Power.', 'piloted starship',
+      'A New Hope pilots and droids add bonuses in the correct seat and phase', { amount:3, since:27 }),
+    continuous('passengerWeaponDestiny', 'Als Passagier erhöht Danz Borin jeden Waffen-Destiny-Draw seines Trägers um 1.', 'weapon fired by his carrier',
+      'A New Hope pilots and droids add bonuses in the correct seat and phase', { amount:1, since:27 }),
+  ], true);
+  register(['Dark:2683'], [
+    continuous('tuskenFallbackDestiny', 'Deploy nur auf Tatooine. Erlaubt in einem Battle mit einem weiteren Tusken Raider an derselben Site einen Battle-Destiny-Draw, wenn keiner sonst möglich ist.',
+      'battle at the same site as another Tusken Raider', 'A New Hope Tusken leader deploys on Tatooine and grants a fallback destiny', { since:27 }),
+  ], true);
+  register(['Light:2786'], [
+    continuous('pilotPower', 'Das pilotierte Schiff erhält +3 Power.', 'piloted starship',
+      'A New Hope pilots and droids add bonuses in the correct seat and phase', { amount:3, since:27 }),
+    continuous('matchingPilot', 'Auf Red 2 gibt Wedge +2 Maneuver und eine Battle Destiny, wenn sonst keine möglich ist.',
+      'Red 2', 'A New Hope starships enforce matching pilots and noncumulative orbital support', { amount:2, since:27 }),
+    continuous('unitReserveSearch', 'Für 1 Force eine Corellian Slip im Reserve Deck suchen, aufdecken, auf die Hand nehmen und mischen.',
+      'Corellian Slip in own Reserve Deck', 'A New Hope officers search without discarding themselves',
+      { cost:1, names:['corellian slip'], display:'Corellian Slip', since:27 }),
+  ], true);
+  register(['Light:534'], [
+    continuous('tallonSlip', 'Nach einer gegnerischen Tallon Roll Maneuver und die Ability eines eigenen Piloten des betroffenen Jägers addieren.',
+      'pilot of starfighter targeted by Tallon Roll', 'Corellian Slip modifies Tallon Roll or reduces one opposing fighter', { since:27 }),
+    continuous('pileInterrupt', 'Alternativ verliert ein gegnerischer Starfighter bis Ende des Zugs 1 Maneuver.',
+      'opposing starfighter', 'Corellian Slip modifies Tallon Roll or reduces one opposing fighter',
+      { mode:'shipManeuverPenalty', pile:'Used', cost:0, since:27 }),
+  ], true);
+  for(const [id,target,description] of [['Light:1572','tie','TIEs'],['Dark:153','nav','Raumschiffe mit gedrucktem Nav-Computer-Icon']]){
+    register([id],[
+      continuous('tableEffect','Für 3 Force auf der gegnerischen Tischseite ausspielen.', 'opposing side of table',
+        'A New Hope ship taxes and Willard respect icons, controller and war room', { cost:3, since:27 }),
+      continuous('shipDeployTax','Gegnerische '+description+' kosten beim Ausspielen 1 Force mehr.', description,
+        'A New Hope ship taxes and Willard respect icons, controller and war room', { target, amount:1, since:27 }),
+    ],true);
+  }
+  register(['Light:504'], [
+    continuous('warRoomShipPower', 'Vom eigenen kontrollierten War Room aus erhalten die eigenen Rebel-Raumschiffe am zugehörigen System +1 Power.',
+      'friendly Rebel starships at related system', 'A New Hope ship taxes and Willard respect icons, controller and war room', { since:27 }),
+    continuous('unitTableCancel', 'Darf Astromech Shortage für 1 Force aufheben.',
+      'Astromech Shortage', 'A New Hope ship taxes and Willard respect icons, controller and war room', { target:'Dark:153',cost:1,since:27 }),
+  ], true);
+  register(['Light:527'], [
+    printed('Light','corelliaDeployReact','Falcon und Corellian Corvettes dürfen hier als Deploy-React ausgespielt werden.',
+      {since:27}, 'A New Hope system and officer reacts respect ship factions and range'),
+    printed('Dark','shipDepartureRange','Eigene Schiffe erhalten beim Abflug von Corellia +1 Hyperspeed.',
+      {targets:'starship',amount:1,since:27}, 'A New Hope system and officer reacts respect ship factions and range'),
+  ],true);
+  register(['Light:2017'], [
+    printed('Light','shipReact','Eigene Schiffe dürfen als React nach Ralltiir ziehen.',{since:27},
+      'A New Hope system and officer reacts respect ship factions and range'),
+    printed('Dark','shipDeploy','Eigene Capital Starships kosten hier 2 Force weniger.',{capitalDiscount:2,since:27},
+      'A New Hope system and officer reacts respect ship factions and range'),
+  ],true);
+  register(['Dark:2016'], [
+    printed('Dark','power','Die Devastator erhält hier +1 Power.',{targets:'devastator',amount:1,since:27}),
+    printed('Dark','shipTravelFree','Die Devastator reist kostenlos von und zu Ralltiir.',{targets:'devastator',amount:1,since:27}),
+    printed('Light','power','Die Tantive IV erhält hier +1 Power.',{targets:'tantive',amount:1,since:27}),
+  ],true);
+  for(const [id,faction,regions] of [
+    ['Light:493','rebel (starship)',['yavin 4','hoth','endor']],['Dark:1824','imperial (starship)',['death star']],
+  ]){
+    const effects=[continuous('officerShipReact','An einer passenden Site ermöglicht der Offizier eigenen Schiffen seiner Fraktion einen React zum System.',
+      faction, 'A New Hope system and officer reacts respect ship factions and range', {faction,regions,since:27})];
+    if(id==='Dark:1824')effects.push(continuous('pilotPower','Ein von Evax pilotiertes Schiff erhält +2 Power.', 'piloted ship',
+      'A New Hope system and officer reacts respect ship factions and range', {amount:2,since:27}));
+    register([id],effects,true);
+  }
+  register(['Light:255','Dark:2368'], [
+    continuous('interiorExclusion', 'Nach Beginn eines Battles an einer Innen-Site für 1 Force auf beiden Seiten alle Anführer und Charaktere mit Ability über 2 für dieses Battle ausschließen.',
+      'eligible participants in an interior battle', 'Interior battle interrupts exclude both sides without removing cards', { cost:1,since:27 }),
+  ],true);
+  for(const [id,condition] of [['Light:1183','sunsdown'],['Dark:1035','nightfall']]){
+    register([id],[
+      continuous('damageRelief', 'Wenn du das Battle verloren hast und im Damage-Segment keine Karte mehr forfeiten kannst, hebe den übrigen Battle Damage auf. Diese Spielweise ist immun gegen Sense.',
+        'own remaining battle damage', 'Houjix and Ghhhk relieve damage only after the last available forfeit', { since:27 }),
+      continuous('namedCancellation','Alternativ '+condition+' aufheben.',condition,
+        'Houjix and Ghhhk relieve damage only after the last available forfeit', { names:[condition],since:27 }),
+    ],true);
+  }
+  register(['Light:1081'], [
+    continuous('sharedNamedInterruptLimit','Einmal pro Zug über alle Varianten.', 'the same interrupt title',
+      'Grimtaash shares its once-per-turn limit across all three modes', { since:27 }),
+    continuous('pileInterrupt','Used: Bei mindestens 13 gegnerischen Handkarten bleiben acht zufällig gewählte Karten auf der Hand. Die übrigen gehen verdeckt auf die Used Pile.',
+      'opponent with at least 13 cards in hand', 'Grimtaash shares its once-per-turn limit across all three modes', {mode:'trimHand',pile:'Used',since:27}),
+    continuous('pileInterrupt','Lost: Für 4 Force die gegnerische Hand aufdecken lassen. Alle Kopien mehrfach vorhandener Titel gehen verloren.',
+      'opposing hand', 'Grimtaash shares its once-per-turn limit across all three modes', {mode:'revealDuplicates',pile:'Lost',cost:4,since:27}),
+    continuous('namedCancellation','Lost: Molator aufheben, auch an einem Holosite.', 'Molator',
+      'Grimtaash shares its once-per-turn limit across all three modes', {names:['molator'],since:27}),
+  ],true);
+  register(['Light:751'], [
+    continuous('musicianBattleAbility','Jeder andere Musiker an derselben Site erhöht die für Battle Destiny erforderliche Ability für beide Seiten um 1.',
+      'other musicians at the same site', 'A New Hope musician modifiers distinguish at from present with', {since:27}),
+  ],true);
+  register(['Light:1242'], [
+    continuous('musicianDrainTax','Der Gegner bezahlt beim Force Drain an einer benachbarten Site 1 Force je weiterem mit Ickabel anwesenden Musiker.',
+      'other musicians physically present with Ickabel', 'A New Hope musician modifiers distinguish at from present with', {since:27}),
+  ],true);
+  register(['Light:1013'], [
+    continuous('garoufForfeit','An derselben Site auf Tatooine erhalten eigene Figuren +1 Forfeit. Auf Hoth erhalten gegnerische Figuren an derselben Site −1 Forfeit. Ein Tax Collector an derselben Site setzt den Text aus.',
+      'characters at Garouf’s site', 'A New Hope site modifiers check affiliation, leader and tax collector', {since:27}),
+    continuous('pilotPower','Ein von Garouf pilotiertes Schiff erhält +1 Power, sofern sein Text aktiv ist.', 'piloted ship',
+      'A New Hope site modifiers check affiliation, leader and tax collector', {amount:1,since:27}),
+  ],true);
+  register(['Dark:2117'], [
+    continuous('rodianAura','Eigene Kopfgeldjäger und Schmuggler an derselben Site erhalten +1 Power. Greedo erhält stattdessen −1 Power.',
+      'friendly bounty hunters and smugglers at same site', 'A New Hope site modifiers check affiliation, leader and tax collector', {since:27}),
+    continuous('pilotPower','Ein vom Rodian pilotiertes Schiff erhält +1 Power.', 'piloted ship',
+      'A New Hope site modifiers check affiliation, leader and tax collector', {amount:1,since:27}),
+  ],true);
+  register(['Light:2857'], [
+    printed('Light','massassiShipPower','Wer die Massassi Ruins mit einem eigenen Leader kontrolliert, gibt seinen Schiffen am Death Star System +1 Power.',
+      {since:27}, 'A New Hope site modifiers check affiliation, leader and tax collector'),
+    drain('Dark'),
+  ],true);
+  register(['Light:2056'], [
+    continuous('device','Für 1 Force an ein eigenes Raumschiff anlegen.', 'friendly starship',
+      'Space deploy reacts follow ship, attachment and Black 4 requirements', {targets:'starship',cost:1,since:27}),
+    continuous('battleSpaceDeployReact','Erlaubt bei einem Battle am selben System oder Sektor einen Deploy-React.', 'battle at host system or sector',
+      'Space deploy reacts follow ship, attachment and Black 4 requirements', {since:27}),
+  ],true);
+  register(['Dark:2604'], [
+    permanentPilot,
+    continuous('spaceDeployReact','Erlaubt Deploy-React am selben System oder Sektor.', 'same system or sector',
+      'Space deploy reacts follow ship, attachment and Black 4 requirements', {since:27}),
+  ],true);
+  register(['Dark:250'], [
+    capacityRule('Kann einen Piloten aufnehmen.', {pilot:1}),
+    continuous('blackFourReact','Darf mit einem Piloten als React zu einem Battle mit eigenem TIE deployen. Liegt dort Black 2 oder Black 3, ist dieser Deploy kostenlos.',
+      'battle with a friendly TIE', 'Space deploy reacts follow ship, attachment and Black 4 requirements', {since:27}),
+  ],true);
+  register(['Dark:792'], [
+    continuous('pilotPower','Ein von DS-61-4 pilotiertes Schiff erhält +3 Power.', 'piloted starship',
+      'Space deploy reacts follow ship, attachment and Black 4 requirements', {amount:3,since:27}),
+    continuous('matchingPilot','Auf Black 4 gibt DS-61-4 bei fehlenden anderen Möglichkeiten eine Battle Destiny.', 'Black 4',
+      'Space deploy reacts follow ship, attachment and Black 4 requirements', {since:27}),
+    continuous('unitReserveSearch','Darf für 1 Force Lone Pilot aus dem Reserve Deck suchen, aufdecken, auf die Hand nehmen und mischen.', 'Lone Pilot in Reserve Deck',
+      'A New Hope officers search without discarding themselves', {cost:1,names:['lone pilot'],display:'Lone Pilot',since:27}),
+  ],true);
+  register(['Light:2063'], [
+    capacityRule('Kann einen Piloten aufnehmen.', {pilot:1}),
+    continuous('problemTargetBonus','Wer I’ve Got A Problem Here auf Red 6 spielt, darf zum Destiny-Draw +2 addieren.', 'Red 6 targeted by that interrupt',
+      'Red 6 gives a choice for the extra destiny on A Problem Here', {since:27}),
+  ],true);
 
   // The four original Sense/Alter registrations retain their earlier version for saved games.
   const legacyCounters = new Set(['Light:95','Light:2217','Dark:94','Dark:2216']);

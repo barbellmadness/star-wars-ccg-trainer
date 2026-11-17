@@ -3029,7 +3029,7 @@ test('selectable Premiere decks complete matches with legal decisions and conser
  const mixed=JSON.parse(run(`const choices=formatDeckChoices[mixedFormat];
   const decks={light:choices.light.find(({deck})=>deck.theme?.id==='korvette-und-jaeger').deck,
    dark:choices.dark.find(({deck})=>deck.theme?.id==='imperiale-garnison').deck};
-  JSON.stringify([playMatch(19,26,3,decks,'Light'),playMatch(21,26,3,decks,'Dark')])`));
+  JSON.stringify([playMatch(19,latestCardRulesVersion,3,decks,'Light'),playMatch(21,latestCardRulesVersion,3,decks,'Dark')])`));
  assert.ok(mixed.every(match=>match.winner&&match.botActions>0&&match.validated>0),
   JSON.stringify(mixed.map(({trace,...summary})=>summary)));
 });
@@ -3352,6 +3352,253 @@ test('A New Hope space weapons use their printed hosts and outcomes',async()=>{
   PremiereWeapons.shot(ion,wing,tie,0,2).effect==='ion'`),true);
 });
 
+test('A New Hope ground weapons distinguish bearers and creature targets',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const lookup=id=>[...catalog,...aNewHopeCatalog].find(card=>card.id===id);
+  const bow=lookup('Light:318'),rifle=lookup('Light:1606'),tuskenRifle=lookup('Dark:2687');
+  const luke={...lookup('Light:1593'),power:4},owen=lookup('Light:1883'),bast=lookup('Dark:406');
+  const alien=lookup('Dark:2683'),trooper=lookup('Dark:2355'),droid=lookup('Light:1995'),bantha=lookup('Dark:191');
+  setupDecks=null;state={locations:[lookup('Light:2447')],light:[[luke]],dark:[[trooper,bantha]]};
+  const cost=weaponDeployCost(bow,luke),shot=weaponShot(bow,luke,trooper,2);
+  luke.power=8;
+  cost===3&&shot.cost===3&&shot.bonus===1&&weaponShot(bow,luke,bantha,3).cost===1&&
+  weaponShot(bow,luke,bantha,3).bonus===2&&PremiereWeapons.deployCost(rifle,owen)===1&&
+  PremiereWeapons.deployCost(rifle,droid)===null&&PremiereWeapons.deployCost(tuskenRifle,bast)===1&&
+  PremiereWeapons.deployCost(tuskenRifle,alien)===1&&PremiereWeapons.deployCost(tuskenRifle,trooper)===3&&
+  weaponShot(tuskenRifle,bast,bantha,3).bonus===2&&weaponShot(rifle,luke,trooper,2).bonus===-1`),true);
+});
+
+test('A New Hope starships enforce matching pilots and noncumulative orbital support',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const lookup=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const red=lookup('Light:2059'),wedge=lookup('Light:2786'),victory=lookup('Dark:2715'),droid=lookup('Light:1995');
+  setupDecks=null;state={locations:[lookup('Light:2430'),lookup('Light:2447'),lookup('Light:2853')],
+   light:[[red],[],[]],dark:[[victory,{...victory}],[],[]]};
+  const canBoard=PremiereUnits.accepts(red,wedge,'pilot')&&PremiereUnits.accepts(red,droid,'astromech');
+  const before=battleImmunity('Light',red,0,[]);
+  PremiereUnits.add(red,wedge,'pilot','Light');
+  canBoard&&before===0&&battleImmunity('Light',red,0,[])===3&&orbitalSupportPower('Dark',1)===1&&
+   orbitalSupportPower('Dark',2)===0&&craftStats(victory,0).ability===1&&PremiereUnits.hasDock(victory)`),true);
+});
+
+test('A New Hope pilots and droids add bonuses in the correct seat and phase',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const lookup=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const dark=lookup('Dark:2715'),light=lookup('Light:2907'),danz=lookup('Dark:611'),r5a=lookup('Dark:2002'),r5d=lookup('Light:2003');
+  setupDecks=null;state={locations:[lookup('Light:2430')],activeSide:'Dark',phase:2,light:[[light]],dark:[[dark]],log:[]};
+  state.game=PremiereGame.actionState(910,0);
+  const shot={host:dark,from:0};
+  PremiereUnits.add(dark,danz,'pilot','Dark');
+  const pilots=craftStats(dark,0).power===dark.power+3&&weaponDestinyModifier('Dark',shot)===0;
+  dark.occupants[0].role='passenger';
+  PremiereUnits.add(light,r5d,'passenger','Light');PremiereUnits.add(dark,r5a,'passenger','Dark');
+  const passengers=craftStats(dark,0).power===dark.power+1&&craftStats(light,0).maneuver===light.maneuver+1&&weaponDestinyModifier('Dark',shot)===1;
+  light.ionDamage=dark.ionDamage=true;
+  restoreIonDamage();const stillDamaged=dark.ionDamage===true;
+  state.phase=1;restoreIonDamage();
+  pilots&&passengers&&stillDamaged&&light.ionDamage===true&&craftStats(dark,0).hyperspeed===dark.hyperspeed`),true);
+});
+
+test('A New Hope officers search without discarding themselves',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const khurgee=aNewHopeCatalog.find(card=>card.id==='Dark:362'),crew=catalog.find(card=>card.name==='Scanning Crew');
+  const site=catalog.find(card=>card.id==='Dark:682');setupDecks=null;
+  state={locations:[site],activeSide:'Dark',phase:1,light:[[]],dark:[[khurgee]],botDeck:[crew,{name:'Other'}],
+   botForce:[{},{},{},{}],botHand:[],botUsed:[],botLost:[],log:[]};state.game=PremiereGame.actionState(911,0);
+  const action=unitReserveSearchOptions('Dark')[0];
+  !!action&&beginUnitReserveSearch('Dark',action.args[0])&&reserveSearchChoices(state.pendingReserveSearch)[0]?.card===crew&&finishReserveSearch(0)&&
+   state.botHand[0]===crew&&state.dark[0][0]===khurgee&&state.botLost.length===0&&state.botForce.length===2&&unitReserveSearchOptions('Dark').length===0`),true);
+});
+
+test('A New Hope Tusken leader deploys on Tatooine and grants a fallback destiny',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const leader=aNewHopeCatalog.find(card=>card.id==='Dark:2683'),raider=catalog.find(card=>card.id==='Dark:2648');
+  const desert=catalog.find(card=>card.id==='Light:2447'),death=catalog.find(card=>card.id==='Dark:682');setupDecks=null;
+  state={locations:[desert,death],light:[[],[]],dark:[[leader],[]]};
+  const alone=battleDestinyDrawCount('Dark',0,2)===0;state.dark[0].push(raider);
+  alone&&battleDestinyDrawCount('Dark',0,3)===1&&battleDestinyDrawCount('Dark',0,4)===1&&
+   characterLocationAllowed(leader,desert)&&!characterLocationAllowed(leader,death)&&matchesRegisteredTarget(leader,'tusken')`),true);
+});
+
+test('Corellian Slip modifies Tallon Roll or reduces one opposing fighter',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(214,0);state.activeSide='Dark';
+  state.botTurn={steps:[],index:0};const roll=card('Dark:2410');const slip=aNewHopeCatalog.find(unit=>unit.id==='Light:534');
+  state.light[6]=[ship];state.dark[6]=[tie];state.botHand=[roll];state.hand=[{...slip},{...slip}];
+  state.botDeck=[{name:'Imperial destiny',destiny:1}];state.deck=[{name:'Rebel destiny',destiny:1}];
+  const before=craftStats(tie,6).maneuver;
+  const slow=pileInterruptOptions('Light').find(action=>action.rule.mode==='shipManeuverPenalty');`);
+ assert.equal(run(`!!slow&&playPileInterrupt('Light',...slow.args)&&craftStats(tie,6).maneuver===Math.max(0,before-1)`),true);
+ assert.equal(run(`requestAction('pileInterrupt','Dark',[0,'tallonRoll',6,0,0])`),true);
+ assert.equal(run(`const response=legalActions(state,'Light').find(action=>action.responseKind==='tallonSlip');
+  !!response&&performAction(response)`),true);
+ assert.equal(run(`for(let step=0;step<8&&PremiereGame.responseWindow(state.game);step++){
+   const next=PremiereGame.responseWindow(state.game).priority;requestAction('passResponse',next);
+  }
+  !PremiereGame.responseWindow(state.game)&&state.used.some(unit=>unit.id===slip.id)&&!state.lost.includes(ship)`),true);
+});
+
+test('A New Hope ship taxes and Willard respect icons, controller and war room',async()=>{
+ const {run}=await premiereHarness();
+ const result=JSON.parse(run(`const lookup=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const room=lookup('Light:2859'),system=lookup('Light:2849'),officer=lookup('Light:504'),red=lookup('Light:2059');
+  const wedge=lookup('Light:2786'),tie=lookup('Dark:2600'),l=lookup('Light:1572'),d=lookup('Dark:153');
+  setupDecks=null;state={locations:[room,system],light:[[officer],[red]],dark:[[],[]],
+   tableEffects:[],force:[{}],used:[],lost:[],botLost:[],log:[]};state.game=PremiereGame.actionState(912,0);
+  PremiereUnits.add(red,wedge,'pilot','Light');
+  const fresh={...red,occupants:[]},armed=craftStats(red,1),noTax=craftDeployCost(fresh,system,'Light',wedge),tiePrice=craftDeployCost(tie,system,'Dark');
+  state.tableEffects.push({card:l,target:'Dark'},{card:d,target:'Light'});
+  const taxes=craftDeployCost(fresh,system,'Light',wedge)===noTax+1&&craftDeployCost({...fresh,navComputer:false},system,'Light',wedge)===noTax&&
+   craftDeployCost(tie,system,'Dark')===tiePrice+1;
+  const cancelled=performUnitTableCancel('Light',1)&&state.botLost.includes(d)&&state.force.length===0;
+  state.light[0]=[];
+  JSON.stringify({taxes,cancelled,warRoomPower:armed.power-red.power,matchingManeuver:armed.maneuver-red.maneuver,
+   pilotPower:craftStats(red,1).power-red.power})`));
+ assert.deepEqual(result,{taxes:true,cancelled:true,warRoomPower:4,matchingManeuver:2,pilotPower:3});
+});
+
+test('A New Hope system and officer reacts respect ship factions and range',async()=>{
+ const {run}=await premiereHarness();
+ const result=JSON.parse(run(`const lookup=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const corellia=lookup('Light:527'),ralltiir=lookup('Light:2017'),darkRalltiir=lookup('Dark:2016'),
+   yavin=lookup('Light:2849'),warRoom=lookup('Light:2859'),death=lookup('Dark:654'),bridge=lookup('Dark:682');
+  const tantive=lookup('Light:2418'),devastator=lookup('Dark:723'),evax=lookup('Dark:1824'),lajaie=lookup('Light:493');
+  const longRoute={...yavin,parsec:corellia.parsec+devastator.hyperspeed+1};
+  setupDecks=null;state={locations:[corellia,ralltiir,yavin,warRoom,death,bridge,longRoute],
+   light:[[tantive],[],[],[lajaie],[],[],[]],dark:[[devastator],[],[],[],[],[evax],[]],
+   hand:[lookup('Light:1677'),lookup('Light:2907'),lookup('Light:2040')],force:Array(12).fill({}),botForce:Array(12).fill({}),log:[]};
+  state.game=PremiereGame.actionState(914,0);
+  const aloud=site=>reactOptions('Light',{kind:'battle',side:'Dark',site}).some(option=>option.card===tantive);
+  const launch=reactDeployOptions('Light',{kind:'battle',side:'Dark',site:0}).map(option=>option.card.id);
+  const movement=travelOptions(devastator,'Dark',0,6).some(choice=>choice.kind==='Hyperspeed');
+  const incoming=travelOptions(devastator,'Dark',6,0).length;
+  const evaxMove=reactOptions('Dark',{kind:'battle',side:'Light',site:4}).some(option=>option.card===devastator);
+  const unescorted=aloud(1),launchedByOfficer=aloud(2),wrongFaction=officerShipReact('Light',devastator,2);
+  const discounted=craftDeployCost(devastator,ralltiir,'Dark')===devastator.deploy-2;
+  state.locations[1]=darkRalltiir;
+  const free=travelOptions(devastator,'Dark',0,1).some(choice=>choice.cost===0);
+  const power=registeredLocationModifier('power',devastator,'Dark',1)+registeredLocationModifier('power',tantive,'Light',1);
+  state.dark[5]=[];const withoutOfficer=officerShipReact('Dark',devastator,4);
+  JSON.stringify({launch,movement,incoming,evaxMove,unescorted,launchedByOfficer,wrongFaction,discounted,free,power,withoutOfficer})`));
+ assert.deepEqual(result,{launch:['Light:1677'],movement:true,incoming:0,evaxMove:true,unescorted:true,launchedByOfficer:true,
+  wrongFaction:false,discounted:true,free:true,power:2,withoutOfficer:false});
+});
+
+test('Interior battle interrupts exclude both sides without removing cards',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(915,0);state.phase=3;
+  const l=card('Light:1593'),d=card('Dark:1061'),rebel=card('Light:2040'),trooper=card('Dark:2355');
+  const door=aNewHopeCatalog.find(unit=>unit.id==='Light:255'),stun=aNewHopeCatalog.find(unit=>unit.id==='Dark:2368');
+  state.locations[4]=card('Dark:682');state.light[4]=[l,rebel];state.dark[4]=[d,trooper];
+  state.hand=[door];state.botHand=[stun];
+  const pass=()=>requestAction('passResponse',PremiereGame.responseWindow(state.game).priority);`);
+ assert.equal(run(`requestAction('battle','Light',[4])&&performAction(legalActions(state,'Dark').find(action=>action.responseKind==='interiorExclusion'))`),true);
+ assert.equal(run(`pass()&&pass()&&battleSession.excludedUnits.has(l)&&battleSession.excludedUnits.has(d)&&
+  !battleSession.excludedUnits.has(rebel)&&!battleSession.excludedUnits.has(trooper)&&state.botLost.includes(stun)&&
+  state.light[4].includes(l)&&state.dark[4].includes(d)&&state.botForce.length===4`),true);
+});
+
+test('Houjix and Ghhhk relieve damage only after the last available forfeit',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(916,0);state.phase=3;
+  const houjix=aNewHopeCatalog.find(unit=>unit.id==='Light:1183'),ghhhk=aNewHopeCatalog.find(unit=>unit.id==='Dark:1035');
+  const fighter=card('Light:1593');state.light[4]=[fighter];state.dark[4]=[];state.hand=[houjix];state.botHand=[ghhhk,card('Dark:2216')];
+  battleSession={site:4,segmented:true,segment:'damage',participants:{Light:[fighter],Dark:[]},weaponHits:{Light:[],Dark:[]},
+   damage:{priority:'Light',passes:0,result:{lightTotal:0,darkTotal:5},debt:{Light:{damage:5,attrition:0,hits:[],immunity:[]}}}};
+  const offers=()=>battleDamageOptions('Light');`);
+ assert.equal(run(`offers().some(action=>action.kind==='damageRelief')`),false);
+ assert.equal(run(`state.light[4]=[];offers().some(action=>action.kind==='damageRelief'&&action.card===houjix)`),true);
+ assert.equal(run(`battleDamageAction('Light','damageRelief',[0])&&state.lost.includes(houjix)&&battleSession.damage.debt.Light.damage===0&&
+  !PremiereGame.responseWindow(state.game)&&namedCancellation(ghhhk,{type:'Effect',name:'Nightfall'})`),true);
+});
+
+test('Grimtaash shares its once-per-turn limit across all three modes',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`setupDecks=null;state.game=PremiereGame.actionState(917,0);
+  const grim=aNewHopeCatalog.find(unit=>unit.id==='Light:1081');state.hand=[{...grim},{...grim}];
+  state.botHand=Array.from({length:13},(_,i)=>({name:'Hand '+i}));
+  state.tableEffects=[{target:'Dark',card:card('Dark:1688')}];
+  const canCancel=tableCancellationOptions('Light').length>0;
+  const trim=playPileInterrupt('Light',0,'trimHand');
+  canCancel&&trim&&state.botHand.length===8&&tableCancellationOptions('Light').length===0&&
+   !pileInterruptOptions('Light').some(offer=>offer.rule.mode==='revealDuplicates')`),true);
+});
+
+test('A New Hope musician modifiers distinguish at from present with',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`setupDecks=null;state.game=PremiereGame.actionState(918,0);state.activeSide='Dark';state.phase=1;
+  const pick=id=>aNewHopeCatalog.find(unit=>unit.id===id);
+  const doikk={...pick('Light:751')},ickabel={...pick('Light:1242')},figrin=card('Light:942'),crawler=card('Light:2161');
+  state.light[2]=[doikk,ickabel,crawler];state.dark[3]=[card('Dark:2355')];
+  PremiereUnits.add(crawler,figrin,'passenger','Light');
+  const requirements=minimumBattleDestinyAbility('Light',2)===6&&minimumBattleDestinyAbility('Dark',2)===6;
+  const outside=musicianDrainCost('Dark',3)===1&&drainPlan('Dark',3)?.cost===1;
+  state.light[2].push(figrin);crawler.occupants=[];
+  const together=musicianDrainCost('Dark',3)===2;
+  state.botForce=[{}];const unaffordable=drainPlan('Dark',3)===null;
+  state.botForce.push({});
+  requirements&&outside&&together&&unaffordable&&initiateForceDrain('Dark',3)&&state.botForce.length===0`),true);
+});
+
+test('A New Hope site modifiers check affiliation, leader and tax collector',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`setupDecks=null;state.game=PremiereGame.actionState(919,0);
+  const pick=id=>aNewHopeCatalog.find(unit=>unit.id===id);
+  const garouf=pick('Light:1013'),rodian=pick('Dark:2117'),greedo=pick('Dark:1073'),ruins=pick('Light:2857');
+  const luke=card('Light:1593'),trevagg=card('Dark:934'),vader=card('Dark:634'),tantive=pick('Light:2418'),leader=card('Light:1021');
+  state.light[2]=[garouf,luke];state.dark[2]=[rodian,{...vader,characteristics:['bounty hunter']},greedo];
+  const tatooineForfeit=cardForfeitValueAt(luke,'Light',2)===luke.forfeit+1;
+  const aura=cardPowerModifier(state.dark[2][1],'Dark',2)===1&&cardPowerModifier(greedo,'Dark',2)===-1;
+  state.dark[2].push(trevagg);const suppressed=cardForfeitValueAt(luke,'Light',2)===luke.forfeit;
+  state.dark[2]=[vader];state.locations[2]={...dock,name:'Hoth: Test'};
+  const hothForfeit=cardForfeitValueAt(vader,'Dark',2)===vader.forfeit-1;
+  state.locations[5]=ruins;state.locations[6]=pick('Dark:654');state.light[5]=[leader];state.light[6]=[tantive];
+  const support=craftStats(tantive,6).power===tantive.power+1;
+  state.light[5]=[];state.dark[5]=[vader];
+  tatooineForfeit&&aura&&suppressed&&hothForfeit&&support&&craftStats(tantive,6).power===tantive.power&&forceDrainEffects('Dark',5).modifier===1`),true);
+});
+
+test('Space deploy reacts follow ship, attachment and Black 4 requirements',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`setupDecks=null;state.game=PremiereGame.actionState(920,0);
+  const pick=id=>({...aNewHopeCatalog.find(unit=>unit.id===id)});
+  const black=pick('Dark:250'),pil=pick('Dark:792'),vanguard=pick('Dark:2604'),rectenna=pick('Light:2056'),corvette=pick('Light:2418');
+  const blackTwo=card('Dark:247');PremiereUnits.add(blackTwo,card('Dark:1279'),'pilot','Dark');
+  const battle={kind:'battle',site:6,side:'Light'},drain={kind:'drain',site:6,side:'Light'};
+  state.dark[6]=[blackTwo];state.botForce=[];state.botHand=[black,pil,card('Dark:2600')];
+  const free=reactDeployOptions('Dark',battle).some(option=>option.card===black&&option.pilot===pil&&option.cost===0);
+  const onlyBattle=reactDeployOptions('Dark',drain).length===0;
+  state.dark[6]=[tie];
+  const affordability=reactDeployOptions('Dark',battle).length===0;state.botForce=forcePile();
+  const priced=reactDeployOptions('Dark',battle).some(option=>option.card===black&&option.cost===black.deploy+pil.deploy);
+  state.dark[6]=[vanguard];
+  const drainReact=reactDeployOptions('Dark',drain).some(option=>option.card.id==='Dark:2600');
+  state.light[6]=[corvette];state.hand=[rectenna,card('Light:2907')];
+  const mount=devicePlacementOptions('Light',rectenna).some(option=>option.host===corvette&&option.cost===1);
+  corvette.attachments=[rectenna];
+  const lightReact=()=>reactDeployOptions('Light',{...battle,side:'Dark'}).some(option=>option.card.id==='Light:2907');
+  const withRectenna=lightReact();corvette.attachments=[];
+  PremiereUnits.add(black,pil,'pilot','Dark');state.dark[6]=[black];
+  free&&onlyBattle&&affordability&&priced&&drainReact&&mount&&withRectenna&&!lightReact()&&
+  craftStats(black,6).power===black.power+3&&battleDestinyDrawCount('Dark',6,2)===1`),true);
+});
+
+test('Red 6 gives a choice for the extra destiny on A Problem Here',async()=>{
+ const {run}=await craftHarness();
+ assert.equal(run(`setupDecks=null;state.game=PremiereGame.actionState(921,0);
+  const red={...aNewHopeCatalog.find(unit=>unit.id==='Light:2063')};
+  PremiereUnits.add(red,card('Light:1390'),'pilot','Light');
+  const maneuver=craftStats(red,6).maneuver,problem=card('Dark:1237');
+  state.light[6]=[red];state.botHand=[problem];state.hand=[];state.botDeck=[{name:'Weapon Test',destiny:maneuver-1}];
+  const frame={kind:'finishedBattle',side:'Light',site:6};PremiereGame.openResponse(state.game,frame);
+  const eligible=recentlyLostOptions('Dark',frame).filter(action=>action.target===red);
+  const bonus=eligible.find(action=>action.modifier===2),started=!!bonus&&requestAction('interruptResponse','Dark',bonus.args);
+  for(let step=0;step<10&&PremiereGame.responseWindow(state.game);step++){
+   requestAction('passResponse',PremiereGame.responseWindow(state.game).priority);
+  }
+  started&&eligible.length===2&&state.lost.includes(red)&&state.botLost.includes(problem)`),true);
+});
+
 test('Monnok distinguishes Used and Lost modes and respects hidden hand contents',async()=>{
  const {run}=await premiereHarness();
  run(`const monnok=aNewHopeCatalog.find(card=>card.id==='Dark:1697');
@@ -3406,7 +3653,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,26);
+ assert.equal(saved.cardRulesVersion,run('latestCardRulesVersion'));
  assert.equal(saved.playFormat,'premiere');
  assert.equal(saved.botStrategyVersion,3);
  assert.equal(saved.botPlayStyle,'balanced');

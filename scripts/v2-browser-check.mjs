@@ -374,7 +374,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.31'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.32'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

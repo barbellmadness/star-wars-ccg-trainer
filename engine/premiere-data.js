@@ -17,12 +17,18 @@ const PremiereData = (() => {
   const EXPANSION_RULES_VERSION = 26;
   const A_NEW_HOPE_RELEASED = new Set(['Light:2035', 'Light:2389', 'Light:2418', 'Dark:872', 'Dark:1267',
     'Dark:1340', 'Dark:1588', 'Dark:1697', 'Dark:1700', 'Dark:2094']);
+  const A_NEW_HOPE_RULES_27 = new Set(['Light:255', 'Light:318', 'Light:493', 'Light:504', 'Light:527', 'Light:534',
+    'Light:751', 'Light:1013', 'Light:1081', 'Light:1183', 'Light:1242', 'Light:1572', 'Light:1606', 'Light:2003',
+    'Light:2017', 'Light:2056', 'Light:2059', 'Light:2063', 'Light:2786', 'Light:2857', 'Dark:153', 'Dark:250',
+    'Dark:362', 'Dark:611', 'Dark:792', 'Dark:1035', 'Dark:1824', 'Dark:2002', 'Dark:2016', 'Dark:2117', 'Dark:2368',
+    'Dark:2604', 'Dark:2683', 'Dark:2687', 'Dark:2715']);
   const GARRISON_RIFLE = {id: 'Dark:2915', gempId: '4_180', set: '4'};
   const isGarrisonExpansionCard = card => card?.set === A_NEW_HOPE && GARRISON_A_NEW_HOPE.has(card.id) &&
     GARRISON_A_NEW_HOPE.get(card.id) === card.gempId;
   const isGarrisonRifle = card => card?.id === GARRISON_RIFLE.id && card.gempId === GARRISON_RIFLE.gempId && card.set === GARRISON_RIFLE.set;
   const isReleasedExpansionCard = (card, rulesVersion = Infinity) => isGarrisonExpansionCard(card) ||
-    card?.set === A_NEW_HOPE && rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id);
+    card?.set === A_NEW_HOPE && (rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id) ||
+      rulesVersion >= 27 && A_NEW_HOPE_RULES_27.has(card.id));
   const VALUE_FIELDS = ['power', 'ability', 'deploy', 'forfeit', 'destiny', 'armor', 'maneuver', 'hyperspeed', 'landspeed', 'parsec', 'lightSideIcons', 'darkSideIcons'];
   const BASIC_WEAPONS = new Map([
     ['Light:259', {cost: 1, bonus: 0}], // Blaster
@@ -203,7 +209,8 @@ const PremiereData = (() => {
        'Light:1834','Light:1794','Light:2689','Dark:2688','Light:1125','Light:2570','Dark:1565','Light:585','Light:2863',
        'Dark:1857','Light:215','Dark:667','Dark:2103',
        'Light:1102','Light:1500','Light:1600','Light:2105','Dark:2528', // Named retrieval and Reserve Deck search
-       'Light:2385','Dark:575','Dark:2517','Dark:643','Dark:1697'].includes(card.id)) return true;
+       'Light:2385','Dark:575','Dark:2517','Dark:643','Dark:1697','Light:534','Light:1572','Dark:153',
+       'Light:255','Light:1081','Light:1183','Light:2056','Dark:1035','Dark:2368'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 
