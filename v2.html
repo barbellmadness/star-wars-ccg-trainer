@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.7';
+const trainerVersion='2.15.8';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -1163,7 +1163,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
- const actions=(![1,4].includes(state.phase)||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle (1 Force)'):'')+extra;
+ const actions=(![1,4].includes(state.phase)||deploy||battle?ruleButton(deploy,'Ausspielen')+ruleButton(battle,'Battle ('+(battle?.cost??1)+' Force)'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
  return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)

@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,14);
+ assert.equal(saved.cardRulesVersion,15);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -4315,4 +4315,73 @@ test('both Callers update ownership and resolve duplicate personas',async()=>{
   run("own.lost.splice(own.lost.indexOf(target),1);own.hand.push(target);state.phase=2;");
   assert.equal(run("requestAction('deploy',side,[own.hand.indexOf(target),3])&&own.board[3].includes(target)"),true);
  }
+});
+
+test('Feltipern Trevagg resets the cost using icons present with him and checks for droids',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const trevagg=card('Dark:934'),droid=card('Dark:2783'),trooper=card('Dark:2355'),rebel=card('Light:2052');
+  const crawler=card('Dark:2160');
+  setupDecks=null;state.game=PremiereGame.actionState(127,0);state.phase=3;state.force=forcePile().slice(0,2);
+  state.locations[2]=card('Light:2462');state.light[2]=[rebel];state.dark[2]=[trevagg,trooper];`);
+ assert.equal(run("battleInitiationCost(2)"),3);
+ assert.equal(run("requestAction('battle','Light',[2])"),false);
+ run("state.force=forcePile();presentGame();");
+ assert.match(elements.get('board').innerHTML,/Battle \(3 Force\)/);
+ run("state.dark[2].push(droid)");
+ assert.equal(run("battleInitiationCost(2)"),1);
+ run("state.dark[2]=[crawler,trooper];PremiereUnits.add(crawler,trevagg,'passenger','Dark');state.force=[];");
+ assert.equal(run("battleInitiationCost(2)===0&&requestAction('battle','Light',[2])&&state.used.length===0"),true);
+});
+
+test('Garindan enables deployment and adjacent moves only with an eligible Rebel',async()=>{
+ const {run}=await craftHarness();
+ run(`const garindan=card('Dark:1011'),leia=card('Light:1593'),trooper=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(128,0);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.locationOrder=[2,3,4,6,0,1,5];state.botHand=[trooper];state.botForce=[];
+  state.dark[3]=[garindan];state.dark[2]=[card('Dark:2355')];`);
+ assert.equal(run("requestAction('deploy','Dark',[0,3])"),false);
+ run("state.light[3]=[leia];");
+ assert.equal(run("requestAction('deploy','Dark',[0,3])&&state.dark[3].includes(trooper)"),true);
+ run("state.phase=4;");
+ assert.equal(run("const mover=state.dark[2][0];requestAction('move','Dark',[2,0,3,'Landspeed'])&&state.dark[3].includes(mover)&&!state.botUsed.length"),true);
+ run("leia.ability=2;");
+ assert.equal(run("garindanBenefit('Dark',3,'imperialMove')"),null);
+});
+
+test('Kitik cannot board and is lost when Kal shares her site',async()=>{
+ const {run}=await craftHarness();
+ run(`const kitik=card('Dark:1445'),kal=card('Light:1407'),other=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(129,0);state.phase=4;state.locationOrder=[2,3,4,6,0,1,5];
+  state.light[2]=[kal];state.dark[3]=[other,kitik];`);
+ assert.equal(run("PremiereUnits.accepts(card('Dark:2160'),kitik,'passenger')||PremiereUnits.accepts(card('Dark:2602'),kitik,'pilot')"),false);
+ assert.equal(run("PremiereUnits.accepts(card('Dark:1291'),kitik,'passenger')"),true);
+ assert.equal(run("requestAction('move','Light',[2,0,3,'Landspeed'])&&state.botLost.includes(kitik)&&state.light[3].includes(kal)&&state.dark[3].includes(other)"),true);
+});
+
+test('Ponda Baba gains power with Evazan unless a lightsaber is present and adds ship power as pilot',async()=>{
+ const {run}=await craftHarness();
+ run(`const ponda=card('Dark:1922'),evazan=card('Dark:768'),luke=card('Light:1593'),saber=card('Light:1386'),destroyer=card('Dark:1291');
+  setupDecks=null;state.game=PremiereGame.actionState(130,0);state.phase=3;
+  state.dark[3]=[ponda,evazan];state.light[3]=[luke];`);
+ assert.equal(run("requestAction('battle','Light',[3])&&combatPartnerPower(ponda,'Dark',3)===3"),true);
+ const boosted=run("battleTotals(3).darkPower");
+ run("luke.weapons=[saber];");
+ assert.equal(run("battleTotals(3).darkPower"),boosted-3);
+ run("luke.weapons=[];state.dark[3]=[ponda];PremiereUnits.add(destroyer,ponda,'pilot','Dark');");
+ assert.equal(run("combatPartnerPower(ponda,'Dark',3)===0&&craftStats(destroyer,6).power===destroyer.power+2"),true);
+});
+
+test('Treadwell protects friendly vehicles, droids and fighters from attrition',async()=>{
+ const {run}=await craftHarness();
+ run(`const droid=card('Dark:2783'),vehicle=card('Dark:2660'),foreign=card('Light:1609'),tieFighter=card('Dark:2600');
+  const other=card('Dark:2001');
+  setupDecks=null;state.game=PremiereGame.actionState(131,0);state.dark[2]=[droid,vehicle,other];state.light[2]=[foreign];state.dark[6]=[tieFighter];`);
+ run("state.phase=3;battleSession={site:2,participants:{Light:[foreign],Dark:[droid,vehicle,other]}};");
+ assert.equal(run("battleImmunity('Dark',vehicle)===2&&battleImmunity('Dark',other)===2&&battleImmunity('Light',foreign)===0"),true);
+ run("battleSession.site=6;");
+ assert.equal(run("battleImmunity('Dark',tieFighter)"),3);
+ run("droid.gameTextCancelled=true;");
+ assert.equal(run("battleImmunity('Dark',tieFighter)"),0);
+ run("droid.gameTextCancelled=false;state.dark[2]=[vehicle,other];state.dark[3]=[droid];");
+ assert.equal(run("battleImmunity('Dark',tieFighter)"),0);
 });

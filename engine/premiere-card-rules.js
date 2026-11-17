@@ -131,6 +131,34 @@ const PremiereCardRules = (() => {
     continuous('nighttimeRebelAlienImmunity', 'Ist Hydroponics Station dort anwesend, sind diese Karten zusätzlich immun gegen Attrition unter 3.',
       'allied Rebels and aliens', 'Tooex grants power and station immunity only under nighttime conditions', { below:3, since:14 }),
   ],true);
+  register(['Dark:934'], [
+    continuous('battleCostFromIcons','Ohne anwesenden Droiden wird der Kampfpreis für beide Seiten auf die Zahl der bei Trevagg anwesenden Force-Icons gesetzt.',
+      'his location', 'Feltipern Trevagg resets the cost using icons present with him', {since:15}),
+  ],true);
+  register(['Dark:1011'], [
+    continuous('imperialDiscount','Ist dort ein Rebel mit Ability über 2, werden Imperials an Garindans Location für 1 Force weniger ausgespielt.',
+      'Imperials at his location', 'Garindan enables deployment and adjacent moves only with an eligible Rebel', {amount:1,since:15}),
+    continuous('imperialMove','Bei derselben Bedingung können Imperials in deiner Move Phase kostenlos von einer angrenzenden Site zu Garindan ziehen.',
+      'Imperials at an adjacent site', 'Garindan enables deployment and adjacent moves only with an eligible Rebel', {since:15}),
+  ],true);
+  register(['Dark:1445'], [
+    continuous('cannotBoardEnclosed','Kann nicht auf Starfighter oder in geschlossene Fahrzeuge einsteigen.',
+      'starfighters and enclosed vehicles', 'Kitik cannot board and is lost when Kal shares her site', {since:15}),
+    continuous('lostWithKal','Geht sofort verloren, sobald Kal’Falnl C’ndros an derselben Site ist.',
+      'same site as Kal’Falnl C’ndros', 'Kitik cannot board and is lost when Kal shares her site', {since:15}),
+  ],true);
+  register(['Dark:1922'], [
+    continuous('combatPartner','Im Kampf an derselben Site wie Dr. Evazan erhält Ponda Baba +3 Power, sofern dort kein gegnerisches Lichtschwert anwesend ist.',
+      'battle at the same site as Dr. Evazan', 'Ponda Baba gains power with Evazan unless a lightsaber is present', {amount:3,since:15}),
+    continuous('pilotPower','Verleiht dem von ihm pilotierten Schiff +2 Power.',
+      'piloted starship', 'Ponda Baba gains power with Evazan unless a lightsaber is present', {amount:2,legacy:true}),
+  ],true);
+  register(['Dark:2783'], [
+    continuous('mechanicImmunity','Eigene Fahrzeuge und Droiden an derselben Location sind immun gegen Attrition unter 2.',
+      'own vehicles and droids at his location', 'Treadwell protects friendly vehicles, droids and fighters', {below:2,since:15}),
+    continuous('dockingMechanicImmunity','An einer Docking Bay schützt Treadwell eigene Starfighter am zugehörigen System und an zugehörigen Sektoren vor Attrition unter 3.',
+      'own fighters at the related system and sectors', 'Treadwell protects friendly vehicles, droids and fighters', {below:3,since:15}),
+  ],true);
   register(['Light:1883'], [
     { event: 'freeSiteDeploy', cost: 0, targets: 'moisture-farm', duration: 'instant', expires: 'after deploy',
       summary: 'Owen Lars wird an Lars’ Moisture Farm frei ausgespielt.', test: 'registered free deployment' },

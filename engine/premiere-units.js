@@ -48,7 +48,7 @@ const PremiereUnits = (() => {
     }
     if (role === 'cargo') return card.type === 'Vehicle' && !bantha(card);
     if (role === 'hangar') return tie(card);
-    if (card.type !== 'Character' || (card.id === 'Light:1407' && enclosed(host) && !capital(host)) ||
+    if (card.type !== 'Character' || (['Dark:1445','Light:1407'].includes(card.id) && enclosed(host) && !capital(host)) ||
         (card.id === 'Dark:1989' && fighter(host))) return false;
     if (role === 'pilot') return card.pilot === true;
     if (role === 'driver') return canDrive(card);

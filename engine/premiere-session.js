@@ -197,7 +197,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=14;
+const latestCardRulesVersion=15;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -356,7 +356,9 @@ function travelOptions(card,side,from,to,react=false){
  const kalSpeed=card.id==='Light:1407'&&((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||!PremiereUnits.textSuppressed(card));
  const speed=vehicle?craftStats(card,from).landspeed:card.id==='Dark:1709'||kalSpeed?3:1;
  if(speed>0&&groundReach(card,from,to,react&&card.id==='Light:2250'?1:speed)){
-  options.push({kind:'Landspeed',cost:vehicle?PremiereUnits.landspeedCost(card):1});
+  const free=!react&&state.phase===4&&character&&card.subType==='Imperial'&&adjacentSites(from,to)&&
+   garindanBenefit(side,to,'imperialMove');
+  options.push({kind:'Landspeed',cost:vehicle?PremiereUnits.landspeedCost(card):free?0:1});
  }
  if(!react&&state.phase===1){
   const names=[locationTitle(origin),locationTitle(destination)].sort();
@@ -709,6 +711,15 @@ function registeredCharacterModifier(event,card,slot){
  },0);
 }
 
+function garindanBenefit(side,slot,event){
+ const rule=PremiereLocations.entries(state,side).filter(entry=>entry.slot===slot&&!entry.unavailable)
+  .flatMap(({card})=>activeCardRules(card,event))[0];
+ if(!rule)return null;
+ const hasRebel=PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor)
+  .some(({card,slot:at,unavailable})=>at===slot&&!unavailable&&card.subType==='Rebel'&&cardAbility(card)>2));
+ return hasRebel?rule:null;
+}
+
 function rebelAuraPower(card,side,slot,same){
  if(card.type!=='Character'||card.subType!=='Rebel')return 0;
  const region=sitePlanet(state.locations[slot]);
@@ -850,16 +861,18 @@ function crewDeployCost(card,side,loc){
   .flatMap(actor=>PremiereLocations.entries(state,actor))
   .filter(({slot,unavailable})=>!unavailable&&state.locations[slot]===loc)
   .reduce((tax,{card:unit})=>tax+(activeCardRules(unit,'droidDeployTax')[0]?.amount??0),0):0;
+ let garindan=0;
  if(loc&&isSite(loc)){
   const slot=state.locations.indexOf(loc);
   if(isSpyCharacter(card)&&PremiereLocations.nightEffectsAt(state,slot).length)return droidTax;
   if(activeCardRules(card,'freeSiteDeploy').some(rule=>rule.targets==='moisture-farm'?
     locationTitle(loc)==="tatooine: lars' moisture farm":PremiereLocations.entries(state,side).some(entry=>entry.slot===slot&&
     !entry.unavailable&&entry.card.type==='Character'&&entry.card.subType===rule.targets&&cardAbility(entry.card)>2)))return droidTax;
+  if(card.subType==='Imperial')garindan=garindanBenefit(side,slot,'imperialDiscount')?.amount??0;
  }
  const imperials=card.id==='Dark:60'?PremiereLocations.activeCards(state,side).filter(unit=>
   unit.type==='Starship'&&unit.side==='Dark'&&!unit.characteristics?.includes('independent')).length:0;
- return Math.max(0,card.deploy-(imperials>=2?2:0)+warriorDeployIncrease(card,side))+droidTax;
+ return Math.max(0,card.deploy-(imperials>=2?2:0)+warriorDeployIncrease(card,side)-garindan)+droidTax;
 }
 
 function warriorDeployIncrease(card,side){
@@ -1599,6 +1612,14 @@ function controlledLocationRule(side,event){
 
 function resolveLocationControlRules(){
  if(state.game.cardRulesVersion!==undefined&&state.game.cardRulesVersion<5)return;
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=15){
+  const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side));
+  for(const {card,side,slot,unavailable} of entries){
+   if(unavailable||!activeCardRules(card,'lostWithKal').length||!state.locations[slot]||!isSite(state.locations[slot]))continue;
+   if(!entries.some(entry=>entry.slot===slot&&!entry.unavailable&&entry.card.id==='Light:1407'))continue;
+   if(loseTableCard(side,slot,card))log(card.name+' geht verloren, weil Kal’Falnl C’ndros an derselben Site ist.');
+  }
+ }
  for(const side of PremiereGame.sides){
   const release=controlledLocationRule(side,'releasePrisoners');
   if(release){
@@ -2491,7 +2512,7 @@ function botBattle(available,adaptive){
  if(!best||(adaptive&&best.margin<1))return false;
  const choice=best.option;
  if(!performAction(choice))return false;
- botSay('Battle: Bot initiiert einen Kampf bei '+state.locations[choice.args[0]].name+' für 1 Force. Dark Side hat die erste Aktion in jedem Kampfsegment.');
+ botSay('Battle: Bot initiiert einen Kampf bei '+state.locations[choice.args[0]].name+' für '+choice.cost+' Force. Dark Side hat die erste Aktion in jedem Kampfsegment.');
  botDestinyDecision();
  return true;
 }
@@ -2574,7 +2595,8 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
   return cards.reduce((total,card)=>{
    const base=['Starship','Vehicle'].includes(card.type)?craftStats(card,i).power:(card.power??0);
    const defense=initiator&&side!==initiator?activeCardRules(card,'defendingPower')[0]?.amount??0:0;
-   const charge=charges?.get(card),chargePower=charge?.amount??0,basePower=base+defense+cardPowerModifier(card,side,i,present);
+   const partner=initiator?combatPartnerPower(card,side,i):0;
+   const charge=charges?.get(card),chargePower=charge?.amount??0,basePower=base+defense+partner+cardPowerModifier(card,side,i,present);
    return total+(basePower+(charge?.afterDouble?0:chargePower))*(doubled?.has(card)?2:1)+(charge?.afterDouble?chargePower:0);
   },jungle+bonus+fleetPowerAtSite(side,i)+tuskenGroupPower(present));
  };
@@ -2628,21 +2650,43 @@ function refreshBattleParticipants(){
  }
 }
 
+function combatPartnerPower(card,side,slot){
+ const [rule]=activeCardRules(card,'combatPartner');
+ if(!rule||!isSite(state.locations[slot]))return 0;
+ const opponent=PremiereGame.otherSide(side);
+ if(PremiereLocations.presentCards(state,opponent,slot).some(weapon=>PremiereWeapons.definition(weapon)?.saber))return 0;
+ const together=PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor)
+  .some(entry=>entry.slot===slot&&!entry.unavailable&&entry.card.id==='Dark:768'));
+ return together?rule.amount:0;
+}
+
 function canInitiateBattleFor(side,i){
  if(!state||state.phase!==3||state.activeSide!==side||state.gameWinner||state.pendingForceLoss||battleSession)return false;
  if(side==='Light'?!!state.botTurn:!state.botTurn)return false;
  const force=side==='Light'?state.force:state.botForce;
- if(!Number.isInteger(i)||i<0||!state.locations?.[i]||!force?.length)return false;
+ if(!Number.isInteger(i)||i<0||!state.locations?.[i]||!force||force.length<battleInitiationCost(i))return false;
  if(state.battledSitesThisTurn?.includes(i))return false;
  return battlePresence('Light',i)&&battlePresence('Dark',i);
 }
 
 function canInitiateBattle(i){return canInitiateBattleFor('Light',i)}
 
+function battleInitiationCost(slot){
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<15)return 1;
+ const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side))
+  .filter(entry=>entry.slot===slot&&!entry.unavailable);
+ const trevagg=entries.find(({card})=>activeCardRules(card,'battleCostFromIcons').length);
+ if(!trevagg)return 1;
+ const place=PremiereLocations.physicalPlace(trevagg);
+ if(entries.some(entry=>isDroid(entry.card)&&PremiereLocations.physicalPlace(entry)===place))return 1;
+ return place===slot?PremiereGame.sides.reduce((sum,side)=>sum+(PremiereLocations.icons(state,slot,side)??0),0):0;
+}
+
 function initiateBattleFor(side,i){
  if(!canInitiateBattleFor(side,i))return false;
  const force=side==='Light'?state.force:state.botForce,used=side==='Light'?state.used:state.botUsed;
- PremiereGame.moveTop(force,used);
+ const cost=battleInitiationCost(i);
+ PremiereGame.moveTop(force,used,cost);
  if(!state.battledSitesThisTurn)state.battledSitesThisTurn=[];
  state.battledSitesThisTurn.push(i);
  battleSession={site:i,initiator:side,lightDestiny:null,darkDestiny:null,lightCard:null,darkCard:null,lightLoss:[],darkLoss:[],weaponHits:{Light:[],Dark:[]},resolved:false,lightBonus:0,darkBonus:0,lightPowerMod:0,darkPowerMod:0,botForfeitsPending:true};
@@ -2652,7 +2696,7 @@ function initiateBattleFor(side,i){
    battleDrawSucceeded:{Light:false,Dark:false},hitUnits:{Light:[],Dark:[]}});
   refreshBattleParticipants();
  }
- log(side+' initiiert Battle bei '+state.locations[i].name+' (1 Force → Used Pile).');
+ log(side+' initiiert Battle bei '+state.locations[i].name+' ('+cost+' Force → Used Pile).');
  const prophetess=side==='Dark'&&state.game&&PremiereLocations.presentCards(state,side,i)
   .find(card=>card.id==='Dark:1958'&&PremiereUnits.active(card));
  if(prophetess)battleSession.prediction={card:prophetess,winner:null};
@@ -3432,12 +3476,24 @@ function battleImmunity(side,card){
  if(site.locationTags?.includes('Planet')&&((currentGame()?.cardRulesVersion??latestCardRulesVersion)<10||isSite(site))&&
     attachments.some(device=>device.id==='Dark:2357'))limit=Math.max(limit,3);
  const {board}=PremiereGame.zones(state,side);
- const mechanic=unit=>['Light:2785','Dark:2783'].includes(unit.id)&&PremiereUnits.active(unit)&&!PremiereUnits.textSuppressed(unit);
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ const mechanic=unit=>(unit.id==='Light:2785'||(version<15&&unit.id==='Dark:2783'))&&PremiereUnits.active(unit)&&!PremiereUnits.textSuppressed(unit);
  if((card.type==='Vehicle'||isDroid(card))&&(board?.[x.site]??[]).some(mechanic))limit=Math.max(limit,2);
  if(PremiereUnits.fighter(card)&&isPlanetSystem(site)&&state.locations.some((loc,slot)=>loc&&sitePlanet(loc)===locationGroup(site)&&
    PremiereLocations.conditions(state,slot,side).dockingBay&&(board?.[slot]??[]).some(mechanic)))limit=Math.max(limit,3);
+ if(version>=15&&(card.type==='Vehicle'||isDroid(card)||PremiereUnits.fighter(card))){
+  const allied=PremiereLocations.entries(state,side);
+  if(card.type==='Vehicle'||isDroid(card)){
+   for(const entry of allied)if(entry.slot===x.site&&!entry.unavailable)
+    limit=Math.max(limit,activeCardRules(entry.card,'mechanicImmunity')[0]?.below??0);
+  }else if(isPlanetSystem(site)||site.subType==='Sector'){
+   for(const entry of allied)if(!entry.unavailable&&sitePlanet(state.locations[entry.slot])===locationGroup(site)&&
+      PremiereLocations.conditions(state,entry.slot,side).dockingBay)
+    limit=Math.max(limit,activeCardRules(entry.card,'dockingMechanicImmunity')[0]?.below??0);
+  }
+ }
  const devices=PremiereLocations.effectsAt(state,x.site);
- if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=14){
+ if(version>=14){
   const tooex=matchesRegisteredTarget(card,'rebel-or-alien')&&tooexNightRule(side,x.site,'nighttimeRebelAlienImmunity');
   if(tooex&&devices.some(effect=>activeCardRules(effect.card,'activationDraw').length))limit=Math.max(limit,tooex.below);
  }else if(rules.night&&characterTraits(card).some(trait=>/rebel|alien/.test(trait))&&members.some(unit=>unit.id==='Light:2'&&!PremiereUnits.textSuppressed(unit))&&
@@ -4202,7 +4258,7 @@ function legalActions(position,side,request){
    }
   }
  }else if(position.phase===3){
-  for(const i of position.locations.keys())if(canInitiateBattleFor(side,i))actions.push(offer('battle',[i],{cost:1}));
+  for(const i of position.locations.keys())if(canInitiateBattleFor(side,i))actions.push(offer('battle',[i],{cost:battleInitiationCost(i)}));
  }else if(position.phase===5&&force?.length)actions.push(offer('draw'));
  for(const option of movementOptionsFor(side))actions.push(offer('move',[option.from,option.index,option.to,option.kind],{...option,movementKind:option.kind}));
  for(const group of transitGroups(side)){
