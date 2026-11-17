@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.5';
+const trainerVersion='2.15.6';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -401,7 +401,10 @@ function botRuleButton(action,label){
  return el('autoBot').checked?'':ruleButton(action,label);
 }
 function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
- return dispatchUI({kind:'activate',side:'Light',args:[Number(el('activateAmount').value)],gameId,revision});
+ const count=Number(el('activateAmount').value),allowance=activationDrawAllowance('Light');
+ const mask=(allowance>0&&count>0&&el('activateFirstCard').checked?1:0)|
+  (allowance>1&&count>1&&el('activateSecondCard').checked?2:0);
+ return dispatchUI({kind:'activate',side:'Light',args:mask?[count,mask]:[count],gameId,revision});
 }
 function reactResponse(){
  if(state.gameWinner||state.automatedPending||state.game?.timing.pending)return null;
@@ -410,7 +413,7 @@ function reactResponse(){
 }
 
 function responseMarkup(window,available){
- const title=window.kind==='destiny'?'Destiny':window.card&&window.kind!=='react'?window.card.name
+ const title=window.kind==='destiny'?'Destiny':window.kind==='battleDestinyResults'?'Battle Destiny':window.card&&window.kind!=='react'?window.card.name
   :window.kind==='react'?'React':window.kind==='battle'?'Battle':'Force Drain';
  const loc=state.locations[window.site];
  const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
@@ -841,7 +844,8 @@ function renderBattle(){
  }else if(x.segment==='damage'){
   const labels={deck:'Reserve Deck',used:'Used Pile',force:'Force Pile'};
   buttons=x.damage.priority==='Dark'?botRuleButton(botDamageAction(),'Schadensentscheidung des Bots zeigen'):
-   available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':''):
+   available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':'')+
+    (option.charged?' · Trooper Charge':''):
     option.kind==='battleForceLoss'?'Force verlieren · '+(option.card?.name??labels[option.args[0]]):'Im Damage-Segment passen')).join(' ');
   if(x.damage.priority==='Light'&&!available.some(option=>option.kind==='passDamage'))buttons+='<p class="hint">Du musst noch Treffer, Attrition oder Battle Damage abwickeln.</p>';
  }else if(x.weaponTurn==='Dark'){
@@ -850,7 +854,7 @@ function renderBattle(){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','gravelStorm'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
   buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
@@ -869,7 +873,8 @@ function renderDamageDebt(damage){
  const summaries=PremiereGame.sides.map(side=>{
   const debt=damage.debt[side];
   return '<p>'+side+' · Battle Damage '+debt.damage+' · Attrition '+debt.attrition
-   +(debt.hits.length?' · Pflicht-Forfeits '+debt.hits.map(card=>escapeHTML(card.name)).join(', '):'')+'</p>';
+   +(debt.hits.length?' · Pflicht-Forfeits '+debt.hits.map(card=>escapeHTML(card.name)).join(', '):'')
+   +(debt.charged?.length?' · Trooper Charge '+debt.charged.map(card=>escapeHTML(card.name)).join(', '):'')+'</p>';
  });
  return '<div class="panel"><b>Offene Verluste · '+damage.priority+' am Zug</b>'+summaries.join('')+'</div>';
 }
@@ -1266,6 +1271,8 @@ function render(){
   const {unknown}=forceFromLocations('Light');
   controls.innerHTML='<div class="pile-action"><label>Anzahl (max. '+max+') <input id="activateAmount" type="number" min="0" max="'+max
    +'" value="'+max+'"></label><button onclick="activateMe('+gameId+','+revision+')">Force aktivieren</button></div>'
+   +(activationDrawAllowance('Light')>0&&max>0?'<label><input id="activateFirstCard" type="checkbox"> Erste aktivierte Karte auf die Hand</label>':'')
+   +(activationDrawAllowance('Light')>1&&max>1?'<label><input id="activateSecondCard" type="checkbox"> Zweite aktivierte Karte auf die Hand</label>':'')
    +(unknown?'<p class="hint">Unbekannte Force-Icons an '+unknown+' Locations.</p>':'');
  }else controls.innerHTML=draw?ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
  const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');

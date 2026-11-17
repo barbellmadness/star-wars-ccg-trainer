@@ -129,10 +129,14 @@ const PremiereCardRules = (() => {
     { event: 'freeSiteDeploy', cost: 0, targets: 'moisture-farm', duration: 'instant', expires: 'after deploy',
       summary: 'Owen Lars wird an Lars’ Moisture Farm frei ausgespielt.', test: 'registered free deployment' },
     characterStat('characterPower', 2, 'Owen erhält an derselben Site wie Beru oder ein Vaporator Power +2.', { companions: ['Light:221', 'Light:2705'] }),
-  ]);
+    continuous('larsLegacy','Geht Owen im gegnerischen Zug vom Tisch verloren, erhält Luke bis Ende deines nächsten Zugs +3 Power.',
+      'Luke persona','Beru and Owen give Luke separate bonuses until the end of the next owner turn',{ amount:3,duration:'next owner turn',expires:'end of next owner turn',since:13 }),
+  ], true);
   register(['Light:221'], [
     characterStat('characterForfeit', 2, 'Beru erhält an derselben Site wie Owen oder eine Hydroponics Station Forfeit +2.', { companions: ['Light:1883', 'Light:1196'] }),
-  ]);
+    continuous('larsLegacy','Geht Beru im gegnerischen Zug vom Tisch verloren, erhält Luke bis Ende deines nächsten Zugs +3 Power.',
+      'Luke persona','Beru and Owen give Luke separate bonuses until the end of the next owner turn',{ amount:3,duration:'next owner turn',expires:'end of next owner turn',since:13 }),
+  ], true);
   register(['Dark:406'], [
     characterStat('characterPower', 1, 'Chief Bast erhält an derselben Site wie Tarkin Power +1.', { companions: ['Dark:1061'] }),
   ]);
@@ -288,6 +292,31 @@ const PremiereCardRules = (() => {
         { own, opponent, special, duration: 'rest of battle', expires: 'after battle', since: 11 }),
     ],true);
   }
+  register(['Dark:1215'],[
+    continuous('opposedDestiny','Kämpft ein eigener Dark Jedi gegen einen Rebel mit mehr als 2 Ability, eine Battle Destiny hinzufügen. Gegen Luke sind es zwei.',
+      'Dark Jedi and opposing Rebel of ability > 2','I Have You Now identifies a Dark Jedi and the chosen Rebel',
+      { ownRank:'Dark Jedi',opponent:'Rebel',special:'luke skywalker',duration:'rest of battle',expires:'after battle',since:13 }),
+  ],true);
+  register(['Light:1874'],[
+    continuous('openingDestiny','Für 1 Force eine Battle Destiny hinzufügen, wenn der Gegner gerade im All einen Kampf initiiert hat und dort ein eigenes Schiff mit Maneuver über 3 ist.',
+      'opposing just initiated battle in space; own starship with maneuver > 3','Out of Nowhere responds only to an opposing space battle',
+      { cost:1,draws:1,duration:'rest of battle',expires:'after battle',since:13 }),
+  ],true);
+  register(['Light:1104'],[
+    continuous('replacementBattleDestiny','Für 1 Force eine eigene gerade gezogene Battle Destiny ersetzen, wenn eine eigene beteiligte Figur mehr als 2 Ability hat.',
+      'own just drawn battle destiny','Han’s Dice replaces a battle destiny after the response window',
+      { cost:1,duration:'instant',expires:'after resolving',since:13 }),
+  ],true);
+  register(['Dark:2406'],[
+    continuous('swapBattleDestiny','Für 1 Force die beiden Destiny-Werte tauschen, nachdem beide Seiten je eine Battle Destiny erfolgreich gezogen haben.',
+      'both single completed battle destiny draws','Takeel swaps individual draws and leaves the total modifiers in place',
+      { cost:1,duration:'instant',expires:'after resolving',since:13 }),
+  ],true);
+  register(['Dark:2634'],[
+    continuous('trooperCharge','Ein beteiligter eigener Trooper erhält +2 Power für diesen Kampf, ein Death Star Trooper +3. Er muss anschließend forfeitet werden.',
+      'own participating Imperial trooper','Trooper Charge targets a trooper and makes its forfeit mandatory',
+      { amount:2,specialAmount:3,duration:'rest of battle',expires:'after battle',since:13 }),
+  ],true);
   for(const [id, characters, cost] of [
     ['Light:1102','Han',1],['Light:1500','Leia',1],['Light:1600','Luke',1],
     ['Light:2105','Obi-Wan',1],['Dark:2528','Vader, Tarkin, Motti oder Tagge',2],
@@ -331,6 +360,23 @@ const PremiereCardRules = (() => {
     continuous('locationEffect', 'Der unbewegliche Droid Detector sperrt Droiden-Deploy an einer Innen-Site. Ab dem folgenden Zug gehen dort anwesende Droiden jeweils am Zugende verloren.',
       'interior site', 'Droid Detector bars', { since: 3, siteDevice: 'droid-detector', requiredTag: 'Interior' }),
   ], true);
+  register(['Light:1196'], [
+    continuous('locationEffect','Unbewegliches Device für 1 Force an einer Außen-Site von Tatooine.','exterior Tatooine site',
+      'Hydroponics Station offers each permitted activation draw',{ cost:1,siteDevice:'hydroponics',requiredTag:'Exterior',deployRegion:'tatooine',since:13 }),
+    continuous('activationDraw','Die erste aktivierte Karte darf direkt auf die Hand. Mit einem Vaporator auf dem Tisch gilt das auch für die zweite.',
+      'first activated card; second with a Vaporator','Hydroponics Station offers each permitted activation draw',{ since:13 }),
+  ],true);
+  register(['Light:2705'], [
+    continuous('locationEffect','Unbewegliches Device für 1 Force an einer Tatooine-Site.','Tatooine site',
+      'Vaporator protects its site and adjacent sites from Gravel Storm',{ cost:1,siteDevice:'vaporator',deployRegion:'tatooine',since:13 }),
+    continuous('gravelProtection','Schützt Figuren hier und an benachbarten Sites vor Gravel Storm.','characters at or next to the site',
+      'Vaporator protects its site and adjacent sites from Gravel Storm',{ since:13 }),
+  ],true);
+  register(['Dark:1064'], [
+    continuous('gravelStorm','An ausgewählten Tatooine-Sites eine gegnerische anwesende Figur anzielen. Sie geht verloren, wenn Destiny höher als ihre Ability ist.',
+      'opposing character present at a listed unprotected site','Vaporator protects its site and adjacent sites from Gravel Storm',
+      { sites:['dune sea','jundland wastes',"beggar\'s canyon","lars\' moisture farm",'jawa camp','mos eisley'],duration:'instant',expires:'after resolving',since:13 }),
+  ],true);
   register(['Light:1778', 'Dark:2373'], [
     continuous('locationEffect', 'Legt ein Planetensystem unter Nachtbedingungen für dessen Sites. In Battles dort zählen zusätzliche Destiny-Draws nur zur Power. Spione werden an Nacht-Sites frei ausgespielt.',
       'planet system', 'Nightfall and Sunsdown', { since: 3, nightfall: true }),
