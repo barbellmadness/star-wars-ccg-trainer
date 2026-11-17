@@ -5036,7 +5036,8 @@ function battleAbilityAt(card,slot){
  return battleCardAbility(card);
 }
 
-function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiator:null){
+function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiator:null,
+ participants=battleSession?.segmented&&battleSession.site===i?battleSession.participants:null){
  const ability=(cards,side)=>{
   const values=cards.map(card=>battleAbilityAt(card,i));
   const known=Math.max(0,values.reduce((sum,value)=>sum+(Number.isFinite(value)?value:0),0)-jediAbilityReduction(side,i)+
@@ -5046,7 +5047,7 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
  const presentAt=side=>PremiereLocations.presentCards(state,side,i).filter(card=>!excludedAtBattle(card,i));
  const lightPresent=presentAt('Light'),darkPresent=presentAt('Dark');
  const cards=(side,present)=>present.filter(card=>!['Weapon','Device','Effect'].includes(card.type)&&
-  PremiereUnits.active(card)&&(!battleSession?.segmented||battleSession.site!==i||battleSession.participants[side].includes(card)));
+  PremiereUnits.active(card)&&(!participants||participants[side].includes(card)));
  const power=(cards,side,present)=>{
   const jungle=cards.reduce((total,card)=>total+jungleBonus(card,side,i,cards),0);
   const doubled=battleSession?.site===i?battleSession.doubledPowerCards:null;
@@ -5156,12 +5157,16 @@ function battlePresence(side,slot){
  return candidates.some(card=>card.presence===true)||candidates.reduce((sum,card)=>sum+(cardAbility(card)??0),0)>=1;
 }
 
+function battleParticipantsAt(side,site,previous=[],restricted=null){
+ return battleCandidates(side,site).filter(card=>(!restricted||restricted.includes(card))&&
+  (previous.includes(card)||!state.battledCardsThisTurn?.includes(card)));
+}
+
 function refreshBattleParticipants(){
  const x=battleSession;
  if(!x?.segmented)return;
  for(const side of PremiereGame.sides){
-  const entries=battleCandidates(side,x.site).filter(card=>(!x.restrictedFighters||x.restrictedFighters[side].includes(card))&&
-   (x.participants[side].includes(card)||!state.battledCardsThisTurn?.includes(card)));
+  const entries=battleParticipantsAt(side,x.site,x.participants[side],x.restrictedFighters?.[side]);
   for(const card of entries)if(!state.battledCardsThisTurn?.includes(card))(state.battledCardsThisTurn??=[]).push(card);
   x.participants[side]=entries;
  }
@@ -5796,7 +5801,7 @@ function battleDestiny(side){
    (x.drawCounts??={})[side]=draws.filter(draw=>!draw.cancelled&&Number.isFinite(draw.value)).length;
    x.battleDrawSucceeded[side]=x.drawCounts[side]>0;
   }
-  x[light?'lightDrawCards':'darkDrawCards']=draws.map(draw=>({name:draw.card.name,value:draw.cancelled?0:draw.value}));
+  x[light?'lightDrawCards':'darkDrawCards']=draws.map(battleDrawInfo);
   log(side+' Battle Destiny: '+draws.map(draw=>draw.card.name+' '+(draw.cancelled?'(aufgehoben)':draw.value??'UNBEKANNT')).join(', ')
    +' · Gesamt '+(x[val]??'UNBEKANNT')+'.');
   finishPowerDecision();
@@ -5840,6 +5845,7 @@ function settlePowerSegment(){
  const next=x.additionalDestinies?.shift();
  if(next){
   drawDestinySeries(next.side,next.purpose,next.count,0,draws=>{
+   (x.additionalDraws??=[]).push({side:next.side,purpose:next.purpose,draws:draws.map(battleDrawInfo)});
    x[next.purpose+'Destiny'][next.side]+=PremiereBattle.total(draws)??0;
    settlePowerSegment();
   });
@@ -5869,6 +5875,7 @@ function settlePowerSegment(){
   const frame={kind:'battleOutcome',side:x.initiator,site:x.site,result:battleDamagePreview()};
   if(hasInterruptResponse(frame)){
    x.powerResult=frame.result;
+   x.decidedPower=battlePowerBreakdown();
    PremiereGame.openResponse(state.game,frame);
    return;
   }
@@ -5918,11 +5925,13 @@ function maybePlanBotForfeits(){
 
 function setBattleModifier(side,kind,value){const x=battleSession;if(!x||state.phase!==3||(x.segmented&&(!state.trainingBattle||x.segment==='damage')))return;const key=(side==='Light'?'light':'dark')+(kind==='power'?'PowerMod':'Bonus');const n=Number(value);if(!Number.isInteger(n)||n<0||n>20){log('Ungültiger Modifikator (0–20).');return}x[key]=n;log(side+' manueller '+(kind==='power'?'Power':'zusätzlicher Battle-Destiny')+'-Bonus '+n+' (Lernübung).');publishGame()}
 
-function battleWeaponOptions(side,timing='weapons'){
- const x=battleSession;
+const battleDrawInfo=draw=>({name:draw.card.name,value:draw.cancelled?0:draw.value,cancelled:draw.cancelled});
+
+function battleWeaponOptions(side,timing='weapons',x=battleSession,budget){
  if(!x||x.resolved||state?.phase!==3||x.lightCard!==null||x.darkCard!==null)return [];
+ budget??=forceBudget(side);
  const opponent=PremiereGame.otherSide(side),{force,deck}=PremiereGame.zones(state,side);
- const targets=weaponTargets(opponent,x.site);
+ const targets=weaponTargets(opponent,x.site,false,x);
  return weaponMounts(side).flatMap(mount=>{
   const {host,slot:from,place}=mount;
   if(PremiereWeapons.disarmed(host)||x.blockedWeapons?.includes(host))return [];
@@ -5949,7 +5958,7 @@ function battleWeaponOptions(side,timing='weapons'){
     if(scopeExternal?targetPlace!==slot||state.scopeHits?.includes(target):external?targetPlace!==x.site:targetPlace!==place)return [];
     const defense=wearingUtinniGear(target,'plastoid-armor')?5:PremiereWeapons.defense(target,cardAbility(target),craftStats(target,slot));
     const shot=PremiereWeapons.shot(weapon,host,target,cardAbility(host),defense);
-    if(!shot||shot.cost>forceBudget(side)||shot.effect!=='block'&&droidProtectedFrom(target,side)||
+    if(!shot||shot.cost>budget||shot.effect!=='block'&&droidProtectedFrom(target,side)||
       shot.effect==='capture'&&(side!=='Dark'||(target.owner??target.side)!=='Light'))return [];
     const args=[mount.index,weaponIndex,targetIndex];
     if(external||scopeExternal)args.push(from);
@@ -5960,8 +5969,8 @@ function battleWeaponOptions(side,timing='weapons'){
  });
 }
 
-function weaponTargets(side,slot,includeNonparticipants=false){
- const x=battleSession,roots=PremiereGame.zones(state,side).board?.[slot]??[];
+function weaponTargets(side,slot,includeNonparticipants=false,x=battleSession){
+ const roots=PremiereGame.zones(state,side).board?.[slot]??[];
  return PremiereLocations.entries(state,side).filter(entry=>entry.slot===slot).flatMap((entry,index)=>{
   const target=entry.card,automated=PremiereWeapons.projector(target)||PremiereWeapons.seeker(target);
   if(entry.unavailable||(!PremiereUnits.active(target)&&!automated))return [];
@@ -5969,6 +5978,26 @@ function weaponTargets(side,slot,includeNonparticipants=false){
   const root=roots.indexOf(target);
   return [{card:target,index:root>=0?root:roots.length+index,place:PremiereLocations.physicalPlace(entry)}];
  });
+}
+
+function battleOpeningPreview(initiator,site){
+ if(!canInitiateBattleFor(initiator,site))return null;
+ const cost=battleInitiationCost(site),borrowed=Math.min(cost,beggarCredit(initiator));
+ const participants=Object.fromEntries(PremiereGame.sides.map(side=>[side,battleParticipantsAt(side,site)]));
+ const context={site,segmented:!!state.game,participants,lightCard:null,darkCard:null};
+ const totals=battleTotals(site,initiator,context.segmented?participants:null);
+ const sides=Object.fromEntries(PremiereGame.sides.map(side=>{
+  const key=side.toLowerCase(),ability=totals[key+'Ability'];
+  const budget=borrowed?ownForceBudget(side)-(side===initiator?cost-borrowed:borrowed):forceBudget(side)-(side===initiator?cost:0);
+  const weapons=['initiation','weapons'].flatMap(timing=>battleWeaponOptions(side,timing,context,budget).map(shot=>({
+   weapon:shot.weapon.name,host:shot.host.name,target:shot.target.name,targetSlot:shot.targetSlot,cost:shot.cost,timing,
+  })));
+  const immunity=participants[side].map(card=>({name:card.name,...battleAttritionProtection(side,card,site,participants[side])}))
+   .filter(item=>item.below||item.atThree);
+  return [side,{power:totals[key+'Power'],ability,draws:battleDestinyDrawCount(side,site,ability,initiator),
+   minimumAbility:minimumBattleDestinyAbility(side,site),weapons,immunity,attritionPrevented:attritionPrevented(side,site)}];
+ }));
+ return {site,cost,sides};
 }
 
 function finishWeaponAction(side,passed){
@@ -6022,6 +6051,12 @@ function markWeaponFired(shot){
  }
 }
 
+function recordBattleShot(battle,side,shot,total,defense,hit){
+ const effects={ion:'Ionenschaden',capture:'Gefangennahme',block:'Waffen blockiert',destroy:'Karte verloren'};
+ (battle.weaponResults??=[]).push({side,weapon:shot.weapon.name,target:shot.target.name,total,defense,
+  outcome:hit?(effects[shot.effect]??'Treffer'):total===null?'Kein verwertbarer Destiny-Draw':'Kein Treffer'});
+}
+
 function shootWeapon(side,shot,complete){
  const x=battleSession,{force,used}=PremiereGame.zones(state,side);
  const slot=shot.targetSlot??x.site,opponent=PremiereGame.otherSide(side);
@@ -6038,6 +6073,7 @@ function shootWeapon(side,shot,complete){
    const afterShot=()=>afterCharacterFires(side,shot.host,shot.from,complete);
    const finish=()=>{
     const defense=updatedShotDefense(shot,slot),hit=total!==null&&total>defense;
+    recordBattleShot(x,side,shot,total,defense,hit);
     log(side+' feuert '+shot.weapon.name+' auf '+shot.target.name+' ('+shot.cost+' Force). Waffen-Destiny: '+
      (draws.length?draws.map(draw=>draw.card.name+(draw.cancelled?' (aufgehoben)':'')).join(', ')+' · '+(total??'unbekannt'):'Reserve Deck leer')+
      ' gegen Verteidigung '+defense+' → '+(hit?({ion:'Ionenschaden',capture:'Gefangennahme'}[shot.effect]??'Treffer'):'kein Treffer')+'.');
@@ -6251,6 +6287,7 @@ function settleCombinedAttack(frame){
     const shot=shots[i];
     if(!shot||!PremiereLocations.findEntry(state,shot.target)){complete();return;}
     const defense=updatedShotDefense(shot,site),hit=attacks!==null&&attacks>defense;
+    recordBattleShot(battleSession,side,shot,attacks,defense,hit);
     log(shot.weapon.name+' · '+frame.card.name+' '+(attacks??'–')+' gegen Verteidigung '+defense+' · '+(hit?'Treffer':'kein Treffer')+'.');
     if(hit){
      applyWeaponResult(shot,opponent,site);
@@ -6387,21 +6424,20 @@ function activeBattleUnits(side){
  return x.participants[side].filter(card=>battleCandidates(side,x.site).includes(card));
 }
 
-function battleImmunity(side,card){
+function battleImmunity(side,card,slot=battleSession.site,members=activeBattleUnits(side)){
  if(card.immunityCancelled)return 0;
- const x=battleSession,site=state.locations[x.site],rules=PremiereLocations.conditions(state,x.site,side);
+ const site=state.locations[slot],rules=PremiereLocations.conditions(state,slot,side);
  let limit=PremiereUnits.textSuppressed(card)?0:printedAttritionImmunityBelow(card)??0;
- const members=activeBattleUnits(side);
  const pilots=(card.occupants??[]).filter(entry=>entry.role==='pilot'&&PremiereUnits.active(entry.card)&&
-  !excludedAtBattle(entry.card,x.site)).map(entry=>locationTitle(entry.card));
- if(!PremiereUnits.textSuppressed(card)&&craftStats(card,x.site).powered){
+  !excludedAtBattle(entry.card,slot)).map(entry=>locationTitle(entry.card));
+ if(!PremiereUnits.textSuppressed(card)&&craftStats(card,slot).powered){
   if(card.id==='Light:1677'&&pilots.some(name=>/^(han solo|chewbacca|lando calrissian)$/.test(name)))limit=Math.max(limit,5);
   if(card.id==='Dark:2700'&&pilots.includes('darth vader'))limit=Math.max(limit,4);
   if(PremiereUnits.capital(card)&&card.occupants?.some(entry=>entry.card.id==='Dark:1989'&&PremiereUnits.active(entry.card)&&
-    !PremiereUnits.textSuppressed(entry.card)&&!excludedAtBattle(entry.card,x.site)))limit=Math.max(limit,3);
+    !PremiereUnits.textSuppressed(entry.card)&&!excludedAtBattle(entry.card,slot)))limit=Math.max(limit,3);
  }
  if(card.id==='Dark:12'&&rules.night&&!PremiereUnits.textSuppressed(card))return Infinity;
- if(jungleBonus(card,side,x.site,members))return Infinity;
+ if(jungleBonus(card,side,slot,members))return Infinity;
  const attachments=card.attachments??[];
  if(attachments.some(effect=>effect.id==='Light:1810'&&
     ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<21||activeCardRules(effect,'battleMoveAway').length)))limit=Math.max(limit,5);
@@ -6411,13 +6447,13 @@ function battleImmunity(side,card){
  const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
  const mechanic=unit=>((version<21&&unit.id==='Light:2785')||(version<15&&unit.id==='Dark:2783'))&&
   PremiereUnits.active(unit)&&!PremiereUnits.textSuppressed(unit);
- if((card.type==='Vehicle'||isDroid(card))&&(board?.[x.site]??[]).some(mechanic))limit=Math.max(limit,2);
- if(PremiereUnits.fighter(card)&&isPlanetSystem(site)&&state.locations.some((loc,slot)=>loc&&sitePlanet(loc)===locationGroup(site)&&
-   PremiereLocations.conditions(state,slot,side).dockingBay&&(board?.[slot]??[]).some(mechanic)))limit=Math.max(limit,3);
+ if((card.type==='Vehicle'||isDroid(card))&&(board?.[slot]??[]).some(mechanic))limit=Math.max(limit,2);
+ if(PremiereUnits.fighter(card)&&isPlanetSystem(site)&&state.locations.some((loc,index)=>loc&&sitePlanet(loc)===locationGroup(site)&&
+   PremiereLocations.conditions(state,index,side).dockingBay&&(board?.[index]??[]).some(mechanic)))limit=Math.max(limit,3);
  if(version>=15&&(card.type==='Vehicle'||isDroid(card)||PremiereUnits.fighter(card))){
   const allied=PremiereLocations.entries(state,side);
   if(card.type==='Vehicle'||isDroid(card)){
-   for(const entry of allied)if(entry.slot===x.site&&!entry.unavailable)
+   for(const entry of allied)if(entry.slot===slot&&!entry.unavailable)
     limit=Math.max(limit,activeCardRules(entry.card,'mechanicImmunity')[0]?.below??0);
   }else if(isPlanetSystem(site)||site.subType==='Sector'){
    for(const entry of allied)if(!entry.unavailable&&sitePlanet(state.locations[entry.slot])===locationGroup(site)&&
@@ -6425,13 +6461,21 @@ function battleImmunity(side,card){
     limit=Math.max(limit,activeCardRules(entry.card,'dockingMechanicImmunity')[0]?.below??0);
   }
  }
- const devices=PremiereLocations.effectsAt(state,x.site);
+ const devices=PremiereLocations.effectsAt(state,slot);
  if(version>=14){
-  const tooex=matchesRegisteredTarget(card,'rebel-or-alien')&&tooexNightRule(side,x.site,'nighttimeRebelAlienImmunity');
+  const tooex=matchesRegisteredTarget(card,'rebel-or-alien')&&tooexNightRule(side,slot,'nighttimeRebelAlienImmunity');
   if(tooex&&devices.some(effect=>activeCardRules(effect.card,'activationDraw').length))limit=Math.max(limit,tooex.below);
  }else if(rules.night&&characterTraits(card).some(trait=>/rebel|alien/.test(trait))&&members.some(unit=>unit.id==='Light:2'&&!PremiereUnits.textSuppressed(unit))&&
     devices.some(effect=>effect.card.id==='Light:1196'))limit=Math.max(limit,3);
  return limit;
+}
+
+function battleAttritionProtection(side,card,site,members){
+ if(card.immunityCancelled)return {below:0,atThree:false};
+ const carriers=members.filter(host=>PremiereUnits.enclosed(host)&&PremiereLocations.aboard(state,card,host));
+ const protectedBy=[card,...carriers];
+ return {below:Math.max(...protectedBy.map(unit=>battleImmunity(side,unit,site,members))),
+  atThree:sitePlanet(state.locations[site])==='tatooine'&&protectedBy.some(unit=>wearingUtinniGear(unit,'breath-mask'))};
 }
 
 function battleForfeitValue(card,side,ignoreWeaponHit=false){
@@ -6506,21 +6550,21 @@ function prepareDamageSegment(){
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22&&stopBattleWithoutPresence())return;
  const result=battleDamagePreview();
  if(!result)return;
+ const power=battlePowerBreakdown();
  const debt=Object.fromEntries(PremiereGame.sides.map(side=>{
   const key=side.toLowerCase(),{board}=PremiereGame.zones(state,side);
   const hits=(x.hitUnits?.[side]??(x.weaponHits[side]??[]).map(index=>board[x.site][index])).filter(card=>activeBattleUnits(side).includes(card));
   const attrition=attritionPrevented(side,x.site)?0:result[key+'Attrition'],members=activeBattleUnits(side);
   const charged=members.filter(card=>x.chargedTroopers?.has(card));
   const immunity=members.filter(card=>{
-   if(card.immunityCancelled)return false;
-   const inherited=members.filter(host=>PremiereUnits.enclosed(host)&&PremiereLocations.aboard(state,card,host));
-   return [card,...inherited].some(unit=>battleImmunity(side,unit)>attrition||
-    attrition===3&&sitePlanet(state.locations[x.site])==='tatooine'&&wearingUtinniGear(unit,'breath-mask'));
+   const protection=battleAttritionProtection(side,card,x.site,members);
+   return protection.below>attrition||protection.atThree&&attrition===3;
   });
   return [side,{damage:result[key+'Damage'],attrition,hits,immunity,charged}];
  }));
  x.segment='damage';
- x.damage={result,debt,priority:x.initiator,passes:0};
+ const initial=Object.fromEntries(PremiereGame.sides.map(side=>[side,{...debt[side]}]));
+ x.damage={result,power,debt,initial,priority:x.initiator,passes:0};
 }
 
 function battleDamageOptions(side){
@@ -6778,19 +6822,29 @@ function battleForfeitPlan(side){
  return {valid:true,reason:'Bereit',sum,incoming,required,remainingDamage:Math.max(0,required-sum)};
 }
 
+function battlePowerBreakdown(totals){
+ const x=battleSession;
+ if(x.damage?.power)return x.damage.power;
+ if(x.decidedPower)return x.decidedPower;
+ const t=totals??battleTotals(x.site);
+ return Object.fromEntries(PremiereGame.sides.map(side=>{
+  const key=side.toLowerCase(),base=t[key+'Power'],modifier=x[key+'PowerMod']??0,multiplier=x[key+'PowerDoubled']?2:1;
+  return [side,{base,modifier,multiplier,power:(base+modifier)*multiplier,battle:x[key+'Destiny'],
+   powerDestiny:(x.segmented?x.powerDestiny?.[side]??0:0)+(x[key+'Bonus']??0),
+   attritionDestiny:x.segmented&&x.battleDrawSucceeded?.[side]?(x.attritionDestiny?.[side]??0)+(x[key+'Bonus']??0):0}];
+ }));
+}
+
 function battleDamagePreview(){
  if(!battleSession)return null;
  const x=battleSession,t=battleTotals(x.site);
  if(x.damage)return x.damage.result;
  if(x.powerResult)return x.powerResult;
  if(!Number.isFinite(x.lightDestiny)||!Number.isFinite(x.darkDestiny))return null;
- const power={Light:(t.lightPower+x.lightPowerMod)*(x.lightPowerDoubled?2:1),Dark:(t.darkPower+x.darkPowerMod)*(x.darkPowerDoubled?2:1)};
+ const parts=battlePowerBreakdown(t),power={Light:parts.Light.power,Dark:parts.Dark.power};
  if(x.segmented){
-  const destiny=Object.fromEntries(PremiereGame.sides.map(side=>{
-   const key=side.toLowerCase();
-   return [side,{battle:x[key+'Destiny'],power:x.powerDestiny[side]+x[key+'Bonus'],
-    attrition:x.battleDrawSucceeded[side]?x.attritionDestiny[side]+x[key+'Bonus']:0}];
-  }));
+  const destiny=Object.fromEntries(PremiereGame.sides.map(side=>[side,{battle:parts[side].battle,power:parts[side].powerDestiny,
+   attrition:parts[side].attritionDestiny}]));
   const result=PremiereBattle.result(power,destiny);
   if(result)for(const [key,side] of [['lightDamage','Light'],['darkDamage','Dark']]){
    result[side.toLowerCase()+'Attrition']+=detachmentAttrition(x.site,side);
@@ -6800,7 +6854,7 @@ function battleDamagePreview(){
   }
   return result;
  }
- const lightTotal=power.Light+x.lightDestiny+x.lightBonus,darkTotal=power.Dark+x.darkDestiny+x.darkBonus;
+ const lightTotal=power.Light+parts.Light.battle+parts.Light.powerDestiny,darkTotal=power.Dark+parts.Dark.battle+parts.Dark.powerDestiny;
  return {lightTotal,darkTotal,lightDamage:Math.max(0,darkTotal-lightTotal),darkDamage:Math.max(0,lightTotal-darkTotal)};
 }
 

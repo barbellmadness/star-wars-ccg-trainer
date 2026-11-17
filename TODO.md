@@ -36,8 +36,7 @@ In V2.15.26 abgeschlossen. Die Playmat zeigt bei ausgewählten Hand- und Tischka
 
 ## 11. Kampfvorschau und Ablauflogik im Popup
 
-- [ ] Vor dem Bezahlen eines Battles die aktuelle Power, mögliche Battle-Destiny-Ziehungen, einsatzbereite Waffen und Attrition-Immunität beider Seiten anzeigen. Sichtbare Werte und ausstehende Destiny-Ziehungen klar kennzeichnen.
-- [ ] Im Kampf-Popup pro Segment die Seite mit Priorität anzeigen und nachvollziehbar machen, wie Treffer und Destiny das Ergebnis sowie die Pflichtverluste verändern.
+In V2.15.27 abgeschlossen. Die Kampfvorschau zeigt vor der Zahlung die sichtbare Power, mögliche Destiny-Ziehungen, einsatzbereite Waffen und Attrition-Immunität beider Seiten. Das Kampf-Popup zeigt die Priorität im aktuellen Segment, offene oder aufgedeckte Destiny-Ziehungen, Waffenergebnisse und die Berechnung von Power, Battle Damage und Attrition. Im Schadenssegment stehen anstehende Pflicht-Forfeits und die verbleibenden Verluste.
 
 ## 12. Spielstile für den Bot
 

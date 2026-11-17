@@ -315,7 +315,21 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
       presentGame();
     });
 
-    await page.getByRole('button', {name: 'Battle (1 Force)', exact: true}).and(page.locator(':enabled')).first().click();
+    const battleTrigger = page.getByRole('button', {name: 'Kampfvorschau · 1 Force', exact: true}).and(page.locator(':enabled')).first();
+    const battleForce = await page.evaluate(() => state.force.length);
+    const battleSave = await page.evaluate(() => localStorage.getItem(saveKey));
+    await battleTrigger.click();
+    const battlePreview = page.getByRole('dialog', {name: /^Kampfvorschau/});
+    assert.ok(await battlePreview.isVisible());
+    assert.match(await battlePreview.locator('.battle-side.light').textContent(), /Power.*Battle Destiny.*Einsatzbereite Waffen.*Blaster.*Attrition-Immunität/s);
+    assert.match(await battlePreview.locator('.battle-side.dark').textContent(), /Power.*Battle Destiny.*Attrition-Immunität/s);
+    assert.doesNotMatch(await battlePreview.textContent(), /Test Destiny/);
+    await battlePreview.getByRole('button', {name: 'Abbrechen'}).click();
+    assert.equal(await page.evaluate(() => state.force.length), battleForce);
+    assert.equal(await page.evaluate(() => localStorage.getItem(saveKey)), battleSave);
+    await battleTrigger.click();
+    await battlePreview.getByRole('button', {name: 'Kampf beginnen · 1 Force'}).click();
+    assert.equal(await page.evaluate(() => state.force.length), battleForce - 1);
     const battle = page.getByRole('dialog', {name: /Bodenkampf/});
     assert.ok(await battle.isVisible());
     assert.match(await battle.locator('.battle-side.light').textContent(), /Rebel Trooper/);
@@ -334,9 +348,15 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await battle.getByRole('button', {name: 'Im Waffen-Segment passen'}).click();
     await battle.getByRole('button', {name: 'Light verzichtet'}).waitFor();
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
-    assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
+    assert.match(await battle.locator('#battlePriority').textContent(), /Priorität: Light Side · Du bist dran/);
+    await battle.getByRole('checkbox', {name: 'Bot automatisch', exact: true}).uncheck();
+    await battle.getByRole('button', {name: 'Light verzichtet'}).click();
+    await battle.getByRole('button', {name: 'Bot-Entscheidung zeigen'}).click();
+    assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Schaden');
+    assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
+    assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.26'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.27'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
