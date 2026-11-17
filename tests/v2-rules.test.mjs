@@ -11,6 +11,7 @@ const weaponScript=readFileSync(new URL('../engine/premiere-weapons.js',import.m
 const locationScript=readFileSync(new URL('../engine/premiere-locations.js',import.meta.url),'utf8');
 const cardRulesScript=readFileSync(new URL('../engine/premiere-card-rules.js',import.meta.url),'utf8');
 const sessionScript=readFileSync(new URL('../engine/premiere-session.js',import.meta.url),'utf8');
+const botScript=readFileSync(new URL('../engine/premiere-bot.js',import.meta.url),'utf8');
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 if(!js)throw Error('V2 script missing');
 function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>true}={}){
@@ -34,6 +35,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
  vm.runInContext(locationScript,context);
  vm.runInContext(cardRulesScript,context);
  vm.runInContext(weaponScript,context);
+ vm.runInContext(botScript,context);
  vm.runInContext(sessionScript,context);
  vm.runInContext(js.replace(/load\(\);\s*$/,''),context);
  const run=code=>vm.runInContext(code,context);
@@ -862,7 +864,7 @@ test('the bot commits a concealed start and both locations are revealed before s
 async function startingCollisionHarness(lists){
  const {run,elements}=await premiereHarness(lists);
  // Seed 0 chooses the first available bot location on both contested rounds.
- run('start(0)');
+ run('start(0,true,false,starterDecks,latestCardRulesVersion,1)');
  return {run,elements};
 }
 
@@ -2454,7 +2456,7 @@ test('the hand phase lists follow the current turn through setup, play and game 
   }
  };
 
- run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ run('start(1,true,false,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
  assert.equal(elements.get('gameTable').hidden,false);
  assert.equal(elements.get('gameMessage').hidden,true);
  assert.equal(elements.get('forceControls').hidden,true);
@@ -2488,7 +2490,7 @@ test('both playmat pile diagrams show their own counts and follow card movement'
    assert.ok(markup.includes(label+' <strong>'+count+'</strong>'),label+' count for '+side);
   }
  };
- run('start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
+ run('start(1,true,false,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame()');
  assertPiles('Dark',51,0,0,0,51);
  assertPiles('Light',51,0,0,0,51);
  assert.match(diagram('Dark'),/cards\/darkcardback\.png/);
@@ -2535,7 +2537,7 @@ test('lost piles reveal only their top card and keep covered bot hands face down
 
 async function eyesInTheDarkHarness(){
  const fixture=await premiereHarness();
- fixture.run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
+ fixture.run(`start(1,true,false,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
   const copies=setupDecks.light.cards.filter(isLostPileEffect).length;
   beginStartingGame();
   for(let i=0;i<7;i++)botNextStep();
@@ -2648,7 +2650,7 @@ test('Alter must draw below the highest ability to stop Eyes In The Dark from de
 
 async function darkLostPileEffectHarness(){
  const fixture=await premiereHarness();
- fixture.run(`start(1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
+ fixture.run(`start(1,true,false,starterDecks,latestCardRulesVersion,1);chooseStart(startingLocationChoices(setupDecks.light)[1].index);
   const copies=setupDecks.dark.cards.filter(isLostPileEffect).length;
   beginStartingGame();
   const darkEffect=catalog.find(card=>card.side==='Dark'&&isLostPileEffect(card));
@@ -2766,7 +2768,7 @@ test('Location deploy rejects duplicate titles, invalid insertion positions and 
 
 test('starting locations use their geographic order while keeping the original location references',async()=>{
  const {run,elements}=await premiereHarness();
- run('start(1)');
+ run('start(1,true,false,starterDecks,latestCardRulesVersion,1)');
  run('chooseStart(setupDecks.light.startingIndices[1]);beginStartingGame()');
  assert.equal(run("state.locations[0].id==='Light:2448'&&state.locations[1].id==='Dark:2446'"),true);
  assert.equal(run('boardLocationOrder().join()'),'1,0');
@@ -2868,8 +2870,8 @@ test('starter decks replay complete matches with legal decisions and conserve al
   }
   return roots.flatMap(walk);
  }
- function playMatch(seed,cardRulesVersion=latestCardRulesVersion){
-  start(seed,true,false,starterDecks,cardRulesVersion,cardRulesVersion===0?0:1);
+ function playMatch(seed,cardRulesVersion=latestCardRulesVersion,botVersion=cardRulesVersion===0?0:1){
+  start(seed,true,false,starterDecks,cardRulesVersion,botVersion);
   const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
   choose();
   while(setupDecks.revealed.collision){retryStartingLocations();choose();}
@@ -2896,6 +2898,7 @@ test('starter decks replay complete matches with legal decisions and conserve al
     'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance'];
    const options=light.length?light:dark;
    let action;
+   if(!light.length&&botVersion===2)action=botPromptAction(dark);
    if(!light.length&&battleSession?.weaponTurn==='Dark')action=botWeaponAction();
    if(!light.length&&battleSession?.damage?.priority==='Dark')action=botDamageAction();
    action??=preferred.map(kind=>kind==='activate'?options.filter(action=>action.kind===kind).at(-1):
@@ -2916,6 +2919,9 @@ test('starter decks replay complete matches with legal decisions and conserve al
  assert.ok(legacy.winner&&legacy.ground&&legacy.space,
   JSON.stringify({...legacy,trace:undefined}));
  assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4))')),matches.find(match=>match.seed===4));
+ const planned=JSON.parse(run('JSON.stringify(playMatch(4,latestCardRulesVersion,2))'));
+ assert.ok(planned.winner&&planned.botActions>0&&planned.validated>0,JSON.stringify({...planned,trace:undefined}));
+ assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4,latestCardRulesVersion,2))')),planned);
 });
 
 function startSavedGame(run,seed=0){
@@ -2957,7 +2963,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
  assert.equal(saved.cardRulesVersion,22);
- assert.equal(saved.botStrategyVersion,1);
+ assert.equal(saved.botStrategyVersion,2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
  storage.setItem(key,JSON.stringify(saved));
@@ -3047,7 +3053,7 @@ test('a saved live battle resumes in the damage segment and accepts the remainin
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
- run('currentGame().botStrategyVersion=0;activeSave.botStrategyVersion=0');
+ run('start(0,true,false,starterDecks,latestCardRulesVersion,0);activeSave.botStrategyVersion=0');
  assert.equal(run(`act('chooseStart','Light',[setupDecks.light.startingIndices[1]])&&act('beginGame')`),true);
  run("for(let i=0;state.botTurn&&i<8;i++)el('botNext').onclick()");
  assert.equal(run(`act('activate','Light',[4])&&act('advance')&&act('advance')&&act('deploy','Light',[1,0])&&
@@ -3530,6 +3536,76 @@ test('strategic bot shoots at a worthwhile target with favorable odds',()=>{
   rebel.power=8;rebel.armor=8;trooper.weapons=[blaster];`);
  assert.equal(run("requestAction('battle','Dark',[0])"),true);
  assert.equal(run('botWeaponAction().target===officer'),true);
+});
+
+test('planned bot start weights printed icons and its own fleet without reading the rival deck',()=>{
+ const {run}=harness();
+ run(`const locations=[
+  {type:'Location',subType:'Site',icons:{dark:0,light:2}},
+  {type:'Location',subType:'Site',icons:{dark:1,light:1}},
+  {type:'Location',subType:'System',icons:{dark:1,light:1}},
+ ];`);
+ assert.equal(run("PremiereBot.startingLocation(Array(12).fill({type:'Starship'}),locations,0)"),2);
+ assert.equal(run("PremiereBot.startingLocation(Array(12).fill({type:'Character'}),locations,0)"),1);
+});
+
+test('planned bot sees the same position and weapon offer despite hidden destinations and decks',()=>{
+ const {run}=weaponBattleHarness('Dark');
+ run(`state.game=PremiereGame.actionState(260,0);state.game.botStrategyVersion=2;state.phase=3;
+  rebel.power=8;rebel.armor=8;trooper.weapons=[blaster];`);
+ assert.equal(run("requestAction('battle','Dark',[0])"),true);
+ assert.equal(run('botWeaponAction().target===officer'),true);
+ run(`const plannerView=()=>JSON.stringify(plannedBotPosition(legalActions(state,'Dark')));
+  const before=plannerView();
+  state.hand=[{name:'Secret opponent card',power:100,type:'Character',ability:7}];
+  state.deck.reverse();state.botDeck.reverse();
+  state.force[0]={name:'Secret force card',destiny:100};
+  state.botDeck[0]={name:'Secret destiny',destiny:100};`);
+ assert.equal(run('plannerView()===before'),true);
+ assert.doesNotMatch(run('plannerView()'),/Secret|gametext|instanceId|randomState/);
+ assert.equal(run('botWeaponAction().target===officer'),true);
+ run("state.botDeck=[]");
+ assert.equal(run('botWeaponAction().kind'),'passWeapons');
+});
+
+test('planned bot saves its Force for better deployment and crews an eligible fighter',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(261,0);state.game.botStrategyVersion=2;
+  state.activeSide='Dark';state.botTurn={steps:botPlan(),index:3};state.activated=true;
+  state.locations[3]={...dunes,icons:{light:3,dark:1}};
+  state.dark[2]=[card('Dark:2355')];state.botHand=[card('Dark:1264'),card('Dark:2355')];state.botForce=[{}];`);
+ assert.equal(run("legalActions(state,'Dark').some(action=>action.kind==='equip')"),true);
+ assert.equal(run('botNextStep()&&state.dark[3].length===1&&state.dark[2][0].weapons===undefined'),true);
+ run(`state.dark=[[scout]];state.light=[[]];state.botHand=[card('Dark:1279')];state.botForce=forcePile();
+  state.locations=[{...kessel,icons:{dark:1,light:0}}];`);
+ assert.ok(run("legalActions(state,'Dark').some(action=>action.kind==='transport'&&action.args[0]==='deployAboard'&&action.args[5]==='pilot')"));
+ assert.equal(run("botNextStep()&&scout.occupants?.some(entry=>entry.role==='pilot')"),true);
+});
+
+test('planned bot rebuilds its hand and keeps its last Life Force',()=>{
+ const {run}=reactHarness();
+ run(`state.game.botStrategyVersion=2;state.phase=4;state.dark=[[],[]];
+  state.botTurn={steps:botPlan(),index:5};state.botDeck=[];state.botHand=[];
+  state.botForce=Array.from({length:6},(_,index)=>({name:'Force '+index}));`);
+ assert.equal(run("botNextStep()&&state.phase===5"),true);
+ assert.equal(run(`for(let i=0;i<7&&state.botTurn;i++)botNextStep();
+  state.botHand.length===5&&lifeForceRemaining('Dark')===1&&state.activeSide==='Light'`),true);
+});
+
+test('planned bot passes on a React without Presence and pays attrition with the cheaper sufficient unit',()=>{
+ const {run}=reactHarness();
+ run(`state.game.botStrategyVersion=2;
+  const blank={type:'Weapon',power:0,ability:0}, veteran={type:'Character',power:7,ability:4}, guard={type:'Character',power:1,ability:1};
+  state.botHand=[blank];
+  const opts=[PremiereGame.offer(state.game,'Dark','reactDeploy',[0,-1,1],{card:blank,cost:1}),
+   PremiereGame.offer(state.game,'Dark','passResponse')];
+  PremiereGame.openResponse(state.game,{kind:'drain',side:'Light',site:1,amount:2});`);
+ assert.equal(run("botPromptAction(opts).kind"),'passResponse');
+ run(`state.game.responses=[];
+  state.dark[1]=[veteran,guard];
+  battleSession={site:1,damage:{debt:{Dark:{damage:1,attrition:2,immunity:[]}}}};
+  const forfeits=[veteran,guard].map((card,index)=>PremiereGame.offer(state.game,'Dark','battleForfeit',[index],{card,value:3}));`);
+ assert.equal(run('botPromptAction(forfeits).card===guard'),true);
 });
 
 test('the bot skips a legal battle when the opponent is favored after estimated Destiny',()=>{
