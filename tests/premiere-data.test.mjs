@@ -7,7 +7,8 @@ import {buildSnapshot} from '../scripts/import_premiere.mjs';
 const json = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
 const snapshot = json('premiere.json');
 const definitions = json('premiere-starter-decks.json');
-const {readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit, readCardValue} = premiere;
+const {A_NEW_HOPE, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit, readCardValue,
+  isGarrisonExpansionCard} = premiere;
 
 test('the checked-in catalog and starter decks validate against the pinned edition', () => {
   const catalog = readCatalog(snapshot);
@@ -53,6 +54,46 @@ test('linked print text is kept separate and the audit lists the remaining scans
   const redOne = catalog.find(card => card.id === 'Light:2057');
   assert.match(redOne.texts.print, /Must have pilot aboard/);
   assert.doesNotMatch(redOne.texts.active, /Must have pilot aboard/);
+});
+
+test('A New Hope covers all 162 printed Gemp slots and preserves new card types and special values', () => {
+  const expansion = json('a-new-hope.json');
+  const cards = readCatalog(expansion, A_NEW_HOPE);
+  assert.throws(() => readCatalog(expansion), /Premiere-Snapshot/);
+  assert.deepEqual(cards.map(card => Number(card.gempId.slice(2))).sort((a, b) => a - b), Array.from({length: 162}, (_, index) => index + 1));
+  assert.ok(cards.every(card => card.images.print && card.texts.print === null));
+  assert.ok(cards.every(card => !snapshot.cards.some(premiereCard => premiereCard.id === card.id)));
+  const find = id => cards.find(card => card.id === id);
+  assert.equal(find('Dark:729').type, 'Creature');
+  assert.deepEqual(cards.filter(card => card.type === 'Epic Event').map(card => card.id), ['Light:169', 'Dark:508']);
+  assert.deepEqual(find('Light:1992').destinyValues, [2, 5]);
+  assert.equal(find('Light:319').values.destiny.raw, 'π');
+  assert.deepEqual(find('Light:319').destinyValues, [3.14159]);
+  assert.equal(find('Light:1062').errataSymbol, 'D-E2');
+  assert.equal(find('Dark:223').errataSymbol, 'E1');
+  assert.equal(cards.filter(card => card.texts.preErrata !== null).length, 5);
+  const existing = readSupplementalCards(json('premiere-supplemental-cards.json')).filter(isGarrisonExpansionCard);
+  assert.deepEqual(cards.filter(isGarrisonExpansionCard).map(card => card.id).sort(), existing.map(card => card.id).sort());
+  for (const card of existing) assert.equal(find(card.id).texts.active, card.texts.active);
+});
+
+test('explicit deck formats allow only the declared sets and cards cleared for play', () => {
+  const expansionCards = readCatalog(json('a-new-hope.json'), A_NEW_HOPE);
+  const [rifle] = readSupplementalCards(json('premiere-supplemental-cards.json'));
+  const catalog = [...readCatalog(snapshot), ...expansionCards, rifle];
+  const mixed = structuredClone(definitions);
+  const card = mixed.decks.Dark.cards.find(entry => entry.id === 'Dark:1027');
+  card.id = 'Dark:667';
+  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere'}), /anderen Edition/);
+  assert.equal(readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}).dark.cards.length, 60);
+  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'mixed'}), /Unbekanntes Spielformat/);
+  card.id = 'Dark:729';
+  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}), /noch nicht für das Spiel freigegeben/);
+  card.id = rifle.id;
+  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}), /anderen Edition/);
+  const themes = json('premiere-themed-decks.json');
+  assert.equal(readThemedDecks(themes, catalog).dark.find(({deck}) => deck.theme.id === 'imperiale-garnison').deck.cards.length, 60);
+  assert.throws(() => readThemedDecks(themes, catalog, {format: 'premiere-a-new-hope'}), /Dark:2915 stammt aus einer anderen Edition/);
 });
 
 test('both sides have seven distinct, valid 60-card themed decks with playable starting locations', () => {

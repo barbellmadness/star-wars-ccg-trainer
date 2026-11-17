@@ -1,4 +1,4 @@
-name: Verify pinned Premiere card database
+name: Verify pinned card databases
 on:
   workflow_dispatch:
 permissions:
@@ -14,3 +14,4 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/import_premiere.mjs --verify-source
+      - run: node scripts/import_premiere.mjs --edition a-new-hope --verify-source

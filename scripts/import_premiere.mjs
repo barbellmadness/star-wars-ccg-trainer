@@ -3,8 +3,12 @@ import {readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import premiere from '../engine/premiere-data.js';
 
-const {SOURCE, REVISION, EDITION, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit} = premiere;
-const snapshotPath = new URL('../data/premiere.json', import.meta.url);
+const {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks,
+  isGarrisonExpansionCard, buildAudit} = premiere;
+const snapshotPaths = {
+  [EDITION]: new URL('../data/premiere.json', import.meta.url),
+  [A_NEW_HOPE]: new URL('../data/a-new-hope.json', import.meta.url)
+};
 const deckPath = new URL('../data/premiere-starter-decks.json', import.meta.url);
 const themesPath = new URL('../data/premiere-themed-decks.json', import.meta.url);
 const notesPath = new URL('../data/premiere-card-notes.json', import.meta.url);
@@ -57,14 +61,14 @@ function buildRecord(card, previous, notes) {
   return record;
 }
 
-export function buildSnapshot(inputs, notes) {
+export function buildSnapshot(inputs, notes, edition = EDITION) {
   const cards = SIDES.flatMap(side => {
     const modern = inputs[`${side}.json`]?.cards;
     const earlier = inputs[`${side}PreErrata.json`]?.cards;
     if (!Array.isArray(modern) || !Array.isArray(earlier)) throw new Error(`${side}: Quelldatei ohne Kartenliste.`);
-    const priorOf = new Map(earlier.filter(card => card.set === EDITION && card.side === side).map(card => [card.id, card]));
-    return modern.filter(card => String(card.set) === EDITION).map(card => {
-      if (card.side !== side || card.legacy !== false || !card.printings?.some(printing => printing.set === EDITION)) {
+    const priorOf = new Map(earlier.filter(card => card.set === edition && card.side === side).map(card => [card.id, card]));
+    return modern.filter(card => String(card.set) === edition).map(card => {
+      if (card.side !== side || card.legacy !== false || !card.printings?.some(printing => printing.set === edition)) {
         throw new Error(`${side}:${card.id}: Kartenseite, Edition oder Druckauflage stimmt nicht.`);
       }
       const previous = priorOf.get(card.previousId);
@@ -74,10 +78,10 @@ export function buildSnapshot(inputs, notes) {
   });
   const ids = new Set(cards.map(card => card.id));
   for (const id of Object.keys(notes)) if (!ids.has(id)) throw new Error(`Kartennotiz verweist auf unbekannte ID ${id}.`);
-  return {schema: 2, source: SOURCE, revision: REVISION, edition: EDITION, cards};
+  return {schema: 2, source: SOURCE, revision: REVISION, edition, cards};
 }
 
-async function replaceSnapshot(snapshot) {
+async function replaceSnapshot(snapshot, snapshotPath) {
   const temporaryPath = fileURLToPath(snapshotPath) + '.' + randomUUID() + '.tmp';
   try {
     await writeFile(temporaryPath, serialize(snapshot), {encoding: 'utf8', flag: 'wx'});
@@ -108,19 +112,60 @@ async function verifyScanLinks(catalog) {
   return {checked: catalog.length, reachable: catalog.length - failures.length, failures};
 }
 
+async function writeScanReport(catalog) {
+  const report = await verifyScanLinks(catalog);
+  process.stdout.write(serialize(report));
+  if (report.failures.length) process.exitCode = 1;
+}
+
+function expansionReport(catalog) {
+  return {
+    source: SOURCE, revision: REVISION, edition: A_NEW_HOPE, inputsSha256: SHA256,
+    cards: Object.fromEntries(SIDES.map(side => [side, catalog.filter(card => card.side === side).length])),
+    cardsWithPrintScan: catalog.filter(card => card.images.print).length,
+    cardsWithErrata: catalog.filter(card => card.errataSymbol).length,
+    cardsWithHistoricalText: catalog.filter(card => card.texts.preErrata !== null).length,
+    cardsInImperialGarrison: catalog.filter(isGarrisonExpansionCard).length,
+    cardsOpenForRuleReview: catalog.filter(card => !isGarrisonExpansionCard(card)).map(card => ({
+      id: card.id, gempId: card.gempId, side: card.side, name: card.name, type: card.type, subType: card.subType
+    }))
+  };
+}
+
 async function main(args) {
+  let edition = EDITION;
+  if (args[0] === '--edition' && args[1] === 'a-new-hope') {
+    edition = A_NEW_HOPE;
+    args = args.slice(2);
+  }
   if (args.length > 1 || (args.length && !['--check', '--report', '--verify-source', '--verify-scans'].includes(args[0]))) {
-    throw new Error('Aufruf: node scripts/import_premiere.mjs [--check | --report | --verify-source | --verify-scans]');
+    throw new Error('Aufruf: node scripts/import_premiere.mjs [--edition a-new-hope] [--check | --report | --verify-source | --verify-scans]');
   }
   const [mode] = args;
   const downloads = mode === undefined || mode === '--verify-source';
-  const [snapshot, definition, themeDefinitions, supplemental] = await Promise.all([
-    downloads ? Promise.all([downloadInputs(), readJson(notesPath)]).then(([inputs, notes]) => buildSnapshot(inputs, notes)) : readJson(snapshotPath),
+  const snapshotPath = snapshotPaths[edition];
+  const snapshot = downloads ? buildSnapshot(await downloadInputs(), edition === EDITION ? await readJson(notesPath) : {}, edition) :
+    await readJson(snapshotPath);
+  const catalog = readCatalog(snapshot, edition);
+  if (mode === '--verify-source' && serialize(snapshot) !== serialize(await readJson(snapshotPath))) {
+    throw new Error('Der versionierte Snapshot weicht vom reproduzierten Quelldatensatz ab.');
+  }
+  if (edition === A_NEW_HOPE) {
+    if (mode === '--verify-scans') return writeScanReport(catalog);
+    const report = expansionReport(catalog);
+    if (mode === '--report') {
+      process.stdout.write(serialize(report));
+      return;
+    }
+    if (mode === undefined) await replaceSnapshot(snapshot, snapshotPath);
+    console.log(`${EDITIONS[edition].name} ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, ${report.cardsInImperialGarrison} in Imperiale Garnison, ${report.cardsOpenForRuleReview.length} zur Regelprüfung.`);
+    return;
+  }
+  const [definition, themeDefinitions, supplemental] = await Promise.all([
     readJson(deckPath),
     readJson(themesPath),
     readJson(new URL('../data/premiere-supplemental-cards.json', import.meta.url))
   ]);
-  const catalog = readCatalog(snapshot);
   const decks = readStarterDecks(definition, catalog);
   const themes = readThemedDecks(themeDefinitions, [...catalog, ...readSupplementalCards(supplemental)]);
   const selectable = new Set([...decks.light.cards, ...decks.dark.cards,
@@ -128,20 +173,12 @@ async function main(args) {
   const omitted = catalog.filter(card => !selectable.has(card.id));
   if (omitted.length) throw new Error('Premiere-Karten ohne auswählbares Deck: ' + omitted.map(card => card.id).join(', '));
   const audit = buildAudit(catalog, decks);
+  if (mode === '--verify-scans') return writeScanReport(catalog);
   if (mode === '--report') {
     process.stdout.write(serialize({inputsSha256: SHA256, ...audit}));
     return;
   }
-  if (mode === '--verify-scans') {
-    const report = await verifyScanLinks(catalog);
-    process.stdout.write(serialize(report));
-    if (report.failures.length) process.exitCode = 1;
-    return;
-  }
-  if (mode === '--verify-source' && serialize(snapshot) !== serialize(await readJson(snapshotPath))) {
-    throw new Error('Der versionierte Snapshot weicht vom reproduzierten Quelldatensatz ab.');
-  }
-  if (mode === undefined) await replaceSnapshot(snapshot);
+  if (mode === undefined) await replaceSnapshot(snapshot, snapshotPath);
   console.log(`Premiere ${REVISION}: 162 Light + 162 Dark, ${2 + themes.light.length + themes.dark.length} Decks à 60 Karten, ${audit.errata.length} Errata-Einträge geprüft.`);
 }
 

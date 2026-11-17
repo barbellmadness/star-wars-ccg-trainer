@@ -503,7 +503,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
       <label><input id="nightConditions" type="checkbox" onchange="setNightConditions(this.checked)"> Nachtbedingungen aktiv (manuelle Lernbedingung)</label>
     </div>
     <button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre>
-    <button id="viewCatalog" type="button" aria-haspopup="dialog" disabled>Premiere-Kartenkatalog öffnen</button>
+    <button id="viewCatalog" type="button" aria-haspopup="dialog" disabled>Kartenkatalog öffnen</button>
     <p class="hint">V2 Premiere · Einzelpartie mit den 324 Premiere-Karten gegen den Bot.</p><p><a href="index.html">Zur bisherigen Alpha</a></p>
   </details>
 </main>
@@ -526,6 +526,11 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
     <h3 id="starterDeckStrategyTitle">Strategie-Einweisung</h3>
     <dl id="starterDeckStrategySteps"></dl>
   </section>
+  <div id="catalogEditionBox" class="catalog-search" hidden>
+    <label for="catalogEdition">Edition</label> <select id="catalogEdition">
+      <option value="1">Premiere</option><option value="2">A New Hope</option>
+    </select>
+  </div>
   <label id="catalogSearchBox" class="catalog-search" hidden>Karte suchen <input id="catalogSearch" type="search"></label>
   <ul id="starterDeckCards" tabindex="0"></ul>
 </dialog>
@@ -547,9 +552,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.29"></script><script>
+<script src="engine/premiere-data.js?v=2.15.30"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.29"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.29';
+const trainerVersion='2.15.30';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -561,6 +566,7 @@ const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&
 
 let selected=-1, selectedTableCard=null, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
 let localPrintTexts=new Map();
+let aNewHopeCatalog=null,aNewHopeLoad=null,aNewHopeLoadFailed=false;
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action,handler='dispatchUI'){
@@ -880,6 +886,7 @@ function showStarterDeck(side,id){
  el('starterDeckTitle').textContent=(deck.theme?.name??sideName[side]+' Side Deck')+' · '+deck.cards.length+' Karten';
  const description=el('starterDeckDescription');
  el('catalogSearchBox').hidden=true;
+ el('catalogEditionBox').hidden=true;
  description.hidden=!deck.theme;
  description.textContent=deck.theme?.description??'';
  const strategy=deck.strategy;
@@ -901,26 +908,58 @@ function showStarterDeck(side,id){
  list.scrollTop=0;
 }
 
+const aNewHopeSelected=()=>el('catalogEdition').value===PremiereData.A_NEW_HOPE;
+const visibleCatalog=()=>aNewHopeSelected()?aNewHopeCatalog:catalog;
+const expansionCardStatus=card=>PremiereData.isGarrisonExpansionCard(card)?'In „Imperiale Garnison“ verfügbar':'Regelprüfung offen';
+
 function renderCatalog(){
+ const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected();
+ const name=PremiereData.EDITIONS[expansion?PremiereData.A_NEW_HOPE:PremiereData.EDITION].name;
+ const description=el('starterDeckDescription');
+ el('starterDeckTitle').textContent=name+'-Kartenkatalog'+(cards?' · '+cards.length+' Karten':'');
+ description.hidden=!expansion;
+ if(expansion)description.textContent='Vorschau auf das Set. Die Liste zeigt den Stand der Regelfreigabe je Karte.';
+ if(!cards){
+  list.innerHTML=aNewHopeLoadFailed?'<li>A New Hope konnte nicht geladen werden. Wechsle die Edition, um es erneut zu versuchen.</li>':
+   '<li>A New Hope wird geladen …</li>';
+  return;
+ }
  const query=el('catalogSearch').value.trim().toLocaleLowerCase('de-DE');
- const matches=catalog.flatMap((card,index)=>card.name.toLocaleLowerCase('de-DE').includes(query)?[{card,index}]:[]);
- el('starterDeckCards').innerHTML=matches.length?matches.map(({card,index})=>'<li><button type="button" onclick="inspectCatalogCard('+index+')">'+
-  escapeHTML(card.name+' · '+card.side)+'</button></li>').join(''):'<li>Keine passende Karte</li>';
+ const matches=cards.flatMap((card,index)=>card.name.toLocaleLowerCase('de-DE').includes(query)?[{card,index}]:[]);
+ list.innerHTML=matches.length?matches.map(({card,index})=>'<li><button type="button" aria-haspopup="dialog" onclick="inspectCatalogCard('+index+')">'+
+  escapeHTML(card.name+' · '+card.side)+'</button>'+(expansion?' <small class="hint">'+escapeHTML(expansionCardStatus(card))+'</small>':'')+'</li>').join(''):
+  '<li>Keine passende Karte</li>';
+}
+
+function selectCatalogEdition(){
+ if(aNewHopeSelected()&&!aNewHopeCatalog&&!aNewHopeLoad){
+  aNewHopeLoadFailed=false;
+  aNewHopeLoad=readLocalJson('data/a-new-hope.json').then(payload=>{
+   aNewHopeCatalog=readCatalog(payload,PremiereData.A_NEW_HOPE);
+  }).catch(()=>{aNewHopeLoadFailed=true;}).finally(()=>{
+   aNewHopeLoad=null;
+   if(aNewHopeSelected()&&!el('catalogEditionBox').hidden&&el('starterDeckDialog').open)renderCatalog();
+  });
+ }
+ renderCatalog();
+ el('starterDeckCards').scrollTop=0;
 }
 
 function showCatalog(){
- el('starterDeckTitle').textContent='Premiere-Kartenkatalog · '+catalog.length+' Karten';
- el('starterDeckDescription').hidden=true;
  el('starterDeckStrategy').hidden=true;
  el('catalogSearchBox').hidden=false;
+ el('catalogEditionBox').hidden=false;
+ el('catalogEdition').value=PremiereData.EDITION;
  el('catalogSearch').value='';
  renderCatalog();
  el('starterDeckDialog').showModal();
+ el('starterDeckCards').scrollTop=0;
  el('catalogSearch').focus();
 }
 
 function inspectCatalogCard(index){
- if(Number.isInteger(index)&&catalog[index])showCardWithStats(catalog[index]);
+ const card=Number.isInteger(index)?visibleCatalog()?.[index]:null;
+ if(card)showCardWithStats(card);
 }
 
 function inspectDeckCard(id){
@@ -1424,15 +1463,17 @@ function cardTextDetails(card){
   :printText?'<h3>Drucktext</h3>'+['Light','Dark'].map(side=>'<p style="white-space:pre-wrap"><b>'+side
    +' Side</b><br>'+escapeHTML(printText[side]||'Feld im Scan leer')+'</p>').join('')
   :card.images?.print?'<p class="hint">Drucktext im Kartenscan · Transkription offen</p>':'';
- const guide=PremiereLearning.cardGuide(card,PremiereCardRules.entry(card).effects);
+ const expansion=card.set===PremiereData.A_NEW_HOPE;
+ const guide=expansion&&!PremiereData.isGarrisonExpansionCard(card)?null:PremiereLearning.cardGuide(card,PremiereCardRules.entry(card).effects);
  return block('Aktiver Spieltext',(texts.active??card.gametext)||'Kein Spieltext vorhanden')+slip+print
   +(texts.preErrata?block('Verknüpfte Vor-Errata-Fassung',texts.preErrata):'')
   +(texts.lore?block('Lore',texts.lore):'')
-  +block('Deutsche Erklärung',guide.explanation)+block('Auslösezeitpunkt',guide.timing)+block('Beispiel',guide.example)
-  +block('Stand der Umsetzung',cardEffectStatus(card));
+  +(guide?block('Deutsche Erklärung',guide.explanation)+block('Auslösezeitpunkt',guide.timing)+block('Beispiel',guide.example):'')
+  +block('Stand der Umsetzung',expansion?expansionCardStatus(card):cardEffectStatus(card));
 }
 
 function displayCardValue(card,field){
+ if(field==='destiny'&&card.destinyValues?.length>1)return escapeHTML(card.destinyValues.join(' oder '));
  const parsed=card.values?.[field];
  if(parsed?.kind==='special')return escapeHTML(parsed.raw)+' (Sonderwert)';
  if(parsed?.kind==='unknown')return 'unbekannt';
@@ -2647,6 +2688,7 @@ for(const id of ['endGame','endBattleGame']){
 el('viewLightDeck').onclick=()=>showStarterDeck('light');
 el('viewDarkDeck').onclick=()=>showStarterDeck('dark');
 el('viewCatalog').onclick=showCatalog;
+el('catalogEdition').onchange=selectCatalogEdition;
 el('catalogSearch').oninput=renderCatalog;
 el('showBotHand').onchange=()=>{
  if(showLearningBotHand()&&activeSave){
