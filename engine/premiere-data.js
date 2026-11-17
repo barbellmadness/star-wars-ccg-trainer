@@ -230,8 +230,8 @@ const PremiereData = (() => {
     const byId = new Map(catalog.map(card => [card.id, card]));
     return Object.fromEntries(SIDES.map(side => {
       const definitions = payload.decks?.[side];
-      if (!Array.isArray(definitions) || definitions.length !== 5) {
-        throw new Error(side + ' benötigt fünf zusätzliche Premiere-Themendecks.');
+      if (!Array.isArray(definitions) || definitions.length === 0) {
+        throw new Error(side + ' benötigt mindestens ein Premiere-Themendeck.');
       }
       const choices = definitions.map(definition => ({definition, deck: buildStarterDeck(side, definition, byId)}));
       const ids = new Set(choices.map(({deck}) => deck.theme?.id));

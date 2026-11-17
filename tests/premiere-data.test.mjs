@@ -48,14 +48,14 @@ test('linked print text is kept separate and the audit lists the remaining scans
   assert.doesNotMatch(redOne.texts.active, /Must have pilot aboard/);
 });
 
-test('both sides have five distinct, valid 60-card themed decks with playable starting locations', () => {
+test('both sides have seven distinct, valid 60-card themed decks with playable starting locations', () => {
   const catalog = [...readCatalog(snapshot), ...readSupplementalCards(json('premiere-supplemental-cards.json'))];
   const definitions = json('premiere-themed-decks.json');
   const sets = readThemedDecks(definitions, catalog);
   for (const side of ['light', 'dark']) {
-    assert.equal(sets[side].length, 5);
+    assert.equal(sets[side].length, 7);
     const lineups = sets[side].map(({deck}) => deck.cards.map(card => card.id).sort().join(','));
-    assert.equal(new Set(lineups).size, 5);
+    assert.equal(new Set(lineups).size, sets[side].length);
     for (const {deck, definition} of sets[side]) {
       assert.equal(deck.cards.length, 60);
       assert.deepEqual([...new Set(deck.startingIndices.map(index => deck.cards[index].id))], definition.startingLocations);
@@ -74,6 +74,19 @@ test('both sides have five distinct, valid 60-card themed decks with playable st
   assert.throws(() => readThemedDecks(invalid, catalog), /mindestens eine Starting Location/);
   invalid.decks.Light[0] = structuredClone(invalid.decks.Light[1]);
   assert.throws(() => readThemedDecks(invalid, catalog), /eindeutige IDs/);
+  for (const [side, theme, checks] of [
+    ['light', 'jedi-auf-tatooine', {'Light:1803': 3, 'Light:1039': 3, 'Light:1813': 2}],
+    ['light', 'droidenstuetzpunkt', {'Light:343': 3, 'Light:1995': 3, 'Light:2052': 5}],
+    ['dark', 'vaders-jagd', {'Dark:634': 4, 'Dark:1061': 3, 'Dark:2517': 2}],
+    ['dark', 'sturmtruppen-offensive', {'Dark:2355': 9, 'Dark:2634': 3, 'Dark:1027': 3}],
+  ]) {
+    const {deck, definition} = sets[side].find(choice => choice.deck.theme.id === theme);
+    assert.equal(definition.startingLocations.length, 3);
+    assert.ok(deck.cards.every(card => card.set === '1'));
+    for (const [id, count] of Object.entries(checks)) {
+      assert.equal(deck.cards.filter(card => card.id === id).length, count);
+    }
+  }
 });
 
 test('the selectable decks include all 324 Premiere cards, including the nine previously rejected cards', () => {
@@ -83,14 +96,14 @@ test('the selectable decks include all 324 Premiere cards, including the nine pr
     [...catalog, ...readSupplementalCards(json('premiere-supplemental-cards.json'))]);
   const coversAll = new Set();
   const originalDecks = new Set();
-  for (const [side, addition, admitted] of [
-    ['light', 'rebellen-spezialeinsatz', [1102, 1500, 1600, 2105, 2385]],
-    ['dark', 'imperiale-sondereinheit', [575, 643, 2517, 2528]],
+  for (const [side, addition, earlier, admitted] of [
+    ['light', 'rebellen-spezialeinsatz', ['massassi-widerstand', 'rote-staffel', 'tatooine-verbuendete', 'falcon-kessel'], [1102, 1500, 1600, 2105, 2385]],
+    ['dark', 'imperiale-sondereinheit', ['imperiale-garnison', 'schwarze-staffel', 'tusken-ueberfall', 'blockade-von-kessel'], [575, 643, 2517, 2528]],
   ]) {
     const additionalDeck = themes[side].find(({deck}) => deck.theme.id === addition).deck;
     const newIds = new Set(additionalDeck.cards.map(card => card.id));
     for (const id of admitted) assert.ok(newIds.has(side[0].toUpperCase()+side.slice(1)+':'+id));
-    for (const card of [...starters[side].cards, ...themes[side].filter(({deck}) => deck !== additionalDeck).flatMap(({deck}) => deck.cards)]) {
+    for (const card of [...starters[side].cards, ...themes[side].filter(({deck}) => earlier.includes(deck.theme.id)).flatMap(({deck}) => deck.cards)]) {
       originalDecks.add(card.id);
     }
     for (const id of newIds) coversAll.add(id);
