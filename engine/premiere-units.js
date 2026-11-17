@@ -88,8 +88,8 @@ const PremiereUnits = (() => {
   }
   const matchingBattleDestiny = (ship, pilot, matchNames) => matchingPilot(ship, pilot, matchNames)?.[2] === true;
 
-  function stats(card, permanentAbility, {landed = false, activePilotText = false} = {}) {
-    const occupants = (card.occupants ?? []).filter(({card}) => active(card)&&!card.asleep);
+  function stats(card, permanentAbility, {landed = false, activePilotText = false, excludesOccupant = () => false} = {}) {
+    const occupants = (card.occupants ?? []).filter(({card}) => active(card)&&!card.asleep&&!excludesOccupant(card));
     const pilots = occupants.filter(({role}) => role === 'pilot').map(({card}) => card);
     const motor = card.type === 'Starship' ? permanentAbility !== null || pilots.length > 0
       : tube(card) || bantha(card) || occupants.some(({role,card}) => role === 'driver' && canDrive(card));
