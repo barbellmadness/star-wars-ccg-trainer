@@ -336,6 +336,13 @@ const PremiereCardRules = (() => {
     continuous('pilotPower', 'Ein von Tanbris gesteuertes Schiff erhält +2 Power. Ein Starfighter erhält außerdem −1 Maneuver.',
       'piloted ship', 'Tanbris discounts only weapons on the ship he pilots', { amount: 2, legacy: true }),
   ], true);
+  register(['Light:2625','Dark:2029'], [
+    continuous('tableEffect', 'Für 1 Force auf der eigenen Tischseite ausspielen.', 'own side of table',
+      'Traffic Control and Reactor Terminal recycle selected cards only during Control', { cost: 1, ownSide: true, since: 8 }),
+    continuous('recycleHand', 'In der eigenen Control-Phase beliebig viele Handkarten in gewählter Reihenfolge auf den Used Pile legen.',
+      'own hand and top of own Used Pile', 'Traffic Control and Reactor Terminal recycle selected cards only during Control',
+      { duration: 'instant', expires: 'after resolving', since: 8 }),
+  ], true);
   register(['Dark:1989'], [
     continuous('capitalAstromech', 'An Bord eines Capital Starships steigen Power und Hyperspeed um 1. Das Schiff ist immun gegen Attrition unter 3.',
       'capital starship aboard', 'R1-G4 modifies capital ships and cannot board fighters', { below: 3, amount: 1, legacy: true }),
@@ -366,6 +373,16 @@ const PremiereCardRules = (() => {
   register(['Light:2907'], [permanentPilot, capacityRule('Kann einen zusätzlichen Piloten oder Passagier aufnehmen.', { shared: 1 })], true);
   register(['Light:2057'], [capacityRule('Kann einen Piloten aufnehmen.', { pilot: 1 })], true);
   register(['Light:2060'], [capacityRule('Kann einen Piloten und einen Astromech aufnehmen.', { pilot: 1, astromech: 1 })], true);
+  register(['Light:1045'], [
+    continuous('crewCapacity', 'Kann insgesamt bis zu zwei Piloten oder Passagiere aufnehmen.', 'up to two pilots and passengers combined',
+      'Gold 1, Custom TIE and Ubrikkian follow their individual rules', { capacity: { shared: 2 }, legacy: true }),
+  ], true);
+  register(['Dark:2700'], [
+    continuous('crewCapacity', 'Kann einen Piloten aufnehmen.', 'one pilot',
+      'Gold 1, Custom TIE and Ubrikkian follow their individual rules', { capacity: { pilot: 1 }, legacy: true }),
+    continuous('pilotedImmunity', 'Wird der TIE von Vader gesteuert, ist er immun gegen Attrition unter 4.', 'Vader as pilot',
+      'Gold 1, Custom TIE and Ubrikkian follow their individual rules', { below: 4, legacy: true }),
+  ], true);
   const carriersTest = 'Premiere transports enforce crew, cargo and docking capacity';
   for (const [id, ability, slots, summary] of [
     ['Light:530',1,{ pilot: 3, passenger: 4, cargo: 1 },'Drei Piloten, vier Passagiere und ein Fahrzeug.'],
@@ -400,6 +417,11 @@ const PremiereCardRules = (() => {
     battleDrainReact,
     continuous('liftTubeMovement', 'Kann vier Passagiere tragen. Einsatz und Bewegung sind auf innere mobile Sites beschränkt. Es braucht keinen Fahrer.',
       'interior mobile sites and passengers', transportTest, { capacity: { passenger: 4 }, legacy: true }),
+  ], true);
+  register(['Dark:2660'], [
+    battleDrainReact,
+    continuous('crewCapacity', 'Kann einen Fahrer und zwei Passagiere aufnehmen.', 'driver and passengers aboard',
+      'Gold 1, Custom TIE and Ubrikkian follow their individual rules', { capacity: { driver: 1, passenger: 2 }, legacy: true }),
   ], true);
   for(const [id, passengers, riders] of [
     ['Light:1609',2,'Luke'], ['Light:2307',3,'Luke, Beru oder Owen']

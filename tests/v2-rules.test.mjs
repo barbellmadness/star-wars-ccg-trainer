@@ -1357,6 +1357,45 @@ test('Kal’Falnl sets opposite single battle destiny to zero',async()=>{
  assert.equal(run('battleSession.lightDestiny'),4);
 });
 
+test('Traffic Control and Reactor Terminal recycle selected cards only during Control',async()=>{
+ const {run}=await craftHarness();
+ for(const [id,side,first,second] of [
+  ['Light:2625','Light','Light:2052','Light:2040'],['Dark:2029','Dark','Dark:2355','Dark:1279'],
+ ]){
+  assert.equal(run(`(()=>{
+   const cardSide='${side}',opponent=PremiereGame.otherSide(cardSide),own=PremiereGame.zones(state,cardSide);
+   const effect=card('${id}'),topFirst=card('${first}'),topSecond=card('${second}');
+   setupDecks=null;state.game=PremiereGame.actionState(131,1);state.game.cardRulesVersion=8;
+   state.activeSide=cardSide;state.phase=2;state.botTurn=cardSide==='Dark'?{steps:[],index:0}:null;
+   own.hand.splice(0,own.hand.length,effect,topFirst,topSecond);
+   const before=own.force.length;
+   if(!requestAction('deployTableEffect',cardSide,[0])||!state.tableEffects.some(record=>record.card===effect&&record.target===cardSide))return false;
+   if(own.force.length!==before-1||requestAction('recycleHand',cardSide,[0]))return false;
+   state.phase=1;state.activeSide=opponent;
+   if(requestAction('recycleHand',cardSide,[0]))return false;
+   state.activeSide=cardSide;
+   if(!requestAction('recycleHand',cardSide,[1])||!requestAction('recycleHand',cardSide,[0]))return false;
+   return own.force.length===before-1&&own.hand.length===0&&own.used.at(-1)===topFirst&&own.used.at(-2)===topSecond;
+  })()`),true);
+ }
+});
+
+test('Gold 1, Custom TIE and Ubrikkian follow their individual rules',async()=>{
+ const {run}=await craftHarness();
+ run(`const gold=card('Light:1045'),custom=card('Dark:2700'),ubrikkian=card('Dark:2660'),vader=card('Dark:634');
+  const trooper=card('Dark:2355'),darkPilot=card('Dark:1279'),lightPilot=card('Light:2040');
+  PremiereUnits.add(gold,lightPilot,'pilot','Light');PremiereUnits.add(gold,card('Light:2052'),'passenger','Light');`);
+ assert.equal(run("!PremiereUnits.accepts(gold,lightPilot,'pilot')&&!PremiereUnits.accepts(gold,lightPilot,'passenger')"),true);
+ run("battleSession={site:0,participants:{Light:[],Dark:[custom]}};state.dark[0]=[custom];PremiereUnits.add(custom,darkPilot,'pilot','Dark')");
+ assert.equal(run("battleImmunity('Dark',custom)"),0);
+ run("custom.occupants=[];PremiereUnits.add(custom,vader,'pilot','Dark')");
+ assert.equal(run("battleImmunity('Dark',custom)"),4);
+ assert.equal(run("!PremiereUnits.accepts(custom,darkPilot,'pilot')&&!PremiereUnits.accepts(custom,trooper,'passenger')"),true);
+ run("state.dark[2]=[ubrikkian];PremiereUnits.add(ubrikkian,trooper,'driver','Dark')");
+ assert.equal(run("reactOptions('Dark',{kind:'battle',side:'Light',site:3}).some(option=>option.card===ubrikkian&&option.cost===1)"),true);
+ assert.equal(run("!PremiereUnits.accepts(ubrikkian,trooper,'driver')&&PremiereUnits.accepts(ubrikkian,trooper,'passenger')"),true);
+});
+
 test('registered Premiere locations apply their printed sides and exceptions',async()=>{
  const {run}=await craftHarness();
  run(`const jawa=card('Light:1373'),spy=card('Dark:1011');
@@ -2581,7 +2620,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,7);
+ assert.equal(saved.cardRulesVersion,8);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

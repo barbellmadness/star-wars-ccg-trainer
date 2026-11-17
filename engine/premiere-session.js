@@ -3,7 +3,7 @@ let catalog=[],starterDecks=null,state=null,battleSession=null,setupDecks=null;
 let nextGameId=0, presentGame=()=>{};
 const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
-const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','deployLocationEffect','alterLocationEffect','deployTableEffect','retrieve','searchReserve','equip','deployDevice','deployBolt','deviceAction','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel','prisonerTransfer']);
+const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','deployLocationEffect','alterLocationEffect','deployTableEffect','recycleHand','retrieve','searchReserve','equip','deployDevice','deployBolt','deviceAction','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel','prisonerTransfer']);
 
 function forceFromLocations(side){
  return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
@@ -170,7 +170,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=7;
+const latestCardRulesVersion=8;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -1665,11 +1665,12 @@ const tableEffectRule=card=>activeCardRules(card,'tableEffect')[0];
 
 function tableEffectOptions(side){
  if(!state.game)return [];
- const {hand,force}=PremiereGame.zones(state,side),target=PremiereGame.otherSide(side);
+ const {hand,force}=PremiereGame.zones(state,side);
  const waiver=controlledLocationRule(side,'freeNamedDeploy');
  return (hand??[]).flatMap((card,index)=>{
   const rule=tableEffectRule(card);
   if(!rule||card.side!==side||!withinDeploymentLimit(card,side))return [];
+  const target=rule.ownSide?side:PremiereGame.otherSide(side);
   const free=waiver?.rule.names.includes(locationTitle(card));
   const cost=free?0:rule.cost;
   return cost<=(force?.length??0)?[{args:[index],card,target,cost,
@@ -1692,7 +1693,22 @@ function deployTableEffect(side,index){
 
 function placeTableEffect({card,target}){
  (state.tableEffects??=[]).push({card,target});
- log(card.name+' liegt auf der '+target+' Side. Warriors dieser Seite kosten +1 Force.');
+ log(card.name+' liegt auf der '+target+' Side.'+(tableEffectRule(card)?.warriorDeploy?' Warriors dieser Seite kosten +1 Force.':''));
+}
+
+function recycleHandOptions(side){
+ const table=state.tableEffects?.find(({card,target})=>target===side&&activeCardRules(card,'recycleHand').length);
+ if(!table)return [];
+ return (PremiereGame.zones(state,side).hand??[]).map((card,index)=>({args:[index],card,
+  label:table.card.name+' · '+card.name+' auf Used Pile legen'}));
+}
+
+function recycleHandCard(side,index){
+ const {hand,used}=PremiereGame.zones(state,side);
+ const [card]=hand.splice(index,1);
+ used.push(card);
+ log(side+' legt '+card.name+' auf den Used Pile.');
+ return true;
 }
 
 function cancelTableEffect(effect){
@@ -2219,6 +2235,11 @@ function botNextStep(repeatPhase=true,adaptive=true){
   if(retrieval)requestAction(retrieval.kind,'Dark',retrieval.args);
   const seeker=legalActions(state,'Dark').find(option=>option.kind==='moveSeeker');
   if(seeker)requestAction('moveSeeker','Dark',seeker.args);
+  if(strategicBot()&&state.botHand.length>=3){
+   const redundant=legalActions(state,'Dark').find(option=>option.kind==='recycleHand'&&option.card.uniquenessLimit===1&&
+    (!withinDeploymentLimit(option.card,'Dark')||state.botHand.some(card=>card!==option.card&&card.id===option.card.id)));
+   if(redundant)performAction(redundant);
+  }
   if(!botDrain())botSay('Control: Keine weitere Location erlaubt einen Force Drain.');
  }else if(action.kind==='deploy'){
   const actions=botDeployPhase();
@@ -3779,6 +3800,7 @@ function legalActions(position,side,request){
  }else if(position.phase===1){
   for(const option of forceDrainOptions(side))actions.push(offer('drain',option.bonus?[option.siteIndex,option.bonus]:[option.siteIndex],option));
   for(const option of seekerMoves(side))actions.push(offer('moveSeeker',option.args,option));
+  for(const option of recycleHandOptions(side))actions.push(offer('recycleHand',option.args,option));
  }else if(position.phase===2){
   for(const option of tableEffectOptions(side))actions.push(offer('deployTableEffect',option.args,option));
   for(const option of automatedDeployOptions(side))actions.push(offer('deployAutomated',[option.index,option.slot],option));
@@ -3838,6 +3860,7 @@ function executeAction(action){
   case 'deployLocationEffect': return deployLocationEffect(side,...args);
   case 'alterLocationEffect': return initiateAlterLocationEffect(side,...args);
   case 'deployTableEffect': return deployTableEffect(side,...args);
+  case 'recycleHand': return recycleHandCard(side,...args);
   case 'cancelTableEffect': return initiateTableCancellation(side,...args);
   case 'retrieve':
   case 'searchReserve': return playRetrieval(side,kind,...args);

@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.0';
+const trainerVersion='2.15.1';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -503,7 +503,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
- const tableEffects=available.filter(option=>['deployTableEffect','cancelTableEffect'].includes(option.kind)&&option.args[0]===selected)
+ const tableEffects=available.filter(option=>['deployTableEffect','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
  const equipment=available.filter(option=>['weaponEffect','moveSeeker','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
