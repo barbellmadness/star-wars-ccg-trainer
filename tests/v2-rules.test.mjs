@@ -1064,6 +1064,34 @@ async function craftHarness(){
  return {run,elements};
 }
 
+test('only the driver contributes battle-destiny ability aboard an enclosed Sandcrawler',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(268,0);state.game.cardRulesVersion=24;state.phase=3;
+  const crawler=card('Light:2161'),driver=card('Light:1593'),passenger=card('Light:1803');
+  PremiereUnits.add(crawler,driver,'passenger','Light');
+  PremiereUnits.add(crawler,passenger,'passenger','Light');
+  state.light[2]=[crawler];state.dark[2]=[card('Dark:2355')];`);
+ assert.equal(run("confirmedPresence('Light',2)&&battleTotals(2).lightAbility===0"),true);
+ run("crawler.occupants[0].role='driver'");
+ assert.equal(run("battleTotals(2).lightAbility===4&&requestAction('battle','Light',[2])"),true);
+ assert.ok(run("legalActions(state,'Light').some(offer=>offer.kind==='destiny')"));
+});
+
+test('landed and unpiloted ships and vehicles use the powered-down defense values',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(269,0);state.game.cardRulesVersion=24;
+  const black=card('Dark:247'),pilot=card('Dark:790'),speeder=card('Light:1609');
+  const armedFreighter=card('Light:530');armedFreighter.occupants=[];
+  const defenseAt=(card,slot)=>PremiereWeapons.defense(card,cardAbility(card),craftStats(card,slot));`);
+ assert.equal(run('defenseAt(black,0)'),0);
+ assert.equal(run('defenseAt(speeder,2)'),0);
+ assert.equal(run('defenseAt(armedFreighter,2)'),2);
+ run("PremiereUnits.add(black,pilot,'pilot','Dark')");
+ assert.equal(run('defenseAt(black,0)'),run('black.maneuver+1'));
+ assert.equal(run('defenseAt(black,2)'),0);
+ assert.equal(run("craftStats(black,2,true).powered&&craftStats(black,2).power===0"),true);
+});
+
 test('Premiere pilots apply bonuses only while piloting',async()=>{
  const {run}=await craftHarness();
  for(const [pilotId,shipId,side,bonus] of [
@@ -2867,7 +2895,7 @@ function autosaveStorage(){
  return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
 }
 
-test('starter decks replay complete matches with legal decisions and conserve all card instances',async()=>{
+test('selectable Premiere decks complete matches with legal decisions and conserve all card instances',async()=>{
  const {run}=await premiereHarness();
  run(`presentGame=()=>{};
  function inventory(){
@@ -2876,25 +2904,30 @@ test('starter decks replay complete matches with legal decisions and conserve al
    ...Object.values(state.locationEffects??{}).flat().map(effect=>effect.card),
    ...[...(state.buriedMines??[]),...(state.lostPileEffects??[])].map(effect=>effect.card)];
   if(state.blasterRack)roots.push(state.blasterRack.card,...state.blasterRack.weapons);
+  for(const effect of state.tableEffects??[]){
+   if(!effect.host)roots.push(effect.card);
+   roots.push(...(effect.support??[]),...(effect.weapons??[]));
+  }
   for(const side of PremiereGame.sides){
    const {deck,hand,force,used,lost,board}=PremiereGame.zones(state,side);
    roots.push(...deck,...hand,...force,...used,...lost,...board.flat());
   }
   function walk(card){
    return [card.instanceId,...[...(card.weapons??[]),...(card.attachments??[]),
-    ...(card.occupants??[]).map(entry=>entry.card)].flatMap(walk)];
+    ...(card.occupants??[]).map(entry=>entry.card),...(card.escortedCaptive?[card.escortedCaptive]:[])].flatMap(walk)];
   }
   return roots.flatMap(walk);
  }
- function playMatch(seed,cardRulesVersion=latestCardRulesVersion,botVersion=cardRulesVersion===0?0:1){
-  start(seed,true,false,starterDecks,cardRulesVersion,botVersion);
+ function playMatch(seed,cardRulesVersion=latestCardRulesVersion,botVersion=cardRulesVersion===0?0:1,decks=starterDecks){
+  start(seed,true,false,decks,cardRulesVersion,botVersion);
   const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
   choose();
   while(setupDecks.revealed.collision){retryStartingLocations();choose();}
   beginStartingGame();
   const summary={seed,ground:false,space:false,responses:0,reactions:0,botActions:0,validated:0};
   for(let step=0;step<1600&&!state.gameWinner;step++){
-   if(!PremiereGame.responseWindow(state.game)&&!battleSession&&!state.game.timing.pending){
+   if(!PremiereGame.responseWindow(state.game)&&!battleSession&&!state.game.timing.pending&&
+      !state.pendingCardView&&!state.pendingReserveSearch&&!state.pendingCustody?.length&&!state.automatedPending){
     const ids=inventory();
     if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Card balance at '+seed+'/'+step);
     summary.validated++;
@@ -2904,19 +2937,23 @@ test('starter decks replay complete matches with legal decisions and conserve al
    if(response)summary.responses++;
    if(battleSession)summary[isSystem(state.locations[battleSession.site])?'space':'ground']=true;
    if(dark.some(action=>['botStep','botDecision'].includes(action.kind))&&
-      !state.pendingForceLoss&&!battleSession&&!response&&!state.game.timing.pending&&!state.automatedPending){
+      !state.pendingForceLoss&&!battleSession&&!response&&!state.game.timing.pending&&!state.automatedPending&&
+      !state.pendingCardView&&!state.pendingReserveSearch&&!state.pendingCustody?.length){
     if(!botNextStep())throw Error('Bot refused a step at '+seed+'/'+step);
     summary.botActions++;
     continue;
    }
-   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger','battlePrediction','duel',
+   const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger','battlePrediction','duel','custody','takeFromReserve',
     'fireWeapon','battleEffect','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage','loseForce',
-    'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance'];
+    'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance','skipSeekerMove'];
    const options=light.length?light:dark;
    let action;
    if(!light.length&&botVersion===2)action=botPromptAction(dark);
    if(!light.length&&battleSession?.weaponTurn==='Dark')action=botWeaponAction();
    if(!light.length&&battleSession?.damage?.priority==='Dark')action=botDamageAction();
+   if(!action&&state.pendingCardView){
+    action=options.find(option=>['confirm','deploy','recover','relocate','pay','retrieve','done','pass'].includes(option.args[0]))??options[0];
+   }
    action??=preferred.map(kind=>kind==='activate'?options.filter(action=>action.kind===kind).at(-1):
     options.find(action=>action.kind===kind)).find(Boolean);
    if(!action||!performAction(action))throw Error('Unresolved '+(action?.kind??options.map(option=>option.kind))+' at '+seed+'/'+step+' phase '+state.phase);
@@ -2938,6 +2975,9 @@ test('starter decks replay complete matches with legal decisions and conserve al
  const planned=JSON.parse(run('JSON.stringify(playMatch(4,latestCardRulesVersion,2))'));
  assert.ok(planned.winner&&planned.botActions>0&&planned.validated>0,JSON.stringify({...planned,trace:undefined}));
  assert.deepEqual(JSON.parse(run('JSON.stringify(playMatch(4,latestCardRulesVersion,2))')),planned);
+ const themes=JSON.parse(run(`JSON.stringify(deckChoices.light.slice(1).map(({deck:light},index)=>
+  playMatch(index+6,latestCardRulesVersion,2,{light,dark:deckChoices.dark[index+1].deck})))`));
+ assert.ok(themes.every(match=>match.winner&&match.botActions>0&&match.validated>0),JSON.stringify(themes.map(({trace,...summary})=>summary)));
 });
 
 function startSavedGame(run,seed=0){
@@ -3100,12 +3140,40 @@ test('the two additional Premiere decks start together and preserve their cards 
  assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-sondereinheit');
 });
 
+test('reloading an expired Scomp Link Access peek keeps its cards concealed and still permits the required shuffle',async()=>{
+ const lists={schema:1,decks:{
+  Light:{startingLocations:['Light:2858'],cards:[
+   {id:'Light:2858',count:1},{id:'Light:2447',count:19},{id:'Light:2180',count:19},
+   {id:'Light:1995',count:19},{id:'Light:2907',count:2},
+  ]},
+  Dark:{startingLocations:['Dark:2458'],cards:[{id:'Dark:2458',count:1},{id:'Dark:2355',count:59}]},
+ }};
+ const storage=autosaveStorage();
+ const {run,elements}=await premiereHarness(lists,{storage});
+ startSavedGame(run,5);
+ assert.ok(run(`Date.now=()=>1000;
+  const playPeek=(kind,check=()=>true)=>dispatchUI(legalActions(state,'Light').find(action=>action.kind===kind&&check(action)));
+  act('chooseStart','Light',legalActions(null,'Light')[0].args)&&act('beginGame')&&
+  playPeek('activate',offer=>offer.args[0]===3)&&playPeek('advance')&&playPeek('advance')&&
+  playPeek('deployLocation',offer=>offer.card.id==='Light:2447')&&
+  playPeek('deploy',offer=>offer.card.id==='Light:1995'&&offer.location.id==='Light:2447')&&
+  playPeek('pileInterrupt',offer=>offer.args[1]==='scompPeek'&&offer.args[2]==='Dark')`));
+ assert.match(elements.get('controlPanel').innerHTML,/data-scomp-peek/);
+ assert.equal(run("JSON.parse(localStorage.getItem(saveKey)).peekDeadline"),21000);
+ const reload=await premiereHarness(lists,{storage});
+ assert.equal(reload.run('Date.now=()=>30000;resumeGameFromUI()'),true);
+ assert.doesNotMatch(reload.elements.get('controlPanel').innerHTML,/data-scomp-peek|Stormtrooper/);
+ assert.match(reload.elements.get('controlPanel').innerHTML,/Reserve Deck mischen/);
+ assert.equal(reload.run("dispatchUI(legalActions(state,'Light')[0])&&!state.pendingCardView"),true);
+ assert.equal(reload.run("'peekDeadline' in JSON.parse(localStorage.getItem(saveKey))"),false);
+});
+
 test('legacy autosaves resume without applying new registered card rules retroactively',async()=>{
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,23);
+ assert.equal(saved.cardRulesVersion,24);
  assert.equal(saved.botStrategyVersion,2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -5342,6 +5410,16 @@ test('We’re Doomed halves individual losses only during the turn',async()=>{
  assert.equal(run("beginForceLoss('Light',5,{reason:'drain'})===5"),true);
 });
 
+test('Beru Stew resolves as much Force as possible even when neither player has a Reserve Deck',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(267,0);state.game.cardRulesVersion=24;
+  const stew=card('Light:222');state.hand=[stew,card('Light:222')];state.botHand=[];
+  state.deck=[];state.botDeck=[];`);
+ assert.equal(run("requestAction('pileInterrupt','Light',[0,'beruStew'])&&requestAction('finishCardInformation','Light',['first','Dark'])"),true);
+ assert.equal(run("state.force.length===5&&state.botForce.length===5&&state.lost.includes(stew)&&!state.pendingCardView"),true);
+ assert.equal(run("requestAction('pileInterrupt','Light',[0,'beruStew'])"),false);
+});
+
 test('the Trash Compactor destroys both sides’ cards at its site',async()=>{
  const {run}=await craftHarness();
  run("setupDecks=null;state.game=PremiereGame.actionState(182,0);const compactor=card('Light:680'),light=card('Light:343'),dark=card('Dark:2355'),safe=card('Light:1593');state.locations[3]=compactor;state.light[3]=[light];state.dark[3]=[dark];state.light[4]=[safe];state.hand=[];state.botHand=[card('Dark:2762')];light.missing=true;");
@@ -5867,11 +5945,28 @@ test('Yerka Mig moves and can be canceled by the pursuing character',async()=>{
  assert.equal(run("state.light[4].includes(mig)&&requestAction('apprehendMig','Dark',[0])&&state.lost.includes(mig)"),true);
 });
 
-test('Beggar pays one action from opposing Force and is lost after borrowing more than one',async()=>{
+test('the previous rules version replays Beggar paying one action and expiring immediately',async()=>{
  const {run}=await craftHarness();
- run("setupDecks=null;state.game=PremiereGame.actionState(242,0);const beggar=card('Light:215'),luke=card('Light:1593');state.light[3]=[luke];state.hand=[beggar];state.botHand=[];");
+ run("setupDecks=null;state.game=PremiereGame.actionState(242,0);state.game.cardRulesVersion=23;const beggar=card('Light:215'),luke=card('Light:1593');state.light[3]=[luke];state.hand=[beggar];state.botHand=[];");
  assert.equal(run("requestAction('deployLocationEffect','Light',[0,3])&&state.force.length===2&&requestAction('beggarPayment','Light')&&requestAction('finishCardInformation','Light',[2])"),true);
  assert.equal(run("spendForce('Light',3);state.force.length===1&&state.botForce.length===3&&state.botUsed.length===2&&state.lost.includes(beggar)&&!beggarCredit('Light')"),true);
+});
+
+test('Beggar counts borrowed Force across actions and loses at turn end, excluding the Jawa opponent share',async()=>{
+ const {run}=await craftHarness();
+ run(`setupDecks=null;state.game=PremiereGame.actionState(266,0);state.game.cardRulesVersion=24;
+  const beggar=card('Light:215'),jawa=card('Light:1373'),trooper=card('Light:2052');
+  state.hand=[beggar,jawa,trooper];state.botHand=[];
+  const borrow=n=>requestAction('beggarPayment','Light')&&requestAction('finishCardInformation','Light',[n]);`);
+ assert.equal(run("requestAction('deployLocationEffect','Light',[0,3])&&borrow(1)"),true);
+ run('state.botForce=[{name:"One opposing Force"}];state.force=[]');
+ assert.equal(run("requestAction('deploy','Light',[0,3])"),false);
+ run('state.botForce.push(...forcePile())');
+ assert.ok(run("requestAction('deploy','Light',[0,3])"));
+ assert.equal(run('state.botUsed.length===2&&state.beggarLoans.values().next().value.amount===1'),true);
+ assert.ok(run("borrow(1)&&requestAction('deploy','Light',[0,3])"));
+ assert.equal(run('state.botUsed.length===3&&!state.lost.includes(beggar)&&state.beggarLoans.values().next().value.amount===2'),true);
+ assert.equal(run("state.phase=5;advance()&&state.lost.includes(beggar)&&state.beggarLoans.size===0"),true);
 });
 
 test('Organa’s necklace follows its carrier and passes after a drain',async()=>{
