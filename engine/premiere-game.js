@@ -295,7 +295,9 @@ const PremiereGame = (() => {
     try {
       const result = resolve(valid);
       if (result && game) {
-        game.actions.push({kind: valid.kind, side: valid.side, args: valid.args.slice()});
+        const entry={kind: valid.kind, side: valid.side, args: valid.args.slice()};
+        if (game.lesson && valid.card) entry.cardId=valid.card.id;
+        game.actions.push(entry);
         game.revision++;
       }
       return result;

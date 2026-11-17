@@ -422,6 +422,7 @@ function withinDeploymentLimit(card,side){
 
 function log(x){
  state.log.unshift(x);
+ if(state.game?.publicHistory)state.game.publicHistory.push({turn:state.turn,side:state.activeSide,phase:state.phase,message:x});
  if(state.botTurn)(state.botHistory??=[]).unshift(x);
  if(battleSession)battleSession.recentEvents=[x,...(battleSession.recentEvents??[]).slice(0,2)];
 }
@@ -448,6 +449,7 @@ function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainin
  if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295)return false;
  battleSession=null;state=null;
  const game=PremiereGame.actionState(++nextGameId,seed);
+ game.publicHistory=[];
  game.starterDecks=decks;
  game.cardRulesVersion=cardRulesVersion;
  game.botStrategyVersion=botStrategyVersion;
@@ -498,12 +500,19 @@ function finishSetup(){
  // Only the final picks leave the decks. Set-aside cards return to the shuffle.
  const deck=PremiereGame.shuffle(setup.light.cards.filter((card,index)=>index!==lightChoice?.index),setup.game);
  const botDeck=PremiereGame.shuffle(setup.dark.cards.filter((card,index)=>index!==darkChoice?.index),setup.game);
- const firstSide=activeCardRules(lightChoice?.card,'firstTurn').length||activeCardRules(darkChoice?.card,'mobileSystem').length?'Light':'Dark';
+ const lesson=setup.game.lesson;
+ if(lesson)PremiereLearning.arrangeHand(lesson,deck);
+ const firstSide=lesson||activeCardRules(lightChoice?.card,'firstTurn').length||activeCardRules(darkChoice?.card,'mobileSystem').length?'Light':'Dark';
  state=PremiereGame.createState(setup.game,deck,botDeck,locations,initialLocationOrder(locations),firstSide);
+ if(lesson){
+  PremiereLearning.prepare(lesson,state,PremiereGame,PremiereUnits);
+  state.locationOrder=initialLocationOrder(state.locations);
+ }
  state.trainingBattle=setup.trainingBattle;
  registerDuelTiming();
  setupDecks=null;
  log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. '+firstSide+' Side beginnt.');
+ if(lesson)log('Lernstart · '+PremiereLearning.lesson(lesson).title+'. Ausgangslage für die Übung vorbereitet.');
  if(firstSide==='Dark')botBegin();
  checkpoint('turn:start',()=>checkpoint('phase:start',()=>{}));
  return true;
