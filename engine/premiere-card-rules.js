@@ -262,7 +262,23 @@ const PremiereCardRules = (() => {
   register(['Dark:489'], [
     continuous('device', 'Comlink kostet beim Deploy 1 Force und eröffnet Deploy-React-Optionen am Ort des Trägers oder an einer Nachbar-Site.',
       'character', 'Comlink equips', { cost: 1, since: 2, deployReact: true }),
-  ]);
+    continuous('reusableComlink','Kann auf einer Figur beider Seiten liegen. Aktiviert bei jedem passenden gegnerischen Battle oder Force Drain normale Deploys als React.',
+      'host location or adjacent site','Comlink and CZ-3 apply normal React deployment rules',{since:18}),
+  ],true);
+  register(['Light:593'], [
+    continuous('characterDeployReact','Beim gegnerischen Battle oder Force Drain an CZ-3s Location oder einer angrenzenden Site kannst du dort Karten zum normalen Preis als React ausspielen.',
+      'host location or adjacent site','Comlink and CZ-3 apply normal React deployment rules',{since:18}),
+  ],true);
+  register(['Light:735','Dark:734'], [
+    continuous('disarmedEffect','In jeder Control Phase auf eine bewaffnete gegnerische Figur an einer Site mit eigener bewaffneter Figur ausspielen. Die Figur verliert ihre Waffen, hat −1 Power und kann keine Waffen tragen. Immun gegen Alter.',
+      'armed opposing character at the same site','both Disarmed effects remove existing weapons',{since:18}),
+  ],true);
+  register(['Dark:262'], [
+    continuous('tableEffect','Auf der eigenen Tischseite ausspielen. Kann jederzeit eigene Charakterwaffen von einer Site aufnehmen.',
+      'character weapons at any site','Blaster Rack stores weapons and loses them when canceled',{ownSide:true,weaponRack:true,since:18}),
+    continuous('rackRelease','In deiner Deploy Phase darfst du die Waffe für ihre normalen Deploy-Kosten einem berechtigten eigenen Charakter geben.',
+      'eligible friendly character','Blaster Rack stores weapons and loses them when canceled',{since:18}),
+  ],true);
   register(['Light:2102', 'Dark:2833'], [
     continuous('tableEffect', 'Liegt auf der gegnerischen Tischseite. Die Warriors dieser Seite kosten beim Deploy 1 Force mehr.',
       'opposing table', 'Central Core waives Wrong Turn', { since: 5, cost: 3, warriorDeploy: 1, expires: 'when canceled' }),

@@ -2285,7 +2285,7 @@ test('Tusken Raiders count present non-unique copies and Alderaan reduces opposi
 
 test('Comlink equips a character and opens a paid Deploy-React from an adjacent site',async()=>{
  const {run}=await craftHarness();
- run(`setupDecks=null;state.game=PremiereGame.actionState(113,1);state.activeSide='Dark';
+ run(`setupDecks=null;state.game=PremiereGame.actionState(113,1);state.game.cardRulesVersion=17;state.activeSide='Dark';
   const carrier=card('Dark:1027'),comlink=card('Dark:489'),reinforcement=card('Dark:2355');
   state.dark[2]=[carrier];state.dark[6]=[tie];state.botHand=[comlink,reinforcement,card('Dark:2355')];
   state.locationOrder=[2,3,4,6,5,1,0];state.light[3]=[card('Light:2052')];`);
@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,17);
+ assert.equal(saved.cardRulesVersion,18);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -4484,4 +4484,73 @@ test('Laser Projector checks destiny and targets before marking a hit',async()=>
  assert.equal(run("choices().length"),0);
  run("state.botDeck=[{name:'High',destiny:4}];");
  assert.equal(run("performAction(choices().find(action=>action.target===target))&&battleSession.hitUnits.Light.includes(target)&&state.botForce.length===4"),true);
+});
+
+test('Comlink and CZ-3 apply normal React deployment rules to crew and Devices',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  const opponent=side==='Light'?'Dark':'Light';
+  run(`const side='${side}',opponent='${opponent}',source=card('${side==='Light'?'Light:593':'Light:2052'}');
+   const crew=card('${side==='Light'?'Light:2052':'Dark:2355'}'),driver=card('${side==='Light'?'Light:2040':'Dark:1279'}');
+   const carrier=card('${side==='Light'?'Light:1609':'Dark:2660'}'),device=card('${side==='Light'?'Light:2435':'Dark:2360'}');
+   const comlink=card('Dark:489'),own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,opponent);
+   setupDecks=null;state.game=PremiereGame.actionState(138,0);
+   own.hand.splice(0,own.hand.length,crew,device);rival.hand.length=0;
+   state.locationOrder=[4,3,2,6,0,1,5];
+   own.board[3]=[carrier,card('${side==='Light'?'Light:2052':'Dark:2355'}')];
+   rival.board[3]=[card('${side==='Light'?'Dark:2355':'Light:2052'}')];
+   PremiereUnits.add(carrier,driver,'driver',side);`);
+  if(side==='Dark'){
+   run("rival.board[2]=[source];state.activeSide='Dark';own.hand.unshift(comlink);");
+   assert.equal(run("requestAction('deployDevice','Dark',[0,2,0,'Light'])&&source.attachments.includes(comlink)"),true);
+  }else run("own.board[2]=[source];");
+  run("state.activeSide=opponent;state.phase=3;state.botTurn=opponent==='Dark'?{steps:[],index:0}:null;");
+  assert.equal(run("requestAction('battle',opponent,[3])"),true);
+  assert.equal(run(`const offer=(placement)=>legalActions(state,side).find(action=>action.kind==='reactDeploy'&&action.placement===placement);
+   offer('device')?.cost===1&&offer('crew')?.item===carrier`),true);
+  const startingForce=run("own.force.length");
+  assert.equal(run("performAction(offer('crew'))&&requestAction('passResponse',opponent)&&requestAction('passResponse',side)"),true);
+  assert.equal(run("carrier.occupants.some(entry=>entry.card===crew)&&!own.board[3].includes(crew)"),true);
+  assert.equal(run("requestAction('passResponse',opponent)&&performAction(offer('device'))"),true);
+  assert.equal(run("requestAction('passResponse',opponent)&&requestAction('passResponse',side)"),true);
+  assert.equal(run("PremiereLocations.findEntry(state,device)?.slot"),3);
+  assert.equal(run("own.force.length"),startingForce-2);
+  run("own.hand.push(card(side==='Light'?'Light:2052':'Dark:2355'));");
+  assert.equal(run("reactDeployOptions(side,{kind:'battle',side:opponent,site:2}).length>0"),true);
+  run("(side==='Light'?source:comlink).gameTextCancelled=true;");
+  assert.equal(run("reactDeployOptions(side,{kind:'battle',side:opponent,site:2}).length"),0);
+ }
+});
+
+test('both Disarmed effects remove existing weapons only with an armed character present',async()=>{
+ for(const side of ['Light','Dark']){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side);
+   const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,opponent);
+   const actor=card(side==='Light'?'Light:2052':'Dark:2355'),target=card(side==='Light'?'Dark:2355':'Light:2052');
+   const disarmed=card(side==='Light'?'Light:735':'Dark:734'),weapon=card(side==='Light'?'Dark:1264':'Light:259');
+   setupDecks=null;state.game=PremiereGame.actionState(139,0);state.activeSide=opponent;state.phase=1;
+   own.hand.splice(0,own.hand.length,disarmed);target.weapons=[weapon];own.board[3]=[actor];rival.board[3]=[target];`);
+  assert.equal(run("const action=()=>legalActions(state,side).find(option=>option.args[0]==='disarm');!action()"),true);
+  run("actor.weapons=[card(side==='Light'?'Light:259':'Dark:1264')];");
+  assert.equal(run("performAction(action())&&rival.lost.includes(weapon)&&own.hand.length===0"),true);
+  assert.equal(run("PremiereWeapons.disarmed(target)&&PremiereWeapons.deployCost(weapon,target,1)===null&&cardPowerModifier(target,opponent,3)===-1&&!alterTarget(disarmed)"),true);
+ }
+});
+
+test('Blaster Rack stores weapons, releases them at their normal price and loses them when canceled',async()=>{
+ const {run}=await craftHarness();
+ run(`const rack=card('Dark:262'),second=card('Dark:262'),weapon=card('Dark:1264'),owner=card('Dark:2355'),recipient=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(140,0);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.hand=[];state.botHand=[rack,second];state.dark[3]=[owner];state.dark[2]=[recipient];owner.weapons=[weapon];`);
+ assert.equal(run("requestAction('deployTableEffect','Dark',[0])&&requestAction('deployTableEffect','Dark',[0])&&blasterRacks().length===2"),true);
+ run("state.activeSide='Light';state.phase=5;state.botTurn=null;");
+ assert.equal(run("const store=()=>legalActions(state,'Dark').find(action=>action.args[0]==='rackIn'&&action.rack.card===second);performAction(store())"),true);
+ assert.equal(run("!owner.weapons.length&&blasterRacks()[1].weapons[0]===weapon&&!legalActions(state,'Dark').some(action=>action.args[0]==='rackOut')"),true);
+ run("state.activeSide='Dark';state.phase=2;state.botTurn={steps:[],index:0};");
+ assert.equal(run("performAction(legalActions(state,'Dark').find(action=>action.args[0]==='rackOut'&&action.target.host===recipient))"),true);
+ assert.equal(run("recipient.weapons[0]===weapon&&state.botUsed.length===1&&performAction(store())"),true);
+ run("state.hand=[card('Light:95')];state.light[3]=[card('Light:1593')];state.deck=[{name:'Low',destiny:1}];");
+ assert.equal(run("requestAction('cancelTableEffect','Light',[0,1])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')"),true);
+ assert.equal(run("blasterRacks().length===1&&state.botLost.includes(second)&&state.botLost.includes(weapon)"),true);
 });

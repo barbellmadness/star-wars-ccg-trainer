@@ -18,13 +18,13 @@ Ziel ist eine vollständige lokale Einzelspielerpartie mit Light Side gegen den 
 
 Das [Kartenregelregister](engine/premiere-card-rules.js) verknüpft den aktiven Referenztext jeder Premiere-Karte mit ihrer Quelle. Central Core ermöglicht den kostenlosen Deploy von Wrong Turn. Bei Kontrolle hebt die Light-Seite der Central Core den Tractor Beam auf, und der Detention Block Control Room befreit auf dem Todesstern inhaftierte Figuren. Für die Tonnika Sisters ist der einfache Mos-Eisley-Bonus gemäß aktueller Kombikarten-Regel geprüft.
 
-V2.15.10 führt 191 der 324 Premiere-Karten als vollständig, 12 als teilweise umgesetzt und 121 als offen. Die letzten Prüfungen decken unter anderem die Seeker-Bewegung in der gegnerischen Move Phase, ihre Zielwahl und den Laser Projector ab. Die aktuelle Abdeckung steht im Kartenregelregister und in V2 unter „Kartenfähigkeiten: Vollständigkeitsprüfung“.
+V2.15.11 führt 196 der 324 Premiere-Karten als vollständig, 11 als teilweise umgesetzt und 117 als offen. Die letzten Prüfungen decken Deploy-React durch Comlink und CZ-3, beide Disarmed-Karten und Blaster Rack ab. Die aktuelle Abdeckung steht im Kartenregelregister und in V2 unter „Kartenfähigkeiten: Vollständigkeitsprüfung“.
 
 - [ ] Pro Karten-ID einen Eintrag mit Regelquelle, gültigem Text, einzelnen Effekten, Ereignis, Kosten, Zielen, Dauer, Ablauf und Testreferenzen führen. Dieselbe Karte kann mehrere offene und bereits ausführbare Abschnitte haben.
 - [ ] Die Abdeckungsanzeige aus den registrierten Effekten und ihren Tests ableiten. Eine Karte erst nach Prüfung aller ihrer spielrelevanten Abschnitte als vollständig markieren. Die übrigen im Code verstreuten Regeln in das Register überführen.
 - [ ] Charakterfähigkeiten für Einsatzbeschränkungen, Merkmale, Droiden, Spione, Nachtbedingungen, Pilotboni, Zielwahl, Forfeit und passende Kombinationen vervollständigen. Häufige Karten der Starterdecks gezielt testen.
 - [ ] Retract The Bridge und Death Star Tractor Beam aus A New Hope vollständig umsetzen. Weitere Gefangennahmekarten und Carbonit-Gefangene bleiben Teil künftiger Erweiterungen.
-- [ ] Weitere Devices mit Ausspielen, Trägern, Einsatzkosten, Nutzungsgrenzen, automatischen Effekten und Zielwechseln abbilden. Dazu gehört Deploy-React über Comlink.
+- [ ] Weitere Devices mit Ausspielen, Trägern, Einsatzkosten, Nutzungsgrenzen, automatischen Effekten und Zielwechseln abbilden.
 - [ ] Weitere Effects mit Aufstellungsziel, Dauer, laufenden Modifikatoren, Triggern, Aufheben und Ablauf umsetzen. Die Ziel- und Ortsverfolgung von Death Star Plans, Kessel Run und Our Most Desperate Hour auf weitere Utinni Effects ausweiten.
 - [ ] Weitere Interrupts mit Used- und Lost-Verhalten, Auswahl zwischen gedruckten Optionen, Antwortfenstern, Zielbedingungen und Kosten implementieren. Alter und Sense für neue Effect- und Interrupt-Aktionen anbinden.
 - [ ] Weitere Varianten von Suche und Offenlegen, gezieltem Stapelwechsel, Kartentausch, Retrieval, Verlust, Out of Play, Schutz, Kontrollwechsel und Aufheben als prüfbare Aktionen abbilden.

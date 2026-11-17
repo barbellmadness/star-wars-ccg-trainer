@@ -366,7 +366,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.10';
+const trainerVersion='2.15.11';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -422,8 +422,8 @@ function responseMarkup(window,available){
   const option=legalActions(state,'Dark')[0];
   return description+(battleOnPlaymat?ruleButton(option,'Antwort des Bots zeigen'):botRuleButton(option,'Antwort des Bots zeigen'));
  }
- return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,['react','reactDeploy'].includes(option.kind)
-  ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.label??option.card?.name??'Passen')).join(' ')+'</div>';
+ return description+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label??(['react','reactDeploy'].includes(option.kind)
+  ?option.card.name+' ('+(option.kind==='reactDeploy'?'Deploy-React':'React')+', '+option.cost+' Force)':option.card?.name??'Passen'))).join(' ')+'</div>';
 }
 
 function renderPlayerReact(window,available){
@@ -511,8 +511,8 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
- const rack=state.blasterRack;
- const rackView=rack?'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>':'';
+ const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
+ const rackView=racks.map(rack=>'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>').join('');
  const extra=[retrieval,shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
