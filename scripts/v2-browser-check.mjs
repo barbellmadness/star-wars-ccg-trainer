@@ -25,7 +25,9 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#launchDeckGrid').isVisible(), false);
     assert.match(await page.locator('#launchSides button').first().innerHTML(), /lightcardback\.png.*lukeskywalker\.gif/s);
     await chooseSide('light');
-    assert.equal(await deckTiles.count(), 6);
+    assert.equal(await deckTiles.count(), 8);
+    assert.match(await deckTiles.filter({hasText: 'Jedi auf Tatooine'}).innerHTML(), /obiwankenobi\.gif.*Obi-Wan Kenobi/s);
+    assert.match(await deckTiles.filter({hasText: 'Droidenstützpunkt'}).innerHTML(), /c3po\.gif.*C-3PO/s);
     await deckTiles.filter({hasText: 'Schmuggler auf dem Kessel Run'}).click();
     assert.match(await deckTiles.locator('xpath=self::button[@aria-pressed="true"]').innerHTML(), /millenniumfalcon\.gif.*Millennium Falcon/s);
     await page.getByRole('button', {name: 'Deckliste ansehen'}).click();
@@ -33,15 +35,17 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.keyboard.press('Escape');
     await page.getByRole('button', {name: 'Seite wechseln'}).click();
     await chooseSide('dark');
-    assert.equal(await deckTiles.count(), 6);
+    assert.equal(await deckTiles.count(), 8);
+    assert.match(await deckTiles.filter({hasText: 'Vaders Jagd'}).innerHTML(), /darthvader\.gif.*Darth Vader/s);
+    assert.match(await deckTiles.filter({hasText: 'Sturmtruppen-Offensive'}).innerHTML(), /stormtrooper\.gif.*Stormtrooper/s);
     assert.match(await deckTiles.filter({hasText: 'Blockade von Kessel'}).innerHTML(), /devastator\.gif.*Devastator/s);
     await page.getByRole('button', {name: 'Seite wechseln'}).click();
     await chooseSide('light');
     await page.locator('#matchSettings summary').click();
     const lightDeck = page.getByLabel('Light Side', {exact: true});
     const darkDeck = page.getByLabel('Dark Side', {exact: true});
-    assert.equal(await lightDeck.locator('option').count(), 6);
-    assert.equal(await darkDeck.locator('option').count(), 6);
+    assert.equal(await lightDeck.locator('option').count(), 8);
+    assert.equal(await darkDeck.locator('option').count(), 8);
     await lightDeck.selectOption('rebellen-spezialeinsatz');
     await darkDeck.selectOption('imperiale-sondereinheit');
     await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
@@ -293,7 +297,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.22'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.23'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

@@ -272,6 +272,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 .launch-summary{flex:1 1 245px;margin:0;color:#cbd5e7;font-size:13px}
 .launch-summary strong{color:#f3db9f;display:block;margin-bottom:3px}
 .launch-primary{background:linear-gradient(#f5d98d,#bf9952);border-color:#e3c686;color:#17120a;font-weight:750}
+@media(min-width:960px){.launch-deck-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:620px){
  .launch-deck-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .launch-side{min-height:178px}
@@ -485,7 +486,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.22';
+const trainerVersion='2.15.23';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -701,9 +702,11 @@ const deckSelector=side=>el('select'+sideName[side]+'Deck');
 const deckId=deck=>deck?.theme?.id??'starter';
 const launchFactions={
  light:{caption:'Rebellion',hero:'Light:1593',covers:{'massassi-widerstand':'Light:1021','rote-staffel':'Light:2060',
-  'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343'}},
+  'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343',
+  'jedi-auf-tatooine':'Light:1803','droidenstuetzpunkt':'Light:343'}},
  dark:{caption:'Galaktisches Imperium',hero:'Dark:634',covers:{'imperiale-garnison':'Dark:1061','schwarze-staffel':'Dark:2700',
-  'tusken-ueberfall':'Dark:2648','blockade-von-kessel':'Dark:723','imperiale-sondereinheit':'Dark:478'}},
+  'tusken-ueberfall':'Dark:2648','blockade-von-kessel':'Dark:723','imperiale-sondereinheit':'Dark:478',
+  'vaders-jagd':'Dark:634','sturmtruppen-offensive':'Dark:2355'}},
 };
 let launchOpen=false,launchFaction=null;
 

@@ -3108,8 +3108,8 @@ test('learning Undo stops at a voluntarily revealed bot hand and at a private dr
 test('selected theme decks set the starting locations and are saved, replayed and previewed',async()=>{
  const storage=autosaveStorage();
  const {run,elements}=await premiereHarness(starterLists,{storage});
- assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,6);
- assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,6);
+ assert.equal(elements.get('selectLightDeck').innerHTML.match(/<option/g).length,8);
+ assert.equal(elements.get('selectDarkDeck').innerHTML.match(/<option/g).length,8);
  run("el('selectLightDeck').value='falcon-kessel';el('selectLightDeck').onchange();el('viewLightDeck').onclick()");
  assert.match(elements.get('starterDeckTitle').textContent,/Kessel Run · 60 Karten/);
  assert.match(elements.get('starterDeckCards').innerHTML,/3 × •Millennium Falcon/);
