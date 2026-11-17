@@ -21,8 +21,16 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
     const lightDeck = page.getByLabel('Light Side', {exact: true});
     const darkDeck = page.getByLabel('Dark Side', {exact: true});
-    assert.equal(await lightDeck.locator('option').count(), 5);
-    assert.equal(await darkDeck.locator('option').count(), 5);
+    assert.equal(await lightDeck.locator('option').count(), 6);
+    assert.equal(await darkDeck.locator('option').count(), 6);
+    await lightDeck.selectOption('rebellen-spezialeinsatz');
+    await darkDeck.selectOption('imperiale-sondereinheit');
+    await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
+    assert.match(await page.getByRole('dialog', {name: 'Rebellen-Spezialeinsatz · 60 Karten'}).textContent(), /Han's Back.*Surprise Assault/s);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', {name: 'Dark Side Deck ansehen'}).click();
+    assert.match(await page.getByRole('dialog', {name: 'Imperiale Sondereinheit · 60 Karten'}).textContent(), /Counter Assault.*Dathcha.*The Circle Is Now Complete/s);
+    await page.keyboard.press('Escape');
     await lightDeck.selectOption('massassi-widerstand');
     await darkDeck.selectOption('schwarze-staffel');
     await page.getByRole('button', {name: 'Light Side Deck ansehen'}).click();
@@ -259,7 +267,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Power & Destiny');
     assert.match(await battle.locator('#battlePriority').textContent(), /Du bist dran/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.17'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.18'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());

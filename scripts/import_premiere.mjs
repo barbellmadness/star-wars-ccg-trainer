@@ -123,6 +123,10 @@ async function main(args) {
   const catalog = readCatalog(snapshot);
   const decks = readStarterDecks(definition, catalog);
   const themes = readThemedDecks(themeDefinitions, [...catalog, ...readSupplementalCards(supplemental)]);
+  const selectable = new Set([...decks.light.cards, ...decks.dark.cards,
+    ...[...themes.light, ...themes.dark].flatMap(({deck}) => deck.cards)].map(card => card.id));
+  const omitted = catalog.filter(card => !selectable.has(card.id));
+  if (omitted.length) throw new Error('Premiere-Karten ohne auswählbares Deck: ' + omitted.map(card => card.id).join(', '));
   const audit = buildAudit(catalog, decks);
   if (mode === '--report') {
     process.stdout.write(serialize({inputsSha256: SHA256, ...audit}));

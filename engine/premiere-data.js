@@ -172,7 +172,9 @@ const PremiereData = (() => {
        'Light:2180','Dark:1265','Light:1187','Light:2319','Light:2509',
        'Light:1913','Light:2646','Dark:1599','Dark:1401','Dark:619','Dark:266','Dark:1815',
        'Light:1834','Light:1794','Light:2689','Dark:2688','Light:1125','Light:2570','Dark:1565','Light:585','Light:2863',
-       'Dark:1857','Light:215','Dark:667','Dark:2103'].includes(card.id)) return true;
+       'Dark:1857','Light:215','Dark:667','Dark:2103',
+       'Light:1102','Light:1500','Light:1600','Light:2105','Dark:2528', // Named retrieval and Reserve Deck search
+       'Light:2385','Dark:575','Dark:2517','Dark:643'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 
@@ -228,8 +230,8 @@ const PremiereData = (() => {
     const byId = new Map(catalog.map(card => [card.id, card]));
     return Object.fromEntries(SIDES.map(side => {
       const definitions = payload.decks?.[side];
-      if (!Array.isArray(definitions) || definitions.length !== 4) {
-        throw new Error(side + ' benötigt vier zusätzliche Premiere-Themendecks.');
+      if (!Array.isArray(definitions) || definitions.length !== 5) {
+        throw new Error(side + ' benötigt fünf zusätzliche Premiere-Themendecks.');
       }
       const choices = definitions.map(definition => ({definition, deck: buildStarterDeck(side, definition, byId)}));
       const ids = new Set(choices.map(({deck}) => deck.theme?.id));

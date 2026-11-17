@@ -406,7 +406,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.17';
+const trainerVersion='2.15.18';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -437,6 +437,9 @@ function dispatchUI(action){
 }
 function ruleButton(action,label,handler){
  return '<button '+ruleClick(action,handler)+'>'+escapeHTML(label)+'</button>';
+}
+function actionForceCost({cost,opponentCost}){
+ return cost+' Force'+(opponentCost?' + '+opponentCost+' gegnerische Force':'');
 }
 function botRuleButton(action,label){
  return el('autoBot').checked?'':ruleButton(action,label);
@@ -558,6 +561,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.innerHTML='';box.style.display='none';return;
  }
  const retrieval=available.filter(option=>['retrieve','searchReserve'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const botInterrupt=offTurnBotInterrupt();
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
  const tableEffects=available.filter(option=>['deployTableEffect','deployReserveInsert','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
@@ -566,7 +570,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
  const rackView=racks.map(rack=>'<p>Blaster Rack · '+(rack.weapons.map(card=>escapeHTML(card.name)).join(', ')||'leer')+'</p>').join('');
- const extra=[retrieval,shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
+ const extra=[retrieval,botInterrupt?botRuleButton(botInterrupt,'Interrupt des Bots zeigen'):'',shuffle,tableEffects,equipment,lostPileEffects,rackView].filter(Boolean).join(' ');
  box.innerHTML=extra;box.style.display=extra?'block':'none';
 }
 
@@ -812,7 +816,7 @@ function openMovement(i){
   const role=crewLabels[option.args[5]];
   const label=option.kind==='move'?state.locations[option.to].name+' · '+option.movementKind:
    option.label+' · '+(option.args[0]==='shuttleDown'?state.locations[option.to].name:option.carrier.name)+(role?' · '+role:'');
-  units.get(card).push(ruleButton(option,label+' ('+option.cost+' Force)','playMovement'));
+  units.get(card).push(ruleButton(option,label+' ('+actionForceCost(option)+')','playMovement'));
  }
  el('movementTitle').textContent=(state.phase===4||options.some(option=>option.kind==='move')?'Bewegung':'Besatzung')+' · '+state.locations[i].name;
  const body=el('movementOptions');
@@ -1111,7 +1115,7 @@ function inspectorActions(actions,card){
   const verbs={deploy:'Ausspielen',deployWithPilot:'Mit Pilot ausspielen',deployLocation:'Location auslegen',
    convertLocation:'Konvertieren',equip:'Ausrüsten',drain:'Force Drain',battle:'Battle beginnen',move:'Bewegen',
    fireWeapon:'Feuern',custody:'Gefangenen verwalten',transport:'Besatzung wechseln'};
-  const cost=Number.isFinite(option.cost)?' · '+option.cost+' Force':'';
+  const cost=Number.isFinite(option.cost)?' · '+actionForceCost(option):'';
   const label=option.label??[verbs[option.kind]??'Kartenaktion',target,option.pilot?.name,
    option.kind==='drain'?option.amount+' Force':null].filter(Boolean).join(' · ');
   const source=option.rule?.summary??(option.card??option.weapon)?.name??'Grundregel am Ort '+card.name;
@@ -1357,7 +1361,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
- const actions=(deploy?ruleButton(deploy,'Ausspielen ('+deploy.cost+' Force)'):'')
+ const actions=(deploy?ruleButton(deploy,'Ausspielen ('+actionForceCost(deploy)+')'):'')
   +(battle?ruleButton(battle,'Battle ('+battle.cost+' Force)'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
@@ -1506,6 +1510,13 @@ let autoBotTimer=null;
 const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state&&!state.gameWinner&&
  !battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
 
+function offTurnBotInterrupt(available){
+ if(!plannedBot()||(currentGame()?.cardRulesVersion??0)<23||state.activeSide!=='Light'||pendingActionReason())return null;
+ const legal=(available??legalActions(state,'Dark')).filter(option=>
+  ['retrieve','searchReserve','limitedResources'].includes(option.kind));
+ return choosePlannedBotAction(legal);
+}
+
 function automaticBotAction(){
  if(!automaticBot())return null;
  const dark=legalActions(state,'Dark');
@@ -1519,7 +1530,8 @@ function automaticBotAction(){
   if(battleSession.damage?.priority==='Dark')return botDamageAction();
   return dark.find(action=>action.kind==='destiny')??dark.find(action=>action.kind==='skipDestiny');
  }
- return dark.find(action=>action.kind==='botStep'||action.kind==='botDecision')??chooseBotSeekerMove(dark.filter(action=>action.kind==='moveSeeker'));
+ return dark.find(action=>action.kind==='botStep'||action.kind==='botDecision')??
+  chooseBotSeekerMove(dark.filter(action=>action.kind==='moveSeeker'))??offTurnBotInterrupt(dark);
 }
 
 function scheduleAutomaticBot(){
