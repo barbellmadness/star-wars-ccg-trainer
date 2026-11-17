@@ -1529,6 +1529,53 @@ test('Limited Resources applies hand size, turn and ship tanks',async()=>{
  assert.match(elements.get('controlPanel').innerHTML,/Limited Resources/);
 });
 
+test('Defending battle interrupts distinguish lone characters and printed modes',async()=>{
+ for(const [interruptId,defenderId,side,expected] of [
+  ['Dark:1691','Dark:1061','Dark',[2]],['Dark:1691','Dark:741','Dark',[1]],
+  ['Light:2297','Light:1098','Light',[2]],['Light:2297','Light:305','Light',[1]],
+  ['Light:2740','Light:1495','Light',[1,2]],
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),defender=card('${defenderId}'),interrupt=card('${interruptId}'),
+   own=PremiereGame.zones(state,side),other=PremiereGame.zones(state,opponent);
+   setupDecks=null;state.game=PremiereGame.actionState(91,1);state.game.cardRulesVersion=11;
+   state.phase=3;state.activeSide=opponent;state.botTurn=opponent==='Dark'?{steps:[],index:0}:null;
+   own.board[2]=[defender];other.board[2]=[card(opponent==='Dark'?'Dark:2355':'Light:2052')];
+   own.hand.splice(0,own.hand.length,interrupt);other.hand.splice(0);
+   requestAction('battle',opponent,[2]);requestAction('passWeapons',opponent);
+   const draws=()=>legalActions(state,side).filter(action=>action.kind==='battleEffect').map(option=>option.args[1]);`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify(draws())')),expected,interruptId+' '+defenderId);
+  run("const droid=card('Light:1995');own.board[2].push(droid);refreshBattleParticipants()");
+  assert.equal(run('draws().length'),0,'a droid is also a participating character');
+  run('own.board[2].pop();refreshBattleParticipants()');
+  assert.equal(run(`requestAction('battleEffect',side,[0,${expected.at(-1)}])&&battleSession.extraDraws[side]===${expected.at(-1)}`),true);
+ }
+});
+
+test('Paired combat interrupts check opposing ability and the named opponent',async()=>{
+ for(const [interruptId,ownId,ordinaryId,specialId,rejectedId,side] of [
+  ['Dark:391','Dark:1061','Light:1098','Light:1495','Light:2052','Dark'],
+  ['Light:2531','Light:1593','Dark:60','Dark:634','Dark:2355','Light']
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),unit=card('${ownId}'),interrupt=card('${interruptId}'),
+   own=PremiereGame.zones(state,side),other=PremiereGame.zones(state,opponent),draw=()=>battleEffectOptions(side)[0]?.draws;
+   setupDecks=null;state.game=PremiereGame.actionState(92,1);state.game.cardRulesVersion=11;
+   state.phase=3;state.activeSide=side;state.botTurn=side==='Dark'?{steps:[],index:0}:null;
+   const guard=card('${rejectedId}');guard.weapons=[card(opponent==='Dark'?'Dark:1264':'Light:259')];
+   own.board[2]=[unit];other.board[2]=[guard];
+   own.hand.splice(0,own.hand.length,interrupt);other.hand.splice(0);
+   requestAction('battle',side,[2]);`);
+  assert.equal(run('draw()'),undefined);
+  run(`other.board[2]=[card('${ordinaryId}')];refreshBattleParticipants()`);
+  assert.equal(run('draw()'),1,interruptId);
+  run(`other.board[2]=[card('${specialId}')];refreshBattleParticipants()`);
+  assert.equal(run('draw()'),2);
+  assert.equal(run("requestAction('battleEffect',side,[0,1,0])"),false);
+  assert.equal(run("requestAction('battleEffect',side,[0,2,0])&&battleSession.extraDraws[side]===2"),true);
+ }
+});
+
 test('both Premiere Restraining Bolts block boarding moves and transfer for free',async()=>{
  const {run}=await craftHarness();
  run(`const lightBolt=card('Light:2100'),darkBolt=card('Dark:2099'),droid=card('Light:2000'),other=card('Dark:2001');
@@ -2767,7 +2814,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,10);
+ assert.equal(saved.cardRulesVersion,11);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;

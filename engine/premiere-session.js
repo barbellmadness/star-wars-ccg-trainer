@@ -170,7 +170,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=10;
+const latestCardRulesVersion=11;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -2565,7 +2565,7 @@ function enterBattleSegments(){
   if(x.segmented)x.segment='weapons';
   if(battleWeaponOptions('Light').length||battleWeaponOptions('Dark').length||
      (x.segmented&&PremiereGame.sides.some(side=>duelOptions(side).length||namedRetrievalOptions(side).length||shuffleOptions(side).length||tableCancellationOptions(side).length||
-      battleEffectOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
+      battleEffectOptions(side).length||limitedResourcesOptions(side).length||weaponEffectOptions(side).some(option=>option.args[0]==='overload'))))x.weaponTurn=x.initiator;
   else if(x.segmented)x.segment='power';
  });
 }
@@ -2681,6 +2681,28 @@ function battleEffectOptions(side){
   ['Dark:613',names.has('grand moff tarkin')&&(names.has('admiral motti')||names.has('general tagge'))]
  ]);
  const options=(hand??[]).flatMap((card,index)=>eligible.get(card.id)?[{args:[index],card,label:card.name+' · zwei Battle Destiny hinzufügen'}]:[]);
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=11){
+  const qualified=own.filter(card=>card.type==='Character'||(cardAbility(card)??0)>0);
+  const lone=x.initiator!==side&&qualified.length===1&&qualified[0].type==='Character'?qualified[0]:null;
+  const enemy=activeBattleUnits(PremiereGame.otherSide(side));
+  for(const [index,card] of (hand??[]).entries()){
+   const draws=activeCardRules(card,'defendingDestiny').filter(rule=>lone&&
+    (!rule.siteOnly||isSite(state.locations[x.site]))&&(!rule.character||locationTitle(lone)===rule.character)&&
+    (!rule.subType||lone.subType===rule.subType)&&(!rule.warrior||lone.warrior)).map(rule=>rule.draws);
+   for(const rule of activeCardRules(card,'opposedDestiny')){
+    if(!names.has(rule.own))continue;
+    for(const [targetIndex,target] of enemy.entries()){
+     if(target.type!=='Character'||target.subType!==rule.opponent||!(cardAbility(target)>2))continue;
+     const drawCount=locationTitle(target)===rule.special?2:1;
+     options.push({args:[index,drawCount,targetIndex],card,draws:drawCount,target,
+      label:card.name+' · '+drawCount+' Battle Destiny gegen '+target.name+' hinzufügen'});
+    }
+   }
+   for(const drawCount of new Set(draws)){
+    options.push({args:[index,drawCount],card,draws:drawCount,label:card.name+' · '+drawCount+' Battle Destiny hinzufügen'});
+   }
+  }
+ }
  const hit=x.lastHit;
  if(hit&&own.some(card=>card.id==='Dark:768'&&card!==hit.card&&PremiereLocations.present(state,card,x.site))&&
   hit.card.type==='Character'&&PremiereLocations.present(state,hit.card,x.site)){
@@ -2689,8 +2711,8 @@ function battleEffectOptions(side){
  return options;
 }
 
-function playBattleEffect(side,index){
- const option=battleEffectOptions(side).find(effect=>effect.args[0]===index),x=battleSession;
+function playBattleEffect(side,index,draws,targetIndex){
+ const option=battleEffectOptions(side).find(effect=>effect.args[0]===index&&effect.args[1]===draws&&effect.args[2]===targetIndex),x=battleSession;
  if(!option||x.weaponTurn!==side)return false;
  if(index<0){
   const hit=x.lastHit,{board}=PremiereGame.zones(state,hit.side),row=board[x.site];
@@ -2705,7 +2727,7 @@ function playBattleEffect(side,index){
  }
  const {hand}=PremiereGame.zones(state,side);
  hand.splice(index,1);
- const frame={kind:'interrupt',interrupt:'battleEffect',site:x.site,side,card:option.card};
+ const frame={kind:'interrupt',interrupt:'battleEffect',site:x.site,side,card:option.card,draws:option.draws??2,target:option.target};
  if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);
  else settleBattleEffect(frame);
  return true;
@@ -2714,8 +2736,8 @@ function playBattleEffect(side,index){
 function settleBattleEffect(frame){
  PremiereGame.zones(state,frame.side).lost.push(frame.card);
  if(!frame.cancelled){
-  scheduleBattleDestiny(frame.side,'battle',2);
-  log(frame.card.name+' fügt zwei Battle Destiny hinzu.');
+  scheduleBattleDestiny(frame.side,'battle',frame.draws);
+  log(frame.card.name+' fügt '+(frame.draws===2?'zwei':'eine')+' Battle Destiny'+(frame.target?' gegen '+frame.target.name:'')+' hinzu.');
  }
  battleSession.lastHit=null;
  finishWeaponAction(frame.side,false);
@@ -3154,7 +3176,7 @@ function botWeaponAction(){
   choice=options[0];
  }
  return available.find(x=>x.kind==='duel')??choice??
-  available.find(x=>['battleEffect','weaponEffect','retrieve','searchReserve'].includes(x.kind)||(x.kind==='cancelTableEffect'&&x.effect.target==='Dark'))??available.find(x=>x.kind==='passWeapons');
+  available.find(x=>['battleEffect','weaponEffect','retrieve','searchReserve','limitedResources'].includes(x.kind)||(x.kind==='cancelTableEffect'&&x.effect.target==='Dark'))??available.find(x=>x.kind==='passWeapons');
 }
 function botWeaponDecision(){return performAction(botWeaponAction())}
 // Hits still participate in combat. The damage segment requires them to be forfeited.

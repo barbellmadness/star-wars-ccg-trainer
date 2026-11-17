@@ -239,6 +239,31 @@ const PremiereCardRules = (() => {
     continuous('searchLightsaber', 'Für 1 Force ein Lichtschwert aus dem Reserve Deck aufdecken und auf die Hand nehmen. Danach wird das Reserve Deck gemischt.',
       'lightsaber in own Reserve Deck', 'Gift of the Mentor searches only for a lightsaber', { cost: 1, duration: 'instant', expires: 'after resolving', since: 10 }),
   ], true);
+  const defendingDestiny = (summary, draws, fields) =>
+    continuous('defendingDestiny', summary, 'sole defending character', 'Defending battle interrupts distinguish lone characters and printed modes',
+      { draws, duration: 'rest of battle', expires: 'after battle', since: 11, ...fields });
+  register(['Dark:1691'], [
+    defendingDestiny('Verteidigt Tarkin allein, zwei Battle Destiny hinzufügen.',2,{ character: 'grand moff tarkin' }),
+    defendingDestiny('Verteidigt ein Alien allein, eine Battle Destiny hinzufügen.',1,{ subType: 'Alien' }),
+  ], true);
+  register(['Light:2297'], [
+    defendingDestiny('Verteidigt Han eine Site allein, zwei Battle Destiny hinzufügen.',2,{ character: 'han solo', siteOnly: true }),
+    defendingDestiny('Verteidigt ein Alien eine Site allein, eine Battle Destiny hinzufügen.',1,{ subType: 'Alien', siteOnly: true }),
+  ], true);
+  register(['Light:2740'], [
+    defendingDestiny('Verteidigt ein Warrior eine Site allein, eine Battle Destiny hinzufügen.',1,{ warrior: true, siteOnly: true }),
+    defendingDestiny('Verteidigt Leia eine Site allein, zwei Battle Destiny hinzufügen.',2,{ character: 'leia organa', siteOnly: true }),
+  ], true);
+  for(const [id, own, opponent, special, summary] of [
+    ['Dark:391','grand moff tarkin','Rebel','leia organa','Kämpft Tarkin gegen einen Rebel mit mehr als 2 Ability, eine zusätzliche Destiny ziehen. Gegen Leia sind es zwei.'],
+    ['Light:2531','luke skywalker','Imperial','darth vader','Kämpft Luke gegen einen Imperial mit mehr als 2 Ability, eine zusätzliche Destiny ziehen. Gegen Vader sind es zwei.'],
+  ]){
+    register([id],[
+      continuous('opposedDestiny', summary, 'own named character and an opposing character of ability > 2',
+        'Paired combat interrupts check opposing ability and the named opponent',
+        { own, opponent, special, duration: 'rest of battle', expires: 'after battle', since: 11 }),
+    ],true);
+  }
   for(const [id, characters, cost] of [
     ['Light:1102','Han',1],['Light:1500','Leia',1],['Light:1600','Luke',1],
     ['Light:2105','Obi-Wan',1],['Dark:2528','Vader, Tarkin, Motti oder Tagge',2],
