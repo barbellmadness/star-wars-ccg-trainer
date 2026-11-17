@@ -3102,6 +3102,34 @@ test('movement exercise uses both real movement rules and can restart and reload
  assert.equal(run('undoLearningStep()&&lessonProgress().index===1'),true);
 });
 
+test('Dark Side exercise drains a controlled site, brings Vader and Tarkin together and resumes their real battle',async()=>{
+ const storage=autosaveStorage();
+ const {run,elements}=await premiereHarness(starterLists,{storage});
+ assert.equal(run("startNewGame(777,false,'dark-control')"),true);
+ run('saveActiveGame()');
+ assert.equal(run("currentGame().seed===1094&&playerSide()==='Dark'&&state.activeSide==='Dark'&&state.phase===1&&!state.botTurn"),true);
+ assert.equal(run("confirmedPresence('Dark',1)===true&&confirmedPresence('Light',1)===false&&forceDrainValue('Dark',1)===2"),true);
+ assert.equal(run("state.botForce.length===11&&state.botHand[0].id==='Dark:634'&&state.botHand[1].id==='Dark:1061'&&state.light[0][0].id==='Light:1593'"),true);
+ assert.match(elements.get('lessonHint').textContent,/Presence.*kontrollierst.*Force Drain · 2 Force/);
+ assert.ok(run(`const playLesson=(kind,match=()=>true)=>dispatchUI(legalActions(state,'Dark').find(a=>a.kind===kind&&match(a)));
+  playLesson('drain',a=>a.args[0]===1)&&state.lost.length===2&&playLesson('advance')&&
+  playLesson('deploy',a=>a.card.id==='Dark:634'&&a.args[1]===0)&&playLesson('deploy',a=>a.card.id==='Dark:1061'&&a.args[1]===0)&&playLesson('advance')`));
+ assert.equal(run('lessonProgress().index'),3);
+ assert.equal(run("openBattlePreview(findOffer(legalActions(state,'Dark'),'battle',0))&&state.botForce.length===1"),true);
+ assert.equal(run("el('battlePreviewConfirm').onclick()&&state.botForce.length===0&&battleSession.segment==='power'"),true);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run('resumeGameFromUI()'),true);
+ assert.equal(reload.run("playerSide()==='Dark'&&battleSession.initiator==='Dark'&&lessonProgress().index===4"),true);
+ assert.equal(reload.run(`const expected=printedBattleDestiny(state.botDeck.at(-1))+1;
+  const playLesson=(side,kind)=>dispatchUI(legalActions(state,side).find(a=>a.kind===kind));
+  playLesson('Dark','destiny')&&battleSession.darkDestiny===expected&&playLesson('Light','destiny')&&
+  legalActions(state,'Dark').some(a=>a.kind==='destinyResponse'&&a.args[0]==='tarkinCancel')`),true);
+ assert.equal(reload.run("playLesson('Dark','destinyResponse')&&lessonProgress().index===5"),true);
+ assert.match(reload.elements.get('battleLessonHint').textContent,/Übung abgeschlossen/);
+ assert.equal(reload.run("playLesson('Light','passResponse')&&playLesson('Dark','passResponse')&&battleSession.lightDestiny===0"),true);
+ assert.equal(reload.run("restartScenario()&&state.phase===1&&state.botForce.length===11&&state.lost.length===0&&lessonProgress().index===0"),true);
+});
+
 test('free play gates learning reveals and the review omits covered losses and private card views',async()=>{
  const {run,elements}=await premiereHarness(starterLists,{storage:autosaveStorage()});
  run(`startNewGame(0);chooseStart(startingLocationChoices(setupDecks.light)[1].index);beginStartingGame();

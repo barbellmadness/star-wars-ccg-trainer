@@ -3,7 +3,9 @@ const PremiereLearning = (() => {
     force: ['Light:1593', 'Light:2052', 'Light:221', 'Light:2838', 'Light:608', 'Light:259', 'Light:2040', 'Light:917'],
     battle: ['Light:2052', 'Light:221', 'Light:2838', 'Light:608', 'Light:265', 'Light:2040', 'Light:2250', 'Light:305'],
     movement: ['Light:2052', 'Light:221', 'Light:2907', 'Light:80', 'Light:259', 'Light:2040', 'Light:2250', 'Light:917'],
+    'dark-control': ['Light:259', 'Light:259', 'Light:265', 'Light:2052', 'Light:2040', 'Light:2838', 'Light:2907', 'Light:221'],
   };
+  const darkControlHand = ['Dark:634', 'Dark:1061', 'Dark:2355', 'Dark:1279', 'Dark:191', 'Dark:2600', 'Dark:1264', 'Dark:2848'];
   const lessons = {
     force: {
       title: 'Force und Deploy', seed: 1091, darkStart: 'Dark:2458', phase: 0, steps: [
@@ -31,6 +33,20 @@ const PremiereLearning = (() => {
           action => action.kind === 'move' && action.args[0] === 3 && action.args[2] === 1 && action.args[3] === 'Hyperspeed'],
       ],
     },
+    'dark-control': {
+      title: 'Dark Side · Kontrolle und Kampf', side: 'Dark', seed: 1094, fixedSeed: true, darkStart: 'Dark:2458', phase: 1, steps: [
+        ['Dein Stormtrooper hat in Jundland Wastes Presence. Weil Light dort keine Presence hat, kontrollierst du den Ort. Klicke „Force Drain · 2 Force“. Zum Light-Force-Icon kommt der Ortsbonus von +1 hinzu.',
+          action => action.kind === 'drain' && action.args[0] === 1],
+        ['Geh in die Ausspielen-Phase. Wähle Vader und spiele ihn für 6 Force bei Docking Bay 94 aus. Das Dark-Force-Icon erlaubt dir den Deploy bei Luke.',
+          action => action.kind === 'deploy' && action.cardId === 'Dark:634' && action.args[1] === 0],
+        ['Spiele Grand Moff Tarkin für 4 Force an Vaders Ort aus. Beide müssen am selben Battle teilnehmen, damit Tarkin eine gegnerische Destiny aufheben kann.',
+          action => action.kind === 'deploy' && action.cardId === 'Dark:1061' && action.args[1] === 0],
+        ['Geh in die Kampfphase. An Docking Bay 94 haben beide Seiten Presence. Öffne die Kampfvorschau und bestätige „Kampf beginnen · 1 Force“.',
+          action => action.kind === 'battle' && action.args[0] === 0],
+        ['Ziehe Dark Battle Destiny. Vader erhöht deinen Draw um 1. Lass danach den Light-Bot entscheiden und wähle im Antwortfenster „Tarkin: gegnerisches Destiny aufheben“.',
+          action => action.kind === 'destinyResponse' && action.args[0] === 'tarkinCancel'],
+      ],
+    },
   };
 
   const lesson = key => Object.hasOwn(lessons, key) ? lessons[key] : null;
@@ -40,8 +56,9 @@ const PremiereLearning = (() => {
     return cards.splice(index, 1)[0];
   }
 
-  function arrangeHand(key, deck) {
-    deck.push(...hands[key].map(id => take(deck, id)).reverse());
+  function arrangeHands(key, lightDeck, darkDeck) {
+    lightDeck.push(...hands[key].map(id => take(lightDeck, id)).reverse());
+    if (key === 'dark-control') darkDeck.push(...darkControlHand.map(id => take(darkDeck, id)).reverse());
   }
 
   function prepare(key, state, game, units) {
@@ -61,6 +78,13 @@ const PremiereLearning = (() => {
       state.light[0].push(vehicle);
       state.light[3].push(take(state.deck, 'Light:2838'));
       game.moveTop(state.deck, state.force);
+    } else if (key === 'dark-control') {
+      state.dark[1].push(take(state.botDeck, 'Dark:2355'));
+      state.light[0].push(take(state.deck, 'Light:1593'));
+      const darkDestiny = take(state.botDeck, 'Dark:264');
+      game.moveTop(state.botDeck, state.botForce, 11);
+      state.botDeck.push(darkDestiny);
+      state.deck.push(take(state.deck, 'Light:917'));
     }
     function takeDark(id) {
       if (state.botDeck.some(card => card.id === id)) return take(state.botDeck, id);
@@ -73,11 +97,11 @@ const PremiereLearning = (() => {
   }
 
   function progress(key, actions, battleActive) {
-    const steps = lessons[key].steps;
+    const {side = 'Light', steps} = lessons[key];
     let index = 0;
     for (const action of actions) {
       if (!steps[index]) break;
-      if ((action.side === 'Light' || index === 2 && key === 'battle') &&
+      if ((action.side === side || index === 2 && key === 'battle') &&
           steps[index][1](action, !battleActive)) index++;
     }
     return {total: steps.length, index, hint: steps[index]?.[0]};
@@ -126,7 +150,7 @@ const PremiereLearning = (() => {
     };
   }
 
-  return {lesson, arrangeHand, prepare, progress, cardGuide};
+  return {lesson, arrangeHands, prepare, progress, cardGuide};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereLearning;

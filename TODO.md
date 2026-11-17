@@ -44,6 +44,6 @@ In V2.15.28 abgeschlossen. Beim Start einer freien Partie stehen Defensiv, Ausge
 
 ## 13. Geführte Dark-Side-Übung
 
-- [ ] Eine kurze Dark-Side-Übung mit festem Startzustand ergänzen. Die Übung führt von Presence und Kontrolle zum Force Drain und bereitet anschließend einen Kampf mit Vader und Tarkin vor.
+In V2.15.29 abgeschlossen. Die Dark-Side-Übung startet mit festem Seed, festen Starthänden und kontrollierten Starting Locations. Sie führt von Presence und Kontrolle bei Jundland Wastes zum Force Drain und anschließend zum Battle mit Vader und Tarkin bei Docking Bay 94. Das Übungsziel schließt mit Tarkins Aufhebung einer gegnerischen Destiny ab. Fortsetzen und Neustart verwenden denselben Startzustand.
 
 Für jeden fertigen Schritt den Entwicklungsbranch der vereinbarten Basis verwenden, den Arbeitsbaum vor einem Abruf oder Wechsel prüfen und Commit, Testergebnis sowie offene Fehler im Pull Request angeben.

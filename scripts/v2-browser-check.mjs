@@ -359,7 +359,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.28'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.29'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -491,6 +491,36 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.evaluate(() => currentGame().starterDecks.light.theme?.name), botTheme);
     assert.equal(await botStyle.inputValue(), 'defensive');
     assert.match(await page.locator('#botHistoryTitle').textContent(), /Defensiv/);
+
+    await page.locator('#configureGame').click();
+    const settings = page.locator('#matchSettings');
+    if (await settings.getAttribute('open') === null) await settings.locator('summary').click();
+    await page.locator('#gameMode').selectOption('dark-control');
+    assert.match(await page.locator('#launchSummary').textContent(), /Vorgefertigte Dark-Side-Ausgangslage/);
+    assert.ok(await page.locator('#gameSeed').isDisabled());
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', {name: 'Übung starten'}).click();
+    assert.match(await page.locator('#lessonHint').textContent(), /Presence.*kontrollierst/);
+    const wastes = page.locator('#playmatLocation1');
+    assert.ok(await wastes.locator('.dark-zone').getByRole('img', {name: 'Control · ja'}).isVisible());
+    await wastes.getByRole('button', {name: 'Force Drain · 2 Force', exact: true}).click();
+    assert.match(await page.locator('#lessonHint').textContent(), /Vader/);
+    await page.locator('#step').click();
+    const dockingBay = page.locator('#playmatLocation0');
+    await page.getByRole('button', {name: /Darth Vader auswählen/}).click();
+    await dockingBay.getByRole('button', {name: 'Ausspielen (6 Force)', exact: true}).click();
+    await page.getByRole('button', {name: /Grand Moff Tarkin auswählen/}).click();
+    await dockingBay.getByRole('button', {name: 'Ausspielen (4 Force)', exact: true}).click();
+    await page.locator('#step').click();
+    await dockingBay.getByRole('button', {name: 'Kampfvorschau · 1 Force', exact: true}).click();
+    await battlePreview.getByRole('button', {name: 'Kampf beginnen · 1 Force'}).click();
+    await battle.getByRole('button', {name: 'Dark Battle Destiny ziehen'}).click();
+    await battle.getByRole('button', {name: 'Bot-Entscheidung zeigen'}).click();
+    await battle.getByRole('button', {name: 'Tarkin: gegnerisches Destiny aufheben'}).click();
+    assert.match(await battle.locator('#battleLessonHint').textContent(), /Übung abgeschlossen/);
+    await page.reload();
+    await page.getByRole('button', {name: 'Partie fortsetzen'}).click();
+    assert.match(await battle.locator('#battleLessonHint').textContent(), /Übung abgeschlossen/);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();
