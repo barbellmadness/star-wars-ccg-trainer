@@ -32,8 +32,7 @@ In V2.15.17 abgeschlossen. Aktive Standortbedingungen und legale Aktionen ersche
 
 ## 10. Aktionen und Ziele auf der Playmat
 
-- [ ] Bei ausgewählten Karten aus der Hand und auf dem Tisch die aktuell legalen Aktionen, Ziele und Force-Kosten direkt auf der Playmat anzeigen. Das gilt auch für Effects, Interrupts und Reacts beider Seiten.
-- [ ] Für gesperrte Aktionen den konkreten Grund anzeigen, etwa fehlende Force, ein fehlendes Ziel oder eine bereits verbrauchte Bewegung. Die Anzeige aus denselben Regelprüfungen ableiten, die die Engine beim Ausführen verwendet.
+In V2.15.26 abgeschlossen. Die Playmat zeigt bei ausgewählten Hand- und Tischkarten legale Aktionen mit Zielen und Force-Kosten. Sie markiert die Zielorte und führt auch durch Antwortfenster und mehrstufige Kartenaktionen. Die Tests prüfen unter anderem ortsabhängige Deploy-Kosten, fehlende Ziele, verbrauchte Bewegung sowie Effects, Interrupts und Reacts für beide Spielseiten. Ausführbare Aktionen und Kostenhinweise basieren auf denselben Regelangeboten der Engine.
 
 ## 11. Kampfvorschau und Ablauflogik im Popup
 

@@ -769,10 +769,40 @@ test('hand images select directly and a separate magnifier opens the inspector',
  assert.match(field,/aria-label="Test Ship ansehen" onclick="inspectCard\('Light',0,'field',0\)"/);
  assert.doesNotMatch(field,/<b>Test Ship|hand-card-inspect|>Test (?:Weapon|Pilot)</);
  assert.match(field,/class="playmat-stack"[^>]+>.*aria-label="Waffe · Test Weapon ansehen".*aria-label="Pilot · Test Pilot ansehen"/);
- assert.equal(elements.get('selectInspectorCard').hidden,true);
+ assert.equal(elements.get('selectInspectorCard').hidden,false);
  assert.match(elements.get('cardInspectorBody').innerHTML,/Ionenschaden.*Besatzung und Ausrüstung.*Test Weapon.*Pilot · Test Pilot/);
  run("inspectStackLayer('Light',0,0,1)");
  assert.equal(elements.get('cardInspectorTitle').textContent,'Test Pilot');
+ run("el('selectInspectorCard').onclick()");
+ assert.equal(run('selectedTableCard===ship.occupants[0].card'),true);
+ assert.match(elements.get('playmatSelection').innerHTML,/Test Pilot/);
+});
+
+test('playmat shows adjusted Deploy costs and exact engine targets, and cannot play an unaffordable quote',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`const card=id=>({...catalog.find(item=>item.id===id)});
+  const sites=['Light:2471','Light:2447'].map(card);
+  state=PremiereGame.createState(PremiereGame.actionState(73,1),[],[],sites,[0,1],'Light');
+  setupDecks=null;state.phase=2;state.hand=[card('Light:1803')];
+  state.force=Array.from({length:3},()=>({name:'Force'}));
+  state.deck.push({name:'Life'});state.botDeck.push({name:'Life'});select(0);`);
+ const panel=elements.get('playmatSelection');
+ assert.match(panel.innerHTML,/Obi-Wan&#39;s Hut.*Ausspielen.*playmat-action-cost">2 Force/s);
+ assert.match(panel.innerHTML,/Docking Bay 94.*Benötigt 5 Force\. Verfügbar: 3 Force/s);
+ assert.match(elements.get('board').innerHTML,/blocked-target[^>]*id="playmatLocation1".*Ziel nicht bezahlbar/s);
+ assert.equal(run("requestAction('deploy','Light',[0,1])"),false);
+ assert.equal(run("forceBudget('Light')"),3);
+ assert.ok(run("dispatchUI(legalActions(state,'Light').find(offer=>offer.kind==='deploy'&&offer.args[1]===0))"));
+ assert.equal(run("state.light[0][0].id"),'Light:1803');
+ run(`state.phase=4;state.movedThisTurn=[state.light[0][0]];
+  selectTableCard('unit',0,0,'Light',null,currentGame().id,currentGame().revision);`);
+ assert.match(panel.innerHTML,/bereits regulär bewegt/);
+ assert.doesNotMatch(panel.innerHTML,/&quot;kind&quot;:&quot;move&quot;/);
+ run(`state.phase=2;state.hand=[card('Light:1803')];select(0)`);
+ assert.match(panel.innerHTML,/Ausspiellimit dieser Karte ist bereits erreicht/);
+ run(`state.hand=[card('Light:2110')];state.locationEffects={};
+  state.locations=[];state.locationOrder=[];state.light=[];state.dark=[];state.force=Array.from({length:4},()=>({}));select(0)`);
+ assert.match(panel.innerHTML,/kein zulässiges Ziel/);
 });
 
 test('Premiere snapshot loads the four supported blasters into the starter decks',async()=>{
@@ -2662,6 +2692,8 @@ test('a Light Effect in hand shows legal targets in the popup and plays through 
  run("state.phase=2;inspectCard('Light',0,'hand')");
  assert.match(body.innerHTML,/Light Side Lost Pile verdecken \(0 Force\).*Dark Side Lost Pile verdecken \(0 Force\)/);
  assert.equal(elements.get('selectInspectorCard').hidden,true);
+ run("select(0)");
+ assert.match(elements.get('playmatSelection').innerHTML,/Light Side.*0 Force.*Dark Side.*0 Force/s);
  run("playInspectorEffect(legalActions(state,'Light').find(action=>action.kind==='deployLostPileEffect'&&action.target==='Dark'))");
  assert.equal(elements.get('cardInspector').open,false);
  assert.equal(run("state.hand.length===0&&PremiereGame.lostPileFaceDown(state,'Dark')"),true);
@@ -3416,6 +3448,8 @@ test('a Wolfman can pay once and react in the opposing turn to cancel an unresol
  const {run,elements}=reactHarness();
  assert.equal(run("requestAction('drain','Dark',[1])"),true);
  assert.match(elements.get('playerReactControls').innerHTML,/Antwortfenster.*Shistavanen Wolfman/);
+ assert.match(elements.get('playmatSelection').innerHTML,/Hoth: Exterior B.*React bewegen.*Shistavanen Wolfman.*1 Force/s);
+ assert.match(elements.get('board').innerHTML,/playmat-action-target[^>]*id="playmatLocation1"/);
  assert.equal(elements.get('playerReactControls').hidden,false);
  assert.equal(elements.get('controlPanel').style.display,'none');
  assert.equal(run("requestAction('passResponse','Dark')"),false);
@@ -3427,6 +3461,28 @@ test('a Wolfman can pay once and react in the opposing turn to cancel an unresol
  assert.equal(elements.get('playerReactControls').hidden,true);
  assert.equal(run("PremiereGame.wasUsed(state.game,'turn','react:Light:9')"),true);
  assert.equal(run("requestAction('drain','Dark',[1])"),false);
+});
+
+test('Dark player sees playable Reacts and Interrupt costs on the playmat without seeing the Light bot hand',async()=>{
+ const {run,elements}=await premiereHarness();
+ run(`const card=id=>({...catalog.find(item=>item.id===id)});
+  const sites=['Dark:2458','Dark:2446'].map(card);
+  state=PremiereGame.createState(PremiereGame.actionState(94,1),[],[],sites,[0,1],'Light');
+  setupDecks=null;state.game.playerSide='Dark';state.game.cardRulesVersion=latestCardRulesVersion;
+  state.phase=1;state.botTurn={steps:[],index:0};
+  state.dark[0].push(card('Dark:191'));state.light[1].push(card('Light:1593'));
+  state.botHand=[card('Dark:575')];state.hand=[{name:'Secret Light card'}];
+  state.deck.push({name:'Life'});state.botDeck.push({name:'Life'});
+  state.botForce.push({name:'Force'});
+  PremiereGame.openResponse(state.game,{kind:'drain',site:1,side:'Light'});presentGame();`);
+ const panel=elements.get('playmatSelection');
+ assert.match(panel.innerHTML,/React bewegen.*Bantha.*1 Force/s);
+ assert.match(panel.innerHTML,/Counter Assault.*1 Force/s);
+ assert.doesNotMatch(panel.innerHTML,/Secret Light card/);
+ run('state.botForce.length=0;select(0)');
+ assert.match(panel.innerHTML,/Counter Assault.*Benötigt 1 Force\. Verfügbar: 0 Force/s);
+ assert.doesNotMatch(panel.innerHTML,/&quot;kind&quot;:&quot;interruptResponse&quot;/);
+ assert.equal(run("requestAction('interruptResponse','Dark',[0])"),false);
 });
 
 test('battle React appears on the Light side and follows the player back to the playmat',()=>{
@@ -5607,12 +5663,14 @@ test('Don’t Get Cocky adds destiny or removes a TIE ln at battle initiation',a
 
 test('Nabrun and Elis relocate only the selected group, at the drawn cost',async()=>{
  for(const side of ['Light','Dark']){
-  const {run}=await craftHarness();
+  const {run,elements}=await craftHarness();
   run(`setupDecks=null;state.game=PremiereGame.actionState(187,0);
+   state.game.playerSide='${side}';
    const side='${side}',actor=PremiereGame.zones(state,side),enemy=PremiereGame.zones(state,PremiereGame.otherSide(side));
    const transport=card(side==='Light'?'Light:1749':'Dark:824'),first=card(side==='Light'?'Light:2052':'Dark:2355'),other=card(first.id);
    actor.hand.splice(0,actor.hand.length,transport);enemy.hand.length=0;actor.board[3]=[first,other];actor.deck.splice(0,actor.deck.length,{name:'Cost',destiny:2});`);
   assert.equal(run("requestAction('groupRelocation',side,[0,3])&&requestAction('finishCardInformation',side,['toggle',1])&&!requestAction('finishCardInformation',side,['relocate',6])&&requestAction('finishCardInformation',side,['relocate',2])"),true);
+  assert.match(elements.get('playmatSelection').innerHTML,/2 Force für die Verlegung einsetzen/);
   assert.equal(run("actor.force.length===5&&requestAction('finishCardInformation',side,['pay'])&&actor.force.length===3&&actor.used.includes(transport)&&actor.board[3][0]===first&&actor.board[2][0]===other"),true);
  }
 });
