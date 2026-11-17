@@ -4,10 +4,11 @@ const PremiereBot = (() => {
   const value = card => card?.redundant ? 0.5 : unit(card) ? 2 + strength(card) : card?.type === 'Location' ? 2 : 1.8;
   const siteValue = site => 1.6 + 1.45 * (site?.drain ?? 0) + 0.35 * (site?.generation ?? 0);
 
-  function startingLocation(cards, options, fraction) {
+  function startingLocation(cards, options, fraction, side = 'Dark') {
     const ships = cards.filter(card => card.type === 'Starship').length;
     const ground = cards.filter(card => card.type === 'Character' || card.type === 'Vehicle').length;
-    const score = location => !location ? -Infinity : 2 * (location.icons.dark ?? 0) - (location.icons.light ?? 0) * 0.5 +
+    const own = side.toLowerCase(), rival = side === 'Dark' ? 'light' : 'dark';
+    const score = location => !location ? -Infinity : 2 * (location.icons[own] ?? 0) - (location.icons[rival] ?? 0) * 0.5 +
       (location.subType === 'System' ? Math.min(ships, 12) * 0.22 : Math.min(ground, 18) * 0.1) +
       (location.locationTags?.includes('Exterior') ? 0.25 : 0);
     const strongest = Math.max(...options.map(score));
@@ -17,14 +18,14 @@ const PremiereBot = (() => {
 
   function drawGoal(view) {
     const units = view.hand.filter(card => unit(card) && !card.redundant && !card.needsCrew && (card.ability > 0 || card.type === 'Starship'));
-    const holdsSites = view.sites.some(site => site?.dark);
+    const holdsSites = view.sites.some(site => site?.own);
     return holdsSites ? (units.length >= 2 ? 3 : 5) : (units.length ? 5 : 7);
   }
 
   function reserve(view, phase = view.phase) {
     const draw = view.life > 3 ? Math.min(3, Math.max(0, drawGoal(view) - view.hand.length)) : 0;
-    const battle = phase <= 3 && view.sites.some(site => site?.dark && site.light && site.margin >= 1);
-    const fire = battle && view.sites.some(site => site?.dark && site.light && site.readyWeapons);
+    const battle = phase <= 3 && view.sites.some(site => site?.own && site.rival && site.margin >= 1);
+    const fire = battle && view.sites.some(site => site?.own && site.rival && site.readyWeapons);
     const movement = phase < 4 && view.sites.some(site => site?.routes);
     return draw + Number(battle) + Number(fire) + Number(movement);
   }
@@ -50,9 +51,9 @@ const PremiereBot = (() => {
     const from = view.sites[action.from], to = view.sites[action.to];
     if (!to) return -Infinity;
     const enters = action.from !== action.to;
-    const claim = enters && to.darkKnown && !to.dark && !to.light && to.lightKnown && action.bringsPresence;
-    const contest = enters && to.light ? (to.margin + action.unitPower >= 2 ? 1.6 : -2.5) : 0;
-    const retreat = enters && from?.light && from.margin < -2 && !to.light ? 1.6 : 0;
+    const claim = enters && to.ownKnown && !to.own && !to.rival && to.rivalKnown && action.bringsPresence;
+    const contest = enters && to.rival ? (to.margin + action.unitPower >= 2 ? 1.6 : -2.5) : 0;
+    const retreat = enters && from?.rival && from.margin < -2 && !to.rival ? 1.6 : 0;
     const leaves = action.leavesControl ? siteValue(from) : 0;
     return (claim ? siteValue(to) + 0.6 : 0) + contest + retreat - leaves + action.carrierGain - cost(view, action);
   }
@@ -60,13 +61,13 @@ const PremiereBot = (() => {
   function deployment(view, action) {
     const site = view.sites[action.site];
     if (action.kind === 'deployLocation' || action.kind === 'convertLocation') {
-      return (action.card?.icons?.dark ?? 0) * 1.5 - (action.card?.icons?.light ?? 0) * 0.8 + action.locationSupport;
+      return (action.card?.icons?.own ?? 0) * 1.5 - (action.card?.icons?.rival ?? 0) * 0.8 + action.locationSupport;
     }
-    if (action.kind === 'equip') return (site?.light && site.dark ? 3 : 0.8) + action.carrierGain - cost(view, action);
+    if (action.kind === 'equip') return (site?.rival && site.own ? 3 : 0.8) + action.carrierGain - cost(view, action);
     if (action.kind === 'deployDevice' || action.kind === 'deployAutomated') return 1.2 + action.carrierGain - cost(view, action);
     if (action.kind === 'deploy' || action.kind === 'deployWithPilot') {
-      const claim = site?.lightKnown && !site.light && site.darkKnown && !site.dark && action.bringsPresence;
-      const reinforcement = site?.light ? (site.margin + action.unitPower >= 1 ? 2.4 : -1.3) : 0;
+      const claim = site?.rivalKnown && !site.rival && site.ownKnown && !site.own && action.bringsPresence;
+      const reinforcement = site?.rival ? (site.margin + action.unitPower >= 1 ? 2.4 : -1.3) : 0;
       return 0.6 + action.unitPower * 0.55 + action.unitAbility * 0.38 + action.carrierGain +
         (claim ? siteValue(site) + 1 : 0) + reinforcement - cost(view, action);
     }
@@ -97,7 +98,7 @@ const PremiereBot = (() => {
     if (view.debt) return damage(view, action);
     switch (action.kind) {
       case 'activate': return action.amount + action.immediateDraw * (view.hand.length < 3 ? 0.35 : -0.4) + 0.1;
-      case 'draw': return view.life > (view.sites.some(site => site?.dark) ? 2 : 1) && view.hand.length < drawGoal(view) ? 2 : -1;
+      case 'draw': return view.life > (view.sites.some(site => site?.own) ? 2 : 1) && view.hand.length < drawGoal(view) ? 2 : -1;
       case 'deployLocation': case 'convertLocation': case 'deploy': case 'deployWithPilot': case 'equip':
       case 'deployDevice': case 'deployBolt': case 'deployAutomated': case 'deployTableEffect': case 'deployLocationEffect':
       case 'deployReserveInsert': case 'deployLostPileEffect': case 'navSabotage': case 'revolution':
@@ -119,13 +120,13 @@ const PremiereBot = (() => {
       case 'destinyResponse': return action.effectValue - cost(view, action);
       case 'destiny': return 4;
       case 'skipDestiny': return 0;
-      case 'battlePrediction': return (action.mode === 'Dark') === (view.sites[view.battleSite]?.margin >= 0) ? 4 : 1;
+      case 'battlePrediction': return (action.mode === view.side) === (view.sites[view.battleSite]?.margin >= 0) ? 4 : 1;
       case 'passWeapons': case 'passResponse': return 0;
       case 'retrieve': case 'searchReserve': return 2.5 + action.effectValue - cost(view, action);
       case 'takeFromReserve': return action.card ? value(action.card) : 0;
       case 'finishCardInformation': return (['done','keep','decline'].includes(action.mode) ? 0 : 0.7) + action.effectValue;
       case 'custody': case 'prisonerTransfer': return (['deliver','imprison','seize'].includes(action.mode) ? 4 : 0) + action.effectValue;
-      case 'automatedTarget': return action.targetSide === 'Light' ? value(action.card) : -value(action.card);
+      case 'automatedTarget': return action.targetSide === view.rival ? value(action.card) : -value(action.card);
       case 'timingTrigger': return action.effectValue;
       case 'duel': return action.effectValue - cost(view, action);
       case 'battleEffect': case 'pileInterrupt': case 'cardInformation': case 'weaponEffect': case 'holocamPower':

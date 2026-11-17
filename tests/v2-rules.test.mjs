@@ -1842,7 +1842,7 @@ test('Central Core waives Wrong Turn only for its controlling side and the tax a
  run("state.light[4]=[]");
  assert.equal(run("legalActions(state,'Dark').find(action=>action.kind==='deployTableEffect').cost"),0);
  assert.equal(run("requestAction('deployTableEffect','Dark',[0])&&state.botForce.length===5&&state.botUsed.length===0"),true);
- assert.match(elements.get('pilesLight').innerHTML,/Effects · .*Wrong Turn/);
+ assert.match(elements.get('pilesPlayer').innerHTML,/Effects · .*Wrong Turn/);
  assert.equal(run("requestAction('deployTableEffect','Dark',[0])"),false);
  assert.equal(run("boardDeployCost(trooper,dock,'Light')"),2);
  assert.equal(run("boardDeployCost(droid,dock,'Light')"),2);
@@ -2484,19 +2484,19 @@ test('Playmat places Dark above location art and Light below and retains actions
 
 test('the hand phase lists follow the current turn through setup, play and game end',async()=>{
  const {run,elements}=await premiereHarness();
- assert.match(html,/id="botHand"[\s\S]*id="phaseListDark"[\s\S]*id="board"[\s\S]*id="hand"[\s\S]*id="phaseListLight"/);
- assert.match(html,/id="forceControls"[^>]*><\/div>\s*<section[^>]+id="drainLossControls"[^>]*><\/section>\s*<figure[^>]+id="pilesLight"/);
- assert.match(html,/id="phaseDisplayLight"[^>]*>\s*<button id="step"[^>]*>[^<]*<\/button>\s*<p id="turnStatusLight"/);
+ assert.match(html,/id="botHand"[\s\S]*id="phaseListBot"[\s\S]*id="board"[\s\S]*id="hand"[\s\S]*id="phaseListPlayer"/);
+ assert.match(html,/id="forceControls"[^>]*><\/div>\s*<section[^>]+id="drainLossControls"[^>]*><\/section>\s*<figure[^>]+id="pilesPlayer"/);
+ assert.match(html,/id="phaseDisplayPlayer"[^>]*>\s*<button id="step"[^>]*>[^<]*<\/button>\s*<p id="turnStatusPlayer"/);
  assert.match(html,/class="table-sidebar table-bot"[\s\S]*id="botHistory"[\s\S]*class="table-sidebar table-info"[\s\S]*id="phaseHelpText"[\s\S]*id="log"/);
  assert.equal(elements.get('gameTable').hidden,true);
  const assertPhase=(active,phase)=>{
-  for(const side of ['Dark','Light']){
-   const list=elements.get('phaseList'+side).innerHTML;
+  for(const [side,role] of [['Dark','Bot'],['Light','Player']]){
+   const list=elements.get('phaseList'+role).innerHTML;
    assert.equal([...list.matchAll(/<li\b/g)].length,6);
    const highlighted=[...list.matchAll(/<li aria-current="step">([^<]+)<\/li>/g)].map(match=>match[1]);
    assert.deepEqual(highlighted,side===active?[phase]:[]);
    const label=!active?'Partie beendet':side!==active?'Wartet':side==='Dark'?'Bot ist am Zug':'Du bist am Zug';
-   assert.equal(elements.get('turnStatus'+side).textContent,label);
+   assert.equal(elements.get('turnStatus'+role).textContent,label);
   }
  };
 
@@ -2527,7 +2527,7 @@ test('the hand phase lists follow the current turn through setup, play and game 
 
 test('both playmat pile diagrams show their own counts and follow card movement',async()=>{
  const {run,elements}=await premiereHarness();
- const diagram=side=>elements.get('piles'+side).innerHTML;
+ const diagram=side=>elements.get(side==='Light'?'pilesPlayer':'pilesBot').innerHTML;
  const assertPiles=(side,reserve,force,used,lost,life)=>{
   const markup=diagram(side);
   for(const [label,count] of [['Reserve Deck',reserve],['Force Pile',force],['Used Pile',used],['Lost Pile',lost],['Life Force',life]]){
@@ -2565,7 +2565,7 @@ test('lost piles reveal only their top card and keep covered bot hands face down
   PremiereGame.loseForce(state,'Light','deck');
   PremiereGame.loseForce(state,'Light','deck');
   render()`);
- const ownPile=elements.get('pilesLight');
+ const ownPile=elements.get('pilesPlayer');
  assert.match(ownPile.innerHTML,/Lost Pile <strong>2<\/strong>/);
  assert.match(ownPile.innerHTML,/Latest Loss/);
  assert.doesNotMatch(ownPile.innerHTML,/Earlier Loss/);
@@ -2604,9 +2604,9 @@ test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses w
  assert.equal(elements.get('cardInspector').open,false);
  run("inspectLostTop('Light')");
  assert.equal(elements.get('cardInspector').open,false);
- assert.match(elements.get('pilesLight').innerHTML,/Lost Pile verdeckt.*Eyes In The Dark/);
- assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Previously Visible|lost-top-card/);
- assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
+ assert.match(elements.get('pilesPlayer').innerHTML,/Lost Pile verdeckt.*Eyes In The Dark/);
+ assert.doesNotMatch(elements.get('pilesPlayer').innerHTML,/Previously Visible|lost-top-card/);
+ assert.doesNotMatch(elements.get('pilesBot').innerHTML,/Lost Pile verdeckt/);
 
  run(`for(const zone of ['deck','force','used']){
   PremiereGame.zones(state,'Light')[zone].push({name:'Secret '+zone});
@@ -2626,7 +2626,7 @@ test('Eyes In The Dark covers a chosen pile and conceals all Life Force losses w
   state.light[0].push(unit);loseTableCard('Light',0,unit);render()`);
  assert.match(elements.get('log').textContent,/Public Hand Loss/);
  assert.match(elements.get('log').textContent,/Public Table Loss/);
- assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Public Hand Loss|Public Table Loss/);
+ assert.doesNotMatch(elements.get('pilesPlayer').innerHTML,/Public Hand Loss|Public Table Loss/);
 
  run(`const luke=catalog.find(card=>locationTitle(card)==='luke skywalker');
   state.lost.push(luke);state.hand=[catalog.find(card=>card.id==='Light:1600')];
@@ -2640,14 +2640,14 @@ test('Alter can uncover a pile after Eyes In The Dark is on the table',async()=>
  const {run,elements}=await eyesInTheDarkHarness();
  run("state.botLost.push({name:'Visible Again'});state.dark[0].push({name:'Imperial',type:'Character',ability:4})");
  assert.equal(run("requestAction('deployLostPileEffect','Light',[0,'Dark'])"),true);
- assert.match(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
- assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Visible Again/);
+ assert.match(elements.get('pilesBot').innerHTML,/Lost Pile verdeckt/);
+ assert.doesNotMatch(elements.get('pilesBot').innerHTML,/Visible Again/);
  run("state.botHand=[catalog.find(card=>card.id==='Dark:94')];state.botDeck.push({name:'Destiny',destiny:1})");
  assert.equal(run("requestAction('alterLostPileEffect','Dark',[0,0])"),true);
  assert.match(elements.get('controlPanel').innerHTML,/Antwortfenster · Alter/);
  assert.equal(run("requestAction('passResponse','Light')&&requestAction('passResponse','Dark')"),true);
- assert.match(elements.get('pilesDark').innerHTML,/Visible Again/);
- assert.doesNotMatch(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt/);
+ assert.match(elements.get('pilesBot').innerHTML,/Visible Again/);
+ assert.doesNotMatch(elements.get('pilesBot').innerHTML,/Lost Pile verdeckt/);
  assert.equal(run('state.lost.includes(eyes)&&state.lostPileEffects.length===0'),true);
 });
 
@@ -2712,8 +2712,8 @@ test('Dark deploys Your Eyes Can Deceive You from its starter deck and conceals 
  assert.equal(run('state.botForce.length'),force);
  assert.equal(run("state.lostPileEffects[0].card===darkEffect&&state.lostPileEffects[0].target==='Dark'"),true);
  assert.match(elements.get('botHistory').textContent,/Your Eyes Can Deceive You/);
- assert.match(elements.get('pilesDark').innerHTML,/Lost Pile verdeckt.*Your Eyes Can Deceive You/);
- assert.doesNotMatch(elements.get('pilesLight').innerHTML,/Lost Pile verdeckt/);
+ assert.match(elements.get('pilesBot').innerHTML,/Lost Pile verdeckt.*Your Eyes Can Deceive You/);
+ assert.doesNotMatch(elements.get('pilesPlayer').innerHTML,/Lost Pile verdeckt/);
  run(`state.botDeck.push({name:'Hidden Dark Card'});
   beginForceLoss('Dark',1,{reason:'drain',from:'deck'});`);
  assert.equal(run("state.botLost.at(-1).name==='Hidden Dark Card'"),true);
@@ -2918,9 +2918,13 @@ test('selectable Premiere decks complete matches with legal decisions and conser
   }
   return roots.flatMap(walk);
  }
- function playMatch(seed,cardRulesVersion=latestCardRulesVersion,botVersion=cardRulesVersion===0?0:1,decks=starterDecks){
-  start(seed,true,false,decks,cardRulesVersion,botVersion);
-  const choose=()=>chooseStart(startingLocationChoices(setupDecks.light)[1]?.index??startingLocationChoices(setupDecks.light)[0]?.index??null);
+ function playMatch(seed,cardRulesVersion=latestCardRulesVersion,botVersion=cardRulesVersion===0?0:1,decks=starterDecks,player='Light'){
+  start(seed,true,false,decks,cardRulesVersion,botVersion,player);
+  const bot=PremiereGame.otherSide(player);
+  const choose=()=>{
+   const choices=startingLocationChoices(setupDecks[player.toLowerCase()]);
+   return chooseStart(choices[1]?.index??choices[0]?.index??null);
+  };
   choose();
   while(setupDecks.revealed.collision){retryStartingLocations();choose();}
   beginStartingGame();
@@ -2932,11 +2936,11 @@ test('selectable Premiere decks complete matches with legal decisions and conser
     if(ids.length!==120||new Set(ids).size!==120||ids.some(id=>!id))throw Error('Card balance at '+seed+'/'+step);
     summary.validated++;
    }
-   const light=legalActions(state,'Light'),dark=legalActions(state,'Dark');
+   const own=legalActions(state,player),rival=legalActions(state,bot);
    const response=PremiereGame.responseWindow(state.game);
    if(response)summary.responses++;
    if(battleSession)summary[isSystem(state.locations[battleSession.site])?'space':'ground']=true;
-   if(dark.some(action=>['botStep','botDecision'].includes(action.kind))&&
+   if(rival.some(action=>['botStep','botDecision'].includes(action.kind))&&
       !state.pendingForceLoss&&!battleSession&&!response&&!state.game.timing.pending&&!state.automatedPending&&
       !state.pendingCardView&&!state.pendingReserveSearch&&!state.pendingCustody?.length){
     if(!botNextStep())throw Error('Bot refused a step at '+seed+'/'+step);
@@ -2946,11 +2950,11 @@ test('selectable Premiere decks complete matches with legal decisions and conser
    const preferred=['resolveMine','automatedTarget','reactDeploy','react','interruptResponse','passResponse','timingTrigger','battlePrediction','duel','custody','takeFromReserve',
     'fireWeapon','battleEffect','passWeapons','destiny','skipDestiny','battleForfeit','battleForceLoss','passDamage','loseForce',
     'deployLocation','convertLocation','deployWithPilot','equip','deploy','battle','drain','activate','draw','advance','skipSeekerMove'];
-   const options=light.length?light:dark;
+   const options=own.length?own:rival;
    let action;
-   if(!light.length&&botVersion===2)action=botPromptAction(dark);
-   if(!light.length&&battleSession?.weaponTurn==='Dark')action=botWeaponAction();
-   if(!light.length&&battleSession?.damage?.priority==='Dark')action=botDamageAction();
+   if(!own.length&&botVersion===2)action=botPromptAction(rival);
+   if(!own.length&&battleSession?.weaponTurn===bot)action=botWeaponAction();
+   if(!own.length&&battleSession?.damage?.priority===bot)action=botDamageAction();
    if(!action&&state.pendingCardView){
     action=options.find(option=>['confirm','deploy','recover','relocate','pay','retrieve','done','pass'].includes(option.args[0]))??options[0];
    }
@@ -2981,6 +2985,9 @@ test('selectable Premiere decks complete matches with legal decisions and conser
  const crossMatches=JSON.parse(run(`JSON.stringify(deckChoices.light.map(({deck:light},index)=>
   playMatch(index+20,latestCardRulesVersion,2,{light,dark:deckChoices.dark[(index+2)%deckChoices.dark.length].deck})))`));
  assert.ok(crossMatches.every(match=>match.winner&&match.botActions>0&&match.validated>0),JSON.stringify(crossMatches.map(({trace,...summary})=>summary)));
+ const darkPlayer=JSON.parse(run("JSON.stringify(playMatch(4,latestCardRulesVersion,2,starterDecks,'Dark'))"));
+ assert.ok(darkPlayer.winner&&darkPlayer.botActions>0&&darkPlayer.validated>0&&(darkPlayer.ground||darkPlayer.space),
+  JSON.stringify({...darkPlayer,trace:undefined}));
 });
 
 function startSavedGame(run,seed=0){
@@ -3074,7 +3081,7 @@ test('free play gates learning reveals and the review omits covered losses and p
  assert.equal(elements.get('phaseHelp').hidden,true);
  assert.equal(elements.get('lessonPanel').hidden,true);
  assert.equal(elements.get('cardInspector').open,false);
- for(const id of ['controlPanel','botHand','pilesDark','log','botHistory']){
+ for(const id of ['controlPanel','botHand','pilesBot','log','botHistory']){
   assert.doesNotMatch((elements.get(id).innerHTML??'')+(elements.get(id).textContent??''),/Secret/);
  }
  assert.equal(run('undoLearningStep()'),false);
@@ -3180,12 +3187,40 @@ test('legacy autosaves resume without applying new registered card rules retroac
  assert.equal(saved.botStrategyVersion,2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
+ delete saved.playerSide;
  storage.setItem(key,JSON.stringify(saved));
  const reload=await premiereHarness(starterLists,{storage});
  assert.ok(reload.run("el('resumeGame').onclick()"));
  assert.equal(reload.run('currentGame().cardRulesVersion'),0);
  assert.equal(reload.run('currentGame().botStrategyVersion'),0);
+ assert.equal(reload.run('playerSide()'), 'Light');
  assert.equal(reload.run("activeCardRules(catalog.find(card=>card.id==='Light:2052'),'freeSiteDeploy').length"),0);
+});
+
+test('Dark Side gets its own hand, phase actions and a repeatable Light bot turn after reload',async()=>{
+ const storage=autosaveStorage();
+ const {run,elements}=await premiereHarness(starterLists,{storage});
+ run("el('playerSideChoice').value='Dark'");
+ startSavedGame(run,4);
+ assert.equal(run("playerSide()==='Dark'&&botSide()==='Light'&&!!setupDecks.lightChoice&&!('lightChoice' in PremiereGame.setupView(setupDecks,'Dark'))"),true);
+ assert.equal(run(`const pick=()=>act('chooseStart','Dark',legalActions(null,'Dark')[0].args);
+  pick();while(setupDecks.revealed.collision){act('retrySetup','Dark');pick()}
+  act('beginGame','Dark');`),true);
+ assert.match(elements.get('playerHandTitle').textContent,/Dark Side/);
+ assert.match(elements.get('botHand').innerHTML,/lightcardback\.png/);
+ assert.match(elements.get('hand').innerHTML,/inspectCard\('Dark',0,'hand'\)/);
+ assert.equal(run("!PremiereGame.playerView(state,'Dark').players.Light.hand&&select(0)"),true);
+ assert.equal(run(`const action=(kind,side='Dark')=>dispatchUI(legalActions(state,side).find(option=>option.kind===kind));
+  const stepBot=()=>runBotStep(legalActions(state,'Light').find(option=>['botStep','botDecision'].includes(option.kind)));
+  for(let i=0;state.botTurn&&i<50;i++)if(!stepBot())break;
+  action('activate')&&[0,1,2,3,4,5].every(()=>action('advance'))&&state.activeSide==='Light'&&stepBot();`),true);
+ const snapshot="JSON.stringify([playerSide(),state.activeSide,state.phase,state.botTurn?.index,state.hand.map(c=>c.instanceId),state.botHand.map(c=>c.instanceId)])";
+ const expected=run(snapshot);
+ const reload=await premiereHarness(starterLists,{storage});
+ assert.equal(reload.run('resumeGameFromUI()'),true);
+ assert.equal(reload.run(snapshot),expected);
+ assert.equal(reload.elements.get('playerSideChoice').value,'Dark');
+ assert.match(reload.elements.get('turnStatusBot').textContent,/Bot ist am Zug/);
 });
 
 test('ending the active game preserves an autosave changed by another tab',async()=>{

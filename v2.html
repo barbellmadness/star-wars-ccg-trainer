@@ -86,8 +86,8 @@ a{color:#b6d8ff}
 #stats{font-size:12px;color:#b7c9e1;margin-top:6px}
 .table-view{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"dark" "board" "light" "bot" "info";gap:8px}
 .table-view[hidden]{display:none}
-.table-view .dark-hand{grid-area:dark}
-.table-view .light-hand{grid-area:light}
+.table-view #botSeat{grid-area:dark}
+.table-view #playerSeat{grid-area:light}
 .table-view .playmat-shell{grid-area:board;min-width:0;align-self:start}
 .table-bot{grid-area:bot}
 .table-info{grid-area:info}
@@ -242,6 +242,10 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
         <option value="battle">Lernen · Bodenkampf mit Blaster</option>
         <option value="movement">Lernen · Fahrzeug- und Raumbewegung</option>
       </select></label>
+      <label>Du spielst <select id="playerSideChoice">
+        <option value="Light">Light Side</option>
+        <option value="Dark">Dark Side</option>
+      </select></label>
       <button id="start" disabled>Neue Partie</button>
       <button id="resumeGame" type="button" hidden>Partie fortsetzen</button>
       <button id="restartGame" type="button" hidden>Szenario neu starten</button>
@@ -296,10 +300,10 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
   </dialog>
   <div id="controlPanel" class="panel game-control" style="display:none"></div>
   <section class="table-view" id="gameTable" aria-label="Spieltisch" hidden>
-    <div class="panel player-hand dark-hand">
+    <div id="botSeat" class="panel player-hand dark-hand">
       <div>
         <div class="hand-heading">
-          <h2>Bot-Hand · Dark Side</h2>
+          <h2 id="botHandTitle">Bot-Hand · Dark Side</h2>
           <span id="botHandCount" class="hint"></span>
           <div id="botTurnPanel" class="bot-turn-controls" style="display:none">
             <button id="botNext">Nächste Bot-Aktion zeigen</button>
@@ -308,35 +312,35 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
         </div>
         <div id="botHand" class="cards"></div>
       </div>
-      <aside class="phase-display" id="phaseDisplayDark" aria-label="Phasen der Dark Side">
-        <p id="turnStatusDark" role="status"></p>
-        <ol id="phaseListDark" role="list"></ol>
+      <aside class="phase-display" id="phaseDisplayBot" aria-label="Phasen der Dark Side">
+        <p id="turnStatusBot" role="status"></p>
+        <ol id="phaseListBot" role="list"></ol>
       </aside>
-      <figure class="deck-pile-area" id="pilesDark" aria-label="Kartenstapel der Dark Side"></figure>
+      <figure class="deck-pile-area" id="pilesBot" aria-label="Kartenstapel der Dark Side"></figure>
     </div>
     <div class="playmat-shell">
       <button id="returnToBattle" type="button" aria-haspopup="dialog" hidden>Zurück zum Kampf</button>
       <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld"></div></div>
     </div>
-    <div class="panel player-hand light-hand">
+    <div id="playerSeat" class="panel player-hand light-hand">
       <div>
         <div class="hand-heading">
-          <h2>Deine Hand · Light Side</h2>
+          <h2 id="playerHandTitle">Deine Hand · Light Side</h2>
           <small id="selectedActionHint" class="hint" role="status" hidden></small>
         </div>
         <section id="playerReactControls" class="react-controls" aria-label="Deine React-Aktionen" tabindex="-1" hidden></section>
         <section id="playerCustodyControls" class="react-controls" aria-label="Gefangenenentscheidung" tabindex="-1" hidden></section>
         <div id="hand" class="cards"></div>
       </div>
-      <aside class="phase-display" id="phaseDisplayLight" aria-label="Phasen der Light Side">
+      <aside class="phase-display" id="phaseDisplayPlayer" aria-label="Phasen der Light Side">
         <button id="step" type="button" disabled>Nächste Phase</button>
-        <p id="turnStatusLight" role="status"></p>
-        <ol id="phaseListLight" role="list"></ol>
+        <p id="turnStatusPlayer" role="status"></p>
+        <ol id="phaseListPlayer" role="list"></ol>
       </aside>
       <div class="deck-pile-area">
         <div id="forceControls" class="deck-pile-controls" hidden></div>
         <section id="drainLossControls" class="deck-pile-controls drain-loss-controls" aria-labelledby="drainLossTitle" tabindex="-1" hidden></section>
-        <figure class="deck-pile-diagram" id="pilesLight" aria-label="Kartenstapel der Light Side"></figure>
+        <figure class="deck-pile-diagram" id="pilesPlayer" aria-label="Kartenstapel der Light Side"></figure>
       </div>
     </div>
     <aside class="table-sidebar table-bot" aria-label="Bot-Aktivitäten">
@@ -365,7 +369,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
     </div>
     <button id="auditBtn">Kartendaten prüfen</button><button onclick="showEffectCoverage()">Kartenfähigkeiten: Vollständigkeitsprüfung</button><div id="effectCoverage" class="log" style="max-height:360px;white-space:pre-wrap"></div><pre id="audit" class="log" style="white-space:pre-wrap"></pre>
     <button id="viewCatalog" type="button" aria-haspopup="dialog" disabled>Premiere-Kartenkatalog öffnen</button>
-    <p class="hint">V2 Premiere · Einzelpartie mit den 324 Premiere-Karten gegen die Dark Side.</p><p><a href="index.html">Zur bisherigen Alpha</a></p>
+    <p class="hint">V2 Premiere · Einzelpartie mit den 324 Premiere-Karten gegen den Bot.</p><p><a href="index.html">Zur bisherigen Alpha</a></p>
   </details>
 </main>
 <dialog id="gameReview" class="game-dialog" aria-labelledby="gameReviewTitle">
@@ -406,7 +410,7 @@ html:has(#cardInspector[open],#battleAnalysis[open],#movementDialog[open]){overf
 </dialog>
 <script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.20';
+const trainerVersion='2.15.21';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -425,7 +429,7 @@ function ruleClick(action,handler='dispatchUI'){
  return 'onclick="'+escapeHTML(handler+'('+JSON.stringify({kind,side,args,gameId,revision})+')')+'"';
 }
 function dispatchUI(action){
- const hand=state?.hand,previous=hand?.[selected];
+ const hand=state&&PremiereGame.zones(state,playerSide()).hand,previous=hand?.[selected];
  const before=learningCheckpoint(action);
  const result=performAction(action);
  if(result)recordGameCommand({type:'action',kind:action.kind,side:action.side,args:action.args},reversibleLearningAction(action,before));
@@ -445,15 +449,15 @@ function botRuleButton(action,label){
  return el('autoBot').checked?'':ruleButton(action,label);
 }
 function activateMe(gameId=currentGame()?.id,revision=currentGame()?.revision){
- const count=Number(el('activateAmount').value),allowance=activationDrawAllowance('Light');
+ const count=Number(el('activateAmount').value),allowance=activationDrawAllowance(playerSide());
  const mask=(allowance>0&&count>0&&el('activateFirstCard').checked?1:0)|
   (allowance>1&&count>1&&el('activateSecondCard').checked?2:0);
- return dispatchUI({kind:'activate',side:'Light',args:mask?[count,mask]:[count],gameId,revision});
+ return dispatchUI({kind:'activate',side:playerSide(),args:mask?[count,mask]:[count],gameId,revision});
 }
 function reactResponse(){
  if(state.gameWinner||state.automatedPending||state.game?.timing.pending)return null;
  const frames=state.game?.responses??[];
- return frames.some(frame=>frame.kind==='react'||(['drain','battle'].includes(frame.kind)&&frame.side==='Dark'))?frames.at(-1):null;
+ return frames.some(frame=>frame.kind==='react'||(['drain','battle'].includes(frame.kind)&&frame.side===botSide()))?frames.at(-1):null;
 }
 
 function responseMarkup(window,available){
@@ -465,7 +469,7 @@ function responseMarkup(window,available){
  const loc=state.locations[window.site];
  const description='<b>Antwortfenster · '+escapeHTML(title)+(loc?' bei '+escapeHTML(loc.name):'')+'</b><p>Priorität: '+window.priority+'</p>'
   +(window.kind==='destiny'?'<p>'+escapeHTML(window.draw.card.name)+' · '+(window.draw.cancelled?'aufgehoben':window.draw.value??'unbekannt')+'</p>':'');
- if(window.priority==='Dark'){
+ if(window.priority===botSide()){
   const option=botPromptAction();
   return description+(battleOnPlaymat?ruleButton(option,'Antwort des Bots zeigen'):botRuleButton(option,'Antwort des Bots zeigen'));
  }
@@ -474,7 +478,7 @@ function responseMarkup(window,available){
 }
 
 function renderPlayerReact(window,available){
- const area=el('playerReactControls'),focus=window?.priority==='Light'&&area.hidden;
+ const area=el('playerReactControls'),focus=window?.priority===playerSide()&&area.hidden;
  area.hidden=!window;
  area.innerHTML=window?responseMarkup(window,available):'';
  if(focus)area.focus();
@@ -483,21 +487,21 @@ function renderPlayerReact(window,available){
 function custodyMarkup(available){
  const pending=state.pendingCustody?.[0];
  if(!pending)return '';
- const controls=pending.side==='Light'?available.map(option=>ruleButton(option,option.label)).join(' '):
+ const controls=pending.side===playerSide()?available.map(option=>ruleButton(option,option.label)).join(' '):
   botRuleButton(botCustodyAction(),'Gefangenenentscheidung des Bots zeigen');
  return '<b>'+escapeHTML(pending.card.name)+' · '+(pending.side==='Light'?'Befreiung':'Gefangennahme')+'</b><p>'+
-  (pending.side==='Light'?'Entscheide, wohin deine befreite Karte geht.':'Dark Side entscheidet über den Gefangenen.')+'</p>'+controls;
+  (pending.side!==playerSide()?'Der Bot entscheidet über den Gefangenen.':pending.side==='Light'?'Entscheide, wohin deine befreite Karte geht.':'Entscheide, was mit dem Gefangenen passiert.')+'</p>'+controls;
 }
 
 function renderPlayerCustody(inBattleDialog,available){
  const area=el('playerCustodyControls'),pending=state.pendingCustody?.[0];
- const focus=area.hidden&&pending?.side==='Light'&&!inBattleDialog;
+ const focus=area.hidden&&pending?.side===playerSide()&&!inBattleDialog;
  area.hidden=inBattleDialog||!pending;
  area.innerHTML=area.hidden?'':custodyMarkup(available);
  if(focus)area.focus({preventScroll:true});
 }
 
-function renderControlPanel(available=legalActions(state,'Light'),box=el('controlPanel'),react=reactResponse()){
+function renderControlPanel(available=legalActions(state,playerSide()),box=el('controlPanel'),react=reactResponse()){
  const drainArea=el('drainLossControls');
  const focusDrain=drainArea.hidden||drainArea.contains?.(document.activeElement);
  drainArea.hidden=true;
@@ -514,16 +518,16 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.style.display='block';return;
  }
  if(state.automatedPending){
-  const pending=state.automatedPending,controls=pending.side==='Light'?available:[botPromptAction()].filter(Boolean);
+  const pending=state.automatedPending,controls=pending.side===playerSide()?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>'+escapeHTML(pending.card.name)+' · '+escapeHTML(state.locations[pending.slot].name)+'</b><p>'+
    (pending.kind==='mine'?'Noch zu verlierende Charaktere: '+pending.remaining:pending.kind==='defuse'?'Mine ausgelöst':'Wähle das Ziel des Seekers.')+'</p>'+controls.map(option=>
-   option.side==='Dark'?botRuleButton(option,'Entscheidung des Bots zeigen'):ruleButton(option,option.label??option.card.name)).join(' ');
+   option.side===botSide()?botRuleButton(option,'Entscheidung des Bots zeigen'):ruleButton(option,option.label??option.card.name)).join(' ');
   box.style.display='block';return;
  }
  if(state.game?.timing.pending){
   const options=available.length?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>Ausgelöste Effekte</b><p>Wähle den nächsten Effekt.</p>'
-   +options.map(option=>option.side==='Dark'?botRuleButton(option,'Bot: '+option.label):ruleButton(option,option.label)).join(' ');
+   +options.map(option=>option.side===botSide()?botRuleButton(option,'Bot: '+option.label):ruleButton(option,option.label)).join(' ');
   box.style.display='block';return;
  }
  const window=PremiereGame.responseWindow(state.game);
@@ -532,15 +536,15 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
   box.style.display=react?'none':'block';return;
  }
  if(state.pendingReserveSearch){
-  const frame=state.pendingReserveSearch,light=frame.side==='Light';
-  const options=light?available:[botPromptAction()].filter(Boolean);
+  const frame=state.pendingReserveSearch,own=frame.side===playerSide();
+  const options=own?available:[botPromptAction()].filter(Boolean);
   box.innerHTML='<b>'+escapeHTML(frame.card.name)+' · Reserve Deck</b><p>'
-   +(light?'Wähle eine passende Karte. Danach wird das Deck gemischt.':'Der Bot durchsucht sein Reserve Deck.')+'</p>'
-   +options.map(option=>light?ruleButton(option,option.label):botRuleButton(option,'Suche des Bots abschließen')).join(' ');
+   +(own?'Wähle eine passende Karte. Danach wird das Deck gemischt.':'Der Bot durchsucht sein Reserve Deck.')+'</p>'
+   +options.map(option=>own?ruleButton(option,option.label):botRuleButton(option,'Suche des Bots abschließen')).join(' ');
   box.style.display='block';return;
  }
  const pending=state.pendingForceLoss;
- if(pending?.payer==='Light'&&!state.gameWinner){
+ if(pending?.payer===playerSide()&&!state.gameWinner){
   const label={battleDamage:'Battle Damage',assault:'Assault',limitedResources:'Limited Resources'}[pending.reason]??'Force Drain';
   const names={deck:'Reserve Deck',force:'Force Pile',used:'Used Pile'};
   const choices=available.map(option=>ruleButton(option,option.label??(option.card?'Hand · '+option.card.name:names[option.args[0]]+' (oberste Karte)'))).join(' ');
@@ -565,7 +569,7 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
  const shuffle=available.filter(option=>option.kind==='shufflePile'&&option.args[0]===selected).map(option=>ruleButton(option,option.label)).join(' ');
  const tableEffects=available.filter(option=>['deployTableEffect','deployReserveInsert','cancelTableEffect','recycleHand'].includes(option.kind)&&option.args[0]===selected)
   .map(option=>ruleButton(option,option.label)).join(' ');
- const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect','cardInformation','pileInterrupt','groupRelocation','dodonnaCounter','lateralMechanic','lateralRepair','cancelNamedWeapon','memorialExchange'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
+ const equipment=available.filter(option=>['weaponEffect','moveSeeker','skipSeekerMove','alterLocationEffect','cardInformation','pileInterrupt','groupRelocation','dodonnaCounter','lateralMechanic','lateralRepair','cancelNamedWeapon','memorialExchange','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ');
  const lostPileEffects=available.filter(option=>['deployLostPileEffect','alterLostPileEffect'].includes(option.kind))
   .map(option=>ruleButton(option,option.card.name+' · '+option.target+' Side Lost Pile')).join(' ');
  const racks=state.blasterRack?[state.blasterRack]:blasterRacks();
@@ -575,12 +579,12 @@ function renderControlPanel(available=legalActions(state,'Light'),box=el('contro
 }
 
 function cardInformationMarkup(available){
- const frame=state.pendingCardView,light=frame.side==='Light';
+ const frame=state.pendingCardView,own=frame.side===playerSide();
  const isPeek=frame.mode==='scompPeek';
- const shown=isPeek&&Date.now()>=frame.expiresAt?[]:light||frame.mode==='labria'||frame.publicView?frame.shown:[];
+ const shown=isPeek&&Date.now()>=frame.expiresAt?[]:own||frame.mode==='labria'||frame.publicView?frame.shown:[];
  let markup='<b>'+escapeHTML(frame.card.name)+'</b>';
  if(shown.length)markup+='<ol'+(isPeek?' data-scomp-peek':'')+'>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
- if(!light){
+ if(!own){
   const choice=botPromptAction();
   return markup+botRuleButton(choice,'Entscheidung des Bots zeigen');
  }
@@ -596,7 +600,7 @@ function cardInformationMarkup(available){
 }
 
 function submitLeesubGuess(gameId,revision){
- return dispatchUI({kind:'finishCardInformation',side:'Light',gameId,revision,
+ return dispatchUI({kind:'finishCardInformation',side:playerSide(),gameId,revision,
   args:[el('leesubType').value,Number(el('leesubPosition').value)]});
 }
 
@@ -669,7 +673,7 @@ function inspectCatalogCard(index){
 
 function renderSetup(){
  el('outOfPlay').hidden=true;
- const setup=PremiereGame.setupView(setupDecks,'Light'),available=legalActions(null,'Light');
+ const setup=PremiereGame.setupView(setupDecks,playerSide()),available=legalActions(null,playerSide());
  el('gameTable').hidden=true;
  el('gameMessage').hidden=false;
  el('phaseHelp').hidden=true;
@@ -687,7 +691,7 @@ function renderSetup(){
  el('botHandCount').textContent='';
  el('botHistory').textContent='';
  el('log').textContent='';
- el('stats').textContent='Partie-Seed: '+setup.seed;
+ el('stats').textContent='Du spielst '+playerSide()+' Side · Partie-Seed '+setup.seed;
  const reveal=setup.revealed;
  if(!reveal){
   const realChoice=available.some(option=>option.card);
@@ -756,13 +760,13 @@ function groupMoveMarkup(slot,available){
 
 function groupMovePlans(slot,indices){
  if(indices.length<2)return [];
- const moves=groupMoveOptions(slot,legalActions(state,'Light'));
+ const moves=groupMoveOptions(slot,legalActions(state,playerSide()));
  const destinations=new Set(moves.filter(move=>move.index===indices[0]).map(move=>move.to));
  return [...destinations].flatMap(to=>{
   const plan=indices.map(index=>moves.filter(move=>move.to===to&&move.index===index).sort((a,b)=>a.cost-b.cost)[0]);
   if(plan.some(move=>!move))return [];
   const cost=plan.reduce((sum,move)=>sum+move.cost,0);
-  return cost<=state.force.length?[{to,cost,moves:plan}]:[];
+  return cost<=PremiereGame.zones(state,playerSide()).force.length?[{to,cost,moves:plan}]:[];
  });
 }
 
@@ -784,7 +788,7 @@ function submitGroupMove(form,button){
  if(!plan){updateGroupMoveTargets(form);return false;}
  let moved=0;
  for(const move of plan.moves){
-  const offer=groupMoveOptions(slot,legalActions(state,'Light')).find(option=>option.card===move.card&&option.to===to&&
+  const offer=groupMoveOptions(slot,legalActions(state,playerSide())).find(option=>option.card===move.card&&option.to===to&&
    option.movementKind===move.movementKind&&option.cost===move.cost);
   if(!offer||!dispatchUI(offer))break;
   moved++;
@@ -806,7 +810,7 @@ function movementTrigger(i,available){
 
 function openMovement(i){
  if(!state?.locations[i])return;
- const options=locationMovementOptions(i,legalActions(state,'Light'));
+ const options=locationMovementOptions(i,legalActions(state,playerSide()));
  if(!options.length)return;
  const units=new Map(),groups=[];
  for(const option of options){
@@ -845,7 +849,7 @@ function closeMovement(){
  if(!el('battleAnalysis').open)(el('movementTrigger'+dialog.dataset.slot)??el('step')).focus({preventScroll:true});
 }
 
-function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),'Light','trainingNight',[!!value]))}
+function setNightConditions(value){return dispatchUI(PremiereGame.offer(currentGame(),playerSide(),'trainingNight',[!!value]))}
 
 function showEffectCoverage(){
  const coverage=effectCoverage();
@@ -855,10 +859,10 @@ function showEffectCoverage(){
   +'\n\nOFFENE KARTEN\n'+coverage.unimplemented.map(card=>card.id+' · '+card.name+' · '+(cardEffectFlags(card).join(', ')||'sonstige Regel')).join('\n');
 }
 
-function play(idx,i){return dispatchUI(PremiereGame.offer(currentGame(),'Light','deploy',[idx,i]))}
-function equipSelectedWeapon(site,host){return dispatchUI(PremiereGame.offer(currentGame(),'Light','equip',[selected,site,host]))}
+function play(idx,i){return dispatchUI(PremiereGame.offer(currentGame(),playerSide(),'deploy',[idx,i]))}
+function equipSelectedWeapon(site,host){return dispatchUI(PremiereGame.offer(currentGame(),playerSide(),'equip',[selected,site,host]))}
 function playLocation(handIndex,position){
- if(dispatchUI(PremiereGame.offer(currentGame(),'Light','deployLocation',[handIndex,position]))){selected=-1;render();}
+ if(dispatchUI(PremiereGame.offer(currentGame(),playerSide(),'deployLocation',[handIndex,position]))){selected=-1;render();}
 }
 
 function lossPreview(side,available){
@@ -867,7 +871,7 @@ function lossPreview(side,available){
  const required=side==='Light'?damage?.lightDamage:damage?.darkDamage;
  const sum=chosen.reduce((n,i)=>n+(Number.isFinite(cards[i]?.forfeit)?cards[i].forfeit:0),0);
  const rows=cards.map((card,i)=>{
-  const toggle=side==='Light'?findOffer(available,'toggleLoss',i):null;
+  const toggle=side===playerSide()?findOffer(available,'toggleLoss',i):null;
   const selected=chosen.includes(i)?'checked':'';
   const hit=(x.weaponHits?.[side]??[]).includes(i)?' · GETROFFEN (Forfeit Pflicht)':'';
   return '<label style="display:block;padding:5px"><input type="checkbox" '+selected+' '+ruleClick(toggle)+'> '
@@ -891,7 +895,7 @@ function modifierControls(){
   }).join('')+'</div>';
 }
 function changeModifier(side,kind,value,gameId,revision){
- return dispatchUI({kind:'trainingModifier',side:'Light',args:[side,kind,Number(value)],gameId,revision});
+ return dispatchUI({kind:'trainingModifier',side:playerSide(),args:[side,kind,Number(value)],gameId,revision});
 }
 
 function battleHitCards(side,slot){
@@ -920,9 +924,10 @@ function battleSideMarkup(side,power,ability,destiny,current,controls=''){
 function renderBattle(){
  const x=battleSession;
  if(!x||state.gameWinner)return;
- const i=x.site,t=battleTotals(i),available=legalActions(state,'Light'),dark=legalActions(state,'Dark');
- const choiceSide=available.some(option=>!option.kind.startsWith('training'))?'Light':
-  dark.some(option=>!option.kind.startsWith('training'))?'Dark':null;
+ const own=playerSide(),bot=botSide(),i=x.site,t=battleTotals(i);
+ const available=legalActions(state,own),botOptions=legalActions(state,bot);
+ const choiceSide=available.some(option=>!option.kind.startsWith('training'))?own:
+  botOptions.some(option=>!option.kind.startsWith('training'))?bot:null;
  const response=PremiereGame.responseWindow(state.game);
  const react=reactResponse();
  const reactControls=state.pendingCustody?.length?'<section class="react-controls" aria-label="Gefangenenentscheidung">'+custodyMarkup(available)+'</section>':
@@ -932,46 +937,50 @@ function renderBattle(){
  const steps={initiation:'Initiierung',weapons:'Waffen',power:'Power & Destiny',damage:'Schaden'};
  const title=el('battleTitle');
  title.textContent=(isSystem(state.locations[i])?'Raumkampf':'Bodenkampf')+' · '+state.locations[i].name;
- el('battlePriority').textContent=(response?'Antwortfenster · ':steps[stage]+' · ')+(choiceSide==='Light'?'Du bist dran':
-  choiceSide==='Dark'?(el('autoBot').checked?'Bot entscheidet automatisch':'Bot ist dran'):'Kampf wird aufgelöst');
+ el('battlePriority').textContent=(response?'Antwortfenster · ':steps[stage]+' · ')+(choiceSide===own?'Du bist dran':
+  choiceSide===bot?(el('autoBot').checked?'Bot entscheidet automatisch':'Bot ist dran'):'Kampf wird aufgelöst');
  const help=el('battleLessonHint'),lesson=lessonProgress();
  help.hidden=!lesson?.hint;
  help.textContent=lesson?.hint??'';
  const totals=battleDamagePreview();
+ const fighters=[own,bot].map(side=>{
+  const key=side.toLowerCase();
+  return battleSideMarkup(side,t[key+'Power'],t[key+'Ability'],x[key+'Destiny'],choiceSide===side,side===own?reactControls:'');
+ });
  el('battleDetails').innerHTML='<ol class="battle-timeline" aria-label="Kampfsegmente">'+Object.entries(steps)
   .map(([segment,label])=>'<li'+(stage===segment?' aria-current="step"':'')+'>'+escapeHTML(label)+'</li>').join('')+'</ol>'
-  +'<div class="battle-arena">'+battleSideMarkup('Light',t.lightPower,t.lightAbility,x.lightDestiny,choiceSide==='Light',reactControls)
-  +battleSideMarkup('Dark',t.darkPower,t.darkAbility,x.darkDestiny,choiceSide==='Dark')+'</div>'
+  +'<div class="battle-arena">'+fighters.join('')+'</div>'
   +(totals?'<p class="battle-totals">Gesamt-Power · Light '+totals.lightTotal+' / Dark '+totals.darkTotal+'</p>':'')
   +(x.recentEvents?.length?'<ul class="battle-events" aria-label="Letzte Kampfaktionen">'
    +x.recentEvents.map(event=>'<li>'+escapeHTML(event)+'</li>').join('')+'</ul>':'')
   +(!waiting&&state.trainingBattle&&stage!=='damage'?modifierControls():'')
-  +(x.segmented?(x.damage?renderDamageDebt(x.damage):''):lossPreview('Light',available)+lossPreview('Dark',dark));
+  +(x.segmented?(x.damage?renderDamageDebt(x.damage):''):lossPreview(own,available)+lossPreview(bot,botOptions));
  let buttons;
  if(waiting){
   buttons='';
  }else if(x.segment==='initiation'&&x.prediction&&!x.prediction.winner){
-  buttons=botRuleButton(botPredictionAction(dark),'Vorhersage des Bots zeigen');
+  buttons=available.length?available.map(option=>ruleButton(option,option.args[0]+' Side als Sieger vorhersagen')).join(' '):
+   botRuleButton(botPredictionAction(botOptions),'Vorhersage des Bots zeigen');
  }else if(x.segment==='damage'){
   const labels={deck:'Reserve Deck',used:'Used Pile',force:'Force Pile'};
-  buttons=x.damage.priority==='Dark'?botRuleButton(botDamageAction(),'Schadensentscheidung des Bots zeigen'):
+  buttons=x.damage.priority===bot?botRuleButton(botDamageAction(),'Schadensentscheidung des Bots zeigen'):
    available.map(option=>ruleButton(option,option.kind==='battleForfeit'?'Forfeit · '+option.card.name+' ('+option.value+')'+(option.hit?' · Treffer':'')+
     (option.charged?' · Trooper Charge':''):
     option.kind==='battleForceLoss'?'Force verlieren · '+(option.card?.name??labels[option.args[0]]):option.label??'Im Damage-Segment passen')).join(' ');
-  if(x.damage.priority==='Light'&&!available.some(option=>option.kind==='passDamage'))buttons+='<p class="hint">Du musst noch Treffer, Attrition oder Battle Damage abwickeln.</p>';
- }else if(x.weaponTurn==='Dark'){
+  if(x.damage.priority===own&&!available.some(option=>option.kind==='passDamage'))buttons+='<p class="hint">Du musst noch Treffer, Attrition oder Battle Damage abwickeln.</p>';
+ }else if(x.weaponTurn===bot){
   buttons=botRuleButton(botWeaponAction(),'Waffenaktion des Bots zeigen');
- }else if(x.weaponTurn==='Light'){
+ }else if(x.weaponTurn===own){
   buttons=available.filter(option=>option.kind==='fireWeapon').map(option=>ruleButton(option,option.weapon.name+' → '+option.target.name+
    (option.from===i?'':' · von '+state.locations[option.from].name)+' ('+option.cost+' Force)')).join(' ')
    +' '+available.filter(option=>option.kind==='combinedAttack').map(combinedAttackMarkup).join(' ')
    +' '+available.filter(option=>option.kind==='computerFire').map(option=>ruleButton(option,option.label)).join(' ')
-   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','alterLocationEffect','alterLostPileEffect','gravelStorm','cardInformation','pileInterrupt','dodonnaCounter','lateralMechanic','lateralRepair','abilityPower','cancelNamedWeapon','holocamPower','obiAssist'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
+   +' '+available.filter(option=>['battleEffect','weaponEffect','retrieve','searchReserve','shufflePile','cancelTableEffect','alterLocationEffect','alterLostPileEffect','gravelStorm','cardInformation','pileInterrupt','dodonnaCounter','lateralMechanic','lateralRepair','abilityPower','cancelNamedWeapon','holocamPower','obiAssist','duel'].includes(option.kind)).map(option=>ruleButton(option,option.label)).join(' ')
    +' '+ruleButton(findOffer(available,'passWeapons'),x.repeatingWeapon?'Wiederholtes Feuern beenden':'Im Waffen-Segment passen');
  }else{
-  buttons=ruleButton(findOffer(available,'destiny'),'Light Battle Destiny ziehen')+' '
-   +ruleButton(findOffer(available,'skipDestiny'),'Light verzichtet')+' '
-   +botRuleButton(dark.find(option=>option.kind==='destiny')??dark.find(option=>option.kind==='skipDestiny'),'Bot-Entscheidung zeigen')+' '
+  buttons=ruleButton(findOffer(available,'destiny'),own+' Battle Destiny ziehen')+' '
+   +ruleButton(findOffer(available,'skipDestiny'),own+' verzichtet')+' '
+   +botRuleButton(botOptions.find(option=>option.kind==='destiny')??botOptions.find(option=>option.kind==='skipDestiny'),'Bot-Entscheidung zeigen')+' '
    +(x.segmented?'':ruleButton(findOffer(available,'resolveBattle'),'Forfeits bestätigen und Battle Damage bezahlen'));
  }
  el('battleControls').innerHTML=buttons;
@@ -1131,10 +1140,10 @@ const inspectorOwnCardOffers=(available,card)=>available.filter(option=>
 function unavailableCardAction(card,inHand){
  const pending=pendingActionReason();
  if(pending)return pending;
- if(state.activeSide==='Dark')return 'Dark Side ist am Zug. Eigene Aktionen erscheinen im passenden Antwortfenster.';
+ if(state.activeSide===botSide())return botSide()+' Side ist am Zug. Eigene Aktionen erscheinen im passenden Antwortfenster.';
  if(inHand&&state.phase!==2)return 'Ausspielen ist in der Deploy-Phase möglich. Interrupts brauchen ihren eigenen Auslöser.';
- if(inHand&&Number.isFinite(card.deploy)&&card.deploy>forceBudget('Light'))return 'Für einen regulären Deploy braucht '+card.name+
-  ' '+card.deploy+' Force. Verfügbar sind '+forceBudget('Light')+'. Ortsrabatte können die Kosten senken.';
+ if(inHand&&Number.isFinite(card.deploy)&&card.deploy>forceBudget(playerSide()))return 'Für einen regulären Deploy braucht '+card.name+
+  ' '+card.deploy+' Force. Verfügbar sind '+forceBudget(playerSide())+'. Ortsrabatte können die Kosten senken.';
  if(!inHand&&state.phase===4&&state.movedThisTurn?.includes(card))return 'Diese Karte hat sich in diesem Zug bereits regulär bewegt.';
  return inHand?'Es gibt gerade kein zulässiges Ziel für diese Karte. Prüfe Ort, Presence, Kartentext und verfügbare Force.':
   'Für diese Karte ist gerade keine eigene Aktion verfügbar. Passive Regeln gelten automatisch.';
@@ -1155,7 +1164,7 @@ function effectInspectorMarkup(card,offers){
  if(other)return title+other;
  let reason='In deiner Ausspielen-Phase kannst du hier das Ziel wählen.';
  if(state.gameWinner)reason='Die Partie ist beendet.';
- else if(state.phase===2&&state.activeSide==='Light'&&!state.botTurn){
+ else if(state.phase===2&&state.activeSide===playerSide()&&!state.botTurn){
   if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.pendingForceLoss||
      state.pendingReserveSearch||state.automatedPending||state.pendingCardView)reason='Schließe zuerst die laufende Aktion ab.';
   else if(card.id==='Light:2110'&&state.force.length<3)reason='Revolution braucht 3 Force. Du hast '+state.force.length+' in der Force Pile.';
@@ -1166,15 +1175,15 @@ function effectInspectorMarkup(card,offers){
 
 function inspectCard(side,i,zone,site){
  if(!state||!PremiereGame.sides.includes(side)||!['hand','field'].includes(zone)||!Number.isInteger(i)||i<0)return;
- if(zone==='hand'&&side==='Dark'&&!showLearningBotHand())return;
- const cards=zone==='hand'?(side==='Light'?state.hand:state.botHand):side==='Light'?state.light[site]:state.dark[site];
+ if(zone==='hand'&&side===botSide()&&!showLearningBotHand())return;
+ const {hand,board}=PremiereGame.zones(state,side),cards=zone==='hand'?hand:board[site];
  const card=cards?.[i];
  if(!card)return;
- const ownHand=zone==='hand'&&side==='Light',effect=ownHand&&card.type==='Effect';
- const options=side==='Light'&&state.locations&&state.light&&state.dark?
-  inspectorOwnCardOffers(legalActions(state,'Light'),card):[];
+ const ownHand=zone==='hand'&&side===playerSide(),effect=ownHand&&card.type==='Effect';
+ const options=side===playerSide()&&state.locations&&state.light&&state.dark?
+  inspectorOwnCardOffers(legalActions(state,playerSide()),card):[];
  const extra=effect?effectInspectorMarkup(card,options):inspectorActions(options,card);
- showCardWithStats(card,extra||(side==='Light'?'<p class="hint">'+escapeHTML(unavailableCardAction(card,ownHand))+'</p>':''));
+ showCardWithStats(card,extra||(side===playerSide()?'<p class="hint">'+escapeHTML(unavailableCardAction(card,ownHand))+'</p>':''));
  if(ownHand&&!effect){
   const selectButton=el('selectInspectorCard'),gameId=currentGame()?.id,revision=currentGame()?.revision;
   selectButton.hidden=false;
@@ -1209,7 +1218,7 @@ function inspectLocation(i){
   return escapeHTML(effect.card.name+target+journey);
  });
  const previous=state.convertedLocations?.[i]?.map(card=>escapeHTML(card.name+' · '+card.side))??[];
- const offers=legalActions(state,'Light').filter(option=>['battle','drain','convertLocation','revolution','deploy'].includes(option.kind)&&
+ const offers=legalActions(state,playerSide()).filter(option=>['battle','drain','convertLocation','revolution','deploy'].includes(option.kind)&&
   (['battle','drain'].includes(option.kind)?option.args[0]===i:option.args[0]===selected&&option.args[1]===i));
  const available=inspectorActions(offers,c)||'<p class="hint">'+escapeHTML(pendingActionReason()||
   'Hier ist gerade keine Aktion mit der aktuellen Auswahl möglich. Prüfe Phase, Presence und Force.')+'</p>';
@@ -1244,7 +1253,7 @@ function inspectStackLayer(side,site,host,index){
  const card=PremiereGame.zones(state,side).board?.[site]?.[host];
  const layer=card&&stackedCards(card)[index];
  if(layer){
-  const card=layer.card,options=side==='Light'?inspectorOwnCardOffers(legalActions(state,'Light'),card):[];
+  const card=layer.card,options=side===playerSide()?inspectorOwnCardOffers(legalActions(state,playerSide()),card):[];
   showCardWithStats(card,inspectorActions(options,card));
  }
 }
@@ -1261,7 +1270,7 @@ function handCardMarkup(card,index){
   +'<button class="card-face" type="button" id="handCard'+index+'" aria-pressed="'+chosen+'" aria-label="'+name+' auswählen"'
   +' onclick="select('+index+','+game?.id+','+game?.revision+')">'+smallCardArt(card)+'</button>'
   +'<button class="hand-card-inspect" type="button" id="inspectHandCard'+index+'" aria-haspopup="dialog" aria-label="'+name+' ansehen"'
-  +' title="Kartendetails ansehen" onclick="inspectCard(\'Light\','+index+',\'hand\')"></button></div>';
+  +' title="Kartendetails ansehen" onclick="inspectCard(\''+playerSide()+'\','+index+',\'hand\')"></button></div>';
 }
 
 function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
@@ -1284,7 +1293,7 @@ function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
 }
 
 function select(i,gameId=currentGame()?.id,revision=currentGame()?.revision){
- if(gameId!==currentGame()?.id||revision!==currentGame()?.revision||!state?.hand?.[i])return false;
+ if(gameId!==currentGame()?.id||revision!==currentGame()?.revision||!(state&&PremiereGame.zones(state,playerSide()).hand?.[i]))return false;
  selected=i;
  render();
  el('handCard'+i)?.focus({preventScroll:true});
@@ -1332,8 +1341,8 @@ function locationConditionsMarkup(slot){
   [...labels].map(label=>'<li>'+escapeHTML(label)+'</li>').join('')+'</ul>':'';
 }
 
-function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light')){
- const dark=view.players.Dark.board[i]||[],light=view.players.Light.board[i]||[];
+function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide())){
+ const own=playerSide(),bot=botSide(),ownCards=view.players[own].board[i]||[],botCards=view.players[bot].board[i]||[];
  const equipActions=new Map(available.filter(x=>x.kind==='equip'&&x.args[0]===selected&&x.args[1]===i).map(x=>[x.hostIndex,x]));
  const conversion=findOffer(available,'convertLocation',selected,i),revolution=findOffer(available,'revolution',selected,i);
  const piloted=available.filter(option=>option.kind==='deployWithPilot'&&option.args[0]===selected&&option.args[1]===i)
@@ -1347,7 +1356,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  const locationEffects=available.filter(option=>option.kind==='deployLocationEffect'&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.distance!==undefined?option.target.name+' · '+option.distance+' Force zurückholen':
    option.target?option.target.name+' als Ziel':option.card.name+' ausspielen')).join('');
- const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=light.length);
+ const otherMounts=[...equipActions.values()].filter(option=>option.hostIndex<0||option.hostIndex>=ownCards.length);
  const extra=(conversion?ruleButton(conversion,'Konvertieren'):'')+(revolution?ruleButton(revolution,'Revolution (3 Force)'):'')+locationEffects+piloted
   +(automated?ruleButton(automated,'Waffe aufstellen ('+automated.cost+' Force)'):'')
   +(bury?ruleButton(bury,'Karte verdeckt vergraben'):'')+(buried?'<div>'+buried+' verdeckte Karten</div>':'')+deviceActions
@@ -1357,7 +1366,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   const key=side.toLowerCase(),hits=battleHitCards(side,i);
   return '<div class="playmat-zone '+key+'-zone"><span class="zone-name">'+side.toUpperCase()+' · '+cards.length+' Karten</span>'
    +(loc?locationStatusMarkup(side,i):'')+'<div class="cards">'
-   +cards.map((card,index)=>mini(card,index,side,'field',i,{equipAction:side==='Light'?equipActions.get(index):null,hits})).join('')+'</div>'
+   +cards.map((card,index)=>mini(card,index,side,'field',i,{equipAction:side===own?equipActions.get(index):null,hits})).join('')+'</div>'
    +(totals?'<div class="zone-totals"><span>Power <b>'+stat(totals[key+'Power'])+'</b></span> <span>Ability <b>'+stat(totals[key+'Ability'])+'</b></span></div>':'')+'</div>';
  };
  const deploy=findOffer(available,'deploy',selected,i),battle=findOffer(available,'battle',i);
@@ -1365,7 +1374,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
   +(battle?ruleButton(battle,'Battle ('+battle.cost+' Force)'):'')+extra;
  const drains=available.filter(option=>option.kind==='drain'&&option.args[0]===i)
   .map(option=>ruleButton(option,'Force Drain · '+option.amount+' Force'+(option.bonus?' (+'+option.bonus+' Bonus)':''))).join('');
- return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone('Dark',dark)
+ return '<div class="playmat-column '+(!loc?'empty-location':'')+(startsGroup?' playmat-group-start':'')+'" id="playmatLocation'+i+'">'+zone(bot,botCards)
  +'<div class="playmat-location">'+(loc?'<button class="location-art-button" title="Location-Karte vergrößern" aria-label="Location '+escapeHTML(loc.name)+' ansehen" aria-haspopup="dialog" onclick="inspectLocation('+i+')">'+locationCardVisual(loc)+'</button>':locationCardVisual(loc))+'<div class="location-name">'+escapeHTML(loc?.name||'Freier Location-Platz')+'</div>'
  +(loc&&isSite(loc)?locationNightMarkup(i):'')
  +locationConditionsMarkup(i)
@@ -1373,10 +1382,10 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,'Lig
  +(loc?.id==='Light:672'?'<span class="custody-label">Light-Kontrolle befreit Gefangene auf dem Todesstern</span>':'')
  +(drains?'<div class="playmat-drain-actions" role="group" aria-label="Force Drain bei '+escapeHTML(loc.name)+'">'+drains+'</div>':'')
  +(actions?'<div class="playmat-actions">'+actions+'</div>':'')+movementTrigger(i,available)+'</div>'
- +zone('Light',light)+'</div>';
+ +zone(own,ownCards)+'</div>';
 }
 
-function renderPlaymat(available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light')){
+function renderPlaymat(available=legalActions(state,playerSide()),view=PremiereGame.playerView(state,playerSide())){
  const order=boardLocationOrder();
  const insertButton=position=>{
   const option=findOffer(available,'deployLocation',selected,position);
@@ -1394,13 +1403,15 @@ function renderPlaymat(available=legalActions(state,'Light'),view=PremiereGame.p
 }
 
 function renderPhaseTracks(view){
- for(const side of ['Dark','Light']){
+ for(const [role,side] of [['Bot',botSide()],['Player',playerSide()]]){
   const active=!view.winner&&view.activeSide===side;
-  const status=el('turnStatus'+side);
-  const label=view.winner?'Partie beendet':active?(side==='Light'?'Du bist am Zug':'Bot ist am Zug'):'Wartet';
+  const status=el('turnStatus'+role);
+  const label=view.winner?'Partie beendet':active?(role==='Player'?'Du bist am Zug':'Bot ist am Zug'):'Wartet';
   if(status.textContent!==label)status.textContent=label;
-  el('phaseDisplay'+side).className=active?'phase-display turn-active':'phase-display';
-  el('phaseList'+side).innerHTML=german.map((name,index)=>
+  const track=el('phaseDisplay'+role);
+  track.className=active?'phase-display turn-active':'phase-display';
+  track.setAttribute?.('aria-label','Phasen der '+side+' Side');
+  el('phaseList'+role).innerHTML=german.map((name,index)=>
    '<li'+(active&&index===view.phase?' aria-current="step"':'')+'>'+name+'</li>').join('');
  }
 }
@@ -1410,6 +1421,7 @@ function cardBackMarkup(side){
 }
 
 function renderDeckPiles(side,player){
+ const own=side===playerSide(),piles=el(own?'pilesPlayer':'pilesBot');
  const slot=(label,count)=>'<div class="pile-slot">'+(count!==0?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
   +label+' <strong>'+(count??'?')+'</strong></div>';
  const lifeForce=player.reserveCount===null?'?':PremiereGame.lifeForce(state,side);
@@ -1421,19 +1433,25 @@ function renderDeckPiles(side,player){
   +(top.image?'<img src="'+escapeHTML(top.image)+'" alt="" loading="lazy">':'')
   +'<span><small>Oben auf der Lost Pile</small><strong>'+escapeHTML(top.name)+'</strong></span></button>':'';
  const lost=cover+lostTop;
- el('piles'+side).innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
+ piles.setAttribute?.('aria-label','Kartenstapel der '+side+' Side');
+ piles.innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
   +(player.tableEffects?.length?'<p class="hint">Effects · '+player.tableEffects.map(card=>escapeHTML(card.name)).join(', ')+'</p>':'')
-  +(side==='Light'?lost:'')
+  +(own?lost:'')
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
   +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
-  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+(side==='Dark'?lost:'');
+  +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+(own?'':lost);
 }
 
 function render(){
  if(!state)return;
- const available=legalActions(state,'Light'),view=PremiereGame.playerView(state,'Light'),light=view.players.Light,dark=view.players.Dark;
+ const side=playerSide(),rival=botSide();
+ const available=legalActions(state,side),view=PremiereGame.playerView(state,side),own=view.players[side],bot=view.players[rival];
+ el('playerHandTitle').textContent='Deine Hand · '+side+' Side';
+ el('botHandTitle').textContent='Bot-Hand · '+rival+' Side';
+ el('playerSeat').className='panel player-hand '+side.toLowerCase()+'-hand';
+ el('botSeat').className='panel player-hand '+rival.toLowerCase()+'-hand';
  el('gameTable').hidden=false;
  const inBattle=!!battleSession&&!view.winner;
  const inBattleDialog=inBattle&&!battleOnPlaymat;
@@ -1451,8 +1469,8 @@ function render(){
  renderPhaseTracks(view);
  el('outOfPlay').hidden=!view.outOfPlay.length;
  el('outOfPlay').textContent='Aus dem Spiel · '+view.outOfPlay.map(card=>card.name).join(', ');
- renderDeckPiles('Dark',dark);
- renderDeckPiles('Light',light);
+ renderDeckPiles(rival,bot);
+ renderDeckPiles(side,own);
  el('gameMessage').hidden=!view.winner;
  if(view.winner){
   el('instruction').textContent=view.winner==='Simultaneous'?'Unentschieden – beide Life Forces gleichzeitig aufgebraucht':'Spielende – '+view.winner+' Side gewinnt';
@@ -1461,21 +1479,21 @@ function render(){
  el('phaseHelp').hidden=!!view.winner||!learningMode();
  el('phaseHelpText').textContent=lessons[view.phase]??'';
  const step=findOffer(available,'advance');
- el('step').textContent=view.activeSide==='Light'&&view.phase===5?'Zug beenden':'Nächste Phase';
+ el('step').textContent=view.activeSide===playerSide()&&view.phase===5?'Zug beenden':'Nächste Phase';
  el('step').disabled=!step;
  el('step').onclick=step?()=>dispatchUI(step):null;
  const controls=el('forceControls'),activation=available.filter(option=>option.kind==='activate').at(-1),draw=findOffer(available,'draw');
  controls.hidden=!activation&&!draw;
  if(activation){
   const {gameId,revision}=activation,max=activation.args[0];
-  const {unknown}=forceFromLocations('Light');
+  const {unknown}=forceFromLocations(playerSide());
   controls.innerHTML='<div class="pile-action"><label>Anzahl (max. '+max+') <input id="activateAmount" type="number" min="0" max="'+max
    +'" value="'+max+'"></label><button onclick="activateMe('+gameId+','+revision+')">Force aktivieren</button></div>'
-   +(activationDrawAllowance('Light')>0&&max>0?'<label><input id="activateFirstCard" type="checkbox"> Erste aktivierte Karte auf die Hand</label>':'')
-   +(activationDrawAllowance('Light')>1&&max>1?'<label><input id="activateSecondCard" type="checkbox"> Zweite aktivierte Karte auf die Hand</label>':'')
+   +(activationDrawAllowance(playerSide())>0&&max>0?'<label><input id="activateFirstCard" type="checkbox"> Erste aktivierte Karte auf die Hand</label>':'')
+   +(activationDrawAllowance(playerSide())>1&&max>1?'<label><input id="activateSecondCard" type="checkbox"> Zweite aktivierte Karte auf die Hand</label>':'')
    +(unknown?'<p class="hint">Unbekannte Force-Icons an '+unknown+' Locations.</p>':'');
  }else controls.innerHTML=draw?ruleButton(draw,'1 Karte aus Force Pile ziehen'):'';
- const botStep=legalActions(state,'Dark').find(option=>option.kind==='botStep'||option.kind==='botDecision');
+ const botStep=legalActions(state,botSide()).find(option=>option.kind==='botStep'||option.kind==='botDecision');
  const automatic=el('autoBot').checked;
  el('botNext').hidden=automatic;
  el('botNext').disabled=!botStep;
@@ -1484,15 +1502,15 @@ function render(){
  if(state.botTurn)el('botStepText').textContent=automatic?'Bot spielt automatisch':'Schritt '+(state.botTurn.index+1)+' von '+state.botTurn.steps.length
   +' · Nächster Abschnitt: '+(state.botTurn.steps[state.botTurn.index]?.kind||'Abschluss');
  el('board').innerHTML=renderPlaymat(available,view);
- el('hand').innerHTML=light.hand.map(handCardMarkup).join('');
- const selectedCard=state.hand?.[selected],blocked=selectedCard&&!inspectorOwnCardOffers(available,selectedCard).length;
+ el('hand').innerHTML=own.hand.map(handCardMarkup).join('');
+ const selectedCard=PremiereGame.zones(state,side).hand?.[selected],blocked=selectedCard&&!inspectorOwnCardOffers(available,selectedCard).length;
  el('selectedActionHint').hidden=!blocked;
  el('selectedActionHint').textContent=blocked?unavailableCardAction(selectedCard,true):'';
  el('showBotHand').disabled=!learningMode();
  const showBotHand=showLearningBotHand();
- el('botHandCount').textContent=dark.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
- el('botHand').innerHTML=showBotHand?(state.botHand??[]).map((card,index)=>mini(card,index,'Dark','hand')).join('')
-  :('<div class="card card-back" role="img" aria-label="Verdeckte Dark-Side-Karte">'+cardBackMarkup('Dark')+'</div>').repeat(dark.handCount);
+ el('botHandCount').textContent=bot.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
+ el('botHand').innerHTML=showBotHand?(PremiereGame.zones(state,rival).hand??[]).map((card,index)=>mini(card,index,rival,'hand')).join('')
+  :('<div class="card card-back" role="img" aria-label="Verdeckte '+rival+'-Side-Karte">'+cardBackMarkup(rival)+'</div>').repeat(bot.handCount);
  el('botHistoryTitle').textContent=state.botTurn?'Aktivitäten im Bot-Zug':'Letzter Bot-Zug';
  el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
  el('log').textContent=state.log.join('\n');
@@ -1511,27 +1529,27 @@ const automaticBot=()=>el('autoBot').checked&&!replayingGame&&!setupDecks&&state
  !battleOnPlaymat&&!el('cardInspector').open&&!el('starterDeckDialog').open&&!el('movementDialog').open&&!el('gameReview').open;
 
 function offTurnBotInterrupt(available){
- if(!plannedBot()||(currentGame()?.cardRulesVersion??0)<23||state.activeSide!=='Light'||pendingActionReason())return null;
- const legal=(available??legalActions(state,'Dark')).filter(option=>
+ if(!plannedBot()||(currentGame()?.cardRulesVersion??0)<23||state.activeSide!==playerSide()||pendingActionReason())return null;
+ const legal=(available??legalActions(state,botSide())).filter(option=>
   ['retrieve','searchReserve','limitedResources'].includes(option.kind));
  return choosePlannedBotAction(legal);
 }
 
 function automaticBotAction(){
  if(!automaticBot())return null;
- const dark=legalActions(state,'Dark');
- if(!dark.length)return null;
- if(state.pendingCustody?.length)return botCustodyAction(dark);
+ const side=botSide(),offers=legalActions(state,side);
+ if(!offers.length)return null;
+ if(state.pendingCustody?.length)return botCustodyAction(offers);
  if(PremiereGame.responseWindow(state.game)||state.game?.timing.pending||state.automatedPending||
-    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return botPromptAction(dark);
+    state.pendingForceLoss||state.pendingReserveSearch||state.pendingCardView)return botPromptAction(offers);
  if(battleSession){
-  if(dark.some(action=>action.kind==='battlePrediction'))return botPredictionAction(dark);
-  if(battleSession.weaponTurn==='Dark')return botWeaponAction();
-  if(battleSession.damage?.priority==='Dark')return botDamageAction();
-  return dark.find(action=>action.kind==='destiny')??dark.find(action=>action.kind==='skipDestiny');
+  if(offers.some(action=>action.kind==='battlePrediction'))return botPredictionAction(offers);
+  if(battleSession.weaponTurn===side)return botWeaponAction();
+  if(battleSession.damage?.priority===side)return botDamageAction();
+  return offers.find(action=>action.kind==='destiny')??offers.find(action=>action.kind==='skipDestiny');
  }
- return dark.find(action=>action.kind==='botStep'||action.kind==='botDecision')??
-  chooseBotSeekerMove(dark.filter(action=>action.kind==='moveSeeker'))??offTurnBotInterrupt(dark);
+ return offers.find(action=>action.kind==='botStep'||action.kind==='botDecision')??
+  chooseBotSeekerMove(offers.filter(action=>action.kind==='moveSeeker'))??offTurnBotInterrupt(offers);
 }
 
 function scheduleAutomaticBot(){
@@ -1602,18 +1620,19 @@ function renderLearning(){
 }
 
 function learningCheckpoint(action){
- if(!learningMode()||action?.side!=='Light'||!['activate','advance','move'].includes(action.kind)||
+ if(!learningMode()||action?.side!==playerSide()||!['activate','advance','move'].includes(action.kind)||
     action.kind==='activate'&&action.args.length!==1||showLearningBotHand()||pendingActionReason()||!state.game?.publicHistory)return null;
  const game=state.game;
+ const own=PremiereGame.zones(state,playerSide()),bot=PremiereGame.zones(state,botSide());
  const cards=pile=>(pile??[]).map(card=>card.instanceId);
  return {random:game.randomState,revision:game.revision,turn:state.turn,phase:state.phase,events:game.publicHistory.length,
-  deck:cards(state.deck),force:cards(state.force),
-  unchanged:JSON.stringify([state.hand,state.lost,state.botDeck,state.botHand,state.botForce,state.botUsed,state.botLost].map(cards)),
-  used:cards(state.used)};
+  deck:cards(own.deck),force:cards(own.force),
+  unchanged:JSON.stringify([own.hand,own.lost,bot.deck,bot.hand,bot.force,bot.used,bot.lost].map(cards)),
+  used:cards(own.used)};
 }
 
 function reversibleLearningAction(action,before){
- if(!before||state.activeSide!=='Light')return false;
+ if(!before||state.activeSide!==playerSide())return false;
  const after=learningCheckpoint(action);
  if(!after||before.random!==after.random||before.turn!==after.turn||after.revision!==before.revision+1||
     before.unchanged!==after.unchanged)return false;
@@ -1644,6 +1663,8 @@ function parseSavedGame(value){
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
      (saved.botStrategyVersion!==undefined&&![0,1,2].includes(saved.botStrategyVersion))||
      (saved.lesson!==undefined&&!PremiereLearning.lesson(saved.lesson))||
+     (saved.playerSide!==undefined&&!PremiereGame.sides.includes(saved.playerSide))||
+     (saved.playerSide==='Dark'&&(saved.lesson||saved.botStrategyVersion!==2))||
      (saved.peekDeadline!==undefined&&(!Number.isSafeInteger(saved.peekDeadline)||saved.peekDeadline<0))||
      (saved.exposureRevision!==undefined&&(!Number.isInteger(saved.exposureRevision)||saved.exposureRevision<0||
       saved.exposureRevision>saved.commands.length))){
@@ -1687,8 +1708,8 @@ function recordGameCommand(command,allowUndo=false){
  renderLearning();
 }
 
-function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key){
- if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion))return false;
+function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key,side){
+ if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion,side))return false;
  if(!key)return true;
  setupDecks.game.lesson=key;
  const lesson=PremiereLearning.lesson(key);
@@ -1705,6 +1726,8 @@ function activateSave(saved){
  resumeCandidate=null;
  el('resumeGame').hidden=true;
  el('gameMode').value=saved.lesson??'';
+ el('playerSideChoice').value=saved.playerSide??'Light';
+ el('playerSideChoice').disabled=!!saved.lesson;
 }
 
 function startNewGame(seed,trainingBattle=false,key){
@@ -1712,11 +1735,12 @@ function startNewGame(seed,trainingBattle=false,key){
  const fixed=key?lessonDecks[key]:null;
  const decks=fixed?.decks??{light:light.deck,dark:dark.deck};
  const definition=fixed?.definition??{schema:1,decks:{Light:light.definition,Dark:dark.definition}};
+ const side=key?'Light':el('playerSideChoice').value||'Light';
  el('showBotHand').checked=false;
- if(!beginSavedScenario(seed??PremiereLearning.lesson(key)?.seed,trainingBattle,decks,undefined,undefined,key))return false;
+ if(!beginSavedScenario(seed??PremiereLearning.lesson(key)?.seed,trainingBattle,decks,undefined,undefined,key,side))return false;
  undoAvailable=false;
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
-  seed:currentGame().seed,trainingBattle,decks:definition,commands:[],...(key?{lesson:key}:{})});
+  seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{})});
  activeSaveStored=false;
  presentGame();
  return true;
@@ -1734,7 +1758,7 @@ function replayScenario(saved,commands=saved.commands,verify=true){
  undoAvailable=false;
  try {
   const decks=readStarterDecks(saved.decks,[...catalog,...supplementalCatalog]);
-  if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson))
+  if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson,saved.playerSide))
    throw new Error('Ungültiger Spielstart');
   for(const command of commands){
    const before=learningCheckpoint(command);
@@ -1744,7 +1768,7 @@ function replayScenario(saved,commands=saved.commands,verify=true){
    undoAvailable=reversibleLearningAction(command,before);
   }
   if(verify&&(currentGame().revision!==saved.revision||currentGame().randomState!==saved.randomState))throw new Error('Abweichender Spielstand');
-  if(verify&&state?.pendingCardView?.mode==='scompPeek'&&state.pendingCardView.side==='Light'){
+  if(verify&&state?.pendingCardView?.mode==='scompPeek'&&state.pendingCardView.side===playerSide()){
    // Replaying the peek rebuilds its choices but must never grant more viewing time.
    const frame=state.pendingCardView;
    frame.expiresAt=Math.min(frame.expiresAt,saved.peekDeadline??0);
@@ -1810,7 +1834,7 @@ function scenarioSnapshot(){
  const {revision,randomState}=currentGame();
  const snapshot={...activeSave,commands:activeSave.commands.slice(),revision,randomState};
  const frame=state?.pendingCardView;
- if(frame?.mode==='scompPeek'&&frame.side==='Light')snapshot.peekDeadline=frame.expiresAt;
+ if(frame?.mode==='scompPeek'&&frame.side===playerSide())snapshot.peekDeadline=frame.expiresAt;
  else delete snapshot.peekDeadline;
  return snapshot;
 }
@@ -2020,8 +2044,10 @@ el('gameFile').onchange=async()=>{
 };
 el('gameMode').onchange=()=>{
  const lesson=PremiereLearning.lesson(el('gameMode').value);
- if(lesson)el('gameSeed').value=String(lesson.seed);
+ el('playerSideChoice').disabled=!!lesson;
+ if(lesson){el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value='Light';}
 };
+el('playerSideChoice').onchange=previewStartingLocations;
 for(const id of ['endGame','endBattleGame']){
  el(id).textContent='Partie beenden · v'+trainerVersion;
  el(id).onclick=endGameFromUI;

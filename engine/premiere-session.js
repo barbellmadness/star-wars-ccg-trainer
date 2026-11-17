@@ -186,9 +186,10 @@ function loseForceForDrain(side,zone,index){
 }
 
 function botPayDrainLoss(){
+ const side=botSide();
  const sources=['hand','used','force','deck'];
- while(state?.pendingForceLoss?.payer==='Dark'&&!state.gameWinner){
-  const options=legalActions(state,'Dark');
+ while(state?.pendingForceLoss?.payer===side&&!state.gameWinner){
+  const options=legalActions(state,side);
   const choice=plannedBot()?botPromptAction(options):strategicBot()?botForceLossChoice(options):
    sources.map(zone=>options.find(option=>option.args[0]===zone)).find(Boolean);
   if(!performAction(choice,false))break;
@@ -218,7 +219,7 @@ function beginForceLoss(payer,amount,terms){
  if(loss>0){
   state.pendingForceLoss={payer,remaining:loss,amount,...terms};
   log(payer+' muss '+loss+' Force verlieren.');
-  if(payer==='Dark'&&!currentGame()?.executing)botPayDrainLoss();
+  if(payer===botSide()&&!currentGame()?.executing)botPayDrainLoss();
  }else if(terms.reason==='drain')finishNecklaceDrain(PremiereGame.otherSide(payer),terms.locationIndex);
  publishGame();
  return loss;
@@ -455,20 +456,24 @@ function startingLocationChoices(deck){
 }
 
 const latestCardRulesVersion=25;
+const playerSide=()=>currentGame()?.playerSide??'Light';
+const botSide=()=>PremiereGame.otherSide(playerSide());
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function deploymentSide(card){
  return (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22?card?.owner??card?.side:card?.side;
 }
 
-function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=2){
- if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295)return false;
+function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=2,side='Light'){
+ if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295||!PremiereGame.sides.includes(side)||
+    (side==='Dark'&&botStrategyVersion!==2))return false;
  battleSession=null;state=null;
  const game=PremiereGame.actionState(++nextGameId,seed);
  game.publicHistory=[];
  game.starterDecks=decks;
  game.cardRulesVersion=cardRulesVersion;
  game.botStrategyVersion=botStrategyVersion;
+ game.playerSide=side;
  setupDecks={game,trainingBattle,
   light:PremiereGame.copyDeck(decks.light,'Light'),
   dark:PremiereGame.copyDeck(decks.dark,'Dark')};
@@ -479,16 +484,17 @@ function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainin
 function prepareStartingRound(){
  setupDecks.revealed=null;
  setupDecks.darkChoice=undefined;
+ setupDecks.lightChoice=undefined;
 }
 function chooseBotStartingLocation(){
- const options=legalActions(null,'Dark');
+ const side=botSide(),options=legalActions(null,side);
  if(!options.length)return false;
  const cursor={randomState:setupDecks.game.randomState};
  const fraction=PremiereGame.random(cursor);
  const index=setupDecks.game.botStrategyVersion===2
-  ?PremiereBot.startingLocation(setupDecks.dark.cards.map(({type})=>({type})),options.map(({card})=>card&&{
+  ?PremiereBot.startingLocation(setupDecks[side.toLowerCase()].cards.map(({type})=>({type})),options.map(({card})=>card&&{
    icons:card.icons??{},subType:card.subType,locationTags:card.locationTags
-  }),fraction)
+  }),fraction,side)
   :Math.floor(fraction*options.length);
  return performAction(options[index]);
 }
@@ -496,12 +502,12 @@ function resolveStartingChoice(side,index){
  const setup=setupDecks;
  const deck=side==='Dark'?setup.dark:setup.light;
  const choice=startingLocationChoices(deck).find(option=>option.index===index)??null;
- if(side==='Dark'){
+ setup[side.toLowerCase()+'Choice']=choice;
+ if(side===botSide()){
   PremiereGame.random(setup.game);
-  setup.darkChoice=choice;
   return true;
  }
- const lightChoice=choice,darkChoice=setup.darkChoice;
+ const {lightChoice,darkChoice}=setup;
  const collision=!!lightChoice&&!!darkChoice&&locationTitle(lightChoice.card)===locationTitle(darkChoice.card);
  if(collision){
   setup.light.setAside.add(lightChoice.index);
@@ -529,7 +535,7 @@ function finishSetup(){
  setupDecks=null;
  log('Starting Locations: Light '+(lightChoice?.card.name??'kein Startort')+' / Dark '+(darkChoice?.card.name??'kein Startort')+'. Je 8 Karten Starthand. '+firstSide+' Side beginnt.');
  if(lesson)log('Lernstart · '+PremiereLearning.lesson(lesson).title+'. Ausgangslage für die Übung vorbereitet.');
- if(firstSide==='Dark')botBegin();
+ if(firstSide===botSide())botBegin();
  checkpoint('turn:start',()=>checkpoint('phase:start',()=>{}));
  return true;
 }
@@ -735,7 +741,7 @@ function regularMoveKind(card,from,to){return travelOptions(card,card.side??stat
 function movementOptionsFor(side){
  if(!state||state.gameWinner||state.pendingForceLoss||!PremiereGame.sides.includes(side)||
     (state.activeSide&&state.activeSide!==side)||![1,4].includes(state.phase))return [];
- if(side==='Light'?!!state.botTurn:!state.botTurn)return [];
+ if((side===botSide())!==!!state.botTurn)return [];
  const {force,board}=PremiereGame.zones(state,side);
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
@@ -976,47 +982,49 @@ function botUnitStrength(card,slot,pilot=null){
 // The engine owns legal actions and their arguments. The planner gets only
 // public facts, the bot's hand, and targets the current rules have revealed.
 function plannedBotPosition(offers){
- const {hand=[],board=[],deck=[],force=[]}=PremiereGame.zones(state,'Dark');
+ const side=botSide(),rival=playerSide();
+ const {hand=[],board=[],deck=[],force=[]}=PremiereGame.zones(state,side);
  const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side));
  const publicEntries=new Map(entries.map(entry=>[entry.card,entry]));
  const visible=new Set([...hand,...publicEntries.keys(),...state.locations.filter(Boolean)]);
- const frame=state.pendingCardView?.side==='Dark'?state.pendingCardView:null;
+ const frame=state.pendingCardView?.side===side?state.pendingCardView:null;
  const window=PremiereGame.responseWindow(state.game);
- const debt=window||frame?null:battleSession?.damage?.debt.Dark;
- const pending=!window&&state.pendingForceLoss?.payer==='Dark'?state.pendingForceLoss:null;
+ const debt=window||frame?null:battleSession?.damage?.debt[side];
+ const pending=!window&&state.pendingForceLoss?.payer===side?state.pendingForceLoss:null;
  const count=pile=>pile?.some(PremiereGame.isReserveInsert)?null:pile?.length??0;
- const reserveCount=count(deck),rivalReserve=count(state.deck);
+ const reserveCount=count(deck),rivalReserve=count(PremiereGame.zones(state,rival).deck);
  const project=(card,offered=false)=>{
   if(!card||(!offered&&!visible.has(card)))return null;
   const own=hand.includes(card);
   const title=own&&(card.type==='Location'||card.uniquenessLimit)?locationTitle(card):null;
   return {type:card.type,power:card.power??0,ability:cardAbility(card)??0,
-   icons:{dark:card.icons?.dark??0,light:card.icons?.light??0},
+   icons:{own:card.icons?.[side.toLowerCase()]??0,rival:card.icons?.[rival.toLowerCase()]??0},
    redundant:!!title&&Array.from(visible).some(copy=>copy!==card&&locationTitle(copy)===title),
    needsCrew:own&&card.type==='Starship'&&permanentPilotAbility(card)===null&&
-    !hand.some(pilot=>pilot.pilot&&withinDeploymentLimit(pilot,'Dark'))};
+    !hand.some(pilot=>pilot.pilot&&withinDeploymentLimit(pilot,side))};
  };
  const positions=state.locations.map((location,slot)=>{
   if(!location)return null;
-  const dark=confirmedPresence('Dark',slot),light=confirmedPresence('Light',slot);
-  const drain=PremiereLocations.icons(state,slot,'Light')??0;
-  const initiator=battleSession?.site===slot?battleSession.initiator:'Dark';
-  const {darkPower,lightPower,darkAbility,lightAbility}=battleTotals(slot,initiator);
-  const darkDraws=Math.min(reserveCount??1,battleDestinyDrawCount('Dark',slot,darkAbility,initiator)??0);
-  const lightDraws=Math.min(rivalReserve??1,battleDestinyDrawCount('Light',slot,lightAbility,initiator)??0);
+  const ownPresence=confirmedPresence(side,slot),rivalPresence=confirmedPresence(rival,slot);
+  const drain=PremiereLocations.icons(state,slot,rival)??0;
+  const initiator=battleSession?.site===slot?battleSession.initiator:side;
+  const totals=battleTotals(slot,initiator);
+  const ownKey=side.toLowerCase(),rivalKey=rival.toLowerCase();
+  const ownDraws=Math.min(reserveCount??1,battleDestinyDrawCount(side,slot,totals[ownKey+'Ability'],initiator)??0);
+  const rivalDraws=Math.min(rivalReserve??1,battleDestinyDrawCount(rival,slot,totals[rivalKey+'Ability'],initiator)??0);
   const weapons=side=>entries.some(entry=>entry.side===side&&entry.slot===slot&&!entry.unavailable&&
    entry.card.type==='Weapon'&&entry.carriers.every(PremiereUnits.active));
-  const readyWeapons=weapons('Dark');
-  return {dark:dark===true,light:light===true,darkKnown:dark!==null,lightKnown:light!==null,drain,readyWeapons,
-   generation:PremiereLocations.icons(state,slot,'Dark')??0,
-   margin:darkPower-lightPower+3*(darkDraws-lightDraws)+Number(readyWeapons)-Number(weapons('Light'))};
+  const readyWeapons=weapons(side);
+  return {own:ownPresence===true,rival:rivalPresence===true,ownKnown:ownPresence!==null,rivalKnown:rivalPresence!==null,drain,readyWeapons,
+   generation:PremiereLocations.icons(state,slot,side)??0,
+   margin:totals[ownKey+'Power']-totals[rivalKey+'Power']+3*(ownDraws-rivalDraws)+Number(readyWeapons)-Number(weapons(rival))};
  });
  const sites=positions.map((position,slot)=>position&&{...position,
   routes:state.phase<4&&(board[slot]??[]).some(card=>(cardAbility(card)>0||card.occupants?.length)&&positions.some((target,to)=>
-   target?.darkKnown&&target.lightKnown&&!target.dark&&!target.light&&travelOptions(card,'Dark',slot,to).length>0))
+   target?.ownKnown&&target.rivalKnown&&!target.own&&!target.rival&&travelOptions(card,side,slot,to).length>0))
  });
- const view={phase:state.phase,hand:hand.map(card=>project(card)),sites,battleSite:battleSession?.site,
-  life:lifeForceRemaining('Dark'),force:force.length,reserveCount:reserveCount??1,window:window?.kind,drain:window?.amount,
+ const view={side,rival,phase:state.phase,hand:hand.map(card=>project(card)),sites,battleSite:battleSession?.site,
+  life:lifeForceRemaining(side),force:force.length,reserveCount:reserveCount??1,window:window?.kind,drain:window?.amount,
   debt:pending?{damage:pending.remaining,attrition:0}:debt?{damage:debt.damage,attrition:debt.attrition}:null};
  const actions=offers.map((offer,index)=>{
   const {kind,args,from}=offer;
@@ -1033,28 +1041,28 @@ function plannedBotPosition(offers){
   const validShots=shots.filter(shot=>publicEntries.has(shot.target));
   const target=validShots[0]?.target??offer.target??window?.shot?.target;
   const shotBonus=validShots.reduce((sum,shot)=>sum+(shot.bonus??0)+shot.draws*(
-   PremiereLocations.rulesAt(state,shot.from,'Dark','weaponDestiny').reduce((total,rule)=>total+rule.amount,0)+
+   PremiereLocations.rulesAt(state,shot.from,side,'weaponDestiny').reduce((total,rule)=>total+rule.amount,0)+
    (shot.computerPenalty??0)+(battleSession?.weaponDestinyPenalty?.get(shot.weapon)??0)),0);
   const cost=shots.length?shots.reduce((sum,shot)=>sum+shot.cost,0):offer.cost??
    (kind==='duel'?1:kind==='reduceForceLoss'?offer.amount:0);
-  const departure=sites[from]?.dark&&sites[from].lightKnown&&!sites[from].light&&from!==to;
+  const departure=sites[from]?.own&&sites[from].rivalKnown&&!sites[from].rival&&from!==to;
   const leavesControl=departure&&board[from]?.includes(primary)&&
-   PremiereLocations.control({...state,dark:board.map((row,slot)=>slot===from?row.filter(card=>card!==primary):row)},'Dark',from,cardAbility)!==true;
+   PremiereLocations.control({...state,[side.toLowerCase()]:board.map((row,slot)=>slot===from?row.filter(card=>card!==primary):row)},side,from,cardAbility)!==true;
   const shown=frame?.shown?.[args[1]];
   const revealed=kind==='finishCardInformation'&&['move','shoot'].includes(mode)&&shown;
   const checked=project(revealed||primary,!!revealed||kind==='takeFromReserve');
-  const locationSupport=kind==='convertLocation'?(checked?.icons.dark??0)-(sites[site]?.generation??0)-
-   (checked?.icons.light??0)+(sites[site]?.drain??0)-2:
+  const locationSupport=kind==='convertLocation'?(checked?.icons.own??0)-(sites[site]?.generation??0)-
+   (checked?.icons.rival??0)+(sites[site]?.drain??0)-2:
    (kind==='deployLocation'&&hand.some(card=>card.type===(primary.subType==='System'?'Starship':'Character'))?1:0);
   return {index,kind,site,from,to,card:checked,target:project(target),targetSide:publicEntries.get(primary)?.side,
    mode,unitPower:unit.power,unitAbility:unit.ability,bringsPresence:unit.ability>=1||visible.has(primary)&&primary?.presence===true,
    leavesControl,locationSupport,cost,
-   carrierGain:plannedCarrierGain(offer,site,unit,sites),
+   carrierGain:plannedCarrierGain(offer,site,unit,sites,side,rival),
    amount:offer.amount??(kind==='activate'?args[0]:0),
    immediateDraw:kind==='activate'?Array.from((args[1]??0).toString(2)).filter(bit=>bit==='1').length:0,
    draws:validShots.reduce((sum,shot)=>sum+shot.draws,0),defense:validShots[0]?.defense??Infinity,bonus:shotBonus,
    effect:validShots.find(shot=>shot.effect==='capture')?.effect??validShots[0]?.effect,
-   hit:publicEntries.has(target)&&(battleSession?.hitUnits?.Light?.includes(target)||target?.ionDamage&&validShots[0]?.effect==='ion'),
+   hit:publicEntries.has(target)&&(battleSession?.hitUnits?.[rival]?.includes(target)||target?.ionDamage&&validShots[0]?.effect==='ion'),
    immune:debt?.immunity?.includes(primary),mandatory:offer.hit||offer.charged,value:offer.value??0,
    collateral:publicEntries.has(primary)?(primary.occupants?.length??0)*2+(primary.weapons?.length??0):0,
    effectValue:plannedEffectValue(offer,sites[site],window,frame,project(target),view)
@@ -1063,27 +1071,27 @@ function plannedBotPosition(offers){
  return {view,actions};
 }
 
-function plannedCarrierGain(offer,slot,unit,sites){
+function plannedCarrierGain(offer,slot,unit,sites,side,rival){
  const {kind,card,carrier,args,from,to}=offer;
- if(kind==='moveSeeker')return PremiereLocations.presentCards(state,'Light',to).some(target=>
+ if(kind==='moveSeeker')return PremiereLocations.presentCards(state,rival,to).some(target=>
   PremiereWeapons.seekerTarget(card,target,cardAbility(target)))?5:-3;
  if(kind==='equip')return offer.host.weapons?.length?-2:0;
  if(kind==='deployDevice')return offer.host?.attachments?.some(item=>item.id===card.id)?-3:0;
  if(kind==='deploy'&&card.type==='Vehicle'&&!craftStats(card,slot,true).powered){
-  const driver=state.botHand.find(candidate=>PremiereUnits.roles(card,candidate).includes('driver')&&
-   Number.isFinite(candidate.deploy)&&withinDeploymentLimit(candidate,'Dark')&&
+  const driver=PremiereGame.zones(state,side).hand.find(candidate=>PremiereUnits.roles(card,candidate).includes('driver')&&
+   Number.isFinite(candidate.deploy)&&withinDeploymentLimit(candidate,side)&&
    characterLocationAllowed(candidate,state.locations[slot])&&
-   offer.cost+crewDeployCost(candidate,'Dark',state.locations[slot])<=forceBudget('Dark'));
+   offer.cost+crewDeployCost(candidate,side,state.locations[slot])<=forceBudget(side));
   if(!driver)return -2;
   const crewed=craftStats({...card,occupants:[{card:driver,role:'driver'}]},slot,true);
-  return crewed.power*0.55+crewed.landspeed*0.65-crewDeployCost(driver,'Dark',state.locations[slot])*0.55;
+  return crewed.power*0.55+crewed.landspeed*0.65-crewDeployCost(driver,side,state.locations[slot])*0.55;
  }
  if(kind!=='transport'||!carrier)return 0;
  const [mode,,,,,role]=args;
  const occupants=carrier.occupants??[];
  if(mode==='exit'){
   if(occupants[args[3]]?.role==='pilot'&&craftStats(carrier,from,true).powered)return 0;
-  return !sites[slot]?.dark&&unit.ability>=1?2:0;
+  return !sites[slot]?.own&&unit.ability>=1?2:0;
  }
  if(!['pilot','driver','astromech'].includes(role)||mode==='swap')return 0;
  const before=craftStats(carrier,slot,true);
@@ -1096,16 +1104,17 @@ function plannedCarrierGain(offer,slot,unit,sites){
 
 function plannedEffectValue(offer,site,window,frame,target,view){
  const {kind,args,rule,card,amount}=offer,mode=args[0];
+ const {side,rival}=view;
  switch(kind){
   case 'interruptResponse': {
    const response=offer.responseKind;
    if(offer.counterMode==='direct'||['namedCounter','assault','lateralMechanicCounter','battleTieLoss'].includes(response))return 4;
    if(['sense','alter'].includes(response))return offer.ability>=4?2.8:offer.ability>=2?0.8:-1;
-   if(response==='battleDamageModifier')return offer.loser==='Light'&&(offer.amplifies||(site?.margin??0)>2)?4:-2;
+   if(response==='battleDamageModifier')return offer.loser===rival&&(offer.amplifies||(site?.margin??0)>2)?4:-2;
    if(response==='battleMoveAway')return ['singleExpel','moveAlong'].includes(rule.mode)||(site?.margin??0)<-3?4:-2;
    if(response==='increaseForceLoss')return amount?2+amount:0.5;
-   if(response==='swapBattleDestiny')return battleSession.lightDestiny-battleSession.darkDestiny;
-   if(response==='shipTiming')return window.side==='Light'&&window.shot?.target?2+(target?.power??0)*0.6:-1;
+   if(response==='swapBattleDestiny')return battleSession[rival.toLowerCase()+'Destiny']-battleSession[side.toLowerCase()+'Destiny'];
+   if(response==='shipTiming')return window.side===rival&&window.shot?.target?2+(target?.power??0)*0.6:-1;
    return ['barrier','openingDestiny','bastEvacuation','shipEvacuation','evazanOperation','tractorBeam',
     'oldBen','kintanStrider','postBattleStarfighter','memorialStack','tacticalRecall','gearMission'].includes(response)?3:-1;
   }
@@ -1113,14 +1122,14 @@ function plannedEffectValue(offer,site,window,frame,target,view){
    3-(window?.draw?.value??3);
   case 'battleEffect': return 1.75*Math.min(offer.draws??2,view.reserveCount);
   case 'pileInterrupt':
-   if(rule.mode==='destroyDroid')return offer.entry?.side==='Light'?3:-3;
+   if(rule.mode==='destroyDroid')return offer.entry?.side===rival?3:-3;
    return ['setStun','tallonRoll','droidAttrition'].includes(rule.mode)&&target?2.5:-1;
   case 'equip': return 0;
   case 'deployLostPileEffect':
-   return PremiereGame.lostPileFaceDown(state,offer.target)?-3:offer.target==='Light'?0:0.4;
+   return PremiereGame.lostPileFaceDown(state,offer.target)?-3:offer.target===rival?0:0.4;
   case 'deployLocationEffect':
-   return PremiereLocations.effectsAt(state,args[1]).some(effect=>effect.card.id===card.id)?-3:site?.dark?0.8:-0.4;
-  case 'cancelTableEffect': return offer.effect.target==='Dark'?3:-2;
+   return PremiereLocations.effectsAt(state,args[1]).some(effect=>effect.card.id===card.id)?-3:site?.own?0.8:-0.4;
+  case 'cancelTableEffect': return offer.effect.target===side?3:-2;
   case 'cancelNamedWeapon': return 2.5;
   case 'cardInformation': return offer.mode==='macroscan'?0:1.5;
   case 'deviceAction': return mode==='stealDroid'?4:0;
@@ -1150,7 +1159,7 @@ function choosePlannedBotAction(offers,required=false){
  return choice?.kind==='combinedAttack'?{...choice,args:[...choice.args,...choice.pair]}:choice;
 }
 
-function botPromptAction(offers=legalActions(state,'Dark')){
+function botPromptAction(offers=legalActions(state,botSide())){
  return plannedBot()?choosePlannedBotAction(offers,true):offers[0];
 }
 
@@ -1897,7 +1906,7 @@ function seekerMoves(side){
  const undercover=version>=17;
  if(undercover){
   if(state.phase!==4||state.activeSide===side)return [];
-  if(side==='Light'&&Number.isInteger(state.seekerPassedTurn)&&state.seekerPassedTurn===state.game?.timing.turn)return [];
+  if(side===playerSide()&&Number.isInteger(state.seekerPassedTurn)&&state.seekerPassedTurn===state.game?.timing.turn)return [];
  }else if(state.phase!==1||state.activeSide!==side)return [];
 
  const entries=allWeaponEntries();
@@ -2472,7 +2481,7 @@ function custodyChoices(side){
  return choices;
 }
 
-function botCustodyAction(available=legalActions(state,'Dark')){
+function botCustodyAction(available=legalActions(state,botSide())){
  if(plannedBot())return botPromptAction(available);
  const control=controlledLocationRule('Light','releasePrisoners');
  return (!control&&available.find(option=>option.args[0]==='imprison'))||
@@ -4596,7 +4605,7 @@ function openDeploymentReaction(side,cards){
  const frame={kind:'deployment',side,targets};
  if(targets.length&&hasInterruptResponse(frame)){
   PremiereGame.openResponse(state.game,frame);
-  if(state.botTurn?.steps?.[state.botTurn.index]?.kind==='battle'&&side==='Dark'&&!battleSession)state.botTurn.decision='deploy';
+ if(state.botTurn?.steps?.[state.botTurn.index]?.kind==='battle'&&side===botSide()&&!battleSession)state.botTurn.decision='deploy';
  }
 }
 
@@ -4741,7 +4750,7 @@ function botPlan(){return ['activate','control','deploy','battle','move','draw',
 function botBegin(){
  state.botTurn={steps:botPlan(),index:0};
  state.botHistory=[];
- botSay('Dark Side beginnt ihren Zug.');
+ botSay(botSide()+' Side beginnt ihren Zug.');
 }
 
 function botNextStep(repeatPhase=true,adaptive=true){
@@ -4826,7 +4835,7 @@ function botNextStep(repeatPhase=true,adaptive=true){
 }
 
 function plannedBotStep(){
- const available=legalActions(state,'Dark');
+ const side=botSide(),available=legalActions(state,side);
  if(battleSession||state.pendingCustody?.length||state.pendingCardView||state.automatedPending||
     state.game.timing.pending||PremiereGame.responseWindow(state.game)||state.pendingForceLoss||state.pendingReserveSearch){
   return !!performAction(botPromptAction(available));
@@ -4842,7 +4851,7 @@ function plannedBotStep(){
  }
  if(!performAction(step))return false;
  if(starting){
-  const activate=choosePlannedBotAction(legalActions(state,'Dark').filter(action=>action.kind==='activate'));
+  const activate=choosePlannedBotAction(legalActions(state,side).filter(action=>action.kind==='activate'));
   if(activate)performPlannedBotAction(activate);
  }
  return true;
@@ -4851,7 +4860,7 @@ function plannedBotStep(){
 function performPlannedBotAction(choice){
  if(!performAction(choice))return false;
  if(choice.kind==='activate'){
-  botSay('Activate: Bot aktiviert '+choice.args[0]+' Force. Jetzt verfügbar: '+state.botForce.length+'.');
+  botSay('Activate: Bot aktiviert '+choice.args[0]+' Force. Jetzt verfügbar: '+PremiereGame.zones(state,botSide()).force.length+'.');
   publishGame();
  }
  return true;
@@ -4962,11 +4971,13 @@ function endTurn(side){
   resolveDroidDetectors();
   settleBeggarLoans();
   recirculateBoth();
-  if(side==='Dark')botSay('Bot beendet seinen Lernzug.');
-  PremiereGame.resetTurn(state,PremiereGame.otherSide(side));
+  if(side===botSide())botSay('Bot beendet seinen Lernzug.');
+  const next=PremiereGame.otherSide(side);
+  PremiereGame.resetTurn(state,next);
+  if(side==='Dark')state.turn++;
   state.log=[];
-  if(side==='Light')botBegin();
-  else {state.turn++;state.botTurn=null;log('Light Side beginnt mit Activate.');}
+  if(next===botSide())botBegin();
+  else {state.botTurn=null;log(next+' Side beginnt mit Activate.');}
   checkpoint('turn:start',()=>checkpoint('phase:start',()=>{}));
  }));
 }
@@ -4983,17 +4994,17 @@ function advance(){
  if(!state||state.gameWinner||state.pendingForceLoss||battleSession||state.botTurn||
     (state.phase===0&&!state.activated))return false;
  if(state.phase===4){
-  const move=chooseBotSeekerMove(seekerMoves('Dark'));
-  if(move)return moveSeeker('Dark',...move.args);
+  const side=botSide(),move=chooseBotSeekerMove(seekerMoves(side));
+  if(move)return moveSeeker(side,...move.args);
  }
- if(state.phase===5)endTurn('Light');
+ if(state.phase===5)endTurn(playerSide());
  else changePhase(state.phase+1);
  return true;
 }
 function advanceBotStep(kind){
  const steps={activate:0,control:1,deploy:2,battle:3,move:4,draw:5,finish:5};
  state.botTurn.index++;
- if(kind==='finish')endTurn('Dark');
+ if(kind==='finish')endTurn(botSide());
  else {
   changePhase(steps[kind]);
   if(state.game?.timing.pending)state.botTurn.decision=kind;
@@ -5153,7 +5164,7 @@ function combatPartnerPower(card,side,slot){
 
 function canInitiateBattleFor(side,i){
  if(!state||state.phase!==3||state.activeSide!==side||state.gameWinner||state.pendingForceLoss||battleSession)return false;
- if(side==='Light'?!!state.botTurn:!state.botTurn)return false;
+ if((side===botSide())!==!!state.botTurn)return false;
  const force=side==='Light'?state.force:state.botForce;
  if(!Number.isInteger(i)||i<0||!state.locations?.[i]||!force||forceBudget(side)<battleInitiationCost(i))return false;
  if(state.battledSitesThisTurn?.includes(i))return false;
@@ -5450,6 +5461,7 @@ function duelOptions(side){
 }
 
 function registerDuelTiming(){
+ if(botSide()!=='Dark')return;
  const choice=()=>{
   const options=duelOptions('Dark');
   return plannedBot()?choosePlannedBotAction(options.map(option=>({...option,kind:'duel'}))):options[0];
@@ -6286,9 +6298,10 @@ function applyWeaponResult(shot,opponent,slot){
 }
 
 function botWeaponAction(){
- if(battleSession?.weaponTurn!=='Dark')return null;
+ const side=botSide();
+ if(battleSession?.weaponTurn!==side)return null;
  const hitTargets=battleSession.hitUnits?.Light??[];
- const available=legalActions(state,'Dark');
+ const available=legalActions(state,side);
  if(plannedBot())return botPromptAction(available);
  const options=available.filter(x=>x.kind==='fireWeapon'&&!hitTargets.includes(x.target)&&state.botDeck.length);
  let choice;
@@ -6706,7 +6719,7 @@ function battleDamageAction(side,kind,args){
 }
 
 function botDamageAction(){
- const offers=legalActions(state,'Dark');
+ const offers=legalActions(state,botSide());
  if(plannedBot())return botPromptAction(offers);
  const debt=battleSession?.damage?.debt.Dark;
  const forfeits=offers.filter(option=>option.kind==='battleForfeit');
@@ -7959,8 +7972,8 @@ function legalActions(position,side,request){
  if(!position){
   const setup=setupDecks;
   if(!setup)return [];
-  if(setup.revealed)return side==='Light'?[offer(setup.revealed.collision?'retrySetup':'beginGame')]:[];
-  const chooser=setup.darkChoice===undefined?'Dark':'Light';
+  if(setup.revealed)return side===playerSide()?[offer(setup.revealed.collision?'retrySetup':'beginGame')]:[];
+  const bot=botSide(),chooser=setup[bot.toLowerCase()+'Choice']===undefined?bot:playerSide();
   if(side!==chooser)return [];
   const choices=startingLocationChoices(side==='Dark'?setup.dark:setup.light);
   return choices.length?choices.map(x=>offer('chooseStart',[x.index],{card:x.card})):[offer('chooseStart',[null])];
@@ -8005,7 +8018,7 @@ function legalActions(position,side,request){
   if(x.segment==='initiation')return side==='Dark'&&x.prediction&&!x.prediction.winner?
    PremiereGame.sides.map(winner=>offer('battlePrediction',[winner])):[];
   const training=[];
-  if(side==='Light'&&(!x.segmented||position.trainingBattle))for(const target of PremiereGame.sides)for(const kind of ['power','destiny']){
+  if(side===playerSide()&&(!x.segmented||position.trainingBattle))for(const target of PremiereGame.sides)for(const kind of ['power','destiny']){
    for(let value=0;value<=20;value++)training.push(offer('trainingModifier',[target,kind,value]));
   }
   if(x.weaponTurn&&x.weaponTurn!==side)return training;
@@ -8042,11 +8055,11 @@ function legalActions(position,side,request){
   }
   if(x.segmented||x.lightCard===null||x.darkCard===null)return training;
   const actions=board[x.site].flatMap((card,index)=>x.weaponHits?.[side]?.includes(index)?[]:[offer('toggleLoss',[index],{card})]);
-  if(side==='Light'&&battleDamagePreview()&&battleForfeitPlan('Light').valid&&battleForfeitPlan('Dark').valid)actions.push(offer('resolveBattle'));
+  if(side===playerSide()&&battleDamagePreview()&&battleForfeitPlan('Light').valid&&battleForfeitPlan('Dark').valid)actions.push(offer('resolveBattle'));
   return [...actions,...training];
  }
- const active=position.activeSide??(position.botTurn?'Dark':'Light');
- const actions=side==='Light'&&(!position.game||position.trainingBattle)?[offer('trainingNight',[!position.nightConditions])]:[];
+ const active=position.activeSide??(position.botTurn?botSide():playerSide());
+ const actions=side===playerSide()&&(!position.game||position.trainingBattle)?[offer('trainingNight',[!position.nightConditions])]:[];
  if(beggarPaymentOptions(side).length){
   const {site,effect}=beggarAt(side),credit=beggarCredit(side);
   actions.push(offer('beggarPayment',[],{site,card:effect.card,label:credit?'Beggar · '+credit+' Force für nächste Zahlung ausgewählt':'Beggar · gegnerische Force für nächste Zahlung auswählen'}));
@@ -8071,18 +8084,19 @@ function legalActions(position,side,request){
  if(side!==active){
   const seekers=seekerMoves(side);
   for(const option of seekers)actions.push(offer('moveSeeker',option.args,option));
-  if(side==='Light'&&seekers.length)actions.push(offer('skipSeekerMove',[],{label:'Seeker-Bewegung beenden'}));
+  if(side===playerSide()&&seekers.length)actions.push(offer('skipSeekerMove',[],{label:'Seeker-Bewegung beenden'}));
+  if(side===playerSide())for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
   if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10){
    for(const option of namedRetrievalOptions(side))actions.push(offer(option.kind,option.args,option));
   }
   return actions;
  }
  const botStep=position.botTurn?.steps[position.botTurn.index];
- if(side==='Dark'&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
- if(side==='Dark'&&botStep&&!(position.phase===4&&seekerMoves('Light').length))actions.push(offer('botStep',[botStep.kind]));
+ if(side===botSide()&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
+ if(side===botSide()&&botStep&&!(position.phase===4&&seekerMoves(playerSide()).length))actions.push(offer('botStep',[botStep.kind]));
  for(const option of deviceActions(side))actions.push(offer('deviceAction',option.args,option));
  for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
- if(side==='Light'&&(position.phase!==0||position.activated))actions.push(offer('advance'));
+ if(side===playerSide()&&(position.phase!==0||position.activated))actions.push(offer('advance'));
  for(const option of namedRetrievalOptions(side))actions.push(offer(option.kind,option.args,option));
  for(const option of transportOptions(side))actions.push(offer('transport',option.args,option));
  for(const option of prisonerTransfers(side))actions.push(offer('prisonerTransfer',option.args,option));
@@ -8296,10 +8310,10 @@ function performAction(action,followUp=true){
   delete game.rootAction;
   PremiereGame.checkpoint(game,'phase:priority',state.activeSide,()=>{},priority);
  }
- if(['deployLostPileEffect','deployLocationEffect','deployTableEffect'].includes(action.kind)&&action.side==='Dark'&&state.botTurn&&
+ if(['deployLostPileEffect','deployLocationEffect','deployTableEffect'].includes(action.kind)&&action.side===botSide()&&state.botTurn&&
     (PremiereGame.responseWindow(game)||game?.timing.pending))state.botTurn.decision='deploy';
  if(followUp&&action.kind==='retrySetup')chooseBotStartingLocation();
- if(followUp&&!state?.pendingCustody?.length&&state?.pendingForceLoss?.payer==='Dark')botPayDrainLoss();
+ if(followUp&&!state?.pendingCustody?.length&&state?.pendingForceLoss?.payer===botSide())botPayDrainLoss();
  publishGame();
  return result;
 }
@@ -8308,6 +8322,6 @@ function requestAction(kind,side,args=[],followUp=true){
  return performAction(PremiereGame.offer(currentGame(),side,kind,args),followUp);
 }
 
-function chooseStart(index){return requestAction('chooseStart','Light',[index])}
-function retryStartingLocations(){return requestAction('retrySetup','Light')}
-function beginStartingGame(){return requestAction('beginGame','Light')}
+function chooseStart(index){return requestAction('chooseStart',playerSide(),[index])}
+function retryStartingLocations(){return requestAction('retrySetup',playerSide())}
+function beginStartingGame(){return requestAction('beginGame',playerSide())}
