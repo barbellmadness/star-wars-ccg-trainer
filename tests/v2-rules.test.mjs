@@ -3245,9 +3245,17 @@ test('legacy autosaves resume without applying new registered card rules retroac
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
  assert.equal(saved.cardRulesVersion,25);
- assert.equal(saved.botStrategyVersion,2);
+ assert.equal(saved.botStrategyVersion,3);
+ assert.equal(saved.botPlayStyle,'balanced');
+ const oldPlanner={...saved,botStrategyVersion:2};
+ delete oldPlanner.botPlayStyle;
+ storage.setItem(key,JSON.stringify(oldPlanner));
+ const previous=await premiereHarness(starterLists,{storage});
+ assert.equal(previous.run('resumeGameFromUI()'),true);
+ assert.equal(previous.run('currentGame().botStrategyVersion'),2);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
+ delete saved.botPlayStyle;
  delete saved.playerSide;
  storage.setItem(key,JSON.stringify(saved));
  const reload=await premiereHarness(starterLists,{storage});
@@ -3261,7 +3269,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
 test('Dark Side gets its own hand, phase actions and a repeatable Light bot turn after reload',async()=>{
  const storage=autosaveStorage();
  const {run,elements}=await premiereHarness(starterLists,{storage});
- run("el('playerSideChoice').value='Dark'");
+ run("el('playerSideChoice').value='Dark';el('botPlayStyle').value='offensive'");
  startSavedGame(run,4);
  assert.equal(run("playerSide()==='Dark'&&botSide()==='Light'&&!!setupDecks.lightChoice&&!('lightChoice' in PremiereGame.setupView(setupDecks,'Dark'))"),true);
  assert.equal(run(`const pick=()=>act('chooseStart','Dark',legalActions(null,'Dark')[0].args);
@@ -3277,9 +3285,14 @@ test('Dark Side gets its own hand, phase actions and a repeatable Light bot turn
   action('activate')&&[0,1,2,3,4,5].every(()=>action('advance'))&&state.activeSide==='Light'&&stepBot();`),true);
  const snapshot="JSON.stringify([playerSide(),state.activeSide,state.phase,state.botTurn?.index,state.hand.map(c=>c.instanceId),state.botHand.map(c=>c.instanceId)])";
  const expected=run(snapshot);
+ const saved=JSON.parse(storage.getItem(run('saveKey')));
+ assert.equal(saved.botPlayStyle,'offensive');
+ assert.throws(()=>run(`parseSavedGame(${JSON.stringify(JSON.stringify({...saved,botPlayStyle:'__proto__'}))})`),/Unbekannter Spielstand/);
  const reload=await premiereHarness(starterLists,{storage});
  assert.equal(reload.run('resumeGameFromUI()'),true);
  assert.equal(reload.run(snapshot),expected);
+ assert.equal(reload.run('currentGame().botPlayStyle'),'offensive');
+ assert.equal(reload.elements.get('botPlayStyle').value,'offensive');
  assert.equal(reload.elements.get('playerSideChoice').value,'Dark');
  assert.match(reload.elements.get('turnStatusBot').textContent,/Bot ist am Zug/);
 });
@@ -3363,7 +3376,7 @@ test('a saved live battle resumes in the damage segment and accepts the remainin
  const storage=autosaveStorage();
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
- run('start(0,true,false,starterDecks,latestCardRulesVersion,0);activeSave.botStrategyVersion=0');
+ run('start(0,true,false,starterDecks,latestCardRulesVersion,0);activeSave.botStrategyVersion=0;delete activeSave.botPlayStyle');
  assert.equal(run(`act('chooseStart','Light',[setupDecks.light.startingIndices[1]])&&act('beginGame')`),true);
  run("for(let i=0;state.botTurn&&i<8;i++)el('botNext').onclick()");
  assert.equal(run(`act('activate','Light',[4])&&act('advance')&&act('advance')&&act('deploy','Light',[1,0])&&
@@ -3949,6 +3962,52 @@ test('planned bot sees the same position and weapon offer despite hidden destina
  assert.equal(run('botWeaponAction().target===officer'),true);
  run("state.botDeck=[]");
  assert.equal(run('botWeaponAction().kind'),'passWeapons');
+});
+
+test('styled Light and Dark bots choose battles at distinct thresholds and explain them from visible facts',()=>{
+ for(const side of ['Light','Dark']){
+  const {run,elements}=weaponBattleHarness(side);
+  run(`const actor='${side}',rival=PremiereGame.otherSide(actor);
+   state.game=PremiereGame.actionState(262,0);state.game.botStrategyVersion=3;state.game.playerSide=rival;
+   state.phase=3;state.botTurn={steps:botPlan(),index:4};
+   const own=PremiereGame.zones(state,actor),other=PremiereGame.zones(state,rival);
+   own.force.push(...forceCards());
+   const unit=actor==='Light'?rebel:trooper;
+   unit.power=4;
+   const choices=()=>legalActions(state,actor).filter(action=>action.kind==='battle');
+   const pick=style=>{state.game.botPlayStyle=style;return choosePlannedBotAction(choices())?.kind??null};`);
+  assert.equal(run("pick('offensive')"),'battle');
+  assert.equal(run("pick('balanced')"),null);
+  assert.equal(run("unit.power=2;pick('offensive')"),null);
+  assert.equal(run("unit.power=5;pick('balanced')"),'battle');
+  assert.equal(run("pick('defensive')"),null);
+  run(`unit.power=4;pick('offensive');
+   const forecast=()=>JSON.stringify(plannedBotPosition(choices()));const before=forecast();
+   other.hand.splice(0,other.hand.length,{name:'Secret hand',type:'Character',power:100,ability:100});
+   other.deck[0]={name:'Secret reserve',destiny:100};other.force[0]={name:'Secret force',destiny:100};`);
+  assert.equal(run("forecast()===before&&pick('offensive')==='battle'"),true);
+  assert.ok(run('botNextStep()&&battleSession.initiator===actor'));
+  assert.match(elements.get('botHistory').textContent,/Battle begonnen.*Sichtbare Power.*geschätzten Vorteil/s);
+  assert.doesNotMatch(elements.get('botHistory').textContent,/Secret/);
+ }
+});
+
+test('a defensive bot keeps a controlled location and retains Force in the Draw phase',()=>{
+ const {run,elements}=reactHarness();
+ run(`state.game.botStrategyVersion=3;state.game.botPlayStyle='defensive';state.activeSide='Dark';
+   state.phase=4;state.botTurn={steps:botPlan(),index:5};state.light[0]=[];state.botForce=Array.from({length:8},()=>({}));
+   state.locations[0].icons={light:2,dark:1};
+   const moving=()=>movementOptionsFor('Dark').length&&choosePlannedBotAction(legalActions(state,'Dark'))?.kind;`);
+ assert.equal(run("state.game.botPlayStyle='balanced';moving()"),'move');
+ assert.equal(run("state.game.botPlayStyle='defensive';moving()"),undefined);
+ assert.equal(run('botNextStep()&&state.phase===5&&state.dark[1].includes(imperial)'),true);
+ assert.match(elements.get('botHistory').textContent,/Hält die Stellung.*kontrollierten Ort/);
+ run(`state.botForce.length=2;
+   const drawing=()=>choosePlannedBotAction(legalActions(state,'Dark'))?.kind;`);
+ assert.equal(run("state.game.botPlayStyle='offensive';drawing()"),'draw');
+ assert.equal(run("state.game.botPlayStyle='defensive';drawing()"),undefined);
+ assert.equal(run("botNextStep()&&state.activeSide==='Light'&&state.botForce.length===2"),true);
+ assert.match(elements.get('botHistory').textContent,/Behält Force für Reacts und Interrupts zurück/);
 });
 
 test('planned bot saves its Force for better deployment and crews an eligible fighter',async()=>{

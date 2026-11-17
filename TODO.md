@@ -40,8 +40,7 @@ In V2.15.27 abgeschlossen. Die Kampfvorschau zeigt vor der Zahlung die sichtbare
 
 ## 12. Spielstile für den Bot
 
-- [ ] Beim Start einer freien Partie zwischen defensivem, ausgewogenem und offensivem Bot wählen können. Der defensive Bot sichert kontrollierte Locations und hält Force für Antworten zurück. Der offensive Bot sucht vorteilhafte Kämpfe. Die Auswahl gilt für beide Bot-Seiten und bleibt beim Fortsetzen erhalten.
-- [ ] Im Bot-Protokoll wichtige Entscheidungen mit einem kurzen Grund erklären. Die Erklärung verwendet nur Informationen, die der Bot regelgerecht kennen darf.
+In V2.15.28 abgeschlossen. Beim Start einer freien Partie stehen Defensiv, Ausgewogen und Offensiv zur Wahl. Der defensive Bot sichert kontrollierte Orte und spart Force für Antworten. Der offensive Bot sucht günstige Kämpfe. Der Spielstil gilt für beide Bot-Seiten und wird im Spielstand und beim Szenarioexport gespeichert. Kurze Gründe für wichtige Entscheidungen werden aus derselben regelgerechten Spielersicht wie die Bot-Planung abgeleitet.
 
 ## 13. Geführte Dark-Side-Übung
 

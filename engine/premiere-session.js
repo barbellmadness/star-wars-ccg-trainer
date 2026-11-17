@@ -437,9 +437,9 @@ function withinDeploymentLimit(card,side){
 
 
 
-function log(x){
+function log(x,side=state.activeSide){
  state.log.unshift(x);
- if(state.game?.publicHistory)state.game.publicHistory.push({turn:state.turn,side:state.activeSide,phase:state.phase,message:x});
+ if(state.game?.publicHistory)state.game.publicHistory.push({turn:state.turn,side,phase:state.phase,message:x});
  if(state.botTurn)(state.botHistory??=[]).unshift(x);
  if(battleSession)battleSession.recentEvents=[x,...(battleSession.recentEvents??[]).slice(0,2)];
 }
@@ -456,6 +456,8 @@ function startingLocationChoices(deck){
 }
 
 const latestCardRulesVersion=25;
+const latestBotStrategyVersion=3;
+const usesBotPlanner=version=>version===2||version===latestBotStrategyVersion;
 const playerSide=()=>currentGame()?.playerSide??'Light';
 const botSide=()=>PremiereGame.otherSide(playerSide());
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
@@ -464,15 +466,18 @@ function deploymentSide(card){
  return (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22?card?.owner??card?.side:card?.side;
 }
 
-function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=2,side='Light'){
+function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,
+ botStrategyVersion=2,side='Light',botPlayStyle='balanced'){
  if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295||!PremiereGame.sides.includes(side)||
-    (side==='Dark'&&botStrategyVersion!==2))return false;
+    (side==='Dark'&&!usesBotPlanner(botStrategyVersion))||
+    (botStrategyVersion===latestBotStrategyVersion&&!PremiereBot.isStyle(botPlayStyle)))return false;
  battleSession=null;state=null;
  const game=PremiereGame.actionState(++nextGameId,seed);
  game.publicHistory=[];
  game.starterDecks=decks;
  game.cardRulesVersion=cardRulesVersion;
  game.botStrategyVersion=botStrategyVersion;
+ if(botStrategyVersion===latestBotStrategyVersion)game.botPlayStyle=botPlayStyle;
  game.playerSide=side;
  setupDecks={game,trainingBattle,
   light:PremiereGame.copyDeck(decks.light,'Light'),
@@ -491,7 +496,7 @@ function chooseBotStartingLocation(){
  if(!options.length)return false;
  const cursor={randomState:setupDecks.game.randomState};
  const fraction=PremiereGame.random(cursor);
- const index=setupDecks.game.botStrategyVersion===2
+ const index=usesBotPlanner(setupDecks.game.botStrategyVersion)
   ?PremiereBot.startingLocation(setupDecks[side.toLowerCase()].cards.map(({type})=>({type})),options.map(({card})=>card&&{
    icons:card.icons??{},subType:card.subType,locationTags:card.locationTags
   }),fraction,side)
@@ -971,27 +976,29 @@ function botMoveScore(option){
 }
 
 function strategicBot(){return state?.game?.botStrategyVersion===1}
-function plannedBot(){return state?.game?.botStrategyVersion===2}
+function plannedBot(){return usesBotPlanner(state?.game?.botStrategyVersion)}
+function styledBot(){return state?.game?.botStrategyVersion===latestBotStrategyVersion}
 
 function botPosition(slot){
  return {...battleTotals(slot),dark:confirmedPresence('Dark',slot),light:confirmedPresence('Light',slot),
   drain:PremiereLocations.icons(state,slot,'Light')??0};
 }
 
-function botUnitStrength(card,slot,pilot=null){
+function botUnitStrength(card,slot,pilot=null,side='Dark'){
  if(['Starship','Vehicle'].includes(card.type)){
   const craft=pilot?{...card,occupants:[...(card.occupants??[]),{role:'pilot',card:pilot}]}:card;
   const stats=craftStats(craft,slot);
   const ability=stats.ability||(craft.occupants??[]).reduce((sum,entry)=>sum+(cardAbility(entry.card)??0),0)||cardAbility(card)||0;
   return {power:stats.power,ability};
  }
- return {power:Math.max(0,(card.power??0)+cardPowerModifier(card,'Dark',slot)),ability:cardAbility(card)??0};
+ return {power:Math.max(0,(card.power??0)+cardPowerModifier(card,side,slot)),ability:cardAbility(card)??0};
 }
 
 // The engine owns legal actions and their arguments. The planner gets only
 // public facts, the bot's hand, and targets the current rules have revealed.
 function plannedBotPosition(offers){
  const side=botSide(),rival=playerSide();
+ const style=styledBot()?state.game.botPlayStyle:undefined;
  const {hand=[],board=[],deck=[],force=[]}=PremiereGame.zones(state,side);
  const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side));
  const publicEntries=new Map(entries.map(entry=>[entry.card,entry]));
@@ -1029,10 +1036,15 @@ function plannedBotPosition(offers){
    margin:totals[ownKey+'Power']-totals[rivalKey+'Power']+3*(ownDraws-rivalDraws)+Number(readyWeapons)-Number(weapons(rival))};
  });
  const sites=positions.map((position,slot)=>position&&{...position,
+  ...(style?{controlled:PremiereLocations.control(state,side,slot,cardAbility)===true,
+   threatened:positions.some((other,from)=>other?.rival&&from!==slot&&(adjacentSites(from,slot)||
+    (isSpaceSystem(state.locations[from])&&isSpaceSystem(state.locations[slot])&&
+     entries.some(entry=>entry.side===rival&&entry.slot===from&&!entry.unavailable&&entry.card.type==='Starship'&&
+      travelOptions(entry.card,rival,from,slot).length>0))))}:{}),
   routes:state.phase<4&&(board[slot]??[]).some(card=>(cardAbility(card)>0||card.occupants?.length)&&positions.some((target,to)=>
    target?.ownKnown&&target.rivalKnown&&!target.own&&!target.rival&&travelOptions(card,side,slot,to).length>0))
  });
- const view={side,rival,phase:state.phase,hand:hand.map(card=>project(card)),sites,battleSite:battleSession?.site,
+ const view={side,rival,style,phase:state.phase,hand:hand.map(card=>project(card)),sites,battleSite:battleSession?.site,
   life:lifeForceRemaining(side),force:force.length,reserveCount:reserveCount??1,window:window?.kind,drain:window?.amount,
   debt:pending?{damage:pending.remaining,attrition:0}:debt?{damage:debt.damage,attrition:debt.attrition}:null};
  const actions=offers.map((offer,index)=>{
@@ -1043,9 +1055,10 @@ function plannedBotPosition(offers){
    (kind==='battle'?args[0]:Number.isInteger(args[1])?args[1]:undefined);
   const primary=offer.ship??offer.card;
   const unit=visible.has(primary)&&['Character','Vehicle','Starship'].includes(primary?.type)&&state.locations[site]
-   ?botUnitStrength(primary,site,offer.pilot):{power:0,ability:0};
-  const shots=kind==='combinedAttack'?offer.pair.map(i=>offer.choices[i]):kind==='computerFire'
-   ?[{...offer.shot,draws:offer.shot.draws*2,cost:offer.shot.cost*2,computerPenalty:offer.rule.penalty}]
+   ?botUnitStrength(primary,site,offer.pilot,style?side:'Dark'):{power:0,ability:0};
+  const factor=style&&offer.mode==='separate'?1:2;
+  const shots=kind==='combinedAttack'?(style?offer.plan:null)??offer.pair.map(i=>offer.choices[i]):kind==='computerFire'
+   ?[{...offer.shot,draws:offer.shot.draws*factor,cost:offer.shot.cost*factor,computerPenalty:offer.rule.penalty}]
    :['fireWeapon','gaderffii'].includes(kind)?[offer]:[];
   const validShots=shots.filter(shot=>publicEntries.has(shot.target));
   const target=validShots[0]?.target??offer.target??window?.shot?.target;
@@ -1054,7 +1067,7 @@ function plannedBotPosition(offers){
    (shot.computerPenalty??0)+(battleSession?.weaponDestinyPenalty?.get(shot.weapon)??0)),0);
   const cost=shots.length?shots.reduce((sum,shot)=>sum+shot.cost,0):offer.cost??
    (kind==='duel'?1:kind==='reduceForceLoss'?offer.amount:0);
-  const departure=sites[from]?.own&&sites[from].rivalKnown&&!sites[from].rival&&from!==to;
+  const departure=(style?sites[from]?.controlled:sites[from]?.own&&sites[from].rivalKnown&&!sites[from].rival)&&from!==to;
   const leavesControl=departure&&board[from]?.includes(primary)&&
    PremiereLocations.control({...state,[side.toLowerCase()]:board.map((row,slot)=>slot===from?row.filter(card=>card!==primary):row)},side,from,cardAbility)!==true;
   const shown=frame?.shown?.[args[1]];
@@ -4760,6 +4773,15 @@ function botDeployPhase(){
 
 function botSay(message){state.botReason=message;log(message)}
 
+function logBotDecision(reason){
+ if(!reason)return;
+ const message='Bot · '+reason;
+ if(state.botReason===message)return;
+ state.botReason=message;
+ log(message,botSide());
+ if(!state.botTurn)(state.botHistory??=[]).unshift(message);
+}
+
 function botPlan(){return ['activate','control','deploy','battle','move','draw','finish'].map(kind=>({kind}))}
 
 function botBegin(){
@@ -4861,7 +4883,10 @@ function plannedBotStep(){
  const choice=!starting&&choosePlannedBotAction(available);
  if(choice)return performPlannedBotAction(choice);
  if(!step)return false;
- if(step.args[0]==='move'&&available.some(action=>action.kind==='battle')){
+ if(styledBot()&&[3,4,5].includes(state.phase)){
+  const {view,actions}=plannedBotPosition(available);
+  logBotDecision(PremiereBot.explainPass(view,actions,state.phase));
+ }else if(step.args[0]==='move'&&available.some(action=>action.kind==='battle')){
   botSay('Battle: Bot passt nach Abwägung von Power, erwarteter Destiny und verfügbarer Force.');
  }
  if(!performAction(step))return false;
@@ -8415,12 +8440,24 @@ function executeAction(action){
  return false;
 }
 
+const explainedBotActions=new Set(['battle','drain','deployLocation','convertLocation','deploy','deployWithPilot','move','transport','moveSeeker','draw',
+ 'fireWeapon','computerFire','combinedAttack','gaderffii','react','reactDeploy','interruptResponse','destinyResponse','battleEffect','equip',
+ 'deployTableEffect','deployLocationEffect','battleForfeit','talzForfeit','battleHandForfeit','passResponse']);
+
 function performAction(action,followUp=true){
  const game=currentGame();
  const startingPhase=state?.phase,startingTimingPhase=game?.timing.phase;
  const traffic=state?.buriedMines?.length?new Map(mineTraffic().map(entry=>[entry.card,entry.slot])):null;
- const result=PremiereGame.execute(game,action,(side,request)=>legalActions(state,side,request),executeAction);
+ let reason;
+ const result=PremiereGame.execute(game,action,(side,request)=>legalActions(state,side,request),valid=>{
+  if(styledBot()&&valid.side===botSide()&&explainedBotActions.has(valid.kind)){
+   const {view,actions}=plannedBotPosition([valid]);
+   reason=PremiereBot.explain(view,actions[0]);
+  }
+  return executeAction(valid);
+ });
  if(!result)return false;
+ logBotDecision(reason);
  if(startingPhase===3&&state?.phase===3&&state.game&&startingTimingPhase===state.game.timing.phase&&
     topLevelActions.has(action.kind)&&!(action.kind==='pileInterrupt'&&action.args[1]==='localTrouble')){
   state.localTroubleBlockedPhase=startingTimingPhase;

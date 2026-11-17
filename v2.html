@@ -309,6 +309,8 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 .launch-deck-copy{display:grid;gap:3px;padding:10px 12px 12px}
 .launch-deck-copy strong{font-size:clamp(14px,1.5vw,19px);line-height:1.15;color:var(--launch-accent)}
 .launch-actions{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #465369}
+.launch-bot-style{display:grid;gap:4px;font-size:13px;max-width:100%}
+.launch-bot-style select{max-width:100%;padding:5px 7px;color:inherit;background:#141e2e;border:1px solid #657795;border-radius:6px}
 .launch-summary{flex:1 1 245px;margin:0;color:#cbd5e7;font-size:13px}
 .launch-summary strong{color:#f3db9f;display:block;margin-bottom:3px}
 .launch-primary{background:linear-gradient(#f5d98d,#bf9952);border-color:#e3c686;color:#17120a;font-weight:750}
@@ -381,6 +383,11 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
     <div id="launchDeckGrid" class="launch-deck-grid" role="group" aria-label="Decks deiner Seite" hidden></div>
     <div id="launchActions" class="launch-actions" hidden>
       <p id="launchSummary" class="launch-summary" aria-live="polite"></p>
+      <div id="launchBotStyle" class="launch-bot-style" hidden>
+        <label for="botPlayStyle">Bot-Spielstil</label>
+        <select id="botPlayStyle" aria-describedby="botStyleHint"></select>
+        <small id="botStyleHint" class="hint" aria-live="polite"></small>
+      </div>
       <button id="viewLaunchDeck" type="button" aria-haspopup="dialog">Deckliste ansehen</button>
       <button id="start" class="launch-primary" type="button" disabled>Startorte wählen</button>
     </div>
@@ -539,9 +546,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js?v=2.15.27"></script><script>
+<script src="engine/premiere-data.js"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js"></script><script src="engine/premiere-session.js?v=2.15.28"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.27';
+const trainerVersion='2.15.28';
 let supplementalCatalog=[];
 const cardBackUrls={
  Light:'https://res.starwarsccg.org/cards/lightcardback.png',
@@ -785,6 +792,8 @@ function renderLaunchSummary(){
  const lesson=PremiereLearning.lesson(el('gameMode').value);
  el('launchActions').hidden=!lesson&&!launchFaction;
  el('viewLaunchDeck').hidden=!!lesson;
+ el('launchBotStyle').hidden=!!lesson;
+ el('botStyleHint').textContent=(PremiereBot.styles[el('botPlayStyle').value]??PremiereBot.styles.balanced).description;
  el('start').textContent=lesson?'Übung starten':'Startorte wählen';
  if(lesson){
   el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte Light-Side-Ausgangslage';
@@ -937,7 +946,9 @@ function renderSetup(){
  el('botHistory').textContent='';
  el('log').textContent='';
  const opponentDeck=setupDecks.game.starterDecks?.[botSide().toLowerCase()];
- el('stats').textContent='Du spielst '+playerSide()+' Side'+(opponentDeck?' · Bot-Deck: '+deckName(opponentDeck):'')+' · Partie-Seed '+setup.seed;
+ const style=PremiereBot.styles[setupDecks.game.botPlayStyle];
+ el('stats').textContent='Du spielst '+playerSide()+' Side'+(opponentDeck?' · Bot-Deck: '+deckName(opponentDeck):'')
+  +(style?' · Bot-Spielstil: '+style.label:'')+' · Partie-Seed '+setup.seed;
  const reveal=setup.revealed;
  if(!reveal){
   const realChoice=available.some(option=>option.card);
@@ -2031,7 +2042,8 @@ function render(){
  el('botHandCount').textContent=bot.handCount+' Karten · '+(showBotHand?'offen (Lernmodus)':'verdeckt');
  el('botHand').innerHTML=showBotHand?(PremiereGame.zones(state,rival).hand??[]).map((card,index)=>mini(card,index,rival,'hand')).join('')
   :('<div class="card card-back" role="img" aria-label="Verdeckte '+rival+'-Side-Karte">'+cardBackMarkup(rival)+'</div>').repeat(bot.handCount);
- el('botHistoryTitle').textContent=state.botTurn?'Aktivitäten im Bot-Zug':'Letzter Bot-Zug';
+ const style=PremiereBot.styles[state.game?.botPlayStyle];
+ el('botHistoryTitle').textContent=(state.botTurn?'Aktivitäten im Bot-Zug':'Letzte Bot-Aktivitäten')+(style?' · '+style.label:'');
  el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
  el('log').textContent=state.log.join('\n');
  renderLearning();
@@ -2183,10 +2195,11 @@ function parseSavedGame(value){
      saved.commands.length>30000||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
-     (saved.botStrategyVersion!==undefined&&![0,1,2].includes(saved.botStrategyVersion))||
+     (saved.botStrategyVersion!==undefined&&![0,1,2,latestBotStrategyVersion].includes(saved.botStrategyVersion))||
+     (saved.botStrategyVersion===latestBotStrategyVersion?!PremiereBot.isStyle(saved.botPlayStyle):saved.botPlayStyle!==undefined)||
      (saved.lesson!==undefined&&!PremiereLearning.lesson(saved.lesson))||
      (saved.playerSide!==undefined&&!PremiereGame.sides.includes(saved.playerSide))||
-     (saved.playerSide==='Dark'&&(saved.lesson||saved.botStrategyVersion!==2))||
+     (saved.playerSide==='Dark'&&(saved.lesson||!usesBotPlanner(saved.botStrategyVersion)))||
      (saved.peekDeadline!==undefined&&(!Number.isSafeInteger(saved.peekDeadline)||saved.peekDeadline<0))||
      (saved.exposureRevision!==undefined&&(!Number.isInteger(saved.exposureRevision)||saved.exposureRevision<0||
       saved.exposureRevision>saved.commands.length))){
@@ -2230,8 +2243,8 @@ function recordGameCommand(command,allowUndo=false){
  renderLearning();
 }
 
-function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key,side){
- if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion,side))return false;
+function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key,side,style){
+ if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion,side,style))return false;
  if(!key)return true;
  setupDecks.game.lesson=key;
  const lesson=PremiereLearning.lesson(key);
@@ -2269,11 +2282,14 @@ function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  const {light,dark}=choices;
  const decks=fixed?.decks??{light:light.deck,dark:dark.deck};
  const definition=fixed?.definition??{schema:1,decks:{Light:light.definition,Dark:dark.definition}};
+ const botVersion=key||keepLauncher?2:latestBotStrategyVersion;
+ const style=el('botPlayStyle').value||'balanced';
  el('showBotHand').checked=false;
- if(!beginSavedScenario(matchSeed,trainingBattle,decks,undefined,undefined,key,side))return false;
+ if(!beginSavedScenario(matchSeed,trainingBattle,decks,undefined,botVersion,key,side,style))return false;
  undoAvailable=false;
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
-  seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{})});
+  seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{}),
+  ...(botVersion===latestBotStrategyVersion?{botPlayStyle:style}:{})});
  activeSaveStored=false;
  launchOpen=keepLauncher;
  presentGame();
@@ -2292,7 +2308,8 @@ function replayScenario(saved,commands=saved.commands,verify=true){
  undoAvailable=false;
  try {
   const decks=readStarterDecks(saved.decks,[...catalog,...supplementalCatalog]);
-  if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson,saved.playerSide))
+  if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson,
+     saved.playerSide,saved.botPlayStyle))
    throw new Error('Ungültiger Spielstart');
   for(const command of commands){
    const before=learningCheckpoint(command);
@@ -2319,6 +2336,7 @@ function replayScenario(saved,commands=saved.commands,verify=true){
 function syncScenarioControls(saved){
  el('gameSeed').value=String(saved.seed);
  el('trainingBattle').checked=saved.trainingBattle;
+ el('botPlayStyle').value=saved.botPlayStyle??'balanced';
  for(const side of Object.keys(sideName)){
   const id=deckId(currentGame().starterDecks[side]);
   deckSelector(side).value=deckChoices[side].some(({deck})=>deckId(deck)===id)?id:'starter';
@@ -2550,6 +2568,9 @@ async function load(){try{
   selector.onchange=()=>{previewStartingLocations();renderLaunch();};
  }
  catalog=cards;
+ const styleSelect=el('botPlayStyle');
+ styleSelect.innerHTML=Object.entries(PremiereBot.styles).map(([key,style])=>'<option value="'+key+'">'+escapeHTML(style.label)+'</option>').join('');
+ styleSelect.value='balanced';
  el('start').disabled=false;
  auditData();
  launchOpen=true;
@@ -2611,6 +2632,7 @@ el('gameMode').onchange=()=>{
 };
 el('playerSideChoice').onchange=previewStartingLocations;
 el('autoBotDeck').onchange=renderLaunch;
+el('botPlayStyle').onchange=renderLaunchSummary;
 for(const id of ['endGame','endBattleGame']){
  el(id).textContent='Partie beenden · v'+trainerVersion;
  el(id).onclick=endGameFromUI;
