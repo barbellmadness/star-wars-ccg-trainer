@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "formats": {
+    "premiere": {
+      "Light": [],
+      "Dark": [
+        {
+          "theme": {
+            "id": "imperiale-garnison",
+            "name": "Imperiale Garnison",
+            "description": "Tarkin hält die Korridore des Todessterns mit Sturmtruppen, Blastern und Wachposten."
+          },
+          "strategy": {
+            "start": "Beginne im Death Star War Room für Force oder im Detention Block Corridor, wenn du direkt einen Haftort sichern willst. Lege passende Todesstern-Sites daneben.",
+            "opening": "Sichere einen Korridor mit Tarkin und Sturmtruppen. Rüste bei Gelegenheit einen geeigneten Schützen mit Imperial Blaster aus.",
+            "tactics": "Verstärke benachbarte Sites und nutze Force Drains, wenn du freie Korridore kontrollierst. Halte zur Verteidigung Force für Blaster und den nächsten Deploy frei."
+          },
+          "startingLocations": [
+            "Dark:673",
+            "Dark:682",
+            "Dark:678"
+          ],
+          "cards": [
+            { "id": "Dark:22", "count": 1 },
+            { "id": "Dark:79", "count": 1 },
+            { "id": "Dark:94", "count": 1 },
+            { "id": "Dark:146", "count": 1 },
+            { "id": "Dark:253", "count": 1 },
+            { "id": "Dark:262", "count": 1 },
+            { "id": "Dark:304", "count": 1 },
+            { "id": "Dark:391", "count": 1 },
+            { "id": "Dark:406", "count": 1 },
+            { "id": "Dark:489", "count": 1 },
+            { "id": "Dark:634", "count": 1 },
+            { "id": "Dark:665", "count": 1 },
+            { "id": "Dark:668", "count": 1 },
+            { "id": "Dark:669", "count": 1 },
+            { "id": "Dark:673", "count": 1 },
+            { "id": "Dark:675", "count": 1 },
+            { "id": "Dark:678", "count": 1 },
+            { "id": "Dark:682", "count": 1 },
+            { "id": "Dark:734", "count": 1 },
+            { "id": "Dark:777", "count": 1 },
+            { "id": "Dark:816", "count": 1 },
+            { "id": "Dark:830", "count": 1 },
+            { "id": "Dark:914", "count": 1 },
+            { "id": "Dark:934", "count": 1 },
+            { "id": "Dark:993", "count": 1 },
+            { "id": "Dark:1027", "count": 1 },
+            { "id": "Dark:1061", "count": 2 },
+            { "id": "Dark:1096", "count": 1 },
+            { "id": "Dark:1263", "count": 1 },
+            { "id": "Dark:1264", "count": 3 },
+            { "id": "Dark:1279", "count": 1 },
+            { "id": "Dark:1426", "count": 1 },
+            { "id": "Dark:1479", "count": 1 },
+            { "id": "Dark:1480", "count": 1 },
+            { "id": "Dark:1579", "count": 1 },
+            { "id": "Dark:1592", "count": 1 },
+            { "id": "Dark:1691", "count": 1 },
+            { "id": "Dark:1767", "count": 1 },
+            { "id": "Dark:1904", "count": 1 },
+            { "id": "Dark:1932", "count": 1 },
+            { "id": "Dark:2029", "count": 1 },
+            { "id": "Dark:2176", "count": 1 },
+            { "id": "Dark:2214", "count": 1 },
+            { "id": "Dark:2216", "count": 1 },
+            { "id": "Dark:2242", "count": 1 },
+            { "id": "Dark:2355", "count": 4 },
+            { "id": "Dark:2357", "count": 1 },
+            { "id": "Dark:2360", "count": 1 },
+            { "id": "Dark:2397", "count": 1 },
+            { "id": "Dark:2600", "count": 1 },
+            { "id": "Dark:2634", "count": 1 },
+            { "id": "Dark:2762", "count": 1 },
+            { "id": "Dark:2833", "count": 1 },
+            { "id": "Dark:2901", "count": 1 }
+          ]
+        }
+      ]
+    },
+    "premiere-a-new-hope": {
+      "Light": [
+        {
+          "theme": {
+            "id": "korvette-und-jaeger",
+            "name": "Korvette und Jäger",
+            "description": "Die Tantive IV eröffnet den Kampf im Orbit. X-wings und Rebel Trooper sichern weitere Schauplätze."
+          },
+          "strategy": {
+            "start": "Wähle Dantooine für günstigere Jäger. Yavin 4 ist eine Alternative, wenn dort deine Flotte und die zugehörigen Sites zusammenspielen sollen.",
+            "opening": "Die Tantive IV lässt sich auch an einem System ohne eigene Presence und Force-Icons ausspielen. Bringe sie früh ins Spiel, wenn du 5 Force für den Deploy aufbringen kannst.",
+            "tactics": "Sichere mit der Korvette ein System und verstärke es bei Bedarf mit einem pilotierten X-wing. Halte außerdem Force und Trooper für die Sites frei."
+          },
+          "startingLocations": [
+            "Light:608",
+            "Light:2849",
+            "Light:2853"
+          ],
+          "cards": [
+            { "id": "Light:24", "count": 1 },
+            { "id": "Light:239", "count": 3 },
+            { "id": "Light:259", "count": 2 },
+            { "id": "Light:483", "count": 1 },
+            { "id": "Light:608", "count": 3 },
+            { "id": "Light:799", "count": 1 },
+            { "id": "Light:826", "count": 1 },
+            { "id": "Light:994", "count": 1 },
+            { "id": "Light:1050", "count": 1 },
+            { "id": "Light:1390", "count": 2 },
+            { "id": "Light:1593", "count": 2 },
+            { "id": "Light:1874", "count": 1 },
+            { "id": "Light:1924", "count": 1 },
+            { "id": "Light:1962", "count": 2 },
+            { "id": "Light:2040", "count": 4 },
+            { "id": "Light:2052", "count": 3 },
+            { "id": "Light:2057", "count": 3 },
+            { "id": "Light:2060", "count": 3 },
+            { "id": "Light:2067", "count": 3 },
+            { "id": "Light:2423", "count": 1 },
+            { "id": "Light:2430", "count": 1 },
+            { "id": "Light:2447", "count": 2 },
+            { "id": "Light:2838", "count": 6 },
+            { "id": "Light:2849", "count": 2 },
+            { "id": "Light:2853", "count": 2 },
+            { "id": "Light:2859", "count": 1 },
+            { "id": "Light:2418", "count": 3 },
+            { "id": "Light:2035", "count": 1 },
+            { "id": "Light:2389", "count": 1 },
+            { "id": "Light:2907", "count": 2 }
+          ]
+        }
+      ],
+      "Dark": [
+        {
+          "theme": {
+            "id": "imperiale-garnison",
+            "name": "Imperiale Garnison",
+            "description": "Tarkin, Shann Childsen und IT-O sichern den Todesstern. Mosep zwingt den Gegner bei passenden Force Drains an sein Reserve Deck."
+          },
+          "strategy": {
+            "start": "Beginne im War Room oder im Detention Block Corridor, um zuerst die Korridore zu sichern. Das Death Star System ist die Alternative für einen frühen Raumaufbau. Bei diesem Startort beginnt Light Side.",
+            "opening": "Setze Shann Childsen in einem der beiden Haftbereiche ein. Halte IT-O im Detention Block bereit, wenn Gefangene dort deinen Force Drain verstärken.",
+            "tactics": "Sichere Docking Bay 327, wenn du mit Death Star Tractor Beam Schiffe fangen willst. Stelle Mosep an die Site eines geplanten Force Drains oder neben sie."
+          },
+          "startingLocations": [
+            "Dark:673",
+            "Dark:682",
+            "Dark:678",
+            "Dark:654"
+          ],
+          "cards": [
+            { "id": "Dark:22", "count": 1 },
+            { "id": "Dark:79", "count": 1 },
+            { "id": "Dark:94", "count": 1 },
+            { "id": "Dark:146", "count": 1 },
+            { "id": "Dark:253", "count": 1 },
+            { "id": "Dark:304", "count": 1 },
+            { "id": "Dark:391", "count": 1 },
+            { "id": "Dark:406", "count": 1 },
+            { "id": "Dark:489", "count": 1 },
+            { "id": "Dark:634", "count": 1 },
+            { "id": "Dark:654", "count": 1 },
+            { "id": "Dark:665", "count": 1 },
+            { "id": "Dark:667", "count": 1 },
+            { "id": "Dark:668", "count": 1 },
+            { "id": "Dark:669", "count": 1 },
+            { "id": "Dark:673", "count": 1 },
+            { "id": "Dark:675", "count": 1 },
+            { "id": "Dark:678", "count": 1 },
+            { "id": "Dark:682", "count": 1 },
+            { "id": "Dark:734", "count": 1 },
+            { "id": "Dark:777", "count": 1 },
+            { "id": "Dark:816", "count": 1 },
+            { "id": "Dark:830", "count": 1 },
+            { "id": "Dark:914", "count": 1 },
+            { "id": "Dark:934", "count": 1 },
+            { "id": "Dark:993", "count": 1 },
+            { "id": "Dark:1027", "count": 1 },
+            { "id": "Dark:1061", "count": 1 },
+            { "id": "Dark:1263", "count": 1 },
+            { "id": "Dark:1264", "count": 1 },
+            { "id": "Dark:1279", "count": 1 },
+            { "id": "Dark:1426", "count": 1 },
+            { "id": "Dark:1479", "count": 1 },
+            { "id": "Dark:1480", "count": 1 },
+            { "id": "Dark:1691", "count": 1 },
+            { "id": "Dark:1767", "count": 1 },
+            { "id": "Dark:1932", "count": 1 },
+            { "id": "Dark:1697", "count": 1 },
+            { "id": "Dark:2103", "count": 1 },
+            { "id": "Dark:2176", "count": 1 },
+            { "id": "Dark:2214", "count": 1 },
+            { "id": "Dark:2216", "count": 1 },
+            { "id": "Dark:2242", "count": 1 },
+            { "id": "Dark:2355", "count": 1 },
+            { "id": "Dark:2357", "count": 1 },
+            { "id": "Dark:2360", "count": 1 },
+            { "id": "Dark:2600", "count": 3 },
+            { "id": "Dark:2634", "count": 1 },
+            { "id": "Dark:2833", "count": 1 },
+            { "id": "Dark:2901", "count": 1 },
+            { "id": "Dark:1340", "count": 1 },
+            { "id": "Dark:1588", "count": 1 },
+            { "id": "Dark:1700", "count": 1 },
+            { "id": "Dark:872", "count": 1 },
+            { "id": "Dark:1267", "count": 1 },
+            { "id": "Dark:2094", "count": 1 },
+            { "id": "Dark:247", "count": 1 },
+            { "id": "Dark:249", "count": 1 }
+          ]
+        }
+      ]
+    }
+  }
+}

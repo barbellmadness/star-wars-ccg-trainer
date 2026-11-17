@@ -35,7 +35,8 @@ const PremiereUnits = (() => {
     ['Light:1050', {shared:2, astromech:1}], ['Light:1548', {passenger:4}],
     ['Light:1609', {driver:1, passenger:2}], ['Light:1677', {pilot:2, passenger:2}],
     ['Light:2057', {pilot:1}], ['Light:2060', {pilot:1, astromech:1}],
-    ['Light:2161', {driver:1, passenger:7}], ['Light:2307', {driver:1, passenger:3}], ['Light:2907', {shared:1}],
+    ['Light:2161', {driver:1, passenger:7}], ['Light:2307', {driver:1, passenger:3}], ['Light:2418', {pilot:3, passenger:4}],
+    ['Light:2907', {shared:1}],
     ['Dark:191', {passenger:2}], ['Dark:247', {pilot:1}], ['Dark:249', {pilot:1}],
     ['Dark:723', {pilot:6, passenger:8, cargo:2, hangar:4}], ['Dark:1291', {pilot:6, passenger:8, cargo:2, hangar:4}],
     ['Dark:1547', {passenger:4}], ['Dark:2160', {driver:1, passenger:7}],
@@ -80,11 +81,12 @@ const PremiereUnits = (() => {
     ['Light:239', ['Light:2060', 1, true]], ['Light:799', ['Light:1045', 1, true]], ['Light:1098', ['Light:1677', 2, true]],
     ['Light:1390', [null, 1, true, 'Red 6']], ['Light:1593', ['Light:2068', 2]],
     ['Light:1924', ['Light:1050', 1, true, 'Gold 5']], ['Light:2067', ['Light:2057', 1, true]],
-    ['Dark:790', ['Dark:247', 1, true]], ['Dark:791', ['Dark:249', 1, true]], ['Dark:634', ['Dark:2700', 3]]
+    ['Dark:790', ['Dark:247', 1, true]], ['Dark:791', ['Dark:249', 1, true]], ['Dark:634', ['Dark:2700', 3]],
+    ['Dark:2094', [null, 1, true, 'Black 2', 'Black 3', 'Black 4']]
   ]);
   function matchingPilot(ship, pilot, matchNames) {
     const match = matchingPilots.get(pilot.id);
-    return match && ((match[0] && match[0] === ship.id) || (matchNames && match[3] === name(ship))) ? match : null;
+    return match && ((match[0] && match[0] === ship.id) || (matchNames && match.slice(3).includes(name(ship)))) ? match : null;
   }
   const matchingBattleDestiny = (ship, pilot, matchNames) => matchingPilot(ship, pilot, matchNames)?.[2] === true;
 

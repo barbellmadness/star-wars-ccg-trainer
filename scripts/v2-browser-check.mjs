@@ -89,11 +89,26 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await darkDeck.selectOption('imperiale-garnison');
     await page.getByRole('button', {name: 'Dark Side Deck ansehen'}).click();
     const garrison = page.getByRole('dialog', {name: 'Imperiale Garnison · 60 Karten'});
-    await garrison.getByRole('button', {name: /Zuckuss' Snare Rifle/}).click();
-    assert.ok(await page.getByRole('dialog', {name: /Zuckuss' Snare Rifle/}).isVisible());
+    assert.doesNotMatch(await garrison.textContent(), /Zuckuss' Snare Rifle|Death Star Tractor Beam/);
+    await page.keyboard.press('Escape');
+    const formatPicker = page.getByRole('combobox', {name: 'Spielformat'});
+    assert.equal(await formatPicker.inputValue(), 'premiere');
+    await formatPicker.selectOption('premiere-a-new-hope');
+    assert.ok(await deckTiles.filter({hasText: 'Korvette und Jäger'}).isVisible());
+    await page.getByRole('button', {name: 'Dark Side Deck ansehen'}).click();
+    await garrison.getByRole('button', {name: /Death Star Tractor Beam/}).click();
+    assert.ok(await page.getByRole('dialog', {name: /Death Star Tractor Beam/}).isVisible());
     await page.keyboard.press('Escape');
     assert.ok(await garrison.isVisible());
     await page.keyboard.press('Escape');
+    await deckTiles.filter({hasText: 'Korvette und Jäger'}).click();
+    await page.getByRole('button', {name: 'Deckliste ansehen'}).click();
+    const mixedDeck = page.getByRole('dialog', {name: 'Korvette und Jäger · 60 Karten'});
+    await mixedDeck.getByRole('button', {name: /Tantive IV/}).click();
+    assert.ok(await page.getByRole('dialog', {name: /Tantive IV/}).isVisible());
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await formatPicker.selectOption('premiere');
     await lightDeck.selectOption('starter');
     await darkDeck.selectOption('starter');
     await page.locator('#gameSeed').fill('4');
@@ -359,7 +374,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.30'});
+    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.31'});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -463,7 +478,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await dianoga.getByRole('button', {name: 'Karte auswählen'}).count(), 0);
     await dianoga.getByRole('button', {name: 'Schließen'}).click();
     await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Retract The Bridge');
-    assert.match(await expansionCatalog.locator('#starterDeckCards li').textContent(), /Imperiale Garnison/);
+    assert.match(await expansionCatalog.locator('#starterDeckCards li').textContent(), /freigegeben/);
     await editionPicker.selectOption('1');
     await catalog.getByRole('button', {name: 'Schließen'}).click();
     assert.equal(await page.evaluate(() => JSON.stringify(currentGame().starterDecks)), gameDecks);

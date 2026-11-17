@@ -26,7 +26,7 @@ function harness({storage={getItem:()=>null,setItem:()=>{}},confirmNewGame=()=>t
   });
   return elements.get(id);
  }};
- const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,fetch:async()=>({ok:false}),Error,
+ const context=vm.createContext({document,console,Math,Number,String,Array,RegExp,Set,structuredClone,fetch:async()=>({ok:false}),Error,
   localStorage:storage,confirm:confirmNewGame,setTimeout(callback){timers.set(++timerId,callback);return timerId;},
   clearTimeout:id=>timers.delete(id)});
  vm.runInContext(cardDataScript,context);
@@ -679,6 +679,8 @@ test('weapon hit registration rejects invalid targets and phases',()=>{
 const starterLists=JSON.parse(readFileSync(new URL('../data/premiere-starter-decks.json',import.meta.url),'utf8'));
 const themedLists=readFileSync(new URL('../data/premiere-themed-decks.json',import.meta.url),'utf8');
 const supplementalCards=readFileSync(new URL('../data/premiere-supplemental-cards.json',import.meta.url),'utf8');
+const playFormatLists=readFileSync(new URL('../data/play-format-decks.json',import.meta.url),'utf8');
+const expansionCards=readFileSync(new URL('../data/a-new-hope.json',import.meta.url),'utf8');
 
 async function premiereHarness(deckLists=starterLists,browser){
  const fixture=harness(browser);
@@ -690,6 +692,8 @@ async function premiereHarness(deckLists=starterLists,browser){
   if(path==='data/premiere-starter-decks.json'&&${deckLists!==null})return {ok:true,json:async()=>(${JSON.stringify(deckLists)})};
   if(path==='data/premiere-themed-decks.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(themedLists)})};
   if(path==='data/premiere-supplemental-cards.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(supplementalCards)})};
+  if(path==='data/play-format-decks.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(playFormatLists)})};
+  if(path==='data/a-new-hope.json')return {ok:true,json:async()=>JSON.parse(${JSON.stringify(expansionCards)})};
   if(path==='local-print-texts.json'){
    globalThis.requestedLocalPrints=true;
    const report=${JSON.stringify(browser?.localPrintReport??null)};
@@ -3022,6 +3026,12 @@ test('selectable Premiere decks complete matches with legal decisions and conser
  const darkPlayer=JSON.parse(run("JSON.stringify(playMatch(4,latestCardRulesVersion,2,starterDecks,'Dark'))"));
  assert.ok(darkPlayer.winner&&darkPlayer.botActions>0&&darkPlayer.validated>0&&(darkPlayer.ground||darkPlayer.space),
   JSON.stringify({...darkPlayer,trace:undefined}));
+ const mixed=JSON.parse(run(`const choices=formatDeckChoices[mixedFormat];
+  const decks={light:choices.light.find(({deck})=>deck.theme?.id==='korvette-und-jaeger').deck,
+   dark:choices.dark.find(({deck})=>deck.theme?.id==='imperiale-garnison').deck};
+  JSON.stringify([playMatch(19,26,3,decks,'Light'),playMatch(21,26,3,decks,'Dark')])`));
+ assert.ok(mixed.every(match=>match.winner&&match.botActions>0&&match.validated>0),
+  JSON.stringify(mixed.map(({trace,...summary})=>summary)));
 });
 
 function startSavedGame(run,seed=0){
@@ -3239,6 +3249,130 @@ test('the two additional Premiere decks start together and preserve their cards 
  assert.equal(reload.elements.get('selectDarkDeck').value,'imperiale-sondereinheit');
 });
 
+test('a mixed match keeps its format through save, reload and restart and rejects forged deck editions',async()=>{
+ const storage=autosaveStorage();
+ const {run}=await premiereHarness(starterLists,{storage});
+ run(`el('playFormat').value='premiere-a-new-hope';el('playFormat').onchange();
+  el('selectLightDeck').value='korvette-und-jaeger';el('selectDarkDeck').value='imperiale-garnison';`);
+ startSavedGame(run,91);
+ assert.equal(run(`act('chooseStart','Light',legalActions(null,'Light')[0].args)&&act('beginGame')`),true);
+ assert.equal(run(`currentGame().starterDecks.light.cards.some(card=>card.id==='Light:2418')&&
+  currentGame().starterDecks.dark.cards.some(card=>card.id==='Dark:1340')`),true);
+ const snapshot=JSON.parse(run('JSON.stringify(scenarioSnapshot())'));
+ assert.equal(snapshot.playFormat,'premiere-a-new-hope');
+ assert.equal(snapshot.expansionRevision,snapshot.cardRevision);
+ const zones='JSON.stringify([state.locations,state.deck,state.botDeck,state.hand,state.botHand])';
+ const opening=run(zones);
+ const reopened=await premiereHarness(starterLists,{storage});
+ assert.equal(reopened.run('resumeGameFromUI()'),true);
+ assert.equal(reopened.run(zones),opening);
+ assert.equal(reopened.run('currentGame().playFormat'),'premiere-a-new-hope');
+ assert.equal(reopened.run('restartScenario()'),true);
+ assert.equal(reopened.run('currentGame().playFormat'),'premiere-a-new-hope');
+ assert.equal(reopened.run('currentGame().starterDecks.light.theme.id'),'korvette-und-jaeger');
+ assert.equal(run(`const forged=${JSON.stringify(snapshot)};
+  forged.playFormat='premiere';delete forged.expansionRevision;
+  replayScenario(forged,[],false)`),false);
+ assert.equal(run(`forged.playFormat='premiere-a-new-hope';forged.expansionRevision=REVISION;
+  forged.decks.decks.Dark.cards[0].id='Dark:729';replayScenario(forged,[],false)`),false);
+ assert.equal(run(`forged.decks.decks.Dark.cards[0].id='Dark:2915';replayScenario(forged,[],false)`),false);
+});
+
+test('a legacy scenario can still restart with the four original Garrison additions',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const legacyGarrison=JSON.parse(${JSON.stringify(themedLists)}).decks.Dark[0];
+  const legacy={seed:17,trainingBattle:false,cardRulesVersion:25,botStrategyVersion:2,commands:[],
+   decks:{schema:1,decks:{Light:selectedDeck('light').definition,Dark:legacyGarrison}}};
+  replayScenario(legacy,legacy.commands,false)&&currentGame().playFormat===undefined&&
+   currentGame().starterDecks.dark.cards.filter(card=>card.id==='Dark:2915').length===3`),true);
+});
+
+test('A New Hope detention and Force drains respect physical presence',async()=>{
+ const {run}=await premiereHarness();
+ run(`state=null;setupDecks=null;const findCard=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const it=findCard('Dark:1340'),guard=findCard('Dark:1588'),mosep=findCard('Dark:1700');
+  const captive={...findCard('Light:1593'),captured:true,imprisoned:true};
+  const prison=findCard('Dark:673'),adjacent=findCard('Dark:682');
+  prison.icons.light=2;adjacent.icons.light=2;
+  const enemy={name:'Wookiee',type:'Character',subType:'Alien',characteristics:['wookiee'],ability:2};
+  state={phase:1,activeSide:'Dark',locations:[prison,adjacent],dark:[[it,guard,captive],[mosep]],light:[[],[]],
+   deck:[{name:'Deck'}],hand:[{name:'Hand'}],used:[],force:[{name:'Force'}],botDeck:[{}],botForce:[],
+   botHand:[],botUsed:[],lost:[],botLost:[],log:[]};
+  state.game=PremiereGame.actionState(900,7);state.game.cardRulesVersion=26;state.game.playerSide='Light';
+  const forceLossChoices=()=>legalActions(state,'Light').filter(action=>action.kind==='loseForce');`);
+ assert.equal(run(`locationTitle(prison)`),'death star: detention block corridor');
+ assert.equal(run(`forceDrainEffects('Dark',0).modifier-forceDrainEffects('Dark',1).modifier`),1);
+ assert.equal(run(`siteDroids().some(entry=>entry.card===it)`),false);
+ assert.equal(run(`cardPowerModifier(guard,'Dark',0)`),2);
+ assert.equal(run(`state.light[0].push(enemy);cardPowerModifier(guard,'Dark',0)`),5);
+ assert.equal(run(`enemy.inactive=true;cardPowerModifier(guard,'Dark',0)`),2);
+ assert.equal(run(`state.light[0]=[];resolveForceDrain('Dark',0,0);JSON.stringify(forceLossChoices().map(o=>o.args[0]))`),'["deck"]');
+ assert.equal(run(`loseForceForDrain('Light','hand',0)`),false);
+ assert.equal(run(`loseForceForDrain('Light','deck')&&forceLossChoices().some(o=>o.args[0]==='hand')`),true);
+});
+
+test('A New Hope ships deploy and dock with their printed limits',async()=>{
+ const {run}=await premiereHarness();
+ run(`const lookup=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const corvette=lookup('Light:2418'),pilot=lookup('Light:2040'),black=lookup('Dark:247'),reserve=lookup('Dark:2094');
+  const system={name:'Tatooine',type:'Location',subType:'System',parsec:7,locationTags:['Planet'],icons:{light:0,dark:1}};
+  setupDecks=null;state={locations:[system],light:[[]],dark:[[black]],force:Array(5).fill({}),botForce:[],log:[]};
+  state.game=PremiereGame.actionState(901,8);state.game.cardRulesVersion=26;`);
+ assert.equal(run(`boardDeployCost(corvette,system,'Light')`),5);
+ assert.equal(run(`boardDeployCost(lookup('Light:530'),system,'Light')`),null);
+ assert.equal(run(`state.light[0].push(corvette);craftStats(corvette,0).ability`),2);
+ assert.equal(run(`canDock(corvette,black,0)`),true);
+ assert.equal(run(`corvette.occupants=Array.from({length:3},()=>({card:{...pilot},role:'pilot'}));
+  !PremiereUnits.accepts(corvette,pilot,'pilot')&&PremiereUnits.accepts(corvette,pilot,'passenger')`),true);
+ assert.equal(run(`const stockPower=black.power,stockManeuver=black.maneuver;
+  PremiereUnits.add(black,reserve,'pilot','Dark');
+  craftStats(black,0).power===stockPower+1&&craftStats(black,0).maneuver===stockManeuver+1&&battleDestinyDrawCount('Dark',0,1)===1`),true);
+});
+
+test('A New Hope commanders apply their printed modifiers at the same site',async()=>{
+ const {run}=await premiereHarness();
+ run(`const findCard=id=>structuredClone([...catalog,...aNewHopeCatalog].find(card=>card.id===id));
+  const commander=findCard('Light:2035'),rebel=findCard('Light:2040'),leader=findCard('Light:1021'),warrior=findCard('Dark:2355');
+  const spy={...rebel,characteristics:['bothan','spy']};
+  const site=findCard('Light:2447');setupDecks=null;
+  state={locations:[site],light:[[commander,rebel,leader]],dark:[[warrior]],force:[],botForce:[],log:[]};`);
+ assert.equal(run(`cardForfeitValueAt(rebel,'Light',0)===rebel.forfeit+1&&cardForfeitValueAt(leader,'Light',0)===leader.forfeit&&
+  cardForfeitValueAt(warrior,'Dark',0)===warrior.forfeit&&crewDeployCost(spy,'Light',site)===0`),true);
+ assert.equal(run(`state.light[0].push({...commander});cardForfeitValueAt(rebel,'Light',0)`),run(`rebel.forfeit+1`));
+ assert.equal(run(`state.light[0]=[];state.dark[0].push(findCard('Dark:1267'));cardForfeitValueAt(warrior,'Dark',0)`),run(`warrior.forfeit+1`));
+});
+
+test('A New Hope space weapons use their printed hosts and outcomes',async()=>{
+ const {run}=await premiereHarness();
+ assert.equal(run(`const card=id=>structuredClone([...catalog,...aNewHopeCatalog].find(x=>x.id===id));
+  const ion=card('Light:2389'),laser=card('Dark:872'),tie=card('Dark:2600'),wing=card('Light:2907'),capital=card('Light:2418');
+  PremiereWeapons.deployCost(ion,wing)===1&&PremiereWeapons.deployCost(ion,card('Light:2052'))===null&&
+  PremiereWeapons.deployCost(laser,tie)===1&&PremiereWeapons.deployCost(laser,capital)===null&&
+  PremiereWeapons.shot(laser,tie,capital,0,4).bonus===-2&&PremiereWeapons.shot(laser,tie,wing,0,4).bonus===0&&
+  PremiereWeapons.shot(ion,wing,tie,0,2).effect==='ion'`),true);
+});
+
+test('Monnok distinguishes Used and Lost modes and respects hidden hand contents',async()=>{
+ const {run}=await premiereHarness();
+ run(`const monnok=aNewHopeCatalog.find(card=>card.id==='Dark:1697');
+  const setupMonnok=hand=>{
+   setupDecks=null;
+   state={locations:[],light:[],dark:[],activeSide:'Dark',phase:1,hand,botHand:[{...monnok}],
+    force:[],used:[],lost:[],deck:[{}],botForce:Array.from({length:4},()=>({})),botUsed:[],botLost:[],botDeck:[{}],log:[]};
+   state.game=PremiereGame.actionState(902,7);state.game.cardRulesVersion=26;
+  };
+  const names=n=>Array.from({length:n},(_,i)=>({name:'Hidden '+i,side:'Light'}));`);
+ assert.equal(run(`setupMonnok(names(12));pileInterruptOptions('Dark').some(o=>o.rule.mode==='trimHand')`),false);
+ assert.equal(run(`setupMonnok(names(13));playPileInterrupt('Dark',0,'trimHand')&&state.hand.length===8&&state.used.length===5&&
+  state.botUsed[0].id===monnok.id&&state.botForce.length===4&&!state.log.some(text=>text.includes('Hidden'))`),true);
+ const selected=run(`state.used.map(card=>card.name).join(',')`);
+ assert.equal(run(`setupMonnok(names(13));playPileInterrupt('Dark',0,'trimHand');state.used.map(card=>card.name).join(',')`),selected);
+ assert.equal(run(`setupMonnok(['Luke Skywalker','•Luke Skywalker','Commander Luke Skywalker'].map(name=>({name,side:'Light'})));
+  playPileInterrupt('Dark',0,'revealDuplicates')&&state.hand[0].name==='Commander Luke Skywalker'&&state.hand.length===1&&
+  state.lost.length===2&&state.botUsed.length===4&&state.botLost[0].id===monnok.id&&
+  state.log.some(text=>text.includes('deckt die Hand auf'))`),true);
+});
+
 test('reloading an expired Scomp Link Access peek keeps its cards concealed and still permits the required shuffle',async()=>{
  const lists={schema:1,decks:{
   Light:{startingLocations:['Light:2858'],cards:[
@@ -3272,7 +3406,8 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,25);
+ assert.equal(saved.cardRulesVersion,26);
+ assert.equal(saved.playFormat,'premiere');
  assert.equal(saved.botStrategyVersion,3);
  assert.equal(saved.botPlayStyle,'balanced');
  const oldPlanner={...saved,botStrategyVersion:2};
@@ -3282,6 +3417,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  assert.equal(previous.run('resumeGameFromUI()'),true);
  assert.equal(previous.run('currentGame().botStrategyVersion'),2);
  delete saved.cardRulesVersion;
+ delete saved.playFormat;
  delete saved.botStrategyVersion;
  delete saved.botPlayStyle;
  delete saved.playerSide;

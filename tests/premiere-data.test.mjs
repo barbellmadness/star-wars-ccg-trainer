@@ -8,7 +8,7 @@ const json = name => JSON.parse(readFileSync(new URL(`../data/${name}`, import.m
 const snapshot = json('premiere.json');
 const definitions = json('premiere-starter-decks.json');
 const {A_NEW_HOPE, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, buildAudit, readCardValue,
-  isGarrisonExpansionCard} = premiere;
+  isGarrisonExpansionCard, isReleasedExpansionCard, readFormatDeckChoices} = premiere;
 
 test('the checked-in catalog and starter decks validate against the pinned edition', () => {
   const catalog = readCatalog(snapshot);
@@ -137,6 +137,25 @@ test('both sides have seven distinct, valid 60-card themed decks with playable s
       assert.equal(deck.cards.filter(card => card.id === id).length, count);
     }
   }
+});
+
+test('both formats have legal decks for either side and offer every released expansion card', () => {
+  const base = readCatalog(snapshot);
+  const expansion = readCatalog(json('a-new-hope.json'), A_NEW_HOPE);
+  const themes = json('premiere-themed-decks.json');
+  const variants = json('play-format-decks.json');
+  const mixedFormat = 'premiere-a-new-hope';
+  const fixed = readFormatDeckChoices('premiere', definitions, themes, variants, base);
+  const mixed = readFormatDeckChoices(mixedFormat, definitions, themes, variants, [...base, ...expansion]);
+  assert.ok([...fixed.light, ...fixed.dark].every(({deck}) => deck.cards.every(card => card.set === '1')));
+  for (const side of ['light', 'dark']) {
+    assert.ok(mixed[side].some(({deck}) => deck.cards.some(card => card.set === A_NEW_HOPE)));
+    assert.ok(mixed[side].every(({deck}) => deck.startingIndices.length && deck.cards.length === 60 && deck.cards.every(card => card.set !== '4')));
+  }
+  const available = new Set([...mixed.light, ...mixed.dark].flatMap(({deck}) => deck.cards.map(card => card.id)));
+  assert.ok(expansion.every(card => available.has(card.id) === isReleasedExpansionCard(card)));
+  const decks = {schema: 1, decks: {Light: mixed.light.at(-1).definition, Dark: mixed.dark[1].definition}};
+  assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:25}), /noch nicht für das Spiel freigegeben/);
 });
 
 test('the selectable decks include all 324 Premiere cards, including the nine previously rejected cards', () => {

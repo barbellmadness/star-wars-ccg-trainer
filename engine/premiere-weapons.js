@@ -29,10 +29,12 @@ const PremiereWeapons = (() => {
     ['Dark:1002', {deploy:withHost(card=>card.type==='Character'&&title(card)==='tusken raider',2),
       cost:0,draws:2,targets:['Character'],timing:'initiation',effect:'block',threshold:5}],
     ['Light:1962', {deploy:withHost(card=>units.fighter(card)&&/\b[XYB]-wing\b/i.test(card.subType),1),cost:1,targets:space}],
+    ['Light:2389', {deploy:withHost(card=>units.fighter(card)&&/\b[YB]-wing\b/i.test(card.subType),1),cost:1,targets:space,effect:'ion'}],
     ['Light:1971', {deploy:withHost(card=>['Light:530','Light:1677'].includes(card.id),2),cost:1,
       targets:space,bonus:target=>units.fighter(target)?1:0}],
     ['Dark:303', {deploy:withHost(card=>units.fighter(card)&&/TIE Advanced x1/i.test(card.subType),1),cost:1,
       targets:space,bonus:target=>units.capital(target)?-1:units.fighter(target)?1:0}],
+    ['Dark:872', {deploy:withHost(units.tie,1),cost:1,targets:space,bonus:target=>units.capital(target)?-2:0}],
     ['Dark:1327', {deploy:withHost(starDestroyer,2),cost:1,bonus:2,targets:space,effect:'ion'}],
     ['Dark:2644', {deploy:withHost(card=>starDestroyer(card)||(card.subType==='System'&&card.locationTags?.includes('Mobile')),3),
       cost:2,draws:2,targets:space,bonus:target=>units.capital(target)?-2:-5}]
