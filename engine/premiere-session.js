@@ -122,7 +122,11 @@ function forceDrainEffects(side,slot){
  const plan=PremiereLocations.drain(state,side,slot,cardAbility);
  if(!plan)return null;
  const proficiency=PremiereLocations.presentCards(state,side,slot).flatMap(host=>saberTraining(host)?[{host}]:[]);
- return {...plan,modifier:plan.modifier+necklaceCarriers(side,slot).length,
+ const prisonDroid=side==='Dark'&&locationTitle(state.locations[slot])==='death star: detention block corridor'&&
+  PremiereLocations.entries(state,side).some(entry=>entry.slot===slot&&!entry.unavailable&&activeCardRules(entry.card,'captiveDrain').length);
+ const captives=prisonDroid?PremiereLocations.entries(state,'Dark').filter(entry=>
+  entry.captive&&entry.card.type==='Character'&&entry.slot===slot).length:0;
+ return {...plan,modifier:plan.modifier+necklaceCarriers(side,slot).length+captives,
   optional:plan.optional+proficiency.length,weapons:plan.weapons.concat(proficiency)};
 }
 
@@ -211,7 +215,9 @@ function resolveForceDrain(side,i,bonus){
  const amount=drainAmount(plan,bonus);
  for(const {host,weapon} of plan.weapons.slice(0,bonus))if(weapon)PremiereUnits.recordWeaponUse(state,host,weapon);
  log(side+' führt Force Drain '+amount+' bei '+state.locations[i].name+' aus.');
- beginForceLoss(PremiereGame.otherSide(side),amount,{locationIndex:i,reason:'drain'});
+ const fromReserve=PremiereLocations.entries(state,side).some(({card,slot,unavailable})=>!unavailable&&
+  (slot===i||adjacentSites(slot,i))&&activeCardRules(card,'drainFromReserve').length);
+ beginForceLoss(PremiereGame.otherSide(side),amount,{locationIndex:i,reason:'drain',...(fromReserve?{from:'deck'}:{})});
 }
 function beginForceLoss(payer,amount,terms){
  amount=forceLossAfterDoomed(payer,amount);
@@ -455,7 +461,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=25;
+const latestCardRulesVersion=PremiereData.EXPANSION_RULES_VERSION;
 const latestBotStrategyVersion=3;
 const usesBotPlanner=version=>version===2||version===latestBotStrategyVersion;
 const playerSide=()=>currentGame()?.playerSide??'Light';
@@ -467,7 +473,7 @@ function deploymentSide(card){
 }
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,
- botStrategyVersion=2,side='Light',botPlayStyle='balanced'){
+ botStrategyVersion=2,side='Light',botPlayStyle='balanced',playFormat){
  if(!decks||!Number.isInteger(seed)||seed<0||seed>4294967295||!PremiereGame.sides.includes(side)||
     (side==='Dark'&&!usesBotPlanner(botStrategyVersion))||
     (botStrategyVersion===latestBotStrategyVersion&&!PremiereBot.isStyle(botPlayStyle)))return false;
@@ -476,6 +482,7 @@ function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainin
  game.publicHistory=[];
  game.starterDecks=decks;
  game.cardRulesVersion=cardRulesVersion;
+ game.playFormat=playFormat;
  game.botStrategyVersion=botStrategyVersion;
  if(botStrategyVersion===latestBotStrategyVersion)game.botPlayStyle=botPlayStyle;
  game.playerSide=side;
@@ -1146,6 +1153,8 @@ function plannedEffectValue(offer,site,window,frame,target,view){
   case 'battleEffect': return 1.75*Math.min(offer.draws??2,view.reserveCount);
   case 'pileInterrupt':
    if(rule.mode==='destroyDroid')return offer.entry?.side===rival?3:-3;
+   if(rule.mode==='trimHand')return 4;
+   if(rule.mode==='revealDuplicates')return 0;
    return ['setStun','tallonRoll','droidAttrition'].includes(rule.mode)&&target?2.5:-1;
   case 'equip': return 0;
   case 'deployLostPileEffect':
@@ -1346,6 +1355,14 @@ function cardPowerModifier(c,side,siteIndex,ownPresent){
  if(!state.locations?.[siteIndex]||!isSite(state.locations[siteIndex]))return bonus;
  const same=ownPresent??PremiereLocations.presentCards(state,side,siteIndex);
  bonus+=registeredCharacterModifier('characterPower',c,siteIndex)+rebelAuraPower(c,side,siteIndex,same);
+ const guard=activeCardRules(c,'detentionPower').length&&PremiereLocations.findEntry(state,c);
+ if(guard&&!guard.unavailable){
+  const title=locationTitle(state.locations[siteIndex]);
+  if(['death star: detention block corridor','death star: detention block control room'].includes(title))bonus+=2;
+  const aliens=PremiereLocations.presentCards(state,PremiereGame.otherSide(side),siteIndex).filter(card=>
+   card.type==='Character'&&(/^Alien\b/.test(card.subType)||characterTraits(card).includes('alien')));
+  if(aliens.length)bonus+=aliens.some(card=>characterTraits(card).some(trait=>['wookiee','talz','ewok'].includes(trait)))?3:2;
+ }
  if(PremiereLocations.conditions(state,siteIndex,side).night)bonus+=activeCardRules(c,'nightPower')[0]?.amount??0;
  const myo=activeCardRules(c,'myoPower')[0],entry=myo&&PremiereLocations.findEntry(state,c);
  if(entry&&!entry.unavailable){
@@ -1457,6 +1474,8 @@ function crewDeployCost(card,side,loc){
   .filter(({slot,unavailable})=>!unavailable&&state.locations[slot]===loc)
   .reduce((tax,{card:unit})=>tax+(activeCardRules(unit,'droidDeployTax')[0]?.amount??0),0):0;
  let garindan=0;
+ if(loc&&characterTraits(card).includes('bothan')&&isSpyCharacter(card)&&PremiereLocations.entries(state,side).some(entry=>
+   !entry.unavailable&&state.locations[entry.slot]===loc&&activeCardRules(entry.card,'bothanDeploy').length))return droidTax;
  if(loc&&isSite(loc)){
   const slot=state.locations.indexOf(loc);
   if(isSpyCharacter(card)&&PremiereLocations.nightEffectsAt(state,slot).length)return droidTax;
@@ -1561,7 +1580,7 @@ function boardDeployCost(card,loc,side,free=false){
   return withinDeploymentLimit(card,side)&&canPayJawaDeploy(side,payment,free)?(free?0:payment.own):null;
  }
  const cost=isDeployableCharacter(card)?characterDeployCost(card,loc,side):
-  hasDeployPresence(side,loc)?craftDeployCost(card,loc,side):null;
+  (hasDeployPresence(side,loc)||activeCardRules(card,'shipDeployWithoutPresence').length)?craftDeployCost(card,loc,side):null;
  return cost!==null&&canPayBoardDeploy(card,side,free?0:cost)?(free?0:cost):null;
 }
 
@@ -3534,6 +3553,10 @@ function pileInterruptOptions(side){
   const {mode,cost}=rule,budget=forceBudget(side);
   if(cost>budget)return [];
   switch(mode){
+   case 'trimHand':
+    return rival.hand?.length>=13?[{card,rule,cost,args:[index,mode],label:card.name+' · Used: Gegner behält 8 zufällige Handkarten'}]:[];
+   case 'revealDuplicates':
+    return rival.hand?.length?[{card,rule,cost,args:[index,mode],label:card.name+' · Lost: Hand aufdecken und Duplikate verlieren lassen (4 Force)'}]:[];
    case 'retractBridge': {
     const sites=deathStarInteriorSites(),movable=sites.filter(site=>!isDockingBay327(state.locations[site]));
     const waived=controlledLocationRule(side,'freeNamedDeploy')?.rule.names.includes(locationTitle(card));
@@ -3756,6 +3779,32 @@ function settlePileInterrupt(frame){
  const rival=PremiereGame.zones(state,opponent);
  const view={side,card,opponent,interruptFrame:frame,shown:[]};
  switch(mode){
+  case 'trimHand': {
+   const removed=new Set(PremiereGame.shuffle(rival.hand,state.game).slice(8));
+   rival.hand.splice(0,rival.hand.length,...rival.hand.filter(item=>!removed.has(item)));
+   rival.used.push(...removed);
+   log(opponent+' legt '+removed.size+' zufällig ausgewählte Handkarten verdeckt in die Used Pile.');
+   finishPileInterrupt(frame);
+   return;
+  }
+  case 'revealDuplicates': {
+   log(opponent+' deckt die Hand auf: '+rival.hand.map(item=>item.name).join(', ')+'.');
+   const counts=new Map();
+   for(const item of rival.hand){
+    const title=locationTitle(item);
+    counts.set(title,(counts.get(title)??0)+1);
+   }
+   const remaining=[];
+   for(const item of rival.hand){
+    if(counts.get(locationTitle(item))>1)loseOwnedCard(item,opponent);
+    else remaining.push(item);
+   }
+   const lost=rival.hand.length-remaining.length;
+   rival.hand.splice(0,rival.hand.length,...remaining);
+   log(opponent+' verliert '+lost+' Handkarten mit mehrfach vorhandenem Titel.');
+   finishPileInterrupt(frame);
+   return;
+  }
   case 'retractBridge':
    state.pendingCardView={...view,mode:'bridgeOrder',sites:frame.sites.slice(),order:[]};
    return;
@@ -6518,6 +6567,9 @@ function cardForfeitValueAt(card,side,slot){
  const loc=state.locations[slot];
  let modifier=(card.battleForfeitModifier??0)+registeredLocationModifier('forfeit',card,side,slot)+deviceCharacterModifier(card,loc)+falconModificationBonus(card,slot);
  modifier+=registeredCharacterModifier('characterForfeit',card,slot);
+ if(isSite(loc)&&card.type==='Character'&&!characterTraits(card).includes('leader')&&
+    PremiereLocations.entries(state,side).some(entry=>entry.slot===slot&&!entry.unavailable&&entry.card!==card&&
+     activeCardRules(entry.card,'commanderForfeit').some(rule=>rule.faction===card.subType)))modifier++;
  if(isArtoo(card)){
   const entry=PremiereLocations.findEntry(state,card);
   if(entry&&!entry.unavailable)modifier+=PremiereGame.sides.flatMap(actor=>

@@ -4,13 +4,14 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import premiere from '../engine/premiere-data.js';
 
 const {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks,
-  isGarrisonExpansionCard, buildAudit} = premiere;
+  isGarrisonExpansionCard, isReleasedExpansionCard, readFormatDeckChoices, buildAudit} = premiere;
 const snapshotPaths = {
   [EDITION]: new URL('../data/premiere.json', import.meta.url),
   [A_NEW_HOPE]: new URL('../data/a-new-hope.json', import.meta.url)
 };
 const deckPath = new URL('../data/premiere-starter-decks.json', import.meta.url);
 const themesPath = new URL('../data/premiere-themed-decks.json', import.meta.url);
+const formatDecksPath = new URL('../data/play-format-decks.json', import.meta.url);
 const notesPath = new URL('../data/premiere-card-notes.json', import.meta.url);
 const SHA256 = {
   'Light.json': 'bff27dcde1cad712c6fce6f3fddc17d062bf25ade60a2720ccc5977adcb38c32',
@@ -126,7 +127,8 @@ function expansionReport(catalog) {
     cardsWithErrata: catalog.filter(card => card.errataSymbol).length,
     cardsWithHistoricalText: catalog.filter(card => card.texts.preErrata !== null).length,
     cardsInImperialGarrison: catalog.filter(isGarrisonExpansionCard).length,
-    cardsOpenForRuleReview: catalog.filter(card => !isGarrisonExpansionCard(card)).map(card => ({
+    cardsReleased: catalog.filter(card => isReleasedExpansionCard(card)).length,
+    cardsOpenForRuleReview: catalog.filter(card => !isReleasedExpansionCard(card)).map(card => ({
       id: card.id, gempId: card.gempId, side: card.side, name: card.name, type: card.type, subType: card.subType
     }))
   };
@@ -153,12 +155,21 @@ async function main(args) {
   if (edition === A_NEW_HOPE) {
     if (mode === '--verify-scans') return writeScanReport(catalog);
     const report = expansionReport(catalog);
+    const [premiere, decks, themes, variants] = await Promise.all([
+      readJson(snapshotPaths[EDITION]), readJson(deckPath), readJson(themesPath), readJson(formatDecksPath)
+    ]);
+    const base = readCatalog(premiere);
+    readFormatDeckChoices('premiere', decks, themes, variants, base);
+    const mixedDecks = readFormatDeckChoices('premiere-a-new-hope', decks, themes, variants, [...base, ...catalog]);
+    const available = new Set([...mixedDecks.light, ...mixedDecks.dark].flatMap(({deck}) => deck.cards.map(card => card.id)));
+    const omitted = catalog.filter(card => isReleasedExpansionCard(card) && !available.has(card.id));
+    if (omitted.length) throw new Error('Freigegebene A-New-Hope-Karten ohne Deck: ' + omitted.map(card => card.id).join(', '));
     if (mode === '--report') {
       process.stdout.write(serialize(report));
       return;
     }
     if (mode === undefined) await replaceSnapshot(snapshot, snapshotPath);
-    console.log(`${EDITIONS[edition].name} ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, ${report.cardsInImperialGarrison} in Imperiale Garnison, ${report.cardsOpenForRuleReview.length} zur Regelprüfung.`);
+    console.log(`${EDITIONS[edition].name} ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, ${report.cardsReleased} freigegeben, ${report.cardsOpenForRuleReview.length} zur Regelprüfung.`);
     return;
   }
   const [definition, themeDefinitions, supplemental] = await Promise.all([

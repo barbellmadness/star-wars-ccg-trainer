@@ -380,6 +380,12 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
         <button id="returnToGame" type="button" hidden>Zur laufenden Partie</button>
       </div>
     </div>
+    <label for="playFormat">Spielformat</label>
+    <select id="playFormat" aria-describedby="playFormatHint">
+      <option value="premiere">Premiere</option>
+      <option value="premiere-a-new-hope">Premiere + A New Hope</option>
+    </select>
+    <p id="playFormatHint" class="hint"></p>
     <div id="launchSides" class="launch-side-grid"></div>
     <div id="launchDeckGrid" class="launch-deck-grid" role="group" aria-label="Decks deiner Seite" hidden></div>
     <div id="launchActions" class="launch-actions" hidden>
@@ -552,9 +558,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.30"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js"></script><script src="engine/premiere-card-rules.js"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.29"></script><script>
+<script src="engine/premiere-data.js?v=2.15.31"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.31"></script><script src="engine/premiere-locations.js"></script><script src="engine/premiere-weapons.js?v=2.15.31"></script><script src="engine/premiere-card-rules.js?v=2.15.31"></script><script src="engine/premiere-bot.js?v=2.15.28"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.31"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.30';
+const trainerVersion='2.15.31';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -771,19 +777,35 @@ const sideName={light:'Light',dark:'Dark'};
 const deckSelector=side=>el('select'+sideName[side]+'Deck');
 const deckId=deck=>deck?.theme?.id??'starter';
 const deckName=deck=>deck?.theme?.name??'Premiere-Starterdeck';
+const premiereFormat='premiere',mixedFormat='premiere-a-new-hope';
+const launchFormat=()=>el('playFormat').value||premiereFormat;
+const formatName=format=>format===mixedFormat?'Premiere + A New Hope':'Premiere';
 const launchFactions={
  light:{caption:'Rebellion',hero:'Light:1593',covers:{'massassi-widerstand':'Light:1021','rote-staffel':'Light:2060',
   'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343',
-  'jedi-auf-tatooine':'Light:1803','droidenstuetzpunkt':'Light:343'}},
+  'jedi-auf-tatooine':'Light:1803','droidenstuetzpunkt':'Light:343','korvette-und-jaeger':'Light:2418'}},
  dark:{caption:'Galaktisches Imperium',hero:'Dark:634',covers:{'imperiale-garnison':'Dark:1061','schwarze-staffel':'Dark:2700',
   'tusken-ueberfall':'Dark:2648','blockade-von-kessel':'Dark:723','imperiale-sondereinheit':'Dark:478',
   'vaders-jagd':'Dark:634','sturmtruppen-offensive':'Dark:2355'}},
 };
 let launchOpen=false,launchFaction=null;
 
-function selectedDeck(side){
- const options=deckChoices[side];
+function selectedDeck(side,choices=deckChoices){
+ const options=choices[side];
  return options.find(({deck})=>deckId(deck)===deckSelector(side).value)??options[0];
+}
+
+function selectPlayFormat(format){
+ const choices=formatDeckChoices?.[format];
+ if(!choices)return false;
+ deckChoices=choices;
+ el('playFormat').value=format;
+ for(const side of Object.keys(sideName)){
+  const selector=deckSelector(side),selected=selector.value;
+  selector.innerHTML=choices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deckName(deck))+'</option>').join('');
+  selector.value=choices[side].some(({deck})=>deckId(deck)===selected)?selected:'starter';
+ }
+ return true;
 }
 
 function launchArt(url,fallback){
@@ -807,7 +829,7 @@ function renderLaunchSummary(){
   el('launchSummary').innerHTML='<strong>'+escapeHTML(lesson.title)+'</strong>Vorgefertigte '+(lesson.side??'Light')+'-Side-Ausgangslage';
  }else if(launchFaction){
   const {deck}=selectedDeck(launchFaction);
-  el('launchSummary').innerHTML='<strong>'+escapeHTML(deckName(deck))+' · '+deck.cards.length+' Karten</strong>'
+  el('launchSummary').innerHTML='<strong>'+escapeHTML(deckName(deck))+' · '+deck.cards.length+' Karten · '+formatName(launchFormat())+'</strong>'
    +escapeHTML(deck.theme?.description??'Das feste Premiere-Deck für den Einstieg.');
  }
 }
@@ -832,6 +854,10 @@ function renderLaunch(){
  el('matchArea').hidden=visible;
  el('configureGame').hidden=visible||!starterDecks||!deckChoices;
  if(!visible)return;
+ el('playFormat').disabled=!!lesson;
+ el('playFormatHint').textContent=lesson?'Geführte Übungen verwenden Premiere.':!formatDeckChoices?.[mixedFormat]?
+  'A New Hope konnte nicht geladen werden.':launchFormat()===mixedFormat?
+  'Die Deckauswahl enthält die bereits geprüften Karten aus A New Hope.':'In dieser Partie sind nur Karten aus Premiere erlaubt.';
  const sideStep=!lesson&&!launchFaction;
  el('launchTitle').textContent=lesson?'Geführte Übung':sideStep?'Wähle deine Seite':'Wähle dein Deck · '+sideName[launchFaction]+' Side';
  el('launchSides').hidden=!sideStep;
@@ -910,7 +936,7 @@ function showStarterDeck(side,id){
 
 const aNewHopeSelected=()=>el('catalogEdition').value===PremiereData.A_NEW_HOPE;
 const visibleCatalog=()=>aNewHopeSelected()?aNewHopeCatalog:catalog;
-const expansionCardStatus=card=>PremiereData.isGarrisonExpansionCard(card)?'In „Imperiale Garnison“ verfügbar':'Regelprüfung offen';
+const expansionCardStatus=card=>PremiereData.isReleasedExpansionCard(card)?'Für Premiere + A New Hope freigegeben':'Regelprüfung offen';
 
 function renderCatalog(){
  const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected();
@@ -963,7 +989,7 @@ function inspectCatalogCard(index){
 }
 
 function inspectDeckCard(id){
- const card=catalog.find(entry=>entry.id===id)??supplementalCatalog.find(entry=>entry.id===id);
+ const card=catalog.find(entry=>entry.id===id)??aNewHopeCatalog?.find(entry=>entry.id===id)??supplementalCatalog.find(entry=>entry.id===id);
  if(card)showCardWithStats(card);
 }
 
@@ -1464,7 +1490,7 @@ function cardTextDetails(card){
    +' Side</b><br>'+escapeHTML(printText[side]||'Feld im Scan leer')+'</p>').join('')
   :card.images?.print?'<p class="hint">Drucktext im Kartenscan · Transkription offen</p>':'';
  const expansion=card.set===PremiereData.A_NEW_HOPE;
- const guide=expansion&&!PremiereData.isGarrisonExpansionCard(card)?null:PremiereLearning.cardGuide(card,PremiereCardRules.entry(card).effects);
+ const guide=expansion&&!PremiereData.isReleasedExpansionCard(card)?null:PremiereLearning.cardGuide(card,PremiereCardRules.entry(card).effects);
  return block('Aktiver Spieltext',(texts.active??card.gametext)||'Kein Spieltext vorhanden')+slip+print
   +(texts.preErrata?block('Verknüpfte Vor-Errata-Fassung',texts.preErrata):'')
   +(texts.lore?block('Lore',texts.lore):'')
@@ -2041,7 +2067,8 @@ function render(){
  const night=available.find(option=>option.kind==='trainingNight');
  el('nightConditions').disabled=!night;
  el('nightConditions').onchange=night?()=>dispatchUI(night):null;
- el('stats').textContent='Force-Generierung: Light '+forceFromLocations('Light').count+' / Dark '+forceFromLocations('Dark').count
+ const format=state.game?.playFormat;
+ el('stats').textContent=(format?formatName(format)+' · ':'')+'Force-Generierung: Light '+forceFromLocations('Light').count+' / Dark '+forceFromLocations('Dark').count
   +' · Runde '+view.turn+' · Seed '+(state.game?.seed??'–');
  renderPhaseTracks(view);
  el('outOfPlay').hidden=!view.outOfPlay.length;
@@ -2176,7 +2203,7 @@ presentGame=()=>{
 
 const saveKey='swccg.v2.autosave';
 const saveVersion=1;
-let deckChoices, activeSave, resumeCandidate, lastSavedValue=null, activeSaveStored=false, replayingGame=false;
+let deckChoices, formatDeckChoices, activeSave, resumeCandidate, lastSavedValue=null, activeSaveStored=false, replayingGame=false;
 let lessonDecks, undoAvailable=false, closedReview=null;
 
 const learningMode=()=>!!(state?.trainingBattle||state?.game?.lesson);
@@ -2237,6 +2264,9 @@ function parseSavedGame(value){
   const saved=JSON.parse(value);
   const lesson=PremiereLearning.lesson(saved?.lesson);
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
+     (saved.playFormat!==undefined&&(!Object.hasOwn(PremiereData.PLAY_FORMATS,saved.playFormat)||
+      !Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<PremiereData.EXPANSION_RULES_VERSION))||
+     (saved.playFormat===mixedFormat?saved.expansionRevision!==REVISION||!!lesson:saved.expansionRevision!==undefined)||
      saved.commands.length>30000||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
@@ -2289,8 +2319,8 @@ function recordGameCommand(command,allowUndo=false){
  renderLearning();
 }
 
-function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key,side,style){
- if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion,side,style))return false;
+function beginSavedScenario(seed,trainingBattle,decks,cardRulesVersion,botStrategyVersion,key,side,style,format){
+ if(!start(seed,!key,trainingBattle,decks,cardRulesVersion,botStrategyVersion,side,style,format))return false;
  if(!key)return true;
  setupDecks.game.lesson=key;
  const lesson=PremiereLearning.lesson(key);
@@ -2314,13 +2344,16 @@ function activateSave(saved){
 
 function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  const lesson=PremiereLearning.lesson(key);
+ const format=lesson?premiereFormat:launchFormat();
+ const available=formatDeckChoices?.[format];
+ if(!available)return false;
  const side=lesson?(lesson.side??'Light'):el('playerSideChoice').value||'Light';
  const fixed=key?lessonDecks[key]:null;
- const choices={light:selectedDeck('light'),dark:selectedDeck('dark')};
+ const choices={light:selectedDeck('light',available),dark:selectedDeck('dark',available)};
  let matchSeed=lesson?.fixedSeed?lesson.seed:seed??lesson?.seed;
  if(!fixed&&!keepLauncher&&el('autoBotDeck').checked){
   const opponent=PremiereGame.otherSide(side).toLowerCase();
-  const themes=deckChoices[opponent].filter(({deck})=>deck.theme);
+  const themes=available[opponent].filter(({deck})=>deck.theme);
   if(themes.length){
    matchSeed??=Math.floor(Math.random()*4294967296);
    const roll=PremiereGame.random({randomState:matchSeed});
@@ -2333,10 +2366,11 @@ function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  const botVersion=key||keepLauncher?2:latestBotStrategyVersion;
  const style=el('botPlayStyle').value||'balanced';
  el('showBotHand').checked=false;
- if(!beginSavedScenario(matchSeed,trainingBattle,decks,undefined,botVersion,key,side,style))return false;
+ if(!beginSavedScenario(matchSeed,trainingBattle,decks,undefined,botVersion,key,side,style,format))return false;
  undoAvailable=false;
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
-  seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],...(key?{lesson:key}:{}),
+  seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],playFormat:format,
+  ...(format===mixedFormat?{expansionRevision:REVISION}:{}),...(key?{lesson:key}:{}),
   ...(botVersion===latestBotStrategyVersion?{botPlayStyle:style}:{})});
  activeSaveStored=false;
  launchOpen=keepLauncher;
@@ -2355,9 +2389,12 @@ function replayScenario(saved,commands=saved.commands,verify=true){
  replayingGame=true;
  undoAvailable=false;
  try {
-  const decks=readStarterDecks(saved.decks,[...catalog,...supplementalCatalog]);
+  const format=saved.playFormat;
+  if(format===mixedFormat&&!formatDeckChoices?.[mixedFormat])throw new Error('Erweiterung fehlt');
+  const scenarioCatalog=format===mixedFormat?[...catalog,...aNewHopeCatalog]:format===premiereFormat?catalog:[...catalog,...supplementalCatalog];
+  const decks=readStarterDecks(saved.decks,scenarioCatalog,{format,cardRulesVersion:saved.cardRulesVersion??0});
   if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson,
-     saved.playerSide,saved.botPlayStyle))
+     saved.playerSide,saved.botPlayStyle,format))
    throw new Error('Ungültiger Spielstart');
   for(const command of commands){
    const before=learningCheckpoint(command);
@@ -2382,6 +2419,7 @@ function replayScenario(saved,commands=saved.commands,verify=true){
 }
 
 function syncScenarioControls(saved){
+ selectPlayFormat(saved.playFormat??premiereFormat);
  el('gameSeed').value=String(saved.seed);
  el('trainingBattle').checked=saved.trainingBattle;
  el('botPlayStyle').value=saved.botPlayStyle??'balanced';
@@ -2536,6 +2574,7 @@ function endGameFromUI(){
  launchOpen=true;
  launchFaction=null;
  el('gameMode').value='';
+ selectPlayFormat(premiereFormat);
  presentGame();
  el('setup').style.display='none';
  el('gameTable').hidden=true;
@@ -2589,29 +2628,33 @@ async function loadLocalPrintTexts(cards){
 }
 
 async function load(){try{
- const [payload,deckLists,themedLists,supplemental]=await Promise.all([
+ const [payload,deckLists,themedLists,supplemental,variants,expansion]=await Promise.all([
   readLocalJson('data/premiere.json'),
   readLocalJson('data/premiere-starter-decks.json'),
   readLocalJson('data/premiere-themed-decks.json'),
-  readLocalJson('data/premiere-supplemental-cards.json')
+  readLocalJson('data/premiere-supplemental-cards.json'),
+  readLocalJson('data/play-format-decks.json'),
+  readLocalJson('data/a-new-hope.json').then(data=>readCatalog(data,PremiereData.A_NEW_HOPE)).catch(()=>null)
  ]);
  const cards=readCatalog(payload);
  supplementalCatalog=PremiereData.readSupplementalCards(supplemental);
  starterDecks=readStarterDecks(deckLists,cards);
- const themes=PremiereData.readThemedDecks(themedLists,[...cards,...supplementalCatalog]);
  const movementDeck=JSON.parse(JSON.stringify(deckLists));
  movementDeck.decks.Light.cards.find(card=>card.id==='Light:2907').count--;
  movementDeck.decks.Light.cards.push({id:'Light:1609',count:1});
  const fixed={decks:starterDecks,definition:deckLists};
  lessonDecks={force:fixed,battle:fixed,'dark-control':fixed,movement:{decks:readStarterDecks(movementDeck,cards),definition:movementDeck}};
  localPrintTexts=await loadLocalPrintTexts(cards);
- deckChoices=Object.fromEntries(Object.keys(sideName).map(side=>[side,[
-  {deck:starterDecks[side],definition:deckLists.decks[sideName[side]]},...themes[side]
- ]]));
+ aNewHopeCatalog=expansion;
+ formatDeckChoices={
+  [premiereFormat]:PremiereData.readFormatDeckChoices(premiereFormat,deckLists,themedLists,variants,cards),
+  [mixedFormat]:expansion?PremiereData.readFormatDeckChoices(mixedFormat,deckLists,themedLists,variants,[...cards,...expansion]):null,
+ };
+ const mixedOption=el('playFormat').options?.[1];
+ if(mixedOption)mixedOption.disabled=!formatDeckChoices[mixedFormat];
+ selectPlayFormat(premiereFormat);
  for(const side of Object.keys(sideName)){
   const selector=deckSelector(side);
-  selector.innerHTML=deckChoices[side].map(({deck})=>'<option value="'+deckId(deck)+'">'+escapeHTML(deckName(deck))+'</option>').join('');
-  selector.value='starter';
   selector.disabled=false;
   selector.onchange=()=>{previewStartingLocations();renderLaunch();};
  }
@@ -2674,8 +2717,13 @@ el('gameFile').onchange=async()=>{
 el('gameMode').onchange=()=>{
  const lesson=PremiereLearning.lesson(el('gameMode').value);
  el('playerSideChoice').disabled=!!lesson;
- if(lesson){el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value=lesson.side??'Light';}
+ if(lesson){selectPlayFormat(premiereFormat);el('gameSeed').value=String(lesson.seed);el('playerSideChoice').value=lesson.side??'Light';}
  else if(launchFaction)el('playerSideChoice').value=sideName[launchFaction];
+ renderLaunch();
+};
+el('playFormat').onchange=()=>{
+ if(!selectPlayFormat(launchFormat()))selectPlayFormat(premiereFormat);
+ previewStartingLocations();
  renderLaunch();
 };
 el('playerSideChoice').onchange=previewStartingLocations;

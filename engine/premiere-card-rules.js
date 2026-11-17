@@ -1253,6 +1253,57 @@ const PremiereCardRules = (() => {
     drain('Dark'),
   ], true);
 
+  register(['Light:2418'], [
+    continuous('shipDeployWithoutPresence', 'Die Tantive IV darf an einem System ohne eigene Presence oder eigene Force-Icons deployen.',
+      'system', 'A New Hope ships deploy and dock with their printed limits', { since:26 }),
+    capacityRule('Bietet drei Piloten- und vier Passagierplätze, hat Ship Docking und einen permanenten Piloten mit Ability 2.',
+      { pilot:3, passenger:4 }),
+  ], true);
+  register(['Light:2389'], [
+    continuous('weapon', 'Für 1 Force auf einem eigenen Y- oder B-wing auslegen oder auf ein gegnerisches Schiff feuern. Übersteigt Destiny dessen Verteidigung, verliert es seine Schiffswaffen, Verteidigung und Hyperspeed fallen auf 0.',
+      'opposing starship', 'A New Hope space weapons use their printed hosts and outcomes', { since:26 }),
+  ], true);
+  register(['Dark:872'], [
+    continuous('weapon', 'Für 1 Force auf einem eigenen TIE auslegen oder auf ein gegnerisches Schiff feuern. Gegen Capitals zählt Destiny minus 2. Ein höherer Wert als die Verteidigung trifft.',
+      'opposing starship', 'A New Hope space weapons use their printed hosts and outcomes', { since:26 }),
+  ], true);
+  for(const [id,faction] of [['Dark:1267','Imperial'],['Light:2035','Rebel']]){
+    const tested='A New Hope commanders apply their printed modifiers at the same site';
+    const rules=[continuous('commanderForfeit', 'Eigene '+faction+'-Charaktere am selben Site erhalten +1 Forfeit, außer der Commander selbst und andere Leader.',
+      'other non-leader characters of the same faction', tested, { faction, since:26 })];
+    if(faction==='Rebel')rules.push(continuous('bothanDeploy', 'Bothan-Spione darfst du am selben Ort kostenlos ausspielen.',
+      'friendly Bothan spies', tested, { since:26 }));
+    register([id],rules,true);
+  }
+  register(['Dark:1340'], [
+    continuous('captiveDrain', 'Erhöht beim Detention Block Corridor den eigenen Force Drain um die Anzahl anwesender Gefangener.',
+      'captives present at Detention Block Corridor', 'A New Hope detention and Force drains respect physical presence', { since:26 }),
+    continuous('restrainingBoltImmunity', 'Immun gegen Restraining Bolt.', 'IT-O',
+      'A New Hope detention and Force drains respect physical presence', { since:26 }),
+  ], true);
+  register(['Dark:1588'], [
+    continuous('detentionPower', 'Power +2 im Detention Block Corridor und Control Room. Zusätzlich +2 bei anwesendem gegnerischen Alien, stattdessen +3 bei Wookiee, Talz oder Ewok.',
+      'opposing aliens present at the same site', 'A New Hope detention and Force drains respect physical presence', { since:26 }),
+  ], true);
+  register(['Dark:1700'], [
+    continuous('drainFromReserve', 'Bei einem Force Drain an seiner oder einer benachbarten Site verliert der Gegner nach Möglichkeit vom Reserve Deck.',
+      'opposing player losing Force to a drain', 'A New Hope detention and Force drains respect physical presence', { since:26 }),
+  ], true);
+  register(['Dark:1697'], [
+    continuous('pileInterrupt', 'Used: Hat der Gegner mindestens 13 Handkarten, behält er acht zufällig ausgewählte Karten. Die übrigen Karten kommen verdeckt in die Used Pile.',
+      'opponent with at least 13 cards in hand', 'Monnok distinguishes Used and Lost modes and respects hidden hand contents',
+      { mode:'trimHand', pile:'Used', cost:0, since:26 }),
+    continuous('pileInterrupt', 'Lost: Für 4 Force deckt der Gegner seine Hand auf und verliert alle Kopien jedes mehrfach vorhandenen Kartentitels.',
+      'opposing hand', 'Monnok distinguishes Used and Lost modes and respects hidden hand contents',
+      { mode:'revealDuplicates', pile:'Lost', cost:4, since:26 }),
+  ], true);
+  register(['Dark:2094'], [
+    continuous('pilotPower', 'Das pilotierte Schiff erhält +1 Power.', 'piloted ship',
+      'A New Hope ships deploy and dock with their printed limits', { amount:1, since:26 }),
+    continuous('matchingPilot', 'Auf Black 2, Black 3 und Black 4 gibt der Reserve Pilot +1 Maneuver und einen Battle-Destiny-Draw, falls sonst kein Draw möglich ist.',
+      'Black 2, Black 3 or Black 4', 'A New Hope ships deploy and dock with their printed limits', { amount:1, since:26 }),
+  ], true);
+
   // The four original Sense/Alter registrations retain their earlier version for saved games.
   const legacyCounters = new Set(['Light:95','Light:2217','Dark:94','Dark:2216']);
   for (const [id, definition] of cards) {

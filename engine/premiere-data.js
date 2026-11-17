@@ -14,10 +14,15 @@ const PremiereData = (() => {
   const EXPANSION_TYPES = new Set(['Creature', 'Epic Event']);
   const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE]});
   const GARRISON_A_NEW_HOPE = new Map([['Dark:654', '2_143'], ['Dark:667', '2_111'], ['Dark:2103', '2_138']]);
+  const EXPANSION_RULES_VERSION = 26;
+  const A_NEW_HOPE_RELEASED = new Set(['Light:2035', 'Light:2389', 'Light:2418', 'Dark:872', 'Dark:1267',
+    'Dark:1340', 'Dark:1588', 'Dark:1697', 'Dark:1700', 'Dark:2094']);
   const GARRISON_RIFLE = {id: 'Dark:2915', gempId: '4_180', set: '4'};
   const isGarrisonExpansionCard = card => card?.set === A_NEW_HOPE && GARRISON_A_NEW_HOPE.has(card.id) &&
     GARRISON_A_NEW_HOPE.get(card.id) === card.gempId;
   const isGarrisonRifle = card => card?.id === GARRISON_RIFLE.id && card.gempId === GARRISON_RIFLE.gempId && card.set === GARRISON_RIFLE.set;
+  const isReleasedExpansionCard = (card, rulesVersion = Infinity) => isGarrisonExpansionCard(card) ||
+    card?.set === A_NEW_HOPE && rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id);
   const VALUE_FIELDS = ['power', 'ability', 'deploy', 'forfeit', 'destiny', 'armor', 'maneuver', 'hyperspeed', 'landspeed', 'parsec', 'lightSideIcons', 'darkSideIcons'];
   const BASIC_WEAPONS = new Map([
     ['Light:259', {cost: 1, bonus: 0}], // Blaster
@@ -53,7 +58,9 @@ const PremiereData = (() => {
 
   function permanentPilotAbility(card) {
     if (card?.type !== 'Starship') return null;
-    const ability = String(card.gametext || '').match(/\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i);
+    const wording = card.set === A_NEW_HOPE ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
+      /\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i;
+    const ability = String(card.gametext || '').match(wording);
     return ability ? Number(ability[1]) : null;
   }
 
@@ -196,11 +203,11 @@ const PremiereData = (() => {
        'Light:1834','Light:1794','Light:2689','Dark:2688','Light:1125','Light:2570','Dark:1565','Light:585','Light:2863',
        'Dark:1857','Light:215','Dark:667','Dark:2103',
        'Light:1102','Light:1500','Light:1600','Light:2105','Dark:2528', // Named retrieval and Reserve Deck search
-       'Light:2385','Dark:575','Dark:2517','Dark:643'].includes(card.id)) return true;
+       'Light:2385','Dark:575','Dark:2517','Dark:643','Dark:1697'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 
-  function buildStarterDeck(side, definition, byId, format) {
+  function buildStarterDeck(side, definition, byId, {format, cardRulesVersion}) {
     const error = message => new Error(side + '-Starterdeck: ' + message);
     if (format !== undefined && !Object.hasOwn(PLAY_FORMATS, format)) throw error('Unbekanntes Spielformat ' + format + '.');
     if (!Array.isArray(definition?.cards) || !Array.isArray(definition.startingLocations)) {
@@ -216,7 +223,7 @@ const PremiereData = (() => {
       if (!supportedEdition) {
         throw error(id + ' stammt aus einer anderen Edition.');
       }
-      if (card.set === A_NEW_HOPE && !isGarrisonExpansionCard(card)) throw error(id + ' ist noch nicht für das Spiel freigegeben.');
+      if (card.set === A_NEW_HOPE && !isReleasedExpansionCard(card, cardRulesVersion)) throw error(id + ' ist noch nicht für das Spiel freigegeben (Regelstand).');
       if (ids.has(id)) throw error('Doppelter Eintrag für ' + id + '.');
       if (!Number.isInteger(count) || count < 1 || count > 60) throw error('Ungültige Kartenanzahl für ' + id + '.');
       if (!isPlayableStarterCard(card)) throw error(card.name + ' kann im aktuellen Lernmodus nicht ausgespielt werden.');
@@ -232,6 +239,7 @@ const PremiereData = (() => {
     });
     if (new Set(starts.map(locationTitle)).size !== starts.length) throw error('Die Starting Locations müssen unterschiedliche Namen haben.');
     const startingIndices = starts.flatMap(card => cards.flatMap((copy, index) => copy === card ? [index] : []));
+    if (format !== undefined && !startingIndices.length) throw error('Mindestens eine Starting Location erforderlich.');
     const deck = {cards, startingIndices};
     if (definition.strategy !== undefined) {
       const fields = ['start', 'opening', 'tactics'];
@@ -250,17 +258,17 @@ const PremiereData = (() => {
     return {...deck, theme: {id, name, description}};
   }
 
-  function readStarterDecks(payload, catalog, {format} = {}) {
+  function readStarterDecks(payload, catalog, options = {}) {
     if (payload?.schema !== 1) throw new Error('Unbekanntes Format der Premiere-Starterdecks.');
     const byId = new Map(catalog.map(card => [card.id, card]));
     if (byId.size !== catalog.length) throw new Error('Die Premiere-Kartendatenbank enthält doppelte Karten-IDs.');
     return {
-      light: buildStarterDeck('Light', payload.decks?.Light, byId, format),
-      dark: buildStarterDeck('Dark', payload.decks?.Dark, byId, format)
+      light: buildStarterDeck('Light', payload.decks?.Light, byId, options),
+      dark: buildStarterDeck('Dark', payload.decks?.Dark, byId, options)
     };
   }
 
-  function readThemedDecks(payload, catalog, {format} = {}) {
+  function readThemedDecks(payload, catalog, options = {}) {
     if (payload?.schema !== 1) throw new Error('Unbekanntes Format der Premiere-Themendecks.');
     const byId = new Map(catalog.map(card => [card.id, card]));
     return Object.fromEntries(SIDES.map(side => {
@@ -268,10 +276,27 @@ const PremiereData = (() => {
       if (!Array.isArray(definitions) || definitions.length === 0) {
         throw new Error(side + ' benötigt mindestens ein Premiere-Themendeck.');
       }
-      const choices = definitions.map(definition => ({definition, deck: buildStarterDeck(side, definition, byId, format)}));
+      const choices = definitions.map(definition => ({definition, deck: buildStarterDeck(side, definition, byId, options)}));
       const ids = new Set(choices.map(({deck}) => deck.theme?.id));
       if (ids.has(undefined) || ids.size !== choices.length) throw new Error(side + ': Die Themendecks benötigen eindeutige IDs.');
       return [side.toLowerCase(), choices];
+    }));
+  }
+
+  function readFormatDeckChoices(format, starters, themes, variants, catalog) {
+    if (themes?.schema !== 1 || variants?.schema !== 1 || !Object.hasOwn(PLAY_FORMATS, format) || !variants.formats?.[format]) {
+      throw new Error('Ungültige Deckvarianten für ' + format + '.');
+    }
+    const definitions = Object.fromEntries(SIDES.map(side => {
+      const byTheme = new Map(themes.decks[side].map(definition => [definition.theme.id, definition]));
+      for (const definition of variants.formats[format][side]) byTheme.set(definition.theme.id, definition);
+      return [side, [...byTheme.values()]];
+    }));
+    const fixed = readStarterDecks(starters, catalog, {format});
+    const themed = readThemedDecks({schema: 1, decks: definitions}, catalog, {format});
+    return Object.fromEntries(SIDES.map(side => {
+      const key = side.toLowerCase();
+      return [key, [{deck: fixed[key], definition: starters.decks[side]}, ...themed[key]]];
     }));
   }
 
@@ -313,9 +338,10 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks,
+  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,
+    readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, readFormatDeckChoices,
     readCardValue, locationTitle, isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility,
-    isGarrisonExpansionCard, buildAudit};
+    isGarrisonExpansionCard, isReleasedExpansionCard, buildAudit};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PremiereData;
