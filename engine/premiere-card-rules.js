@@ -765,6 +765,29 @@ const PremiereCardRules = (() => {
     continuous('mineExplosion', 'Die ausgelegte Mine explodiert am Anfang deines nächsten Zugs. Destiny gibt die Anzahl gegnerischer Figuren an derselben Site vor, die der Gegner verliert. Der Gegner wählt. Die Mine geht ebenfalls verloren.',
       'opposing characters present with mine', 'each Timer Mine waits for its owner', { duration: 'instant', expires: 'after resolving', legacy: true }),
   ], true);
+  for(const [id,description] of [
+    ['Light:2400','Tagge oder einen Warrior mit Ability unter 3'],
+    ['Light:2426','Tarkin oder einen Alien mit Ability unter 3'],
+    ['Dark:1096','Han oder einen Alien mit Ability unter 3'],
+    ['Dark:1592','Luke mit Ability unter 4 oder einen Piloten mit Ability unter 3'],
+  ]){
+    register([id],[
+      continuous('seekerDeploy','Für 1 Force an einer unbesetzten Site auf der Gegenseite auslegen.',
+        'unoccupied site','all four seekers use the opposing Move phase', {cost:1,legacy:true}),
+      continuous('seekerMove','Bewegt sich in der gegnerischen Move Phase wie ein Undercover Spy. Der Docking-Bay-Text der eigenen Seite gilt.',
+        'site movement in opponent move phase','all four seekers use the opposing Move phase',{since:17}),
+      continuous('seekerStrike','Wählt '+description+' am selben physischen Ort. Ziel und Seeker gehen sofort verloren.',
+        'eligible character on either side','seekers automatically resolve their chosen target',{legacy:true}),
+    ],true);
+  }
+  register(['Dark:1479'],[
+    continuous('projectorDeploy','Für 2 Force an einer Innen-Site auslegen.',
+      'interior site','the Laser Projector deploys inside',{cost:2,legacy:true}),
+    continuous('projectorFire','Zielt kostenlos auf Figuren, Kreaturen oder Seeker am selben physischen Ort. Destiny minus 1 muss über der Verteidigung liegen.',
+      'character, creature or seeker','Laser Projector checks destiny and targets',{legacy:true}),
+    continuous('projectorDefense','Der Laser Projector kann mit jeder dort verwendbaren Waffe angegriffen werden. Sein Verteidigungswert ist 1.',
+      'projector','the Laser Projector deploys inside',{defense:1,legacy:true}),
+  ],true);
   const blockKesselRun = continuous('blockKesselRun', 'Wer die Seite mit diesem Ortswortlaut kontrolliert, verhindert oder hebt Kessel Run auf.',
     'Kessel Run at Kessel', 'Kessel Run tracks', { printedSide: 'Dark', since: 2 });
   register(['Light:1427'], [drain('Light'), blockKesselRun], true);

@@ -93,7 +93,7 @@ const PremiereWeapons = (() => {
     if(!rule||card.type!=='Character'||!Number.isFinite(ability))return false;
     const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin');
     if(matching&&ability<(rule.primary??rule.limit))return true;
-    return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':card[rule.fallback]===true);
+    return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':units.hasSkill(card,rule.fallback));
   }
 
   return {defense,definition,deployCost,disarmed,mine,miningDroid,projector,seeker,seekerTarget,shot};

@@ -197,7 +197,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=16;
+const latestCardRulesVersion=17;
 const expandedCardRules=()=> (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=3;
 
 function start(seed=Math.floor(Math.random()*4294967296),autoChoose=true,trainingBattle=false,decks=starterDecks,cardRulesVersion=latestCardRulesVersion,botStrategyVersion=1){
@@ -1249,7 +1249,12 @@ function deployAutomated(side,index,slot){
 }
 
 function seekerMoves(side){
- if(state.phase!==1||state.activeSide!==side)return [];
+ const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
+ const undercover=version>=17;
+ if(undercover){
+  if(state.phase!==4||state.activeSide===side)return [];
+  if(side==='Light'&&Number.isInteger(state.seekerPassedTurn)&&state.seekerPassedTurn===state.game?.timing.turn)return [];
+ }else if(state.phase!==1||state.activeSide!==side)return [];
  const {force}=PremiereGame.zones(state,side);
  const entries=allWeaponEntries();
  return entries.flatMap((entry,index)=>{
@@ -1261,6 +1266,7 @@ function seekerMoves(side){
    if(cost<=(force?.length??0))choices.push({args,entry,to,from,cost,card,label,host});
   };
   if(carrier){
+   if(undercover)return [];
    if(isSite(origin))add(from,0,[index,from,'exit'],card.name+' verlässt '+carrier.name);
    if(!moved&&entry.carriers.length===1&&isSystem(origin))entries.forEach((target,i)=>{
     if(target.side===tableSide&&target.slot===from&&!target.carriers.length&&canDock(carrier,target.card,from)){
@@ -1274,11 +1280,14 @@ function seekerMoves(side){
   }
   if(!moved)state.locations.forEach((loc,to)=>{
    if(!loc||!isSite(loc)||from===to)return [];
-   const bay=PremiereLocations.conditions(state,from,tableSide);
-   const transit=bay.dockingBay&&PremiereLocations.conditions(state,to,tableSide).dockingBay;
-   const cost=transit?bay.transitCost:adjacentSites(from,to)?1:null;
-   if(cost!==null)add(to,cost,[index,to],card.name+' → '+loc.name+' ('+cost+' Force)');
+   const costSide=undercover?side:tableSide;
+   const bay=PremiereLocations.conditions(state,from,costSide);
+   const transit=bay.dockingBay&&PremiereLocations.conditions(state,to,costSide).dockingBay;
+   if(undercover&&adjacentSites(from,to))add(to,1,[index,to],card.name+' → '+loc.name+' (Landspeed, 1 Force)');
+   const cost=transit?bay.transitCost:!undercover&&adjacentSites(from,to)?1:null;
+   if(cost!==null)add(to,cost,undercover?[index,to,'transit']:[index,to],card.name+' → '+loc.name+' ('+cost+' Force)');
   });
+  if(undercover)return choices;
   entries.forEach((target,i)=>{
    const host=target.card,loc=state.locations[target.slot];
    if(target.side!==tableSide||target.unavailable||target.carriers.length||!PremiereUnits.active(host))return;
@@ -1290,6 +1299,11 @@ function seekerMoves(side){
   });
   return choices;
  });
+}
+
+function chooseBotSeekerMove(options){
+ return options.find(option=>PremiereLocations.presentCards(state,'Light',option.to)
+  .some(target=>PremiereWeapons.seekerTarget(option.card,target,cardAbility(target))));
 }
 
 function moveSeeker(side,...args){
@@ -2602,6 +2616,10 @@ function changePhase(phase){
 function advance(){
  if(!state||state.gameWinner||state.pendingForceLoss||battleSession||state.botTurn||
     (state.phase===0&&!state.activated))return false;
+ if(state.phase===4){
+  const move=chooseBotSeekerMove(seekerMoves('Dark'));
+  if(move)return moveSeeker('Dark',...move.args);
+ }
  if(state.phase===5)endTurn('Light');
  else changePhase(state.phase+1);
  return true;
@@ -3207,7 +3225,7 @@ function setBattleModifier(side,kind,value){const x=battleSession;if(!x||state.p
 function battleWeaponOptions(side,timing='weapons'){
  const x=battleSession;
  if(!x||x.resolved||state?.phase!==3||x.lightCard!==null||x.darkCard!==null)return [];
- const opponent=PremiereGame.otherSide(side),{force}=PremiereGame.zones(state,side);
+ const opponent=PremiereGame.otherSide(side),{force,deck}=PremiereGame.zones(state,side);
  const targets=weaponTargets(opponent,x.site);
  return weaponMounts(side).flatMap(mount=>{
   const {host,slot:from,place}=mount;
@@ -3216,6 +3234,7 @@ function battleWeaponOptions(side,timing='weapons'){
   return mountWeapons(mount).flatMap((weapon,weaponIndex)=>{
    const rule=PremiereWeapons.definition(weapon);
    if(!rule||weapon.side!==side||(rule.timing??'weapons')!==timing)return [];
+   if(rule.projector&&!deck?.length&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=17)return [];
    if(x.repeatingWeapon?x.repeatingWeapon!==weapon:x.usedWeapons?.includes(weapon))return [];
    if(!PremiereUnits.canUseWeapon(state,host,weapon))return [];
    if(host.type==='Starship'&&!craftStats(host,from).powered)return [];
@@ -4240,6 +4259,9 @@ function legalActions(position,side,request){
   }
  }
  if(side!==active){
+  const seekers=seekerMoves(side);
+  for(const option of seekers)actions.push(offer('moveSeeker',option.args,option));
+  if(side==='Light'&&seekers.length)actions.push(offer('skipSeekerMove',[],{label:'Seeker-Bewegung beenden'}));
   if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10){
    for(const option of namedRetrievalOptions(side))actions.push(offer(option.kind,option.args,option));
   }
@@ -4247,7 +4269,7 @@ function legalActions(position,side,request){
  }
  const botStep=position.botTurn?.steps[position.botTurn.index];
  if(side==='Dark'&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
- if(side==='Dark'&&botStep)actions.push(offer('botStep',[botStep.kind]));
+ if(side==='Dark'&&botStep&&!(position.phase===4&&seekerMoves('Light').length))actions.push(offer('botStep',[botStep.kind]));
  for(const option of deviceActions(side))actions.push(offer('deviceAction',option.args,option));
  for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
  if(side==='Light'&&(position.phase!==0||position.activated))actions.push(offer('advance'));
@@ -4347,6 +4369,7 @@ function executeAction(action){
   case 'deployAutomated': return deployAutomated(side,...args);
   case 'buryMineCard': return buryWeaponCard(side,...args);
   case 'moveSeeker': return moveSeeker(side,...args);
+  case 'skipSeekerMove': state.seekerPassedTurn=state.game.timing.turn;return true;
   case 'automatedTarget': return resolveAutomatedTarget(side,...args);
   case 'resolveMine': return handleTrippedMine(side,...args);
   case 'weaponEffect': return playWeaponEffect(side,...args);

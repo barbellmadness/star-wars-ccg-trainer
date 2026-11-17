@@ -2957,7 +2957,7 @@ test('legacy autosaves resume without applying new registered card rules retroac
  const {run}=await premiereHarness(starterLists,{storage});
  startSavedGame(run);
  const key=run('saveKey'),saved=JSON.parse(storage.getItem(key));
- assert.equal(saved.cardRulesVersion,16);
+ assert.equal(saved.cardRulesVersion,17);
  assert.equal(saved.botStrategyVersion,1);
  delete saved.cardRulesVersion;
  delete saved.botStrategyVersion;
@@ -3736,10 +3736,10 @@ test('docking moves multiple chosen passengers for one Force and validates final
  assert.equal(run("big.occupants.length===1&&big.occupants[0].card===luke&&other.occupants[0].card===han&&other.occupants[1].card===trooper&&state.used.length===1"),true);
 });
 
-test('a Seeker can dock and transfer to a reachable enemy ship only during its Control phase',async()=>{
+test('legacy saves keep their Seeker Control-phase docking actions',async()=>{
  const {run}=await craftHarness();
  run(`const first=card('Light:530'),second=card('Light:1677'),seeker=card('Dark:1096'),han=card('Light:1098');
-  state.game=PremiereGame.actionState(42,1);state.activeSide='Dark';state.botTurn={steps:[],index:0};
+  state.game=PremiereGame.actionState(42,1);state.game.cardRulesVersion=16;state.activeSide='Dark';state.botTurn={steps:[],index:0};
   state.light[6]=[first,second];PremiereUnits.add(first,seeker,'seeker','Dark');
   PremiereUnits.add(second,han,'pilot','Light');seeker.tableSide='Light';
   state.phase=4;`);
@@ -4083,7 +4083,7 @@ test('the Laser Projector deploys inside and can itself be destroyed by a legal 
  assert.equal(run("state.botLost.includes(projector)&&state.dark[4].length===1&&!battleSession.hitUnits.Dark.length"),true);
 });
 
-test('seekers move in the owning Control phase and choose between eligible targets on either side',async()=>{
+test('seekers automatically resolve their chosen target on either side',async()=>{
  const {run,elements}=await craftHarness();
  run(`const seeker=card('Light:2400'),enemy=card('Dark:2355'),ally=card('Light:2052');ally.ability=1;
   setupDecks=null;state.game=PremiereGame.actionState(118,0);state.hand=[seeker];state.light[3]=[ally];state.dark[3]=[enemy];
@@ -4091,7 +4091,7 @@ test('seekers move in the owning Control phase and choose between eligible targe
  assert.equal(run("requestAction('deployAutomated','Light',[0,3])"),false);
  assert.equal(run("requestAction('deployAutomated','Light',[0,2])"),true);
  assert.equal(run("seekerMoves('Light').length"),0);
- run("state.phase=1;const choice=legalActions(state,'Light').find(action=>action.kind==='moveSeeker'&&action.to===3);");
+ run("state.activeSide='Dark';state.phase=4;state.botTurn={steps:[],index:0};const choice=legalActions(state,'Light').find(action=>action.kind==='moveSeeker'&&action.to===3);");
  assert.equal(run('performAction(choice)&&state.automatedPending.kind==="seeker"'),true);
  assert.match(elements.get('controlPanel').innerHTML,/Ziel des Seekers/);
  assert.equal(run("requestAction('automatedTarget','Light',[1])&&state.botLost.includes(enemy)&&state.lost.includes(seeker)"),true);
@@ -4435,4 +4435,53 @@ test('Rycar Ryjerd grants smuggler skill or character power',async()=>{
  assert.equal(run("requestAction('deployTableEffect','Light',[0,0])&&requestAction('deployTableEffect','Light',[0,2])"),true);
  assert.equal(run("matchesRegisteredTarget(rebel,'underworld')&&cardPowerModifier(rebel,'Light',3)===0&&cardPowerModifier(smuggler,'Light',3)===1"),true);
  assert.equal(run("state.force.length===5&&state.tableEffects.length===2&&!alterTarget(rycar)"),true);
+});
+
+test('all four seekers use the opposing Move phase, start unoccupied and kill both target and seeker',async()=>{
+ for(const [side,id,targetId] of [
+  ['Light','Light:2400','Dark:2355'],['Light','Light:2426','Dark:2648'],
+  ['Dark','Dark:1096','Light:1407'],['Dark','Dark:1592','Light:2040'],
+ ]){
+  const {run}=await craftHarness();
+  run(`const side='${side}',opponent=PremiereGame.otherSide(side),seeker=card('${id}'),target=card('${targetId}');
+   setupDecks=null;state.game=PremiereGame.actionState(135,0);state.activeSide=side;
+   const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,opponent);
+   own.hand.splice(0,own.hand.length,seeker);rival.board[3]=[target];
+   state.locationOrder=[2,3,4,6,0,1,5];state.botTurn=side==='Dark'?{steps:[],index:0}:null;`);
+  assert.equal(run("!requestAction('deployAutomated',side,[0,3])&&requestAction('deployAutomated',side,[0,2])"),true);
+  assert.equal(run("own.force.length===4&&seeker.tableSide===opponent&&!confirmedPresence(side,2)"),true);
+  assert.equal(run("state.phase=1;seekerMoves(side).length"),0);
+  assert.equal(run("state.phase=4;seekerMoves(side).length"),0);
+  run("state.activeSide=opponent;state.botTurn=opponent==='Dark'?{steps:[{kind:'draw'}],index:0}:null;");
+  assert.equal(run("const movement=legalActions(state,side).find(action=>action.kind==='moveSeeker'&&action.to===3);performAction(movement)"),true);
+  assert.equal(run("own.lost.includes(seeker)&&rival.lost.includes(target)&&own.used.length===2"),true);
+ }
+});
+
+test('a Light seeker can pass during the Dark move phase and uses its owner’s docking bay text',async()=>{
+ const {run,elements}=await craftHarness();
+ run(`const seeker=card('Light:2400'),speeder=card('Dark:2660');
+  setupDecks=null;state.game=PremiereGame.actionState(136,0);state.activeSide='Dark';
+  state.locations[4]=card('Light:2853');
+  state.phase=4;state.light[2]=[seeker];state.dark[2]=[speeder];
+  state.botTurn={steps:[{kind:'draw'}],index:0};presentGame();`);
+ assert.match(elements.get('controlPanel').innerHTML,/Seeker-Bewegung beenden/);
+ assert.equal(run("const moves=seekerMoves('Light');moves.some(move=>move.to===4&&move.args[2]==='transit'&&move.cost===1)&&!moves.some(move=>move.host===speeder)"),true);
+ assert.equal(run("!legalActions(state,'Dark').some(action=>action.kind==='botStep')&&requestAction('skipSeekerMove','Light')"),true);
+ assert.equal(run("legalActions(state,'Dark').some(action=>action.kind==='botStep')&&!seekerMoves('Light').length"),true);
+});
+
+test('Laser Projector checks destiny and targets before marking a hit',async()=>{
+ const {run}=await craftHarness();
+ run(`const projector=card('Dark:1479'),target=card('Light:2052'),enemySeeker=card('Light:2426');
+  const trooper=card('Dark:2355');
+  setupDecks=null;state.game=PremiereGame.actionState(137,0);state.activeSide='Dark';state.phase=3;
+  state.dark[4]=[projector,trooper];state.light[4]=[target,enemySeeker];state.botTurn={steps:[],index:0};
+  state.botDeck=[{name:'High',destiny:4}];`);
+ assert.equal(run("requestAction('battle','Dark',[4])&&battleSession.weaponTurn==='Dark'"),true);
+ assert.equal(run("battleWeaponOptions('Dark').some(shot=>shot.target===enemySeeker&&shot.defense===1&&shot.cost===0)"),true);
+ run("const choices=()=>legalActions(state,'Dark').filter(action=>action.kind==='fireWeapon');state.botDeck=[];");
+ assert.equal(run("choices().length"),0);
+ run("state.botDeck=[{name:'High',destiny:4}];");
+ assert.equal(run("performAction(choices().find(action=>action.target===target))&&battleSession.hitUnits.Light.includes(target)&&state.botForce.length===4"),true);
 });
