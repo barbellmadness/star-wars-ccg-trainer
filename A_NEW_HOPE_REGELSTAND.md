@@ -1,6 +1,6 @@
-# A New Hope: Regelstand V2.15.34
+# A New Hope: Regelstand V2.15.37
 
-Alle 162 ANH-Karten sind ab Regelversion 29 für neue Mischpartien freigegeben. Die letzten 74 Karten sind unten zugeordnet. Premiere bleibt das voreingestellte Format. Historische Partien behalten ihre frühere Regelversion; neue Regeln werden beim Fortsetzen nicht rückwirkend eingeschaltet.
+Alle 162 ANH-Karten sind ab Regelversion 29 für neue Mischpartien freigegeben. Neue Partien verwenden Regelversion 30. Die letzten 74 Karten der Freigabe von Version 29 sind unten zugeordnet. Premiere bleibt das voreingestellte Format. Historische Partien behalten ihre frühere Regelversion; neue Regeln werden beim Fortsetzen nicht rückwirkend eingeschaltet.
 
 ## Quellen und bewusste Regelfassung
 
@@ -99,3 +99,21 @@ Die Basisangabe ersetzt keine Kostenberechnung: variable, zusätzliche und alter
 | Dark:2635 · •Trooper Davin Felth | felth (ab 29) | Tatooine and same site | [ANH Felth changes interrupt destination and accident chooser](tests/v2-rules.test.mjs#L7465) |
 | Dark:2754 · We Have A Prisoner | anhResponse (ab 29); pileInterrupt (ab 29) | about to lose opposing character; captured ship crew | [ANH We Have A Prisoner replaces a paid battle forfeit with capture](tests/v2-rules.test.mjs#L7348) |
 | Dark:2784 · •WED15-l7 'Septoid' Droid | septoid (ab 29) | self | [ANH Septoid absorbs damage without leaving until exhausted or hit](tests/v2-rules.test.mjs#L7590) |
+
+## Autosave und Szenarioprüfung
+
+V2.15.37 ergänzt 43 gezielte Fälle in [anh-autosave.test.mjs](tests/anh-autosave.test.mjs). Ein Speicherpunkt entsteht nach jeder ausgeführten Aktion, auch bei teilweise gewählten Gruppen oder unterbrochenen Destiny-Folgen. Eine frische VM lädt den Browser-Spielstand über den echten Fortsetzen-Handler. Der Zustand, RNG-Cursor, legale Aktionen, Kosten und beide Spielersichten müssen übereinstimmen. Die nächste Aktion muss dasselbe Ergebnis wie ohne Neuladen liefern. Derselbe Verlauf wird zusätzlich durch den JSON-Szenarioimport geprüft; ungültige Folgeentscheidungen dürfen den laufenden Stand nicht verändern.
+
+Die Fixtures arrangieren reproduzierbare Zwischenpositionen aus validierten 60-Karten-Decks mit Seed 7001. Sie ersetzen nur die Vorbereitung der Ausgangsposition. Antwortfenster, Regelangebote, Aktionen, Speicherung, Fortsetzen und Import bleiben die Originalfunktionen. In den Ausgangspositionen werden keine offenen Antwortfenster künstlich eingesetzt. Karteninstanzen werden über die ganze Aktionsfolge gezählt; nur ausdrücklich benannte, gerade innerhalb eines Callbacks auflösende Karten dürfen vorübergehend außerhalb des sichtbaren Zustands liegen.
+
+| Mechanik | Abgedeckte Speicherpunkte | Fälle |
+|---|---|---|
+| Attack Run / Primary Ignition | Light-/Dark-Auswahl, Lead, Cover, Pilot, Gold 2, optionale Raumboni, R2-Wertwahl, Z, Gunner-Verlust, Zerstörung und Recharging | [Epics](tests/support/anh-save-epics.mjs), [Antworten](tests/support/anh-save-responses.mjs) |
+| Creatures | Pflichtangriff, zufällige Beute, Waffenpriorität, optionale Attack Destiny und aufeinanderfolgende Creature-Clash-Ziehungen | [Grundfälle](tests/support/anh-save-cases.mjs), [Destiny-Ketten](tests/support/anh-save-chains.mjs) |
+| Gefangene / Traktor | bezahlter Forfeit vor Fang, Eskorte, mehrere Schiffsinsassen, Cell-2187-Auswahl und Rally, Spice-Mines-Ankunft, Besieged-Gruppe und Traktor-Freigabe | [Gefangene](tests/support/anh-save-custody.mjs), [Ketten](tests/support/anh-save-chains.mjs) |
+| Destiny und Auslöser | Greedo-Zahlung/Risiko, R2-Auswahl und Reaktionen, Program-Trap-Verluste mit Eskorte/Gefangenem, anschließende Bones-Ausspielung und Danniks Soup | [Grundfälle](tests/support/anh-save-cases.mjs), [Antworten](tests/support/anh-save-responses.mjs), [Ketten](tests/support/anh-save-chains.mjs) |
+| Spione / verdeckte Informationen | Sabotage-Diebstahl, Informant-React, U-3PO-Wechsel, Hypo-Antwort/Force-Verlust, Hunchback-, Conquest-, Musiker- und R2-Q2-Einsichten | [Antworten](tests/support/anh-save-responses.mjs), [Private Fenster](tests/support/anh-save-private.mjs) |
+| Stapel / Transfers | Interrupt-Festhalten und Folgekosten, Bluffs, Salt, Recharging, Advosze-Auswahl, Squadron-Besatzung, Bridge-Reihenfolge, Fahrzeug-Innenraum und Shuttle-Kontingent | [Grundfälle](tests/support/anh-save-cases.mjs), [Bewegung](tests/support/anh-save-movement.mjs), [Private Fenster](tests/support/anh-save-private.mjs) |
+| Automatisierung / Kompatibilität | Bot setzt Creature-Entscheidung fort und wartet wieder auf den Menschen; historische Trench- und Bones-Verläufe von Regelversion 29 bleiben reproduzierbar | [Treiber und Regressionen](tests/anh-autosave.test.mjs) |
+
+Zwei dabei gefundene Regelfehler sind für neue Partien ab Regelversion 30 korrigiert: Die Trench ist ein besonderer Flugbereich während Attack Run und macht die beteiligten Schiffe nicht zu gelandeten, unbetriebenen Schiffen. Die gedruckten Trench-Modifier gelten weiterhin. Außerdem darf Krayt Dragon Bones eine einzelne legale Ausspielmöglichkeit nicht mit der Ersatzoption für fehlende Ziele verwechseln. Der Regelbezug bleibt das [Advanced Rulebook 2023, Trench Rules](https://res.starwarsccg.org/rules/SWCCG_2023_AdvancedRulebook.pdf#page=173) sowie der aktive Kartentext. Alte Spielstände werden nicht stillschweigend auf Version 30 umgestellt.

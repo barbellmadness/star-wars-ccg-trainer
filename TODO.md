@@ -65,9 +65,9 @@ V2.15.34 gibt alle **162 Karten aus A New Hope** frei. Die letzten 74 Karten bes
 - [x] Drei zusätzliche Mischdeck-Varianten je Seite mit Strategiehinweisen erstellen; sämtliche 162 ANH-Karten über die validierte Deckauswahl erreichbar machen.
 - [x] Vollständige Partien beider Formate und beider Spielseiten mit verschiedenen Seeds auf legale Entscheidungen und Erhalt aller 120 Karteninstanzen prüfen.
 
-### Weiterer Ausbau der Absicherung
+### Absicherung
 
-- [ ] Für jede neue mehrstufige Mechanik eigene Autosave-/Szenariofälle mitten im Antwortfenster ergänzen. Die allgemeinen Replay-Tests und der Mischformat-Neustart bestehen; separate Speicherfälle für sämtliche neuen Epic-, Creature- und Gefangenenfenster sind noch nicht vollständig vorhanden.
+- [x] Gezielt mitten in den neuen Antwortfenstern speichern, in einer frischen Instanz fortsetzen und als JSON-Szenario importieren. 43 zusätzliche Fälle prüfen Epic Events, Creatures, Gefangene, Traktorstrahlen, Destiny-Folgen, Spione, verdeckte Karten, Transfers und automatische Bot-Antworten. Verglichen werden Zustand, Zufallsfolge, legale Optionen und beide Spielersichten; ungültige Folgeaktionen müssen den bisherigen Stand erhalten. Regelversion 29 bleibt reproduzierbar. [Prüfmatrix](A_NEW_HOPE_REGELSTAND.md#autosave-und-szenarioprüfung)
 
 Die 308 privaten Premiere-Drucktexte bleiben ausschließlich lokal. Ein vollständig freigegebener Kartenkatalog ist kein formaler Nachweis sämtlicher denkbarer Kartenkombinationen. Neue gefundene Kombinationen werden weiterhin als Regressionstests ergänzt.
 
