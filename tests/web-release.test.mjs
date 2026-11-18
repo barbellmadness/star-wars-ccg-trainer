@@ -33,6 +33,12 @@ test('public release is self-contained, versioned, small and excludes private ma
     const game = await readFile(join(output, 'v2.html'), 'utf8');
     assert.equal((game.match(/<script src="engine\/[^\"]+\.[a-f0-9]{12}\.js"/g) || []).length, 10);
     assert.match(game, /data\/premiere\.[a-f0-9]{12}\.json/);
+    const registryPath = release.files.find(file => /^data\/editions\.[a-f0-9]+\.json$/.test(file.path)).path;
+    const registry = JSON.parse(await readFile(join(output, registryPath), 'utf8'));
+    for (const edition of registry.editions.filter(e => e.cardsUrl)) {
+      assert.match(edition.cardsUrl, /\.[a-f0-9]{12}\.json$/);
+      assert.ok(paths.has(edition.cardsUrl), 'Hashed collector data must exist: '+edition.id);
+    }
     const home = await readFile(join(output, 'index.html'), 'utf8');
     assert.doesNotMatch(home, /<script|<img|fetch\(/);
     assert.ok(gzipSync(home).length < 12000, 'Homepage gzip budget: 12 KB');

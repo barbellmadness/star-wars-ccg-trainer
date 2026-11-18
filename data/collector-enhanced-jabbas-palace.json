@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "edition": "enhanced-jabbas-palace",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:317",
+      "name": "•Boushh",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "110_1",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/boushh.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1649",
+      "name": "•Master Luke",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "110_2",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/masterluke.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2206",
+      "name": "•See-Threepio",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Droid",
+      "rarity": "PM",
+      "catalogId": "110_3",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/seethreepio.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:6044",
+      "name": "You Can Either Profit By This... / Or Be Destroyed",
+      "side": "Light",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "110_4",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/youcaneitherprofitbythis.gif",
+      "backImage": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/orbedestroyed.gif",
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:311",
+      "name": "•Bossk With Mortar Gun",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "110_5",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/bosskwithmortargun.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6206",
+      "name": "Court Of The Vile Gangster / I Shall Enjoy Watching You Die",
+      "side": "Dark",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "110_6",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/courtofthevilegangster.gif",
+      "backImage": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/ishallenjoywatchingyoudie.gif",
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:703",
+      "name": "•Dengar With Blaster Carbine",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "110_7",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/dengarwithblastercarbine.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1247",
+      "name": "•IG-88 In IG-2000",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Starfighter: Trilon Aggressor",
+      "rarity": "PM",
+      "catalogId": "110_8",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/ig88inig2000.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1395",
+      "name": "•Jodo Kast",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "110_9",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/jodokast.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1644",
+      "name": "•Mara Jade, The Emperor's Hand",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien/Imperial",
+      "rarity": "PM",
+      "catalogId": "110_10",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/marajadetheemperorshand.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1645",
+      "name": "•Mara Jade's Lightsaber",
+      "side": "Dark",
+      "type": "Weapon",
+      "subType": "Character",
+      "rarity": "PM",
+      "catalogId": "110_11",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/marajadeslightsaber.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2914",
+      "name": "•Zuckuss In Mist Hunter",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Starfighter: Byblos G-1A Transport",
+      "rarity": "PM",
+      "catalogId": "110_12",
+      "image": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Dark/large/zuckussinmisthunter.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

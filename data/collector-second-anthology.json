@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "edition": "second-anthology",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:1694",
+      "name": "Mon Calamari Star Cruiser",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Capital: Mon Calamari Star Cruiser",
+      "rarity": "R",
+      "catalogId": "9_79",
+      "image": "https://res.starwarsccg.org/cards/DeathStarII-Light/large/moncalamaristarcruiser.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1695",
+      "name": "•Mon Mothma",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "R",
+      "catalogId": "8_22",
+      "image": "https://res.starwarsccg.org/cards/Endor-Light/large/monmothma.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2022",
+      "name": "•Rapid Deployment",
+      "side": "Light",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "R",
+      "catalogId": "8_58",
+      "image": "https://res.starwarsccg.org/cards/Endor-Light/large/rapiddeployment.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:954",
+      "name": "•Flagship Operations",
+      "side": "Dark",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "R",
+      "catalogId": "9_125",
+      "image": "https://res.starwarsccg.org/cards/DeathStarII-Dark/large/flagshipoperations.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2172",
+      "name": "•Sarlacc",
+      "side": "Dark",
+      "type": "Creature",
+      "subType": "Ancient Desert",
+      "rarity": "R",
+      "catalogId": "7_214",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/sarlacc.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2590",
+      "name": "•Thunderflare",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Capital: Imperial-Class Star Destroyer",
+      "rarity": "R",
+      "catalogId": "9_174",
+      "image": "https://res.starwarsccg.org/cards/DeathStarII-Dark/large/thunderflare.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

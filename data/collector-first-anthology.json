@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "edition": "first-anthology",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:506",
+      "name": "•Commander Wedge Antilles",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "R",
+      "catalogId": "7_12",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Light/large/commanderwedgeantilles.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1147",
+      "name": "•Hit And Run",
+      "side": "Light",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "R",
+      "catalogId": "7_92",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Light/large/hitandrun.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2839",
+      "name": "X-wing Assault Squadron",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Squadron: X-Wing",
+      "rarity": "R",
+      "catalogId": "7_150",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Light/large/xwingassaultsquadron.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:286",
+      "name": "•Boba Fett",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "R",
+      "catalogId": "7_167",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/bobafett.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:656",
+      "name": "•Death Star Assault Squadron",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Squadron: 1 TIE Advanced x1 2 TIE/LNS",
+      "rarity": "R",
+      "catalogId": "7_303",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/deathstarassaultsquadron.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1348",
+      "name": "•Jabba's Influence",
+      "side": "Dark",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "R",
+      "catalogId": "7_231",
+      "image": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/jabbasinfluence.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

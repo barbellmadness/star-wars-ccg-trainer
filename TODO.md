@@ -2,6 +2,8 @@
 
 ## Aktuelle Priorität: eigener Webspace und Domain
 
+- [x] Veröffentlichung nach bestandenen Tests direkt auf www.starwarsccg.de als verbindliche Projektregel festhalten; Entwicklungsbranches und PRs ohne main-Push oder automatischen Merge beibehalten.
+- [x] Editions- und Kartenarchiv ergänzen: 27 Veröffentlichungen mit belegten Erscheinungsdaten, 26 durchsuchbare Listen mit 2.557 Einträgen, Filter, Pagination, Scan-Popup und getrennte Angaben zu AI/Foils. [Umfang und Quellen](docs/SAMMLERDATEN.md)
 - [x] Sieben Verbesserungsideen für später in [docs/VERBESSERUNGSIDEEN.md](docs/VERBESSERUNGSIDEEN.md) sichern.
 - [x] Fanprojekt-Startseite mit kurzer Erklärung, Spieleinstieg, deutschen Anleitungen und Originalregelquellen erstellen. Sammler-Kartenliste ausdrücklich als spätere Funktion kennzeichnen.
 - [x] Statisches ALL-INKL-Paket mit expliziter Dateiauswahl, versionierten Ressourcen, Cache-Regeln und Komprimierung vorbereiten; die 308 privaten Drucktexte ausschließen.

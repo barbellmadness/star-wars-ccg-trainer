@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "edition": "premiere-2-player",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:679",
+      "name": "•Death Star: Level 6 Core Shaft Corridor",
+      "side": "Light",
+      "type": "Location",
+      "subType": "Site",
+      "rarity": "PM",
+      "catalogId": "101_1",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Light/large/deathstarlevel6coreshaftcorridor.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1590",
+      "name": "•Luke",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "101_2",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Light/large/luke.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2138",
+      "name": "•Run Luke, Run!",
+      "side": "Light",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "PM",
+      "catalogId": "101_3",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Light/large/runlukerun.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:677",
+      "name": "•Death Star: Docking Control Room 327",
+      "side": "Dark",
+      "type": "Location",
+      "subType": "Site",
+      "rarity": "PM",
+      "catalogId": "101_4",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Dark/large/deathstardockingcontrolroom327.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2693",
+      "name": "•Vader",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Imperial",
+      "rarity": "PM",
+      "catalogId": "101_5",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Dark/large/vader.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2703",
+      "name": "•Vader's Obsession",
+      "side": "Dark",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "PM",
+      "catalogId": "101_6",
+      "image": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Dark/large/vadersobsession.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

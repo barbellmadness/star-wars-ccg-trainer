@@ -5,7 +5,7 @@ import {resolve, dirname, relative, sep} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-export const webPages = ['index.html', 'v2.html', 'anleitungen/index.html',
+export const webPages = ['index.html', 'v2.html', 'editionen.html', 'anleitungen/index.html',
   'anleitungen/schnellstart.html', 'anleitungen/spielzug.html', 'anleitungen/kampf.html',
   'anleitungen/a-new-hope.html'];
 // Deliberate allowlist: never collect arbitrary JSON, local reports, credentials or the checkout.
@@ -24,6 +24,11 @@ export async function buildWeb(output) {
   if ((await readdir(output)).length) throw new Error('Das Ausgabeziel muss leer sein. Neues Release-Verzeichnis verwenden.');
   const files = [];
   const mapping = new Map();
+  const editions = JSON.parse(await readFile(resolve(root, 'data/editions.json'), 'utf8'));
+  const collectorFiles = editions.editions.filter(e => e.cardsUrl).map(e => {
+    if (!/^[a-z0-9-]+$/.test(e.id) || e.cardsUrl !== `data/collector-${e.id}.json`) throw new Error('Ungültiger Sammlerpfad.');
+    return e.cardsUrl;
+  });
   async function emit(path, body, kind) {
     const target = resolve(output, path);
     if (!target.startsWith(output + sep)) throw new Error('Ungültiger Release-Pfad.');
@@ -31,9 +36,10 @@ export async function buildWeb(output) {
     await writeFile(target, body);
     files.push({path, kind, bytes: Buffer.byteLength(body), gzipBytes: gzipSync(body).length, sha256: digest(body)});
   }
-  for (const source of sourceAssets) {
+  for (const source of [...sourceAssets, ...collectorFiles, 'data/editions.json', 'assets/collectors.css', 'assets/collectors.js']) {
     let body = (await readFile(resolve(root, source), 'utf8')).replaceAll('\r\n', '\n');
     if (source.endsWith('.json')) body = JSON.stringify(JSON.parse(body));
+    if (source === 'data/editions.json') for (const [original, hashed] of mapping) body = body.replaceAll(original, hashed);
     const path = source.replace(/\.(js|json|css)$/, `.${digest(body).slice(0, 12)}.$1`);
     mapping.set(source, path);
     await emit(path, body, 'asset');

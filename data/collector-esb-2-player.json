@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "edition": "esb-2-player",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:5416",
+      "name": "•Chewie",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "104_1",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Light/large/chewie.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:5695",
+      "name": "Lone Rogue",
+      "side": "Light",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "PM",
+      "catalogId": "104_2",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Light/large/lonerogue.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:5837",
+      "name": "Rebel Snowspeeder",
+      "side": "Light",
+      "type": "Vehicle",
+      "subType": "Combat: T-47 Snowspeeder",
+      "rarity": "PM",
+      "catalogId": "104_3",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Light/large/rebelsnowspeeder.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6357",
+      "name": "•Hoth: Mountains (6th Marker)",
+      "side": "Dark",
+      "type": "Location",
+      "subType": "Site",
+      "rarity": "PM",
+      "catalogId": "104_4",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Dark/large/hothmountains.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6408",
+      "name": "Imperial Walker",
+      "side": "Dark",
+      "type": "Vehicle",
+      "subType": "Combat: AT-AT",
+      "rarity": "PM",
+      "catalogId": "104_5",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Dark/large/imperialwalker.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6734",
+      "name": "•Veers",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Imperial",
+      "rarity": "PM",
+      "catalogId": "104_6",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Dark/large/veers.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6742",
+      "name": "Walker Garrison",
+      "side": "Dark",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "PM",
+      "catalogId": "104_7",
+      "image": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Dark/large/walkergarrison.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

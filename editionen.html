@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Editionen & Kartenlisten · Star Wars CCG Trainer</title>
+  <meta name="description" content="Die klassischen Star Wars CCG Veröffentlichungen von 1995 bis 2001: Erscheinungsdaten, Kartenanzahl, Varianten und durchsuchbare Kartenlisten.">
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="stylesheet" href="assets/collectors.css">
+  <script src="assets/collectors.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#inhalt">Zum Inhalt</a>
+  <header class="topbar"><div class="wrap header-inner">
+    <a class="wordmark" href="./" aria-label="Star Wars CCG Trainer · Startseite">STAR WARS CCG<span>TRAINER · FANPROJEKT</span></a>
+    <nav aria-label="Hauptnavigation"><a href="anleitungen/">Anleitungen</a><a href="editionen.html" aria-current="page">Editionen & Karten</a><a class="nav-play" href="v2.html">Spiel starten ↗</a></nav>
+  </div></header>
+  <main class="wrap collection" id="inhalt" data-editions-url="data/editions.json">
+    <p class="eyebrow">Das Sammlerarchiv · Decipher 1995–2001</p>
+    <h1>Eine Galaxis aus Karten.</h1>
+    <p class="intro">Entdecke die Editionen, ihre Erscheinungsdaten und Kartenlisten. Premiere und A New Hope sind bereits im Trainer spielbar; die weiteren Veröffentlichungen kannst du hier als Sammler durchsehen.</p>
+    <p class="small">Standardkarten, alternative Bilder und Foils werden getrennt gezählt. Japanische Auflagen, Druckfehler und andere Sonderdrucke sind kein eigener Katalog dieser Übersicht. Eine persönliche Bestandsverwaltung ist für später geplant.</p>
+    <noscript><p class="callout">Für die durchsuchbaren Listen benötigst du JavaScript. Alle Karten findest du auch in der <a href="https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf">Originalcheckliste des Players Committee (PDF)</a>.</p></noscript>
+    <div class="collection-filters">
+      <label>Edition suchen<input type="search" id="editionSearch" placeholder="Name oder Erscheinungsjahr" autocomplete="off"></label>
+      <label>Veröffentlichung<select id="editionCategory"><option value="">Alle Veröffentlichungen</option><option>Grundset</option><option>Erweiterung</option><option>Premium</option><option>Vorschau</option><option>Foil-Set</option><option>Premium & Foils</option></select></label>
+      <label>Trainer-Status<select id="editionStatus"><option value="">Alle Editionen</option><option value="playable">Im Trainer spielbar</option><option value="archive">Sammlerübersicht</option></select></label>
+    </div>
+    <p id="editionCount" class="small" role="status">Editionsdaten werden geladen …</p>
+    <div id="editionGrid" class="edition-grid" aria-label="Chronologische Editionsauswahl"></div>
+    <p id="registryError" class="callout" role="alert" hidden></p>
+    <section id="selectedEdition" class="selected-edition" aria-labelledby="editionTitle" hidden>
+      <div class="section-heading"><div><p id="editionCategoryLabel" class="eyebrow"></p><h2 id="editionTitle"></h2></div><div><a href="#editionGrid">Edition wechseln ↑</a> <a id="playEdition" class="button primary" href="v2.html" hidden>Im Trainer spielen →</a></div></div>
+      <dl id="editionFacts" class="edition-facts"></dl>
+      <p id="editionNote" class="small"></p>
+      <p class="source-list"><a id="editionSource" href="https://www.starwarsccg.org/collecting/">Quelle: Veröffentlichungsdaten</a> · <a id="originalList" href="https://res.starwarsccg.org/cardlists/PremiereType.html">Original-Kartenliste</a> · <a id="foilList" href="https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf">Originalcheckliste inkl. Foils (PDF)</a></p>
+      <p id="cardLoadStatus" class="small" role="status"></p>
+      <button id="retryCards" class="button" type="button" hidden>Liste erneut laden</button>
+      <div id="cardBrowser" hidden>
+        <div class="collection-filters card-filters">
+          <label>Kartenname<input type="search" id="cardSearch" placeholder="z. B. Luke oder Darth Vader" autocomplete="off"></label>
+          <label>Seite<select id="cardSide"><option value="">Beide Seiten</option><option value="Light">Light Side</option><option value="Dark">Dark Side</option></select></label>
+          <label>Kartentyp<select id="cardType"><option value="">Alle Typen</option></select></label>
+          <label>Seltenheit<select id="cardRarity"><option value="">Alle Seltenheiten</option></select></label>
+          <label>Variante<select id="cardVariant"><option value="">Standard & AI</option><option value="Standard">Standard</option><option value="AI">Alternatives Bild (AI)</option></select></label>
+          <label>Sortierung<select id="cardSort"><option value="name">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">Kartentyp</option><option value="side">Spielseite</option></select></label>
+        </div>
+        <details class="rarity-help"><summary>Was bedeuten die Seltenheitskürzel?</summary><p>C = Common, U = Uncommon, R = Rare, UR = Ultra Rare, F = Fixed, P/PM = Premium. Ziffern wie bei R1 oder C3 unterscheiden Druckhäufigkeiten innerhalb einer Seltenheit. AI bedeutet „Alternate Image“: dieselbe Spielkarte mit anderem Motiv. Foil-Drucke stehen in der verlinkten Originalcheckliste. Die Katalog-ID ist eine Referenz der Datenquelle, keine aufgedruckte Sammlernummer.</p></details>
+        <p id="cardCount" class="small" role="status"></p>
+        <div class="card-table-wrap" tabindex="0" role="region" aria-label="Kartenliste">
+          <table class="card-table"><thead><tr><th scope="col">Karte · Klick öffnet den Scan</th><th scope="col">Seite</th><th scope="col">Typ</th><th scope="col">Seltenheit</th></tr></thead><tbody id="cardRows"></tbody></table>
+        </div>
+        <div class="card-pagination"><button class="button" id="previousCards" type="button">← Zurück</button><span id="cardPage" class="small"></span><button class="button" id="nextCards" type="button">Weiter →</button></div>
+      </div>
+    </section>
+  </main>
+  <dialog id="collectorCard" aria-labelledby="collectorCardTitle">
+    <div class="collector-dialog-header"><h2 id="collectorCardTitle"></h2><button id="closeCollectorCard" type="button" class="button" aria-label="Kartenansicht schließen">Schließen ×</button></div>
+    <p id="collectorCardMeta" class="small"></p><div id="collectorScan"></div>
+    <button id="flipCollectorCard" type="button" class="button" hidden>Rückseite ansehen</button>
+    <p class="small">Die Scans werden beim Öffnen extern vom Players Committee geladen. Originaldruck und aktueller Regeltext können voneinander abweichen.</p>
+  </dialog>
+  <footer class="wrap footer"><p><strong>Inoffizielles Fanprojekt.</strong> Keine Verbindung zu Lucasfilm, Disney oder Decipher. Marken und Kartenmotive gehören ihren jeweiligen Rechteinhabern. Kartendaten: Star Wars CCG Players Committee.</p><nav aria-label="Weiterführende Links"><a href="./">Startseite</a><a href="anleitungen/">Anleitungen</a><a href="https://www.starwarsccg.org/collecting/">Sammlerquellen</a><a href="data/SWCCGPC-LICENSE.txt">Datenlizenz</a></nav></footer>
+</body>
+</html>
