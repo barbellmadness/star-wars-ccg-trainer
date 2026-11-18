@@ -14,7 +14,9 @@ const PremiereData = (() => {
     [HOTH]: {name: 'Hoth', cardsPerSide: 81}
   });
   const EXPANSION_TYPES = new Set(['Creature', 'Epic Event']);
-  const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE]});
+  const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE], 'premiere-a-new-hope-hoth': [EDITION,A_NEW_HOPE,HOTH]});
+  const HOTH_RULES_VERSION=31;
+  const HOTH_RELEASED=new Map([["Light:5300","3_1"],["Light:109","3_71"],["Light:135","3_28"],["Light:161","3_72"],["Light:167","3_40"],["Light:184","3_32"],["Light:345","3_2"],["Light:498","3_3"],["Light:515","3_73"],["Light:595","3_4"],["Light:615","3_41"],["Light:707","3_5"],["Light:736","3_33"],["Light:793","3_74"],["Light:805","3_34"],["Light:807","3_6"],["Light:808","3_7"],["Light:811","3_29"],["Light:815","3_8"],["Light:889","3_35"],["Light:920","3_42"],["Light:987","3_36"],["Light:1001","3_9"],["Light:1018","3_10"],["Light:1044","3_75"],["Light:1163","3_55"],["Light:1165","3_30"],["Light:5582","3_56"],["Light:1169","3_57"],["Light:1171","3_58"],["Light:1173","3_59"],["Light:1174","3_60"],["Light:5586","3_61"],["Light:5590","3_62"],["Light:5591","3_63"],["Light:1220","3_43"],["Light:1241","3_37"],["Light:1307","3_76"],["Light:1330","3_44"],["Light:1391","3_11"],["Light:1404","3_12"],["Light:1589","3_45"],["Light:1621","3_13"],["Light:1664","3_77"],["Light:1665","3_65"],["Light:1773","3_46"],["Light:1836","3_47"],["Light:1854","3_64"],["Light:1902","3_48"],["Light:1910","3_78"],["Light:1929","3_79"],["Light:1997","3_14"],["Light:1990","3_31"],["Light:2004","3_15"],["Light:2045","3_16"],["Light:2119","3_66"],["Light:2120","3_67"],["Light:2121","3_68"],["Light:2126","3_17"],["Light:2128","3_18"],["Light:2137","3_49"],["Light:2249","3_19"],["Light:2294","3_69"],["Light:2383","3_80"],["Light:2413","3_20"],["Light:2480","3_70"],["Light:2481","3_38"],["Light:2483","3_21"],["Light:2530","3_39"],["Light:2606","3_22"],["Light:2618","3_23"],["Light:2671","3_50"],["Light:2710","3_81"],["Light:2734","3_51"],["Light:2782","3_24"],["Light:2796","3_25"],["Light:2805","3_52"],["Light:2836","3_26"],["Light:2881","3_53"],["Light:2888","3_54"],["Light:2911","3_27"],["Dark:18","3_116"],["Dark:62","3_82"],["Dark:158","3_158"],["Dark:160","3_83"],["Dark:267","3_154"],["Dark:269","3_155"],["Dark:272","3_156"],["Dark:274","3_157"],["Dark:327","3_98"],["Dark:363","3_84"],["Dark:368","3_85"],["Dark:465","3_117"],["Dark:466","3_118"],["Dark:513","3_119"],["Dark:584","3_120"],["Dark:650","3_99"],["Dark:651","3_100"],["Dark:684","3_121"],["Dark:692","3_94"],["Dark:733","3_122"],["Dark:894","3_159"],["Dark:823","3_95"],["Dark:913","3_123"],["Dark:916","3_124"],["Dark:986","3_101"],["Dark:990","3_102"],["Dark:995","3_125"],["Dark:1000","3_86"],["Dark:1029","3_87"],["Dark:1114","3_126"],["Dark:1142","3_103"],["Dark:1162","3_143"],["Dark:6353","3_144"],["Dark:1168","3_145"],["Dark:1170","3_146"],["Dark:1172","3_147"],["Dark:6354","3_148"],["Dark:6358","3_149"],["Dark:6359","3_150"],["Dark:1240","3_104"],["Dark:1226","3_127"],["Dark:1253","3_105"],["Dark:1270","3_106"],["Dark:1272","3_88"],["Dark:1285","3_128"],["Dark:1306","3_160"],["Dark:1521","3_89"],["Dark:1552","3_129"],["Dark:1673","3_107"],["Dark:1706","3_108"],["Dark:1826","3_130"],["Dark:1853","3_151"],["Dark:1869","3_131"],["Dark:1925","3_96"],["Dark:1949","3_97"],["Dark:1950","3_90"],["Dark:1952","3_161"],["Dark:1953","3_132"],["Dark:2098","3_109"],["Dark:2187","3_133"],["Dark:2209","3_134"],["Dark:2266","3_110"],["Dark:2295","3_91"],["Dark:2296","3_92"],["Dark:2339","3_152"],["Dark:2353","3_135"],["Dark:2399","3_136"],["Dark:2422","3_115"],["Dark:2511","3_137"],["Dark:2541","3_111"],["Dark:2572","3_112"],["Dark:2615","3_113"],["Dark:2627","3_138"],["Dark:2645","3_139"],["Dark:2657","3_153"],["Dark:2709","3_162"],["Dark:2732","3_140"],["Dark:2736","3_141"],["Dark:2737","3_93"],["Dark:2772","3_114"],["Dark:2842","3_142"]]);
   const GARRISON_A_NEW_HOPE = new Map([['Dark:654', '2_143'], ['Dark:667', '2_111'], ['Dark:2103', '2_138']]);
   const EXPANSION_RULES_VERSION = 26;
   const A_NEW_HOPE_RELEASED = new Set(['Light:2035', 'Light:2389', 'Light:2418', 'Dark:872', 'Dark:1267',
@@ -34,7 +36,7 @@ const PremiereData = (() => {
   const isGarrisonExpansionCard = card => card?.set === A_NEW_HOPE && GARRISON_A_NEW_HOPE.has(card.id) &&
     GARRISON_A_NEW_HOPE.get(card.id) === card.gempId;
   const isGarrisonRifle = card => card?.id === GARRISON_RIFLE.id && card.gempId === GARRISON_RIFLE.gempId && card.set === GARRISON_RIFLE.set;
-  const isReleasedExpansionCard = (card, rulesVersion = Infinity) => isGarrisonExpansionCard(card) ||
+  const isReleasedExpansionCard = (card, rulesVersion = Infinity) => card?.set===HOTH&&rulesVersion>=HOTH_RULES_VERSION&&HOTH_RELEASED.get(card.id)===card.gempId || isGarrisonExpansionCard(card) ||
     card?.set === A_NEW_HOPE && (rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id) ||
       rulesVersion >= 27 && A_NEW_HOPE_RULES_27.has(card.id) || rulesVersion >= 28 && A_NEW_HOPE_RULES_28.has(card.id) || rulesVersion >= 29 && A_NEW_HOPE_RULES_29.has(card.id));
   const VALUE_FIELDS = ['power', 'ability', 'deploy', 'forfeit', 'destiny', 'armor', 'maneuver', 'hyperspeed', 'landspeed', 'parsec', 'lightSideIcons', 'darkSideIcons'];
@@ -200,7 +202,7 @@ const PremiereData = (() => {
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
 
   function isPlayableStarterCard(card) {
-    if(card.set===HOTH)return false;
+    if(card.set===HOTH)return isReleasedExpansionCard(card);
     if(card.set===A_NEW_HOPE&&isReleasedExpansionCard(card))return true;
     if (card.type === 'Location') return Number.isInteger(card.icons.light) && Number.isInteger(card.icons.dark);
     if (card.type === 'Weapon' || isLostPileEffect(card) ||
@@ -248,7 +250,7 @@ const PremiereData = (() => {
       if (!supportedEdition) {
         throw error(id + ' stammt aus einer anderen Edition.');
       }
-      if (card.set === A_NEW_HOPE && !isReleasedExpansionCard(card, cardRulesVersion)) throw error(id + ' ist noch nicht für das Spiel freigegeben (Regelstand).');
+      if ([A_NEW_HOPE,HOTH].includes(card.set) && !isReleasedExpansionCard(card, cardRulesVersion)) throw error(id + ' ist noch nicht für das Spiel freigegeben (Regelstand).');
       if (ids.has(id)) throw error('Doppelter Eintrag für ' + id + '.');
       if (!Number.isInteger(count) || count < 1 || count > 60) throw error('Ungültige Kartenanzahl für ' + id + '.');
       if (!isPlayableStarterCard(card)) throw error(card.name + ' kann im aktuellen Lernmodus nicht ausgespielt werden.');
@@ -313,7 +315,7 @@ const PremiereData = (() => {
       throw new Error('Ungültige Deckvarianten für ' + format + '.');
     }
     const definitions = Object.fromEntries(SIDES.map(side => {
-      const byTheme = new Map(themes.decks[side].map(definition => [definition.theme.id, definition]));
+      const byTheme = new Map((format==='premiere-a-new-hope-hoth'?[]:themes.decks[side]).map(definition => [definition.theme.id, definition]));
       for (const definition of variants.formats[format][side]) byTheme.set(definition.theme.id, definition);
       return [side, [...byTheme.values()]];
     }));
@@ -363,7 +365,7 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,
+  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,HOTH_RULES_VERSION,
     readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, readFormatDeckChoices,
     readCardValue, locationTitle, isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility,
     isGarrisonExpansionCard, isReleasedExpansionCard, buildAudit};

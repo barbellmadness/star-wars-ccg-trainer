@@ -7,12 +7,13 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const webPages = ['index.html', 'v2.html', 'editionen.html', 'anleitungen/index.html',
   'anleitungen/schnellstart.html', 'anleitungen/spielzug.html', 'anleitungen/kampf.html',
-  'anleitungen/a-new-hope.html'];
+  'anleitungen/a-new-hope.html','anleitungen/hoth.html'];
 // Deliberate allowlist: never collect arbitrary JSON, local reports, credentials or the checkout.
 const sourceAssets = ['assets/site.css', 'assets/edition-banners.css', ...['data', 'game', 'battle', 'units', 'locations',
   'weapons', 'card-rules', 'bot', 'learning', 'session'].map(name => `engine/premiere-${name}.js`),
+  ...['rules','card-rules','session','interrupts','creatures','mines','timing'].map(name=>`engine/hoth-${name}.js`),
   ...['premiere', 'a-new-hope', 'hoth', 'premiere-starter-decks', 'premiere-themed-decks',
-    'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks'].map(name => `data/${name}.json`)];
+    'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks','hoth-decks'].map(name => `data/${name}.json`)];
 const digest = body => createHash('sha256').update(body).digest('hex');
 
 export async function buildWeb(output) {

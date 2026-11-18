@@ -1,6 +1,6 @@
-# Hoth: Datenbasis und begonnene Regelimplementierung
+# Hoth: freigegebene Karten und Regelstand
 
-Stand V2.15.40. Die Erweiterung ist **noch kein auswählbares Spielformat**. 162 Karten sind im Trainer-Katalog einsehbar, 0 Karten vollständig für Partien freigegeben. Premiere und Premiere + A New Hope bleiben die beiden spielbaren Formate.
+Stand V2.16.0, Regelversion 31. Alle **162 Hoth-Karten** sind für das zusätzliche Format **Premiere + A New Hope + Hoth** freigegeben. Je acht validierte Themendecks pro Seite machen alle Karten über die Deckauswahl erreichbar. Premiere und Premiere + A New Hope bleiben separat wählbar; historische Spielstände behalten ihren Regelsatz.
 
 ## Datenbasis
 
@@ -20,28 +20,35 @@ Die historische Beilage lässt den Schild bis zum äußersten Marker reichen und
 
 Beim Ausspielen oder Starten mit Main Power Generators verlangt die neuere Klarstellung einen bereits vorhandenen Marker 4, 5 oder 6 oder das sofortige Ausspielen von North Ridge aus dem Reserve Deck. Ist das nicht möglich, darf der Generator nicht ausgespielt werden; beim Start muss ein anderer Startort gewählt werden. Die ältere Handkarten-Suchformulierung wird hierfür nicht ungeprüft übernommen.
 
-## Bereits implementiert
+## Implementierung und Prüfmatrix
 
-- Typisierter, reproduzierbarer Hoth-Katalog einschließlich Creature und Epic Event, mit weiterhin geschlossener Deck-/Formatfreigabe.
-- Hoth-Auswahl im V2-Kartenkatalog mit Suchfunktion, aktivem Text, Errata und ausdrücklichem Vorbereitungsstatus. Die vollständigen Hoth-Daten werden erst bei Auswahl geladen; der Start einer bisherigen Partie lädt sie nicht.
-- Nummerische Marker-Anordnung in der gemeinsamen Standortlogik. Die Wampa Cave ist trotz Interior-Icon der siebte Marker und wird hinter die anderen Marker gelegt, statt bei den Echo-Base-Innenräumen zu erscheinen. Einfügepositionen richten sich nach der Nummer, nicht nach vorhandenen Speicherslots. Fehlende Marker lassen die tatsächlich benachbarten Sites weiterhin benachbart sein.
-- Für später zulässige unnummerierte Hoth-Außenorte ist der vorgesehene Platz zwischen Marker 6 und 7 vorbereitet. Diese Sortierregel ist keine Ausspielgenehmigung für generische Sites.
+| Bereich | Ausführbare Regeln und Prüfungen |
+| --- | --- |
+| Standorte und Start | Pflichtsuche nach North Ridge, gleichzeitige Startorte, Marker 1–7, Konvertierung, Anheben, eingestürzte Docking Bays und Wiederaufbau. |
+| Energieschild | Echo Base und Marker 1–3 einschließlich zugehöriger Innenräume; Deploy, Luftbewegung, Shuttle, Transit und Relocation werden in den gemeinsamen Aktionswegen geprüft; Bodenbewegung bleibt erlaubt. |
+| Missing und Wetter | Suchgruppen und Scouts, R-2 Sensor Array, Rogue 2, Ice Storm, Frostbite, Exposure, Schutz und vermisste Besatzung. Inaktive Karten belegen weiterhin Kapazität. |
+| Fahrzeuge und Besatzung | AT-ATs, AT-ST, T-47, Tauntaun, Medium Transport; Piloten, Kanoniere, nicht kumulative Boni, Power, Armor, Maneuver und Attrition-Immunität. |
+| Waffen und Devices | Alle Artillerien mit Energieversorgung, Warrior/Remote, Reichweite und Schussfenstern; Harpoon, Crash, Ionenschaden, Minen bei Deploy/Ankunft/Überquerung sowie Waffen- und Device-Nutzungslimits. |
+| Creatures und Epic | Wampa-Habitat, Ferocity, zufällige Beute und gegnerische Wahl Fressen/Cave, Frozen Dinner und Disarming Creature; Target The Main Generator mit gewähltem Piloten, Reichweite, Generatorzerstörung und acht wählbaren Force-Verlusten. |
+| Effects und Interrupts | Gedruckte Bedingungen, Kosten, Used/Lost-Modi, Gegenkarten und Antwortfenster; Utinni-Ziele, Rettungen, Rückgabe und kostenloser Folge-Deploy, Tauntaun Bones, Telemetry und verdeckte Prüfungen. Aktive Effects erscheinen anklickbar beim jeweiligen Spielerprotokoll. |
+| Format und Bot | Je acht Decks mit 60 Karten und Strategie, Format-/Startortvalidierung, beide Spielseiten und Bot-Entscheidungen. Alle 162 Karten sind mindestens einmal enthalten. |
 
-Die Marker-Grundregel vervollständigt noch keinen individuellen Kartentext. Standortfähigkeiten, Schild, Spieleraktionen, Bot und Kartenfreigabe sind die nächsten Umsetzungsschritte.
+Die gemeinsamen Mechaniken werden in engine/hoth-rules.js und den Hoth-Sessionmodulen ausgeführt; engine/hoth-card-rules.js verknüpft jede der 162 Karten mit ihren Regeln ab Version 31. Die Freigabe hängt zusätzlich an der fixierten Katalogrevision und dem Hoth-Format.
 
-## Noch umzusetzen
+### Automatisierte Prüfung
 
-1. Generator-Ausspielung und Starting Locations mit Pflichtsuche, Rückabwicklung und Erhalt aller Karteninstanzen.
-2. Schildstatus für Echo Base und Marker 1–3; Dark-Side-Deploy, Landen/Starten, Shuttle, Transit, Relocation und System-Power-Boni in sämtlichen Aktionswegen korrekt begrenzen. Zugehörige Fahrzeug-/Schiffsinnenräume einbeziehen.
-3. Standorttexte, Konvertierung, Untergrund-Sites und Collapsing Corridor mit Zusatzkosten und Wiederaufbau.
-4. Vermisste Charaktere, Suchgruppen und deren Aktionsbeschränkungen, Scouts sowie Wetter- und Suchkarten.
-5. Kampffahrzeuge, Fahrer, Piloten, Kanoniere, AT-ATs, Snowspeeder und Creature Vehicles.
-6. Artillerie, Energieversorgung, Reichweite, Fernsteuerung und Harpunen-/Absturzabläufe.
-7. Wampa mit Habitat, Beute und den besonderen Verlust-/Missing-Folgen; vorhandene Creature-Abläufe wiederverwenden, soweit ihre Voraussetzungen übereinstimmen.
-8. Target The Main Generator einschließlich erforderlicher Marker, Berechnung, Antwortfenster, Blown Away und Force-Verlust.
-9. Übrige Charakter-, Interrupt-, Device-, Waffen- und Effect-Fähigkeiten mit klaren Kosten, Zielen und Antwortfenstern. Jede Karte erst nach nachgewiesener ausführbarer Regel freigeben.
-10. Format Premiere + A New Hope + Hoth und validierte Themendecks für beide Seiten; bestehende Formate und historische Spielstände unverändert nutzbar halten.
-11. Bot-Bewertung, deutsche Hilfen und Playmat-Markierungen; Mid-Action-Autosave, Replay, Szenarioimport und vollständige 120-Karten-Partien aller Formate prüfen.
+- tests/hoth-rules.test.mjs: reine Regeln für Schild, Generator, Marker, Wetter, Suche und Besatzungsboni.
+- tests/hoth-session.test.mjs: tatsächliche Aktionsangebote und Auflösung, Ziele, Zahlungen, Gegenreaktionen, kontinuierliche Fähigkeiten und Kombinationen mit älteren Karten; zusätzlich vollständige Registerabdeckung.
+- tests/hoth-data.test.mjs: alle 162 Datenzeilen, Formatgrenzen, Errata, Decklegalität und Kartenabdeckung.
+- tests/hoth-autosave.test.mjs: sechs mehrstufige Abläufe mit frischer Instanz nach jeder Aktion. Suchgruppe, Reserve-Suche, private Handprüfung, Wampa, Minen-Transit und Harpoon-Antwort prüfen Zustand, Zufallsfolge, legale Optionen, beide Spielersichten, Szenarioimport und Erhalt aller 120 Karten.
+- tests/hoth-matches.test.mjs: acht vollständige Hoth-Partien mit allen acht Deckpaaren, wechselnder menschlicher Spielseite und Bot-Entscheidungen; jede Aktion muss legal sein, alle 120 Karteninstanzen müssen erhalten bleiben und jede Partie muss enden.
+- Beide Browserprüfungen prüfen den Quellstand und das gebaute Paket. Hoth wird beim bisherigen Spielstart nicht heruntergeladen; Auswahl, Hoth-Spielstart und Fortsetzen laden die Erweiterung bedarfsgerecht nach. Alle Anleitungen und öffentliche Datenschutzgrenzen werden geprüft.
+
+### Bedingungen, die spätere Editionen benötigen
+
+„You Will Go To The Dagobah System“ hat seine regelgerechte Aktion, findet in den drei freigegebenen Editionen jedoch keinen Dagobah-Zielort. Es wird kein erfundener Zielort angeboten. Hobbies spezieller Rogue-4-Bonus benötigt ebenfalls eine spätere Karte; seine übrigen Fähigkeiten funktionieren mit den aktuellen Karten. Auch namentlich genannte Gegenkarten späterer Editionen erzeugen erst bei einem passenden Ziel ein Angebot. Diese natürlichen Kartenbedingungen sind keine Freigabe weiterer Editionen.
+
+Die Freigabe ist kein formaler Nachweis jeder denkbaren Kartenkombination. Gefundene Fehler werden weiterhin mit Regressionstests behoben. Die 308 privaten Premiere-Drucktexte bleiben ausschließlich auf dem Laptop.
 
 ## Prüfbefehle
 
@@ -53,6 +60,6 @@ node --test
 npm run test:browser
 ```
 
-`--report` führt alle 162 noch nicht freigegebenen Karten mit ID, Name und Typ auf. Die bestehenden 308 privaten Premiere-Drucktexte bleiben ausschließlich auf dem Laptop.
+`--report` dokumentiert den Freigabestand; `--check` prüft alle 162 freigegebenen Karten und ihre Erreichbarkeit über die Decks. Die bestehenden 308 privaten Premiere-Drucktexte bleiben ausschließlich auf dem Laptop.
 
 Die Browserprüfung des lokalen Quellstands deaktiviert den privaten Drucktext-Endpunkt ausdrücklich. Sie liest dadurch keine private Prüfdatei; der regulär gestartete lokale Trainer kann seine bisherige private Anzeige weiterhin nutzen.

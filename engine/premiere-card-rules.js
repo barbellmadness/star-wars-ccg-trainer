@@ -1842,7 +1842,17 @@ const PremiereCardRules = (() => {
     return (cards.get(card?.id)?.effects ?? []).filter(effect => effect.event === event);
   }
 
-  return Object.freeze({ entry, effects });
+  function registerExpansion(definitions) {
+    const seen=new Set();
+    for(const definition of definitions) {
+      if(!/^\w+:\d+$/.test(definition.id)||cards.has(definition.id)||seen.has(definition.id)||!Array.isArray(definition.effects)||
+        definition.effects.some(effect=>typeof effect.event!=='string'||typeof effect.summary!=='string'||effect.since!==31))
+        throw new Error('Ungültige oder bereits registrierte Erweiterungsregel: '+definition.id);
+      seen.add(definition.id);
+    }
+    for(const {id,effects,complete=false} of definitions)cards.set(id,{effects,complete});
+  }
+  return Object.freeze({ entry, effects, registerExpansion });
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PremiereCardRules;

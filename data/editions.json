@@ -94,7 +94,7 @@
       "variantCount": 0,
       "foilCount": 0,
       "boxTopperCount": 0,
-      "playable": false,
+      "playable": true,
       "cardsUrl": "data/collector-hoth.json",
       "source": "https://www.starwarsccg.org/collecting/",
       "checklist": "https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf",

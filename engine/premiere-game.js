@@ -85,7 +85,7 @@ const PremiereGame = (() => {
     const {hand, deck, force, used} = zones(state, side);
     const piles = {deck: isReserveInsert(deck?.at(-1)) ? [] : deck, force, used};
     if (Object.hasOwn(piles, preferred) && piles[preferred]?.length) return [{args: [preferred]}];
-    const cards = (hand ?? []).map((card, i) => ({args: ['hand', i], card}));
+    const cards = (hand ?? []).map((card, i) => ({args: ['hand', i], card})).filter(choice=>choice.card!==state.hothPayingInterrupt);
     if (preferred === 'hand' && cards.length) return cards;
     return [...cards,
       ...Object.entries(piles).filter(([, pile]) => pile?.length).map(([zone]) => ({args: [zone]}))];

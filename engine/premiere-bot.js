@@ -28,6 +28,9 @@ const PremiereBot = (() => {
   }
 
   function drawGoal(view) {
+    // Expansion starts may have no usable deployment access. An unusable full
+    // hand must not prevent drawing the location or unit that opens the game.
+    if(view.needsDeployAccess)return view.hand.length+1;
     const units = view.hand.filter(card => unit(card) && !card.redundant && !card.needsCrew && (card.ability > 0 || card.type === 'Starship'));
     const holdsSites = view.sites.some(site => site?.own);
     return holdsSites ? (units.length >= 2 ? 3 : 5) : (units.length ? 5 : 7);
@@ -151,7 +154,7 @@ const PremiereBot = (() => {
       case 'automatedTarget': return action.targetSide === view.rival ? value(action.card) : -value(action.card);
       case 'timingTrigger': return action.effectValue;
       case 'duel': return action.effectValue - cost(view, action);
-      case 'anhCharacter': case 'battleEffect': case 'pileInterrupt': case 'cardInformation': case 'weaponEffect': case 'holocamPower':
+      case 'hothAction': case 'anhCharacter': case 'battleEffect': case 'pileInterrupt': case 'cardInformation': case 'weaponEffect': case 'holocamPower':
       case 'cancelTableEffect': case 'cancelNamedWeapon': case 'controlTheft': case 'deviceAction': case 'limitedResources':
       case 'lateralRepair': case 'lateralMechanic': case 'gravelStorm':
         return action.effectValue - cost(view, action);
