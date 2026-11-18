@@ -503,7 +503,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=29;
+const latestCardRulesVersion=30;
 const latestBotStrategyVersion=3;
 const usesBotPlanner=version=>version===2||version===latestBotStrategyVersion;
 const playerSide=()=>currentGame()?.playerSide??'Light';
@@ -653,7 +653,8 @@ function sentryModifier(side,slot,mode){
 }
 
 function landedAt(card,slot){
- return card.type==='Starship'&&!!state.locations[slot]&&isSite(state.locations[slot]);
+ const trench=state.locations[slot]?.id==='Light:681'&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=30;
+ return card.type==='Starship'&&!trench&&!!state.locations[slot]&&isSite(state.locations[slot]);
 }
 
 function craftStats(card,slot,forMovement=false){
@@ -10194,7 +10195,9 @@ function resolveAnhDestinyTriggers(drawSide,draw,resume){
    if(n===4)PremiereGame.retrieveForce(state,side,1);
    if(n!==5){next();return;}
   }
-  if(anhDestinyTriggerChoices(frame).length===1&&source.kind==='bones'){next();return;}
+  const choices=anhDestinyTriggerChoices(frame);
+  const noDeployment=(state.game.cardRulesVersion??0)>=30?choices.every(choice=>choice.args[0]==='skip'):choices.length===1;
+  if(noDeployment&&source.kind==='bones'){next();return;}
   state.pendingCardView=frame;
  }
  next();
