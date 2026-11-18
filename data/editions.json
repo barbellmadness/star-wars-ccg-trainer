@@ -342,7 +342,7 @@
       "cardsUrl": "data/collector-death-star-ii.json",
       "source": "https://www.starwarsccg.org/collecting/",
       "checklist": "https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf",
-      "originalList": "https://res.starwarsccg.org/cardlists/DeathStarIIType.html"
+      "originalList": "https://res.starwarsccg.org/cardlists/DeathStar2Type.html"
     },
     {
       "id": "jabbas-palace-sealed-deck",
@@ -423,7 +423,7 @@
       "cardsUrl": "data/collector-reflections-iii.json",
       "source": "https://www.starwarsccg.org/collecting/",
       "checklist": "https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf",
-      "originalList": "https://res.starwarsccg.org/cardlists/ReflectionsIIIType.html",
+      "originalList": "https://res.starwarsccg.org/cardlists/Reflections3Type.html",
       "note": "Die durchsuchbare Liste enthält die Standardkarten. Zusätzliche Foil-Drucke findest du in der Originalcheckliste."
     },
     {
@@ -440,7 +440,7 @@
       "cardsUrl": "data/collector-theed-palace.json",
       "source": "https://www.starwarsccg.org/collecting/",
       "checklist": "https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf",
-      "originalList": "https://res.starwarsccg.org/cardlists/TheedPalaceType.html"
+      "originalList": "https://res.starwarsccg.org/cardlists/TheedType.html"
     }
   ]
 }
