@@ -69,6 +69,25 @@ test('site neighborhoods follow related table rows instead of storage slots',()=
  assert.equal(run('adjacentSites(0,3)'),false);
  assert.equal(run('adjacentSites(3,4)'),false);
 });
+test('ongoing effects belong to their controller and disclose targets without exposing concealed cards',()=>{
+ const {run}=harness();
+ run(`catalog=PremiereData.readCatalog(${readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8')});
+ const pick=id=>catalog.find(c=>c.id===id);
+ state={locations:[{name:'Tatooine: Site'}],light:[[]],dark:[[]],tableEffects:[{card:pick('Light:1778'),target:'Light'},{card:{...pick('Dark:2897'),concealed:true},target:'Light'}],lostPileEffects:[{card:pick('Dark:2897'),target:'Light'}],locationEffects:{0:[{card:pick('Light:2110')}]}};`);
+ assert.deepEqual(Array.from(run("ongoingEffects('Light').map(e=>e.card.id)")),['Light:1778','Light:2110']);
+ assert.deepEqual(Array.from(run("ongoingEffects('Dark').map(e=>e.card.id)")),['Dark:2897']);
+ assert.match(run("ongoingEffects('Dark')[0].details"),/Betrifft Light Side/);
+});
+test('Imperial Barrier has an inspectable temporary effect that expires at the next turn',()=>{
+ const {run}=harness();
+ run(`catalog=PremiereData.readCatalog(${readFileSync(new URL('../data/premiere.json',import.meta.url),'utf8')});
+ const target={name:'Luke Skywalker',type:'Character'};
+ state={game:{timing:{turn:3}},locations:[{name:'Tatooine: Site'}],light:[[target]],dark:[[]],barredCards:new Map([[target,3]])};`);
+ assert.equal(run("ongoingEffects('Dark').length"),1);
+ assert.match(run("ongoingEffects('Dark')[0].details"),/Luke Skywalker.*weder kämpfen noch sich bewegen.*Interrupt/);
+ assert.equal(run("ongoingEffects('Light').length"),0);
+ run('state.game.timing.turn++');assert.equal(run("ongoingEffects('Dark').length"),0);
+});
 test('Hoth topology orders numbered markers and keeps Wampa Cave outside Echo Base interiors',()=>{
  const {run}=harness();const snapshot=JSON.parse(readFileSync(new URL('../data/hoth.json',import.meta.url),'utf8'));
  run(`const qaHoth=PremiereData.readCatalog(${JSON.stringify(snapshot)},PremiereData.HOTH);
@@ -1895,7 +1914,7 @@ test('Central Core waives Wrong Turn only for its controlling side and the tax a
  run("state.light[4]=[]");
  assert.equal(run("legalActions(state,'Dark').find(action=>action.kind==='deployTableEffect').cost"),0);
  assert.equal(run("requestAction('deployTableEffect','Dark',[0])&&state.botForce.length===5&&state.botUsed.length===0"),true);
- assert.match(elements.get('pilesPlayer').innerHTML,/Effects · .*Wrong Turn/);
+ assert.match(elements.get('botEffects').innerHTML,/Wrong Turn/);
  assert.equal(run("requestAction('deployTableEffect','Dark',[0])"),false);
  assert.equal(run("boardDeployCost(trooper,dock,'Light')"),2);
  assert.equal(run("boardDeployCost(droid,dock,'Light')"),2);
