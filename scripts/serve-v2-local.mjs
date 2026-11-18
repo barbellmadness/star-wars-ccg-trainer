@@ -9,9 +9,11 @@ const contentTypes = {
   html: 'text/html; charset=utf-8',
   js: 'text/javascript; charset=utf-8',
   json: 'application/json; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  txt: 'text/plain; charset=utf-8',
 };
 
-export function startLocalV2Server({port = 8000, reportPath = defaultReport} = {}) {
+export function startLocalV2Server({port = 8000, reportPath = defaultReport, siteRoot = root} = {}) {
   const server = createServer(async (request, response) => {
     const listenPort = server.address().port;
     if (!['127.0.0.1:' + listenPort, 'localhost:' + listenPort].includes(request.headers.host)) {
@@ -23,18 +25,18 @@ export function startLocalV2Server({port = 8000, reportPath = defaultReport} = {
       return;
     }
     const route = request.url.split('?')[0];
-    const privateReport = route === '/local-print-texts.json';
+    const privateReport = siteRoot === root && route === '/local-print-texts.json';
     if (privateReport && request.headers['sec-fetch-site'] &&
         request.headers['sec-fetch-site'] !== 'same-origin') {
       response.writeHead(403).end();
       return;
     }
-    const asset = route === '/' ? '/v2.html' : route;
-    if (!privateReport && !/^\/(?:v2\.html|index\.html|engine\/[\w-]+\.js|data\/[\w-]+\.json)$/.test(asset)) {
+    const asset = route === '/' ? '/index.html' : route === '/anleitungen/' ? '/anleitungen/index.html' : route;
+    if (!privateReport && !/^\/(?:v2\.html|index\.html|release\.json|anleitungen\/(?:index|schnellstart|spielzug|kampf|a-new-hope)\.html|assets\/site(?:\.[a-f0-9]{12})?\.css|engine\/[\w-]+(?:\.[a-f0-9]{12})?\.js|data\/[\w-]+(?:\.[a-f0-9]{12})?\.json|data\/SWCCGPC-LICENSE\.txt)$/.test(asset)) {
       response.writeHead(404).end();
       return;
     }
-    const file = privateReport ? reportPath : join(root, asset.slice(1));
+    const file = privateReport ? reportPath : join(siteRoot, asset.slice(1));
     try {
       const body = await readFile(file);
       response.writeHead(200, {

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node --test",
-    "test:browser": "node --test scripts/v2-browser-check.mjs"
+    "test:browser": "node --test --test-concurrency=1 scripts/v2-browser-check.mjs scripts/site-browser-check.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.65.1"
