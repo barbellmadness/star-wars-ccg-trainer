@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><link rel="stylesheet" href="assets/edition-banners.css"><style>
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><link rel="stylesheet" href="assets/edition-banners.css"><link rel="stylesheet" href="assets/playfield-views.css"><style>
 :root{color-scheme:dark;--gold:#f3cf7a;--frame:#50617a;--ink:#e7edf9}
 *{box-sizing:border-box}
 body{
@@ -404,6 +404,12 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
     </div>
   </section>
   <div id="matchArea">
+  <div class="table-view-controls">
+    <label for="tableViewChoice">Spielfeldansicht</label><select id="tableViewChoice">
+      <option value="classic">Klassisch</option><option value="command">Kommandozentrale</option><option value="table">Direkt am Spieltisch</option>
+    </select>
+    <span id="tableViewStatus" class="hint" role="status">Während der Partie wechselbar · Auswahl wird auf diesem Gerät gespeichert.</span>
+  </div>
   <div class="panel" id="gameMessage"><h2 id="instruction">Lade Kartendaten …</h2><p id="hint"></p></div>
   <p id="outOfPlay" class="hint" hidden></p>
   <section id="lessonPanel" class="panel lesson-panel" aria-labelledby="lessonTitle" hidden>
@@ -444,6 +450,11 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   </dialog>
   <div id="controlPanel" class="panel game-control" style="display:none"></div>
   <section class="table-view" id="gameTable" aria-label="Spieltisch" hidden>
+    <section id="turnGuide" aria-label="Zentrale Zugführung" hidden>
+      <div class="guide-main"><div class="guide-copy"><small id="guideSector"></small><h2 id="guideTitle"></h2><p id="guideHint" role="status"></p></div>
+        <div class="guide-controls"><strong id="guideForce"></strong><button id="guideConfirm" type="button" hidden></button><div id="guideActions"></div></div></div>
+      <div id="guidePhases"></div>
+    </section>
     <div id="botSeat" class="panel player-hand dark-hand">
       <div>
         <div class="hand-heading">
@@ -465,6 +476,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
     <div class="playmat-shell">
       <button id="returnToBattle" type="button" aria-haspopup="dialog" hidden>Zurück zum Kampf</button>
       <section id="playmatSelection" class="playmat-action-panel" aria-label="Kartenaktionen und Ziele" hidden></section>
+      <div id="tableActionRail" hidden><section id="tableActionPreview" aria-label="Aktionsvorschau"></section></div>
       <div class="playmat-scroll"><div id="board" class="playmat" aria-label="Star Wars CCG Spielfeld" tabindex="-1"></div></div>
     </div>
     <div id="playerSeat" class="panel player-hand light-hand">
@@ -564,9 +576,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="assets/edition-banners.js"></script><script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
+<script src="assets/playfield-views.js"></script><script src="assets/edition-banners.js"></script><script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.16.0';
+const trainerVersion='2.16.1';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -584,6 +596,7 @@ const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===arg
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action,handler='dispatchUI'){
  if(!action)return 'disabled';
+ if(handler==='dispatchUI'&&globalThis.PremiereTableViews?.shouldPreview(action))handler='previewTableAction';
  const {kind,side,args,gameId,revision}=action;
  return 'onclick="'+escapeHTML((kind==='battle'?'openBattlePreview':handler)+'('+JSON.stringify({kind,side,args,gameId,revision})+')')+'"';
 }
@@ -1233,6 +1246,7 @@ function openMovement(i){
 }
 
 function playMovement(action,status=el('movementStatus')){
+ if(globalThis.PremiereTableViews?.shouldPreview(action))return previewTableAction(action);
  if(!dispatchUI(action)){
   status.textContent='Diese Aktion ist nicht mehr möglich.';
   status.hidden=false;
@@ -2244,6 +2258,7 @@ function render(){
  el('log').textContent=state.log.join('\n');
  renderOngoingEffects();
  renderLearning();
+ globalThis.PremiereTableViews?.update(view);
 }
 
 function runBotStep(action){
