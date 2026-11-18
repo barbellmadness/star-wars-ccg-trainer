@@ -281,7 +281,11 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 .launch-header h1:focus{outline:none}
 .launch-side-grid,.launch-deck-grid{display:grid;gap:clamp(9px,1.4vw,17px)}
 .launch-side-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.launch-deck-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.launch-deck-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px}
+.launch-deck-section+.launch-deck-section{margin-top:20px}
+.launch-deck-heading{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:9px}
+.launch-deck-heading h2{margin:0;color:#ead6a7;font-size:18px}
+.launch-deck-heading small{color:#b8c4d8;font-size:12px}
 .launch-tone-light{--launch-accent:#ddc792;--launch-glow:#819cb5;--launch-ink:#121e2b}
 .launch-tone-dark{--launch-accent:#efa7a8;--launch-glow:#a85260;--launch-ink:#281820}
 .launch-side,.launch-deck{position:relative;min-width:0;border:1px solid color-mix(in srgb,var(--launch-accent),#192232 57%);border-radius:12px;text-align:left;background-color:var(--launch-ink);color:#f1f4fb;isolation:isolate}
@@ -300,14 +304,15 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 .launch-art [hidden]{display:none}
 .launch-art-fallback{display:grid;place-items:center;padding:6px;text-align:center;height:100%;color:var(--launch-accent);font-size:clamp(10px,1.35vw,14px);font-weight:700}
 .launch-deck-tile{display:grid;grid-template-rows:1fr auto;gap:4px;min-width:0}
-.launch-deck{display:flex;flex-direction:column;width:100%;padding:0;overflow:hidden}
-.launch-deck-guide{width:100%;padding:5px 6px;font-size:12px;background:#141e2f;border-color:#536481}
+.launch-deck{display:flex;align-items:center;gap:9px;width:100%;padding:8px;overflow:hidden;min-height:80px}
+.launch-deck-guide{width:100%;padding:4px 6px;font-size:11px;background:#141e2f;border-color:#536481}
 .launch-deck-guide:hover,.launch-deck-guide:focus-visible{color:#ffe2a6;border-color:#cba969}
 .launch-deck[aria-pressed=true]{box-shadow:0 0 0 1px var(--launch-accent),0 6px 24px #0006}
-.launch-deck-visual{display:grid;place-items:center;position:relative;width:100%;min-height:145px;padding:11px;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--launch-glow),transparent 34%),transparent 75%),repeating-linear-gradient(120deg,#ffffff08 0 1px,transparent 1px 16px),#0c121c}
-.launch-deck-visual .launch-art{width:92px}
-.launch-deck-copy{display:grid;gap:3px;padding:10px 12px 12px}
-.launch-deck-copy strong{font-size:clamp(14px,1.5vw,19px);line-height:1.15;color:var(--launch-accent)}
+.launch-deck-visual{display:block;flex:0 0 45px;width:45px}
+.launch-deck-visual .launch-art{width:100%;box-shadow:0 3px 8px #0006}
+.launch-deck-visual .launch-art-fallback{font-size:9px;overflow-wrap:anywhere;padding:3px}
+.launch-deck-copy{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;hyphens:auto}
+.launch-deck-copy strong{font-size:14px;line-height:1.2;color:var(--launch-accent)}
 .launch-actions{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #465369}
 .launch-bot-style{display:grid;gap:4px;font-size:13px;max-width:100%}
 .launch-bot-style select{max-width:100%;padding:5px 7px;color:inherit;background:#141e2e;border:1px solid #657795;border-radius:6px}
@@ -321,9 +326,10 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
  .launch-stack{width:72px;inset:auto 11% 28% auto}
  .launch-side-copy strong{font-size:20px}
  .launch-side-copy small{font-size:10px}
- .launch-deck-visual{min-height:120px;padding:8px}
- .launch-deck-visual .launch-art{width:73px}
- .launch-deck-copy{padding:9px}
+ .launch-deck{gap:6px;padding:6px;min-height:72px}
+ .launch-deck-visual{flex-basis:30px;width:30px}
+ .launch-deck-copy strong{font-size:13px}
+ .launch-deck-copy small{display:none}
 }
 </style>
 <main>
@@ -380,14 +386,10 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
         <button id="returnToGame" type="button" hidden>Zur laufenden Partie</button>
       </div>
     </div>
-    <label for="playFormat">Spielformat</label>
-    <select id="playFormat" aria-describedby="playFormatHint">
-      <option value="premiere">Premiere</option>
-      <option value="premiere-a-new-hope">Premiere + A New Hope</option>
-    </select>
+    <input id="playFormat" type="hidden" value="premiere">
     <p id="playFormatHint" class="hint"></p>
     <div id="launchSides" class="launch-side-grid"></div>
-    <div id="launchDeckGrid" class="launch-deck-grid" role="group" aria-label="Decks deiner Seite" hidden></div>
+    <div id="launchDeckGrid" aria-label="Decks deiner Seite" hidden></div>
     <div id="launchActions" class="launch-actions" hidden>
       <p id="launchSummary" class="launch-summary" aria-live="polite"></p>
       <div id="launchBotStyle" class="launch-bot-style" hidden>
@@ -558,9 +560,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.34"></script><script src="engine/premiere-game.js?v=2.15.34"></script><script src="engine/premiere-battle.js?v=2.15.34"></script><script src="engine/premiere-units.js?v=2.15.34"></script><script src="engine/premiere-locations.js?v=2.15.34"></script><script src="engine/premiere-weapons.js?v=2.15.34"></script><script src="engine/premiere-card-rules.js?v=2.15.34"></script><script src="engine/premiere-bot.js?v=2.15.34"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.34"></script><script>
+<script src="engine/premiere-data.js?v=2.15.35"></script><script src="engine/premiere-game.js?v=2.15.35"></script><script src="engine/premiere-battle.js?v=2.15.35"></script><script src="engine/premiere-units.js?v=2.15.35"></script><script src="engine/premiere-locations.js?v=2.15.35"></script><script src="engine/premiere-weapons.js?v=2.15.35"></script><script src="engine/premiere-card-rules.js?v=2.15.35"></script><script src="engine/premiere-bot.js?v=2.15.35"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.35"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.34';
+const trainerVersion='2.15.35';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -864,9 +866,8 @@ function renderLaunch(){
  el('configureGame').hidden=visible||!starterDecks||!deckChoices;
  if(!visible)return;
  el('playFormat').disabled=!!lesson;
- el('playFormatHint').textContent=lesson?'Geführte Übungen verwenden Premiere.':!formatDeckChoices?.[mixedFormat]?
-  'A New Hope konnte nicht geladen werden.':launchFormat()===mixedFormat?
-  'Die Deckauswahl enthält die bereits geprüften Karten aus A New Hope.':'In dieser Partie sind nur Karten aus Premiere erlaubt.';
+ el('playFormatHint').hidden=!lesson&&!!formatDeckChoices?.[mixedFormat];
+ el('playFormatHint').textContent=lesson?'Geführte Übungen verwenden Premiere.':'A New Hope konnte nicht geladen werden.';
  const sideStep=!lesson&&!launchFaction;
  el('launchTitle').textContent=lesson?'Geführte Übung':sideStep?'Wähle deine Seite':'Wähle dein Deck · '+sideName[launchFaction]+' Side';
  el('launchSides').hidden=!sideStep;
@@ -881,36 +882,49 @@ function renderLaunch(){
    +'<span class="launch-side-copy"><strong>'+name+' Side</strong><small>'+caption+'</small></span></button>';
  }).join('');
  if(!deckGrid.hidden){
-  const side=launchFaction,selected=deckId(selectedDeck(side).deck);
-  deckGrid.innerHTML=deckChoices[side].map(({deck})=>{
-   const id=deckId(deck),name=deckName(deck),cover=launchCover(side,deck);
-   const pick='chooseLaunchDeck('+JSON.stringify(id)+')';
-   const preview='showStarterDeck('+JSON.stringify(side)+','+JSON.stringify(id)+')';
-   return '<div class="launch-deck-tile launch-tone-'+side+'"><button type="button" class="launch-deck" data-deck="'+escapeHTML(id)+'" aria-pressed="'+(id===selected)
-    +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchArt(cover?.image,cover?.name??name)+'</span>'
-    +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>'
-    +'<button type="button" class="launch-deck-guide" aria-haspopup="dialog" aria-label="Strategie und Karten zu '+escapeHTML(name)
-    +' ansehen" onclick="'+escapeHTML(preview)+'">Strategie &amp; Karten</button></div>';
+  const side=launchFaction,selected=deckId(selectedDeck(side).deck),selectedFormat=launchFormat();
+  deckGrid.innerHTML=[premiereFormat,mixedFormat].flatMap(format=>{
+   const choices=formatDeckChoices?.[format]?.[side]?.filter(({deck})=>format===premiereFormat||deck.cards.some(card=>card.set===PremiereData.A_NEW_HOPE));
+   if(!choices?.length)return [];
+   const heading='launchDecks-'+format;
+   return ['<section class="launch-deck-section" aria-labelledby="'+heading+'" data-deck-format="'+format+'">'
+    +'<div class="launch-deck-heading"><h2 id="'+heading+'">'+(format===premiereFormat?'Premiere: Decks':'A New Hope: Deckauswahl')+'</h2><small>'+choices.length+' Decks'+(format===mixedFormat?' · Premiere + A New Hope':'')+'</small></div>'
+    +'<div class="launch-deck-grid">'+choices.map(({deck})=>{
+     const id=deckId(deck),name=deckName(deck),cover=launchCover(side,deck);
+     const pick='chooseLaunchDeck('+JSON.stringify(id)+','+JSON.stringify(format)+')';
+     const preview='showStarterDeck('+JSON.stringify(side)+','+JSON.stringify(id)+','+JSON.stringify(format)+')';
+     return '<div class="launch-deck-tile launch-tone-'+side+'"><button type="button" class="launch-deck" data-deck="'+escapeHTML(id)+'" data-format="'+format+'" aria-pressed="'+(id===selected&&format===selectedFormat)
+      +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchArt(cover?.image,cover?.name??name)+'</span>'
+      +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>'
+      +'<button type="button" class="launch-deck-guide" aria-haspopup="dialog" aria-label="Strategie und Karten zu '+escapeHTML(name)
+      +' ansehen" onclick="'+escapeHTML(preview)+'">Strategie &amp; Karten</button></div>';
+    }).join('')+'</div></section>'];
   }).join('');
  }
  renderLaunchSummary();
 }
 
 function chooseLaunchFaction(side){
+ if(!Object.hasOwn(launchFactions,side))return false;
  launchFaction=side;
  el('playerSideChoice').value=sideName[side];
+ if(launchFormat()===mixedFormat&&!selectedDeck(side).deck.cards.some(card=>card.set===PremiereData.A_NEW_HOPE))selectPlayFormat(premiereFormat);
  renderLaunch();
  el('launchTitle').focus();
 }
 
-function chooseLaunchDeck(id){
+function chooseLaunchDeck(id,format=launchFormat()){
+ if(!launchFaction||!formatDeckChoices?.[format]?.[launchFaction]?.some(({deck})=>deckId(deck)===id))return false;
+ if(!selectPlayFormat(format))return false;
  deckSelector(launchFaction).value=id;
- for(const button of el('launchDeckGrid').querySelectorAll('[data-deck]'))button.setAttribute('aria-pressed',String(button.dataset.deck===id));
+ for(const button of el('launchDeckGrid').querySelectorAll('[data-deck]'))button.setAttribute('aria-pressed',String(button.dataset.deck===id&&button.dataset.format===format));
+ previewStartingLocations();
  renderLaunchSummary();
+ return true;
 }
 
-function showStarterDeck(side,id){
- const choice=id===undefined?selectedDeck(side):deckChoices[side].find(({deck})=>deckId(deck)===id);
+function showStarterDeck(side,id,format=launchFormat()){
+ const choice=id===undefined?selectedDeck(side):formatDeckChoices?.[format]?.[side]?.find(({deck})=>deckId(deck)===id);
  if(!choice)return;
  const {deck:selected}=choice;
  const active=currentGame()?.starterDecks?.[side];
@@ -2668,8 +2682,6 @@ async function load(){try{
   [premiereFormat]:PremiereData.readFormatDeckChoices(premiereFormat,deckLists,themedLists,variants,cards),
   [mixedFormat]:expansion?PremiereData.readFormatDeckChoices(mixedFormat,deckLists,themedLists,variants,[...cards,...expansion]):null,
  };
- const mixedOption=el('playFormat').options?.[1];
- if(mixedOption)mixedOption.disabled=!formatDeckChoices[mixedFormat];
  selectPlayFormat(premiereFormat);
  for(const side of Object.keys(sideName)){
   const selector=deckSelector(side);
