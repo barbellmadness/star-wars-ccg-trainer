@@ -2,6 +2,7 @@ const PremiereBattle = (() => {
   function printedDestiny(card) {
     if (!card) return null;
     if (card.type === 'Location') return 0;
+    if (card.id === 'Light:319') return Math.PI;
     if (card.id === 'Dark:816' && /destiny equals zero/i.test(card.gametext ?? '')) return 0;
     return Number.isFinite(card.destiny) ? card.destiny : null;
   }

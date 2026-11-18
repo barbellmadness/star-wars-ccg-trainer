@@ -151,7 +151,7 @@ const PremiereBot = (() => {
       case 'automatedTarget': return action.targetSide === view.rival ? value(action.card) : -value(action.card);
       case 'timingTrigger': return action.effectValue;
       case 'duel': return action.effectValue - cost(view, action);
-      case 'battleEffect': case 'pileInterrupt': case 'cardInformation': case 'weaponEffect': case 'holocamPower':
+      case 'anhCharacter': case 'battleEffect': case 'pileInterrupt': case 'cardInformation': case 'weaponEffect': case 'holocamPower':
       case 'cancelTableEffect': case 'cancelNamedWeapon': case 'controlTheft': case 'deviceAction': case 'limitedResources':
       case 'lateralRepair': case 'lateralMechanic': case 'gravelStorm':
         return action.effectValue - cost(view, action);

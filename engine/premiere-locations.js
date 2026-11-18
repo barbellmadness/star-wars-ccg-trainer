@@ -16,6 +16,7 @@ const PremiereLocations = (() => {
     const result = [];
     function visit(card, slot, carriers = [], blocked = false, captive = false) {
       if (!card) return;
+      if(state.besiegedBattle?.cards.includes(card)){carriers=[];blocked=false;}
       const unavailable = blocked || inactive(card);
       const held = captive || !!card.captured;
       result.push({card, side, slot, carriers, unavailable, captive:held});
@@ -76,7 +77,7 @@ const PremiereLocations = (() => {
     for (const {card} of entries(state, side).filter(entry => entry.slot === slot && !entry.unavailable)) {
       if (card.undercover) continue;
       if (card.presence === true) return true;
-      if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)) continue;
+      if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)&&!['Light:694','Dark:1274'].includes(state.locations[slot]?.id)) continue;
       const value = ability(card);
       if (Number.isFinite(value)) known += value;
       else uncertain = true;
@@ -145,13 +146,13 @@ const PremiereLocations = (() => {
     const transit = ruleAt(state, slot, side, 'dockingTransit');
     return {interior: tags.includes('Interior'), exterior: tags.includes('Exterior'),
       scompLink: tags.includes('Scomp Link'), dockingBay: !!transit, transitCost: transit?.cost ?? null,
-      night: !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
+      night: !!ruleAt(state,slot,side,'alwaysNight') || !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
   }
 
   function forceGeneration(state, side) {
     let count = 1, unknown = 0;
     state.locations.forEach((card, slot) => {
-      if (!card) return;
+      if (!card || effectsAt(state, slot).some(effect => effect.justiceMode === 'generation')) return;
       const value = icons(state, slot, side);
       if (value === null) unknown++;
       else count += value;
@@ -159,6 +160,7 @@ const PremiereLocations = (() => {
     for (const {card, slot, unavailable} of entries(state, side)) {
       const location = state.locations[slot];
       if (!unavailable && card.id === 'Light:1593' && location &&
+          !effectsAt(state, slot).some(effect => effect.justiceMode === 'generation') &&
           !(state.game?.cardRulesVersion >= 7 && units.textSuppressed(card)) &&
           (system(location) || region(location) !== 'Tatooine')) count++;
     }

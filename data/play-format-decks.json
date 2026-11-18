@@ -21,60 +21,222 @@
             "Dark:678"
           ],
           "cards": [
-            { "id": "Dark:22", "count": 1 },
-            { "id": "Dark:79", "count": 1 },
-            { "id": "Dark:94", "count": 1 },
-            { "id": "Dark:146", "count": 1 },
-            { "id": "Dark:253", "count": 1 },
-            { "id": "Dark:262", "count": 1 },
-            { "id": "Dark:304", "count": 1 },
-            { "id": "Dark:391", "count": 1 },
-            { "id": "Dark:406", "count": 1 },
-            { "id": "Dark:489", "count": 1 },
-            { "id": "Dark:634", "count": 1 },
-            { "id": "Dark:665", "count": 1 },
-            { "id": "Dark:668", "count": 1 },
-            { "id": "Dark:669", "count": 1 },
-            { "id": "Dark:673", "count": 1 },
-            { "id": "Dark:675", "count": 1 },
-            { "id": "Dark:678", "count": 1 },
-            { "id": "Dark:682", "count": 1 },
-            { "id": "Dark:734", "count": 1 },
-            { "id": "Dark:777", "count": 1 },
-            { "id": "Dark:816", "count": 1 },
-            { "id": "Dark:830", "count": 1 },
-            { "id": "Dark:914", "count": 1 },
-            { "id": "Dark:934", "count": 1 },
-            { "id": "Dark:993", "count": 1 },
-            { "id": "Dark:1027", "count": 1 },
-            { "id": "Dark:1061", "count": 2 },
-            { "id": "Dark:1096", "count": 1 },
-            { "id": "Dark:1263", "count": 1 },
-            { "id": "Dark:1264", "count": 3 },
-            { "id": "Dark:1279", "count": 1 },
-            { "id": "Dark:1426", "count": 1 },
-            { "id": "Dark:1479", "count": 1 },
-            { "id": "Dark:1480", "count": 1 },
-            { "id": "Dark:1579", "count": 1 },
-            { "id": "Dark:1592", "count": 1 },
-            { "id": "Dark:1691", "count": 1 },
-            { "id": "Dark:1767", "count": 1 },
-            { "id": "Dark:1904", "count": 1 },
-            { "id": "Dark:1932", "count": 1 },
-            { "id": "Dark:2029", "count": 1 },
-            { "id": "Dark:2176", "count": 1 },
-            { "id": "Dark:2214", "count": 1 },
-            { "id": "Dark:2216", "count": 1 },
-            { "id": "Dark:2242", "count": 1 },
-            { "id": "Dark:2355", "count": 4 },
-            { "id": "Dark:2357", "count": 1 },
-            { "id": "Dark:2360", "count": 1 },
-            { "id": "Dark:2397", "count": 1 },
-            { "id": "Dark:2600", "count": 1 },
-            { "id": "Dark:2634", "count": 1 },
-            { "id": "Dark:2762", "count": 1 },
-            { "id": "Dark:2833", "count": 1 },
-            { "id": "Dark:2901", "count": 1 }
+            {
+              "id": "Dark:22",
+              "count": 1
+            },
+            {
+              "id": "Dark:79",
+              "count": 1
+            },
+            {
+              "id": "Dark:94",
+              "count": 1
+            },
+            {
+              "id": "Dark:146",
+              "count": 1
+            },
+            {
+              "id": "Dark:253",
+              "count": 1
+            },
+            {
+              "id": "Dark:262",
+              "count": 1
+            },
+            {
+              "id": "Dark:304",
+              "count": 1
+            },
+            {
+              "id": "Dark:391",
+              "count": 1
+            },
+            {
+              "id": "Dark:406",
+              "count": 1
+            },
+            {
+              "id": "Dark:489",
+              "count": 1
+            },
+            {
+              "id": "Dark:634",
+              "count": 1
+            },
+            {
+              "id": "Dark:665",
+              "count": 1
+            },
+            {
+              "id": "Dark:668",
+              "count": 1
+            },
+            {
+              "id": "Dark:669",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:675",
+              "count": 1
+            },
+            {
+              "id": "Dark:678",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:734",
+              "count": 1
+            },
+            {
+              "id": "Dark:777",
+              "count": 1
+            },
+            {
+              "id": "Dark:816",
+              "count": 1
+            },
+            {
+              "id": "Dark:830",
+              "count": 1
+            },
+            {
+              "id": "Dark:914",
+              "count": 1
+            },
+            {
+              "id": "Dark:934",
+              "count": 1
+            },
+            {
+              "id": "Dark:993",
+              "count": 1
+            },
+            {
+              "id": "Dark:1027",
+              "count": 1
+            },
+            {
+              "id": "Dark:1061",
+              "count": 2
+            },
+            {
+              "id": "Dark:1096",
+              "count": 1
+            },
+            {
+              "id": "Dark:1263",
+              "count": 1
+            },
+            {
+              "id": "Dark:1264",
+              "count": 3
+            },
+            {
+              "id": "Dark:1279",
+              "count": 1
+            },
+            {
+              "id": "Dark:1426",
+              "count": 1
+            },
+            {
+              "id": "Dark:1479",
+              "count": 1
+            },
+            {
+              "id": "Dark:1480",
+              "count": 1
+            },
+            {
+              "id": "Dark:1579",
+              "count": 1
+            },
+            {
+              "id": "Dark:1592",
+              "count": 1
+            },
+            {
+              "id": "Dark:1691",
+              "count": 1
+            },
+            {
+              "id": "Dark:1767",
+              "count": 1
+            },
+            {
+              "id": "Dark:1904",
+              "count": 1
+            },
+            {
+              "id": "Dark:1932",
+              "count": 1
+            },
+            {
+              "id": "Dark:2029",
+              "count": 1
+            },
+            {
+              "id": "Dark:2176",
+              "count": 1
+            },
+            {
+              "id": "Dark:2214",
+              "count": 1
+            },
+            {
+              "id": "Dark:2216",
+              "count": 1
+            },
+            {
+              "id": "Dark:2242",
+              "count": 1
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:2357",
+              "count": 1
+            },
+            {
+              "id": "Dark:2360",
+              "count": 1
+            },
+            {
+              "id": "Dark:2397",
+              "count": 1
+            },
+            {
+              "id": "Dark:2600",
+              "count": 1
+            },
+            {
+              "id": "Dark:2634",
+              "count": 1
+            },
+            {
+              "id": "Dark:2762",
+              "count": 1
+            },
+            {
+              "id": "Dark:2833",
+              "count": 1
+            },
+            {
+              "id": "Dark:2901",
+              "count": 1
+            }
           ]
         }
       ]
@@ -98,48 +260,946 @@
             "Light:2853"
           ],
           "cards": [
-            { "id": "Light:239", "count": 3 },
-            { "id": "Light:259", "count": 1 },
-            { "id": "Light:608", "count": 3 },
-            { "id": "Light:1778", "count": 1 },
-            { "id": "Light:1050", "count": 1 },
-            { "id": "Light:1593", "count": 1 },
-            { "id": "Light:1924", "count": 1 },
-            { "id": "Light:1962", "count": 2 },
-            { "id": "Light:2040", "count": 2 },
-            { "id": "Light:2052", "count": 2 },
-            { "id": "Light:2057", "count": 3 },
-            { "id": "Light:2060", "count": 2 },
-            { "id": "Light:2067", "count": 3 },
-            { "id": "Light:2447", "count": 1 },
-            { "id": "Light:2838", "count": 3 },
-            { "id": "Light:2849", "count": 2 },
-            { "id": "Light:2853", "count": 1 },
-            { "id": "Light:2859", "count": 1 },
-            { "id": "Light:2418", "count": 3 },
-            { "id": "Light:2035", "count": 1 },
-            { "id": "Light:2389", "count": 1 },
-            { "id": "Light:2907", "count": 2 },
-            { "id": "Light:318", "count": 1 },
-            { "id": "Light:1606", "count": 1 },
-            { "id": "Light:2059", "count": 1 },
-            { "id": "Light:2003", "count": 1 },
-            { "id": "Light:2786", "count": 1 },
-            { "id": "Light:534", "count": 1 },
-            { "id": "Light:504", "count": 1 },
-            { "id": "Light:1572", "count": 1 },
-            { "id": "Light:493", "count": 1 },
-            { "id": "Light:527", "count": 1 },
-            { "id": "Light:2017", "count": 1 },
-            { "id": "Light:255", "count": 1 },
-            { "id": "Light:1081", "count": 1 },
-            { "id": "Light:1183", "count": 1 },
-            { "id": "Light:751", "count": 1 },
-            { "id": "Light:1013", "count": 1 },
-            { "id": "Light:1242", "count": 1 },
-            { "id": "Light:2857", "count": 1 },
-            { "id": "Light:2056", "count": 1 },
-            { "id": "Light:2063", "count": 1 }
+            {
+              "id": "Light:239",
+              "count": 2
+            },
+            {
+              "id": "Light:762",
+              "count": 1
+            },
+            {
+              "id": "Light:608",
+              "count": 1
+            },
+            {
+              "id": "Light:2173",
+              "count": 1
+            },
+            {
+              "id": "Light:2673",
+              "count": 1
+            },
+            {
+              "id": "Light:1778",
+              "count": 1
+            },
+            {
+              "id": "Light:1050",
+              "count": 1
+            },
+            {
+              "id": "Light:1593",
+              "count": 1
+            },
+            {
+              "id": "Light:1924",
+              "count": 1
+            },
+            {
+              "id": "Light:1962",
+              "count": 1
+            },
+            {
+              "id": "Light:282",
+              "count": 1
+            },
+            {
+              "id": "Light:819",
+              "count": 1
+            },
+            {
+              "id": "Light:127",
+              "count": 1
+            },
+            {
+              "id": "Light:2052",
+              "count": 1
+            },
+            {
+              "id": "Light:1605",
+              "count": 1
+            },
+            {
+              "id": "Light:2057",
+              "count": 1
+            },
+            {
+              "id": "Light:1229",
+              "count": 1
+            },
+            {
+              "id": "Light:1495",
+              "count": 1
+            },
+            {
+              "id": "Light:2060",
+              "count": 2
+            },
+            {
+              "id": "Light:2067",
+              "count": 1
+            },
+            {
+              "id": "Light:1668",
+              "count": 1
+            },
+            {
+              "id": "Light:1413",
+              "count": 1
+            },
+            {
+              "id": "Light:2447",
+              "count": 1
+            },
+            {
+              "id": "Light:2838",
+              "count": 2
+            },
+            {
+              "id": "Light:2151",
+              "count": 1
+            },
+            {
+              "id": "Light:2849",
+              "count": 2
+            },
+            {
+              "id": "Light:2853",
+              "count": 1
+            },
+            {
+              "id": "Light:2859",
+              "count": 1
+            },
+            {
+              "id": "Light:2418",
+              "count": 3
+            },
+            {
+              "id": "Light:2035",
+              "count": 1
+            },
+            {
+              "id": "Light:2389",
+              "count": 1
+            },
+            {
+              "id": "Light:2907",
+              "count": 1
+            },
+            {
+              "id": "Light:1872",
+              "count": 1
+            },
+            {
+              "id": "Light:318",
+              "count": 1
+            },
+            {
+              "id": "Light:1606",
+              "count": 1
+            },
+            {
+              "id": "Light:2059",
+              "count": 1
+            },
+            {
+              "id": "Light:2003",
+              "count": 1
+            },
+            {
+              "id": "Light:2786",
+              "count": 1
+            },
+            {
+              "id": "Light:534",
+              "count": 1
+            },
+            {
+              "id": "Light:504",
+              "count": 1
+            },
+            {
+              "id": "Light:1572",
+              "count": 1
+            },
+            {
+              "id": "Light:493",
+              "count": 1
+            },
+            {
+              "id": "Light:527",
+              "count": 1
+            },
+            {
+              "id": "Light:2017",
+              "count": 1
+            },
+            {
+              "id": "Light:255",
+              "count": 1
+            },
+            {
+              "id": "Light:1081",
+              "count": 1
+            },
+            {
+              "id": "Light:1183",
+              "count": 1
+            },
+            {
+              "id": "Light:751",
+              "count": 1
+            },
+            {
+              "id": "Light:1013",
+              "count": 1
+            },
+            {
+              "id": "Light:1242",
+              "count": 1
+            },
+            {
+              "id": "Light:2857",
+              "count": 1
+            },
+            {
+              "id": "Light:2056",
+              "count": 1
+            },
+            {
+              "id": "Light:2063",
+              "count": 1
+            },
+            {
+              "id": "Light:259",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "tatooine-verbuendete",
+            "name": "Tatooines Verbündete",
+            "description": "Aliens aus der Cantina und die Lars-Familie halten Tatooine mit Landspeedern und Utility Belts."
+          },
+          "strategy": {
+            "start": "Beginne auf Lars’ Moisture Farm, wenn du mit der Lars-Familie und Luke spielen willst. Obi-Wan’s Hut ist eine Alternative für einen günstigen Einsatz von Obi-Wan.",
+            "opening": "Platziere Beru, Owen oder Luke im SoroSuub V-35 Landspeeder, damit er frei fahren kann. Stelle eine zweite Figur an einer Nachbar-Site auf, damit du zwischen den Orten wechseln kannst.",
+            "tactics": "Rüste einen Speeder mit Sensor Panel aus und nutze Radar Scanner mit Scanner Techs. Het Nkik und die Jawa Ion Gun machen gegnerischen Droiden und Sturmtruppen das Leben schwer."
+          },
+          "startingLocations": [
+            "Light:2471",
+            "Light:2440",
+            "Light:2462"
+          ],
+          "cards": [
+            {
+              "id": "Light:2",
+              "count": 1
+            },
+            {
+              "id": "Light:529",
+              "count": 1
+            },
+            {
+              "id": "Light:221",
+              "count": 1
+            },
+            {
+              "id": "Light:2174",
+              "count": 1
+            },
+            {
+              "id": "Light:259",
+              "count": 2
+            },
+            {
+              "id": "Light:1705",
+              "count": 1
+            },
+            {
+              "id": "Light:348",
+              "count": 2
+            },
+            {
+              "id": "Light:2222",
+              "count": 1
+            },
+            {
+              "id": "Light:1752",
+              "count": 1
+            },
+            {
+              "id": "Light:1039",
+              "count": 1
+            },
+            {
+              "id": "Light:1098",
+              "count": 1
+            },
+            {
+              "id": "Light:1196",
+              "count": 1
+            },
+            {
+              "id": "Light:1373",
+              "count": 1
+            },
+            {
+              "id": "Light:1380",
+              "count": 1
+            },
+            {
+              "id": "Light:1386",
+              "count": 1
+            },
+            {
+              "id": "Light:1407",
+              "count": 1
+            },
+            {
+              "id": "Light:1455",
+              "count": 1
+            },
+            {
+              "id": "Light:1489",
+              "count": 1
+            },
+            {
+              "id": "Light:1554",
+              "count": 1
+            },
+            {
+              "id": "Light:1593",
+              "count": 1
+            },
+            {
+              "id": "Light:1609",
+              "count": 1
+            },
+            {
+              "id": "Light:1755",
+              "count": 1
+            },
+            {
+              "id": "Light:1778",
+              "count": 1
+            },
+            {
+              "id": "Light:1803",
+              "count": 2
+            },
+            {
+              "id": "Light:1813",
+              "count": 1
+            },
+            {
+              "id": "Light:2011",
+              "count": 1
+            },
+            {
+              "id": "Light:1883",
+              "count": 1
+            },
+            {
+              "id": "Light:2052",
+              "count": 2
+            },
+            {
+              "id": "Light:2100",
+              "count": 2
+            },
+            {
+              "id": "Light:2157",
+              "count": 1
+            },
+            {
+              "id": "Light:2161",
+              "count": 1
+            },
+            {
+              "id": "Light:2250",
+              "count": 2
+            },
+            {
+              "id": "Light:2297",
+              "count": 1
+            },
+            {
+              "id": "Light:2307",
+              "count": 2
+            },
+            {
+              "id": "Light:2412",
+              "count": 1
+            },
+            {
+              "id": "Light:2430",
+              "count": 1
+            },
+            {
+              "id": "Light:2435",
+              "count": 1
+            },
+            {
+              "id": "Light:2440",
+              "count": 1
+            },
+            {
+              "id": "Light:2447",
+              "count": 1
+            },
+            {
+              "id": "Light:2448",
+              "count": 1
+            },
+            {
+              "id": "Light:2462",
+              "count": 2
+            },
+            {
+              "id": "Light:2466",
+              "count": 1
+            },
+            {
+              "id": "Light:2471",
+              "count": 1
+            },
+            {
+              "id": "Light:2531",
+              "count": 1
+            },
+            {
+              "id": "Light:2514",
+              "count": 1
+            },
+            {
+              "id": "Light:2916",
+              "count": 1
+            },
+            {
+              "id": "Light:2785",
+              "count": 1
+            },
+            {
+              "id": "Light:1136",
+              "count": 1
+            },
+            {
+              "id": "Light:1189",
+              "count": 1
+            },
+            {
+              "id": "Light:1377",
+              "count": 1
+            },
+            {
+              "id": "Light:2658",
+              "count": 1
+            },
+            {
+              "id": "Light:942",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "rote-staffel",
+            "name": "Trench-Staffel",
+            "description": "Rüste Red 5 oder Gold 2 vor dem Anflug mit Proton Torpedoes aus. Luke und Tiree sind passende Piloten."
+          },
+          "strategy": {
+            "start": "Briefing Room oder Massassi War Room bauen die Einsatzleitung auf. Dantooine liefert zusätzliche Force.",
+            "opening": "Rüste Red 5 oder Gold 2 vor dem Anflug mit Proton Torpedoes aus. Luke und Tiree sind passende Piloten.",
+            "tactics": "Rebel Techs verstärken Attack Run kumulativ. Gold 2 kann einen getroffenen Jäger retten, All Clear entfernt einen einzelnen TIE. Light Squadrons bleiben außerhalb der Trench."
+          },
+          "startingLocations": [
+            "Light:2851",
+            "Light:2859",
+            "Light:608"
+          ],
+          "cards": [
+            {
+              "id": "Light:64",
+              "count": 1
+            },
+            {
+              "id": "Light:100",
+              "count": 1
+            },
+            {
+              "id": "Light:169",
+              "count": 1
+            },
+            {
+              "id": "Light:681",
+              "count": 1
+            },
+            {
+              "id": "Light:1047",
+              "count": 1
+            },
+            {
+              "id": "Light:1298",
+              "count": 1
+            },
+            {
+              "id": "Light:1992",
+              "count": 1
+            },
+            {
+              "id": "Light:2050",
+              "count": 1
+            },
+            {
+              "id": "Light:2061",
+              "count": 1
+            },
+            {
+              "id": "Light:2563",
+              "count": 1
+            },
+            {
+              "id": "Light:2611",
+              "count": 1
+            },
+            {
+              "id": "Light:2908",
+              "count": 1
+            },
+            {
+              "id": "Light:2851",
+              "count": 1
+            },
+            {
+              "id": "Light:2892",
+              "count": 1
+            },
+            {
+              "id": "Light:1962",
+              "count": 4
+            },
+            {
+              "id": "Light:2838",
+              "count": 1
+            },
+            {
+              "id": "Light:2907",
+              "count": 1
+            },
+            {
+              "id": "Light:1593",
+              "count": 2
+            },
+            {
+              "id": "Light:608",
+              "count": 3
+            },
+            {
+              "id": "Light:2859",
+              "count": 1
+            },
+            {
+              "id": "Light:24",
+              "count": 1
+            },
+            {
+              "id": "Light:239",
+              "count": 3
+            },
+            {
+              "id": "Light:259",
+              "count": 2
+            },
+            {
+              "id": "Light:483",
+              "count": 1
+            },
+            {
+              "id": "Light:799",
+              "count": 1
+            },
+            {
+              "id": "Light:826",
+              "count": 1
+            },
+            {
+              "id": "Light:994",
+              "count": 1
+            },
+            {
+              "id": "Light:1050",
+              "count": 1
+            },
+            {
+              "id": "Light:1390",
+              "count": 2
+            },
+            {
+              "id": "Light:1874",
+              "count": 1
+            },
+            {
+              "id": "Light:1924",
+              "count": 1
+            },
+            {
+              "id": "Light:2040",
+              "count": 7
+            },
+            {
+              "id": "Light:2052",
+              "count": 5
+            },
+            {
+              "id": "Light:2057",
+              "count": 3
+            },
+            {
+              "id": "Light:2060",
+              "count": 3
+            },
+            {
+              "id": "Light:2067",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "droidenstuetzpunkt",
+            "name": "Sandcrawler-Rettungsteam",
+            "description": "Ein Sandcrawler mit Fahrer und Loading Bay bietet einen eigenen Innenraum. Binary verbessert Forfeit und RA-7 verteilt Waffen."
+          },
+          "strategy": {
+            "start": "Baue an zusammenhängenden Tatooine-Sites eine Droidenbasis auf.",
+            "opening": "Ein Sandcrawler mit Fahrer und Loading Bay bietet einen eigenen Innenraum. Binary verbessert Forfeit und RA-7 verteilt Waffen.",
+            "tactics": "Die Suction Tube verlegt Characters auf Used oder in den zugehörigen Innenraum. Ein Spy oder Leader erfüllt Cell 2187. Fire Extinguisher schützt Droiden und Schiff."
+          },
+          "startingLocations": [
+            "Light:2447",
+            "Light:2448",
+            "Light:2440"
+          ],
+          "cards": [
+            {
+              "id": "Light:385",
+              "count": 1
+            },
+            {
+              "id": "Light:943",
+              "count": 1
+            },
+            {
+              "id": "Light:1674",
+              "count": 1
+            },
+            {
+              "id": "Light:1619",
+              "count": 1
+            },
+            {
+              "id": "Light:2006",
+              "count": 1
+            },
+            {
+              "id": "Light:2082",
+              "count": 1
+            },
+            {
+              "id": "Light:2165",
+              "count": 1
+            },
+            {
+              "id": "Light:2298",
+              "count": 1
+            },
+            {
+              "id": "Light:2161",
+              "count": 1
+            },
+            {
+              "id": "Light:343",
+              "count": 3
+            },
+            {
+              "id": "Light:1995",
+              "count": 3
+            },
+            {
+              "id": "Light:1373",
+              "count": 1
+            },
+            {
+              "id": "Light:1495",
+              "count": 1
+            },
+            {
+              "id": "Light:2052",
+              "count": 5
+            },
+            {
+              "id": "Light:2447",
+              "count": 2
+            },
+            {
+              "id": "Light:2448",
+              "count": 1
+            },
+            {
+              "id": "Light:2440",
+              "count": 1
+            },
+            {
+              "id": "Light:95",
+              "count": 1
+            },
+            {
+              "id": "Light:265",
+              "count": 3
+            },
+            {
+              "id": "Light:593",
+              "count": 1
+            },
+            {
+              "id": "Light:608",
+              "count": 1
+            },
+            {
+              "id": "Light:781",
+              "count": 2
+            },
+            {
+              "id": "Light:1021",
+              "count": 2
+            },
+            {
+              "id": "Light:1050",
+              "count": 2
+            },
+            {
+              "id": "Light:1331",
+              "count": 1
+            },
+            {
+              "id": "Light:1593",
+              "count": 2
+            },
+            {
+              "id": "Light:1609",
+              "count": 2
+            },
+            {
+              "id": "Light:1643",
+              "count": 2
+            },
+            {
+              "id": "Light:1962",
+              "count": 1
+            },
+            {
+              "id": "Light:2000",
+              "count": 2
+            },
+            {
+              "id": "Light:2033",
+              "count": 2
+            },
+            {
+              "id": "Light:2038",
+              "count": 2
+            },
+            {
+              "id": "Light:2040",
+              "count": 2
+            },
+            {
+              "id": "Light:2041",
+              "count": 1
+            },
+            {
+              "id": "Light:2060",
+              "count": 2
+            },
+            {
+              "id": "Light:2217",
+              "count": 2
+            },
+            {
+              "id": "Light:2307",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "jedi-auf-tatooine",
+            "name": "Cantina und Hologame",
+            "description": "Sichere Orte mit Premiere-Characters und den neuen Verbündeten. Halte Force für Antworten zurück."
+          },
+          "strategy": {
+            "start": "Beginne in der Cantina oder an einer benachbarten Tatooine-Site.",
+            "opening": "Sichere Orte mit Premiere-Characters und den neuen Verbündeten. Halte Force für Antworten zurück.",
+            "tactics": "Brainiac reagiert auf Hände und Force-Icons. Am Hologameboard wird Destiny zum Spielwert. Interrupt-Fänger begrenzen wiederholte Störaktionen."
+          },
+          "startingLocations": [
+            "Light:2440",
+            "Light:2447",
+            "Light:2448"
+          ],
+          "cards": [
+            {
+              "id": "Light:319",
+              "count": 1
+            },
+            {
+              "id": "Light:394",
+              "count": 1
+            },
+            {
+              "id": "Light:416",
+              "count": 1
+            },
+            {
+              "id": "Light:509",
+              "count": 1
+            },
+            {
+              "id": "Light:694",
+              "count": 1
+            },
+            {
+              "id": "Light:1062",
+              "count": 1
+            },
+            {
+              "id": "Light:1214",
+              "count": 1
+            },
+            {
+              "id": "Light:1507",
+              "count": 1
+            },
+            {
+              "id": "Light:1987",
+              "count": 1
+            },
+            {
+              "id": "Light:2048",
+              "count": 1
+            },
+            {
+              "id": "Light:2125",
+              "count": 1
+            },
+            {
+              "id": "Light:2308",
+              "count": 1
+            },
+            {
+              "id": "Light:2802",
+              "count": 1
+            },
+            {
+              "id": "Light:2824",
+              "count": 1
+            },
+            {
+              "id": "Light:2440",
+              "count": 1
+            },
+            {
+              "id": "Light:2447",
+              "count": 1
+            },
+            {
+              "id": "Light:2448",
+              "count": 1
+            },
+            {
+              "id": "Light:95",
+              "count": 2
+            },
+            {
+              "id": "Light:265",
+              "count": 2
+            },
+            {
+              "id": "Light:1039",
+              "count": 3
+            },
+            {
+              "id": "Light:1098",
+              "count": 2
+            },
+            {
+              "id": "Light:1331",
+              "count": 2
+            },
+            {
+              "id": "Light:1386",
+              "count": 2
+            },
+            {
+              "id": "Light:1389",
+              "count": 2
+            },
+            {
+              "id": "Light:1407",
+              "count": 2
+            },
+            {
+              "id": "Light:1495",
+              "count": 2
+            },
+            {
+              "id": "Light:1554",
+              "count": 2
+            },
+            {
+              "id": "Light:1593",
+              "count": 3
+            },
+            {
+              "id": "Light:1643",
+              "count": 1
+            },
+            {
+              "id": "Light:1749",
+              "count": 2
+            },
+            {
+              "id": "Light:1803",
+              "count": 3
+            },
+            {
+              "id": "Light:1810",
+              "count": 1
+            },
+            {
+              "id": "Light:1813",
+              "count": 2
+            },
+            {
+              "id": "Light:2033",
+              "count": 2
+            },
+            {
+              "id": "Light:2038",
+              "count": 2
+            },
+            {
+              "id": "Light:2052",
+              "count": 5
+            },
+            {
+              "id": "Light:2110",
+              "count": 1
+            }
           ]
         }
       ],
@@ -162,66 +1222,1038 @@
             "Dark:654"
           ],
           "cards": [
-            { "id": "Dark:22", "count": 1 },
-            { "id": "Dark:79", "count": 1 },
-            { "id": "Dark:94", "count": 1 },
-            { "id": "Dark:146", "count": 1 },
-            { "id": "Dark:406", "count": 1 },
-            { "id": "Dark:489", "count": 1 },
-            { "id": "Dark:634", "count": 1 },
-            { "id": "Dark:654", "count": 1 },
-            { "id": "Dark:665", "count": 1 },
-            { "id": "Dark:667", "count": 1 },
-            { "id": "Dark:668", "count": 1 },
-            { "id": "Dark:669", "count": 1 },
-            { "id": "Dark:673", "count": 1 },
-            { "id": "Dark:675", "count": 1 },
-            { "id": "Dark:678", "count": 1 },
-            { "id": "Dark:682", "count": 1 },
-            { "id": "Dark:734", "count": 1 },
-            { "id": "Dark:777", "count": 1 },
-            { "id": "Dark:914", "count": 1 },
-            { "id": "Dark:934", "count": 1 },
-            { "id": "Dark:2373", "count": 1 },
-            { "id": "Dark:1688", "count": 1 },
-            { "id": "Dark:1061", "count": 1 },
-            { "id": "Dark:1279", "count": 1 },
-            { "id": "Dark:1479", "count": 1 },
-            { "id": "Dark:1697", "count": 1 },
-            { "id": "Dark:2103", "count": 1 },
-            { "id": "Dark:2214", "count": 1 },
-            { "id": "Dark:2216", "count": 1 },
-            { "id": "Dark:2242", "count": 1 },
-            { "id": "Dark:2360", "count": 1 },
-            { "id": "Dark:2600", "count": 1 },
-            { "id": "Dark:2634", "count": 1 },
-            { "id": "Dark:2901", "count": 1 },
-            { "id": "Dark:1340", "count": 1 },
-            { "id": "Dark:1588", "count": 1 },
-            { "id": "Dark:1700", "count": 1 },
-            { "id": "Dark:872", "count": 1 },
-            { "id": "Dark:1267", "count": 1 },
-            { "id": "Dark:2094", "count": 1 },
-            { "id": "Dark:247", "count": 1 },
-            { "id": "Dark:249", "count": 1 },
-            { "id": "Dark:2687", "count": 1 },
-            { "id": "Dark:2715", "count": 1 },
-            { "id": "Dark:723", "count": 1 },
-            { "id": "Dark:362", "count": 1 },
-            { "id": "Dark:611", "count": 1 },
-            { "id": "Dark:2002", "count": 1 },
-            { "id": "Dark:2683", "count": 1 },
-            { "id": "Dark:153", "count": 1 },
-            { "id": "Dark:1824", "count": 1 },
-            { "id": "Dark:2016", "count": 1 },
-            { "id": "Dark:1035", "count": 1 },
-            { "id": "Dark:2368", "count": 1 },
-            { "id": "Dark:2117", "count": 1 },
-            { "id": "Dark:250", "count": 1 },
-            { "id": "Dark:792", "count": 1 },
-            { "id": "Dark:2604", "count": 1 },
-            { "id": "Dark:1576", "count": 1 },
-            { "id": "Dark:1237", "count": 1 }
+            {
+              "id": "Dark:1587",
+              "count": 1
+            },
+            {
+              "id": "Dark:79",
+              "count": 1
+            },
+            {
+              "id": "Dark:94",
+              "count": 1
+            },
+            {
+              "id": "Dark:2659",
+              "count": 1
+            },
+            {
+              "id": "Dark:406",
+              "count": 1
+            },
+            {
+              "id": "Dark:1308",
+              "count": 1
+            },
+            {
+              "id": "Dark:634",
+              "count": 1
+            },
+            {
+              "id": "Dark:654",
+              "count": 1
+            },
+            {
+              "id": "Dark:1496",
+              "count": 1
+            },
+            {
+              "id": "Dark:667",
+              "count": 1
+            },
+            {
+              "id": "Dark:668",
+              "count": 1
+            },
+            {
+              "id": "Dark:669",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:675",
+              "count": 1
+            },
+            {
+              "id": "Dark:678",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:2577",
+              "count": 1
+            },
+            {
+              "id": "Dark:2672",
+              "count": 1
+            },
+            {
+              "id": "Dark:1412",
+              "count": 1
+            },
+            {
+              "id": "Dark:2075",
+              "count": 1
+            },
+            {
+              "id": "Dark:2373",
+              "count": 1
+            },
+            {
+              "id": "Dark:2176",
+              "count": 1
+            },
+            {
+              "id": "Dark:1061",
+              "count": 1
+            },
+            {
+              "id": "Dark:262",
+              "count": 1
+            },
+            {
+              "id": "Dark:2613",
+              "count": 1
+            },
+            {
+              "id": "Dark:1697",
+              "count": 1
+            },
+            {
+              "id": "Dark:2103",
+              "count": 1
+            },
+            {
+              "id": "Dark:487",
+              "count": 1
+            },
+            {
+              "id": "Dark:2216",
+              "count": 1
+            },
+            {
+              "id": "Dark:1198",
+              "count": 1
+            },
+            {
+              "id": "Dark:519",
+              "count": 1
+            },
+            {
+              "id": "Dark:2600",
+              "count": 1
+            },
+            {
+              "id": "Dark:626",
+              "count": 1
+            },
+            {
+              "id": "Dark:1376",
+              "count": 1
+            },
+            {
+              "id": "Dark:1340",
+              "count": 1
+            },
+            {
+              "id": "Dark:1588",
+              "count": 1
+            },
+            {
+              "id": "Dark:1700",
+              "count": 1
+            },
+            {
+              "id": "Dark:872",
+              "count": 1
+            },
+            {
+              "id": "Dark:1267",
+              "count": 1
+            },
+            {
+              "id": "Dark:2094",
+              "count": 1
+            },
+            {
+              "id": "Dark:1994",
+              "count": 1
+            },
+            {
+              "id": "Dark:1999",
+              "count": 1
+            },
+            {
+              "id": "Dark:2687",
+              "count": 1
+            },
+            {
+              "id": "Dark:2715",
+              "count": 1
+            },
+            {
+              "id": "Dark:723",
+              "count": 1
+            },
+            {
+              "id": "Dark:362",
+              "count": 1
+            },
+            {
+              "id": "Dark:611",
+              "count": 1
+            },
+            {
+              "id": "Dark:2002",
+              "count": 1
+            },
+            {
+              "id": "Dark:2683",
+              "count": 1
+            },
+            {
+              "id": "Dark:153",
+              "count": 1
+            },
+            {
+              "id": "Dark:1824",
+              "count": 1
+            },
+            {
+              "id": "Dark:2016",
+              "count": 1
+            },
+            {
+              "id": "Dark:1035",
+              "count": 1
+            },
+            {
+              "id": "Dark:2368",
+              "count": 1
+            },
+            {
+              "id": "Dark:2117",
+              "count": 1
+            },
+            {
+              "id": "Dark:250",
+              "count": 1
+            },
+            {
+              "id": "Dark:792",
+              "count": 1
+            },
+            {
+              "id": "Dark:2604",
+              "count": 1
+            },
+            {
+              "id": "Dark:2392",
+              "count": 1
+            },
+            {
+              "id": "Dark:1275",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "tusken-ueberfall",
+            "name": "Überfall im Jundland",
+            "description": "Tusken Raiders kämpfen mit Banthas und Gaderffii-Stöcken. Die Cantina liefert Verstärkung für den Boden."
+          },
+          "strategy": {
+            "start": "Beginne bei Jundland Wastes für frühe Kämpfe an Außen-Sites. Cantina ist die Alternative, wenn du zuerst Aliens ausspielen willst.",
+            "opening": "Bring Tusken Raider und Bantha in dieselbe Region. Ein Gaderffii Stick auf einem Tusken Raider ist eine Möglichkeit, schon bei der Kampferöffnung einzugreifen.",
+            "tactics": "Lass einen Bantha für einen React bereit und nutze die günstigeren Stormtrooper für weniger umkämpfte Sites. Dr. Evazan kann bei passenden Treffern zusätzlichen Druck machen."
+          },
+          "startingLocations": [
+            "Dark:2458",
+            "Dark:2439",
+            "Dark:2465"
+          ],
+          "cards": [
+            {
+              "id": "Dark:191",
+              "count": 3
+            },
+            {
+              "id": "Dark:347",
+              "count": 2
+            },
+            {
+              "id": "Dark:467",
+              "count": 1
+            },
+            {
+              "id": "Dark:649",
+              "count": 1
+            },
+            {
+              "id": "Dark:741",
+              "count": 2
+            },
+            {
+              "id": "Dark:768",
+              "count": 1
+            },
+            {
+              "id": "Dark:824",
+              "count": 1
+            },
+            {
+              "id": "Dark:934",
+              "count": 1
+            },
+            {
+              "id": "Dark:1002",
+              "count": 3
+            },
+            {
+              "id": "Dark:1011",
+              "count": 2
+            },
+            {
+              "id": "Dark:1064",
+              "count": 1
+            },
+            {
+              "id": "Dark:1264",
+              "count": 2
+            },
+            {
+              "id": "Dark:1338",
+              "count": 1
+            },
+            {
+              "id": "Dark:1372",
+              "count": 1
+            },
+            {
+              "id": "Dark:1378",
+              "count": 1
+            },
+            {
+              "id": "Dark:1430",
+              "count": 1
+            },
+            {
+              "id": "Dark:1440",
+              "count": 1
+            },
+            {
+              "id": "Dark:1445",
+              "count": 1
+            },
+            {
+              "id": "Dark:1460",
+              "count": 1
+            },
+            {
+              "id": "Dark:1613",
+              "count": 1
+            },
+            {
+              "id": "Dark:1617",
+              "count": 1
+            },
+            {
+              "id": "Dark:1720",
+              "count": 1
+            },
+            {
+              "id": "Dark:1922",
+              "count": 1
+            },
+            {
+              "id": "Dark:1958",
+              "count": 1
+            },
+            {
+              "id": "Dark:2099",
+              "count": 2
+            },
+            {
+              "id": "Dark:2160",
+              "count": 1
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:2360",
+              "count": 2
+            },
+            {
+              "id": "Dark:2373",
+              "count": 1
+            },
+            {
+              "id": "Dark:2429",
+              "count": 2
+            },
+            {
+              "id": "Dark:2439",
+              "count": 1
+            },
+            {
+              "id": "Dark:2446",
+              "count": 2
+            },
+            {
+              "id": "Dark:2458",
+              "count": 1
+            },
+            {
+              "id": "Dark:2461",
+              "count": 2
+            },
+            {
+              "id": "Dark:2465",
+              "count": 2
+            },
+            {
+              "id": "Dark:2648",
+              "count": 2
+            },
+            {
+              "id": "Dark:2650",
+              "count": 1
+            },
+            {
+              "id": "Dark:2660",
+              "count": 2
+            },
+            {
+              "id": "Dark:2884",
+              "count": 1
+            },
+            {
+              "id": "Dark:2490",
+              "count": 1
+            },
+            {
+              "id": "Dark:1831",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "schwarze-staffel",
+            "name": "Todesstern-Kommando",
+            "description": "Installiere den Superlaser vor der Bewegung. Gunners verstärken Commence Primary Ignition und TIEs verteidigen die Trench."
+          },
+          "strategy": {
+            "start": "Death Star startet bei Parsec 0; die War Room oder Conference Room beginnen die Besatzung.",
+            "opening": "Installiere den Superlaser vor der Bewegung. Gunners verstärken Commence Primary Ignition und TIEs verteidigen die Trench.",
+            "tactics": "Umkreise ein Planetensystem, bevor du CPI spielst. Seine Site-Zahl kostet zusätzlich Force. Eine TIE Squadron zählt als drei TIEs und kann nicht als einzelner TIE durch All Clear bewegt werden."
+          },
+          "startingLocations": [
+            "Dark:654",
+            "Dark:682",
+            "Dark:670"
+          ],
+          "cards": [
+            {
+              "id": "Dark:508",
+              "count": 1
+            },
+            {
+              "id": "Dark:657",
+              "count": 1
+            },
+            {
+              "id": "Dark:670",
+              "count": 1
+            },
+            {
+              "id": "Dark:1230",
+              "count": 1
+            },
+            {
+              "id": "Dark:1434",
+              "count": 1
+            },
+            {
+              "id": "Dark:1640",
+              "count": 1
+            },
+            {
+              "id": "Dark:2378",
+              "count": 1
+            },
+            {
+              "id": "Dark:2596",
+              "count": 1
+            },
+            {
+              "id": "Dark:654",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:669",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:723",
+              "count": 1
+            },
+            {
+              "id": "Dark:2600",
+              "count": 1
+            },
+            {
+              "id": "Dark:2644",
+              "count": 1
+            },
+            {
+              "id": "Dark:1426",
+              "count": 2
+            },
+            {
+              "id": "Dark:607",
+              "count": 1
+            },
+            {
+              "id": "Dark:60",
+              "count": 2
+            },
+            {
+              "id": "Dark:190",
+              "count": 1
+            },
+            {
+              "id": "Dark:247",
+              "count": 3
+            },
+            {
+              "id": "Dark:249",
+              "count": 2
+            },
+            {
+              "id": "Dark:303",
+              "count": 4
+            },
+            {
+              "id": "Dark:622",
+              "count": 1
+            },
+            {
+              "id": "Dark:634",
+              "count": 2
+            },
+            {
+              "id": "Dark:675",
+              "count": 2
+            },
+            {
+              "id": "Dark:790",
+              "count": 3
+            },
+            {
+              "id": "Dark:791",
+              "count": 2
+            },
+            {
+              "id": "Dark:1208",
+              "count": 1
+            },
+            {
+              "id": "Dark:1215",
+              "count": 1
+            },
+            {
+              "id": "Dark:1264",
+              "count": 2
+            },
+            {
+              "id": "Dark:1279",
+              "count": 5
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:2406",
+              "count": 1
+            },
+            {
+              "id": "Dark:2410",
+              "count": 1
+            },
+            {
+              "id": "Dark:2429",
+              "count": 3
+            },
+            {
+              "id": "Dark:2446",
+              "count": 1
+            },
+            {
+              "id": "Dark:2595",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "blockade-von-kessel",
+            "name": "Kessel-Gefangenentransport",
+            "description": "Fange Characters und gib sie einer Trooper-Eskorte. Hypo nutzt einen Captive present für Information oder Drain-Bonus."
+          },
+          "strategy": {
+            "start": "Kessel ist das Ziel; Death-Star-Korridore bieten Haft und Trooper-Basen.",
+            "opening": "Fange Characters und gib sie einer Trooper-Eskorte. Hypo nutzt einen Captive present für Information oder Drain-Bonus.",
+            "tactics": "Tractor Beam hält Schiffe mit eingeschlossener Besatzung. Besieged trennt die Kampfgruppen. We Have A Prisoner fängt nach dem Forfeit; Spice Mines beendet die Eskorte auf Kessel."
+          },
+          "startingLocations": [
+            "Dark:1426",
+            "Dark:673",
+            "Dark:682"
+          ],
+          "cards": [
+            {
+              "id": "Dark:223",
+              "count": 1
+            },
+            {
+              "id": "Dark:1200",
+              "count": 1
+            },
+            {
+              "id": "Dark:1478",
+              "count": 1
+            },
+            {
+              "id": "Dark:1284",
+              "count": 1
+            },
+            {
+              "id": "Dark:1844",
+              "count": 1
+            },
+            {
+              "id": "Dark:1955",
+              "count": 1
+            },
+            {
+              "id": "Dark:2290",
+              "count": 1
+            },
+            {
+              "id": "Dark:2330",
+              "count": 1
+            },
+            {
+              "id": "Dark:2620",
+              "count": 1
+            },
+            {
+              "id": "Dark:2635",
+              "count": 1
+            },
+            {
+              "id": "Dark:2754",
+              "count": 1
+            },
+            {
+              "id": "Dark:2784",
+              "count": 1
+            },
+            {
+              "id": "Dark:1340",
+              "count": 1
+            },
+            {
+              "id": "Dark:723",
+              "count": 2
+            },
+            {
+              "id": "Dark:1426",
+              "count": 2
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:669",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:1264",
+              "count": 2
+            },
+            {
+              "id": "Dark:60",
+              "count": 3
+            },
+            {
+              "id": "Dark:79",
+              "count": 1
+            },
+            {
+              "id": "Dark:502",
+              "count": 1
+            },
+            {
+              "id": "Dark:607",
+              "count": 1
+            },
+            {
+              "id": "Dark:675",
+              "count": 2
+            },
+            {
+              "id": "Dark:888",
+              "count": 1
+            },
+            {
+              "id": "Dark:932",
+              "count": 1
+            },
+            {
+              "id": "Dark:1027",
+              "count": 1
+            },
+            {
+              "id": "Dark:1061",
+              "count": 2
+            },
+            {
+              "id": "Dark:1237",
+              "count": 1
+            },
+            {
+              "id": "Dark:1238",
+              "count": 1
+            },
+            {
+              "id": "Dark:1263",
+              "count": 1
+            },
+            {
+              "id": "Dark:1279",
+              "count": 7
+            },
+            {
+              "id": "Dark:1282",
+              "count": 1
+            },
+            {
+              "id": "Dark:1291",
+              "count": 3
+            },
+            {
+              "id": "Dark:1327",
+              "count": 2
+            },
+            {
+              "id": "Dark:1555",
+              "count": 1
+            },
+            {
+              "id": "Dark:1576",
+              "count": 1
+            },
+            {
+              "id": "Dark:1880",
+              "count": 1
+            },
+            {
+              "id": "Dark:2216",
+              "count": 1
+            },
+            {
+              "id": "Dark:2429",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "imperiale-sondereinheit",
+            "name": "Bluffs und Schatten",
+            "description": "Underworld-Characters stören die Rebellen. Hem Dazon sammelt Salz und Greedo bedroht Schmuggler."
+          },
+          "strategy": {
+            "start": "Bluffs lockt mit verdeckten Karten; Docking Bay und War Room sichern Force.",
+            "opening": "Underworld-Characters stören die Rebellen. Hem Dazon sammelt Salz und Greedo bedroht Schmuggler.",
+            "tactics": "Dark Waters ermöglicht Dianoga weitere Habitate: beachte Pflichtangriffe auch auf eigene Figuren. Bluffs verstärkt Drains, kann aber in deiner Deploy Phase aufgedeckt werden."
+          },
+          "startingLocations": [
+            "Dark:2446",
+            "Dark:2438",
+            "Dark:682"
+          ],
+          "cards": [
+            {
+              "id": "Dark:2164",
+              "count": 1
+            },
+            {
+              "id": "Dark:1618",
+              "count": 1
+            },
+            {
+              "id": "Dark:2160",
+              "count": 1
+            },
+            {
+              "id": "Dark:665",
+              "count": 1
+            },
+            {
+              "id": "Dark:729",
+              "count": 1
+            },
+            {
+              "id": "Dark:2355",
+              "count": 1
+            },
+            {
+              "id": "Dark:2438",
+              "count": 1
+            },
+            {
+              "id": "Dark:1274",
+              "count": 1
+            },
+            {
+              "id": "Dark:1453",
+              "count": 1
+            },
+            {
+              "id": "Dark:1558",
+              "count": 1
+            },
+            {
+              "id": "Dark:67",
+              "count": 1
+            },
+            {
+              "id": "Dark:605",
+              "count": 1
+            },
+            {
+              "id": "Dark:687",
+              "count": 1
+            },
+            {
+              "id": "Dark:1073",
+              "count": 1
+            },
+            {
+              "id": "Dark:1126",
+              "count": 1
+            },
+            {
+              "id": "Dark:227",
+              "count": 1
+            },
+            {
+              "id": "Dark:1685",
+              "count": 1
+            },
+            {
+              "id": "Dark:891",
+              "count": 1
+            },
+            {
+              "id": "Dark:1770",
+              "count": 1
+            },
+            {
+              "id": "Dark:2505",
+              "count": 1
+            },
+            {
+              "id": "Dark:2555",
+              "count": 1
+            },
+            {
+              "id": "Dark:2446",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:12",
+              "count": 1
+            },
+            {
+              "id": "Dark:60",
+              "count": 1
+            },
+            {
+              "id": "Dark:94",
+              "count": 1
+            },
+            {
+              "id": "Dark:266",
+              "count": 1
+            },
+            {
+              "id": "Dark:406",
+              "count": 1
+            },
+            {
+              "id": "Dark:478",
+              "count": 1
+            },
+            {
+              "id": "Dark:575",
+              "count": 1
+            },
+            {
+              "id": "Dark:613",
+              "count": 1
+            },
+            {
+              "id": "Dark:619",
+              "count": 1
+            },
+            {
+              "id": "Dark:620",
+              "count": 1
+            },
+            {
+              "id": "Dark:621",
+              "count": 1
+            },
+            {
+              "id": "Dark:634",
+              "count": 1
+            },
+            {
+              "id": "Dark:643",
+              "count": 1
+            },
+            {
+              "id": "Dark:669",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:675",
+              "count": 1
+            },
+            {
+              "id": "Dark:723",
+              "count": 1
+            },
+            {
+              "id": "Dark:996",
+              "count": 1
+            },
+            {
+              "id": "Dark:1027",
+              "count": 1
+            },
+            {
+              "id": "Dark:1061",
+              "count": 1
+            },
+            {
+              "id": "Dark:1264",
+              "count": 1
+            },
+            {
+              "id": "Dark:1265",
+              "count": 1
+            },
+            {
+              "id": "Dark:1279",
+              "count": 1
+            },
+            {
+              "id": "Dark:1286",
+              "count": 1
+            },
+            {
+              "id": "Dark:1372",
+              "count": 1
+            },
+            {
+              "id": "Dark:1401",
+              "count": 1
+            },
+            {
+              "id": "Dark:1426",
+              "count": 1
+            },
+            {
+              "id": "Dark:1539",
+              "count": 1
+            },
+            {
+              "id": "Dark:1547",
+              "count": 1
+            },
+            {
+              "id": "Dark:1551",
+              "count": 1
+            },
+            {
+              "id": "Dark:1557",
+              "count": 1
+            },
+            {
+              "id": "Dark:1565",
+              "count": 1
+            },
+            {
+              "id": "Dark:1578",
+              "count": 1
+            },
+            {
+              "id": "Dark:1599",
+              "count": 1
+            },
+            {
+              "id": "Dark:1688",
+              "count": 1
+            },
+            {
+              "id": "Dark:1709",
+              "count": 1
+            },
+            {
+              "id": "Dark:1815",
+              "count": 1
+            }
           ]
         }
       ]

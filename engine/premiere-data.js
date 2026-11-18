@@ -22,13 +22,19 @@ const PremiereData = (() => {
     'Light:2017', 'Light:2056', 'Light:2059', 'Light:2063', 'Light:2786', 'Light:2857', 'Dark:153', 'Dark:250',
     'Dark:362', 'Dark:611', 'Dark:792', 'Dark:1035', 'Dark:1824', 'Dark:2002', 'Dark:2016', 'Dark:2117', 'Dark:2368',
     'Dark:2604', 'Dark:2683', 'Dark:2687', 'Dark:2715']);
+  const A_NEW_HOPE_RULES_28 = new Set(['Light:127', 'Light:282', 'Light:529', 'Light:762', 'Light:819', 'Light:1136', 'Light:1189',
+    'Light:1229', 'Light:1377', 'Light:1413', 'Light:1605', 'Light:1668', 'Light:1705', 'Light:1872', 'Light:2151',
+    'Light:1752', 'Light:2173', 'Light:2174', 'Light:2222', 'Light:2658', 'Light:2673', 'Light:2916', 'Dark:487', 'Dark:519', 'Dark:626', 'Dark:1198', 'Dark:1275',
+    'Dark:1308', 'Dark:1376', 'Dark:1412', 'Dark:1496', 'Dark:1587', 'Dark:1994', 'Dark:1999', 'Dark:2075', 'Dark:2392',
+    'Dark:2490', 'Dark:2577', 'Dark:2659', 'Dark:2672']);
+  const A_NEW_HOPE_RULES_29 = new Set(["Light:64","Light:100","Light:169","Light:319","Light:385","Light:394","Light:416","Light:509","Light:681","Light:694","Light:943","Light:1047","Light:1062","Light:1214","Light:1298","Light:1507","Light:1674","Light:1619","Light:1987","Light:1992","Light:2006","Light:2048","Light:2050","Light:2061","Light:2082","Light:2125","Light:2165","Light:2298","Light:2308","Light:2563","Light:2611","Light:2802","Light:2824","Light:2908","Light:2851","Light:2892","Dark:67","Dark:223","Dark:227","Dark:508","Dark:605","Dark:657","Dark:670","Dark:687","Dark:729","Dark:891","Dark:1073","Dark:1126","Dark:1200","Dark:1230","Dark:1274","Dark:1284","Dark:1434","Dark:1453","Dark:1478","Dark:1558","Dark:1618","Dark:1640","Dark:1685","Dark:1770","Dark:1844","Dark:1955","Dark:2164","Dark:2290","Dark:2330","Dark:2378","Dark:2438","Dark:2505","Dark:2555","Dark:2596","Dark:2620","Dark:2635","Dark:2754","Dark:2784"]);
   const GARRISON_RIFLE = {id: 'Dark:2915', gempId: '4_180', set: '4'};
   const isGarrisonExpansionCard = card => card?.set === A_NEW_HOPE && GARRISON_A_NEW_HOPE.has(card.id) &&
     GARRISON_A_NEW_HOPE.get(card.id) === card.gempId;
   const isGarrisonRifle = card => card?.id === GARRISON_RIFLE.id && card.gempId === GARRISON_RIFLE.gempId && card.set === GARRISON_RIFLE.set;
   const isReleasedExpansionCard = (card, rulesVersion = Infinity) => isGarrisonExpansionCard(card) ||
     card?.set === A_NEW_HOPE && (rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id) ||
-      rulesVersion >= 27 && A_NEW_HOPE_RULES_27.has(card.id));
+      rulesVersion >= 27 && A_NEW_HOPE_RULES_27.has(card.id) || rulesVersion >= 28 && A_NEW_HOPE_RULES_28.has(card.id) || rulesVersion >= 29 && A_NEW_HOPE_RULES_29.has(card.id));
   const VALUE_FIELDS = ['power', 'ability', 'deploy', 'forfeit', 'destiny', 'armor', 'maneuver', 'hyperspeed', 'landspeed', 'parsec', 'lightSideIcons', 'darkSideIcons'];
   const BASIC_WEAPONS = new Map([
     ['Light:259', {cost: 1, bonus: 0}], // Blaster
@@ -51,7 +57,7 @@ const PremiereData = (() => {
   }
 
   function isDeployableCharacter(card) {
-    return /character/i.test(card.type || '') && Number.isFinite(card.deploy) && card.deploy >= 0;
+    return /character/i.test(card.type || '') && (card.id==='Light:319'||Number.isFinite(card.deploy) && card.deploy >= 0);
   }
 
   function basicWeaponRule(card) {
@@ -59,11 +65,12 @@ const PremiereData = (() => {
   }
 
   function isBantha(card) {
-    return card?.type === 'Vehicle' && card.id === 'Dark:191' && /\bBantha ability = ½\./.test(card.gametext || '');
+    return card?.type === 'Vehicle' && ['Dark:191','Light:2125'].includes(card.id) && /Bantha ability = (?:½|½)/.test(card.gametext || '');
   }
 
   function permanentPilotAbility(card) {
-    if (card?.type !== 'Starship') return null;
+    if (!['Starship','Vehicle'].includes(card?.type) || card.pilotsEjected) return null;
+    if(['Light:2908','Dark:2596'].includes(card.id))return 3;
     const wording = card.set === A_NEW_HOPE ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
       /\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i;
     const ability = String(card.gametext || '').match(wording);
@@ -186,6 +193,7 @@ const PremiereData = (() => {
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
 
   function isPlayableStarterCard(card) {
+    if(card.set===A_NEW_HOPE&&isReleasedExpansionCard(card))return true;
     if (card.type === 'Location') return Number.isInteger(card.icons.light) && Number.isInteger(card.icons.dark);
     if (card.type === 'Weapon' || isLostPileEffect(card) ||
       ['Light:735','Dark:734','Dark:1880','Dark:262','Light:997','Dark:996','Light:2435','Dark:2360','Dark:1939','Light:664','Light:1429','Dark:489',
@@ -210,7 +218,9 @@ const PremiereData = (() => {
        'Dark:1857','Light:215','Dark:667','Dark:2103',
        'Light:1102','Light:1500','Light:1600','Light:2105','Dark:2528', // Named retrieval and Reserve Deck search
        'Light:2385','Dark:575','Dark:2517','Dark:643','Dark:1697','Light:534','Light:1572','Dark:153',
-       'Light:255','Light:1081','Light:1183','Light:2056','Dark:1035','Dark:2368'].includes(card.id)) return true;
+       'Light:255','Light:282','Light:762','Light:819','Light:1081','Light:1136','Light:1183','Light:1229','Light:1605','Light:1668','Light:1872',
+       'Light:2056','Light:2151','Light:2174','Light:2222','Light:2673',
+       'Dark:487','Dark:626','Dark:1035','Dark:1198','Dark:1275','Dark:1308','Dark:2368','Dark:2392','Dark:2577','Dark:2672'].includes(card.id)) return true;
     return Number.isInteger(card.deploy) && card.deploy >= 0 && (isDeployableCharacter(card) || ['Vehicle','Starship'].includes(card.type));
   }
 

@@ -5,9 +5,19 @@ const currentGame=()=>state?.game??setupDecks?.game;
 function publishGame(){if(!currentGame()?.executing)presentGame()}
 const topLevelActions=new Set(['activate','draw','drain','deploy','deployWithPilot','transport','transitGroup','dockGroup','deployLocation','convertLocation','revolution','deployLostPileEffect','alterLostPileEffect','deployLocationEffect','alterLocationEffect','deployTableEffect','deployReserveInsert','recycleHand','retrieve','searchReserve','limitedResources','gravelStorm','cardInformation','pileInterrupt','equip','deployDevice','deployBolt','deviceAction','deployAutomated','buryMineCard','moveSeeker','weaponEffect','move','battle','duel','prisonerTransfer']);
 topLevelActions.add('unitReserveSearch').add('unitTableCancel');
+topLevelActions.add('spyAction').add('anhCharacter');
 
 function forceFromLocations(side){
- return state?PremiereLocations.forceGeneration(state,side):{count:0,unknown:0};
+ if(!state)return {count:0,unknown:0};
+ const total=PremiereLocations.forceGeneration(state,side);
+ if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=28){
+  for(const {card,slot,unavailable} of PremiereLocations.entries(state,side)){
+   const location=state.locations[slot];
+   if(unavailable||!location||locationGroup(location)==='tatooine')continue;
+   for(const effect of card.attachments??[])total.count+=activeCardRules(effect,'capeGeneration')[0]?.amount??0;
+  }
+ }
+ return total;
 }
 
 function activationDrawAllowance(side){
@@ -91,6 +101,7 @@ function recirculateBoth(){recirculate('Light');recirculate('Dark')}
 
 function cardAbility(c){
  if(c?.asleep)return 0;
+ if(isHoloUnit(c))return printedBattleDestiny(c);
  if(isBantha(c))return 0.5;
  const pilot=permanentPilotAbility(c);
  if(pilot!==null){
@@ -98,7 +109,7 @@ function cardAbility(c){
   return slot>=0&&landedAt(c,slot)?0:pilot;
  }
  // Droids have no ability, counting as zero in comparisons; unknown other ability stays unknown.
- if(Number.isFinite(c?.ability))return c.ability;
+ if(Number.isFinite(c?.ability))return c.ability*tonnikaFactor(c);
  if(isDroid(c)||['Vehicle','Starship','Creature'].includes(c?.type))return 0;
  return null;
 }
@@ -143,7 +154,9 @@ function forceDrainEffects(side,slot){
   PremiereLocations.entries(state,side).some(entry=>entry.slot===slot&&!entry.unavailable&&activeCardRules(entry.card,'captiveDrain').length);
  const captives=prisonDroid?PremiereLocations.entries(state,'Dark').filter(entry=>
   entry.captive&&entry.card.type==='Character'&&entry.slot===slot).length:0;
- return {...plan,modifier:plan.modifier+necklaceCarriers(side,slot).length+captives,
+ const waters=PremiereLocations.effectsAt(state,slot).some(effect=>
+  activeCardRules(effect.card,'locationEffect').some(rule=>rule.darkWaters)&&(effect.card.owner??effect.card.side)!==side);
+ return {...plan,modifier:plan.modifier+(side==='Dark'?(state.locations[slot]?.bluffs??[]).length:0)+hypoDrainBonus(side,slot)+necklaceCarriers(side,slot).length+captives-Number(waters),
   optional:plan.optional+proficiency.length,weapons:plan.weapons.concat(proficiency)};
 }
 
@@ -198,7 +211,7 @@ function loseForceForDrain(side,zone,index){
  if(zone==='hand'||!PremiereGame.lostPileFaceDown(state,side))queueMemorialLoss(side,card,pending.locationIndex);
  pending.remaining--;
  if(Number.isInteger(pending.amount))pending.amount--;
- const label={battleDamage:'Battle Damage',assault:'Assault',prediction:'Prophetess',limitedResources:'Limited Resources'}[pending.reason]??'Force Drain';
+ const label={battleDamage:'Battle Damage',assault:'Assault',prediction:'Prophetess',limitedResources:'Limited Resources',reegesk:'Reegesk'}[pending.reason]??'Force Drain';
  log(side+' verliert 1 Force für '+label+' aus '+zone+': '+forceLossDescription(side,zone,card)+'.');
  if(!pending.remaining||!PremiereGame.lossChoices(state,side).length){
   if(pending.reason!=='battleDamage'||!openBattleForceLossResponse(side,pending,'remaining'))finishPendingForceLoss(pending);
@@ -238,7 +251,7 @@ function resolveForceDrain(side,i,bonus){
  beginForceLoss(PremiereGame.otherSide(side),amount,{locationIndex:i,reason:'drain',...(fromReserve?{from:'deck'}:{})});
 }
 function beginForceLoss(payer,amount,terms){
- amount=forceLossAfterDoomed(payer,amount);
+ if(terms.reason!=='reegesk')amount=forceLossAfterDoomed(payer,amount);
  const loss=capForceLoss(payer,amount);
  if(loss>0){
   state.pendingForceLoss={payer,remaining:loss,amount,...terms};
@@ -324,6 +337,15 @@ function finishPendingForceLoss(pending){
  state.pendingForceLoss=null;
  if(pending.reason==='battleDamage')endBattleTiming(pending.locationIndex);
  if(pending.reason==='drain')finishNecklaceDrain(PremiereGame.otherSide(pending.payer),pending.locationIndex);
+ if(pending.after)pending.after();
+ if(pending.reason==='reegesk'){
+  const {card,pile}=pending.salvage,index=pile.indexOf(card);
+  if(index>=0){
+   card.owner=pending.payer;
+   PremiereGame.zones(state,pending.payer).hand.push(pile.splice(index,1)[0]);
+   log('Reegesk nimmt '+card.name+' als eigene Karte auf die Hand.');
+  }
+ }
 }
 
 function finishNecklaceDrain(side,site){
@@ -334,7 +356,7 @@ function finishNecklaceDrain(side,site){
 }
 
 function forceLossReductionOptions(side,debt,key){
- if(!state.game||debt[key]<=0)return [];
+ if(!state.game||debt[key]<=0||debt.reason==='reegesk')return [];
  const {hand}=PremiereGame.zones(state,side);
  const limit=Math.min(debt[key],forceBudget(side));
  return (hand??[]).flatMap((card,index)=>activeCardRules(card,'reduceForceLoss').flatMap(()=>
@@ -396,12 +418,12 @@ function settleLossAdjustment(frame,parent){
 
 function isLoc(c){return /location|site|system/i.test(c?.type||'')}
 
-function isSite(c){return isLoc(c)&&!/system/i.test(c.subType||'')}
+function isSite(c){if(state?.besiegedBattle&&state.locations[state.besiegedBattle.record.bay]===c)return true;return isLoc(c)&&!/system/i.test(c.subType||'')}
 
 function isSystem(c){return isLoc(c)&&/system/i.test(c.subType||'')}
 
 function isPlanetSystem(c){return !!c&&isSystem(c)&&c.locationTags?.includes('Planet')&&Number.isInteger(c.parsec)}
-function isSpaceSystem(c){return isPlanetSystem(c)||!!c&&activeCardRules(c,'mobileSystem').length>0}
+function isSpaceSystem(c){return !!c?.blownAway&&isSystem(c)||isPlanetSystem(c)||!!c&&activeCardRules(c,'mobileSystem').length>0}
 function spaceParsec(c){return c.parsec??state.mobileSystems?.[c.id]?.parsec??0}
 
 function mobileSystemOptions(side){
@@ -410,7 +432,9 @@ function mobileSystemOptions(side){
   if(!card||(card.owner??card.side)!==side||!activeCardRules(card,'mobileSystem').length||
     PremiereGame.wasUsed(state.game,'turn',card.id))return [];
   const here=spaceParsec(card),orbit=state.mobileSystems?.[card.id]?.orbit??-1;
-  return [here-1,here,here+1].filter(parsec=>parsec>=0&&parsec<=9).flatMap(parsec=>{
+  const range=locationTitle(card)==='death star'&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>
+   !entry.unavailable&&state.locations[entry.slot]?.id==='Dark:669'&&activeCardRules(entry.card,'deathStarHyperspeed').length))?2:1;
+  return Array.from({length:2*range+1},(_,offset)=>here+offset-range).filter(parsec=>parsec>=0&&parsec<=9).flatMap(parsec=>{
    const destinations=state.locations.flatMap((candidate,i)=>isPlanetSystem(candidate)&&candidate.parsec===parsec?[i]:[]);
    return [...new Set([-1,...destinations])].filter(i=>parsec!==here||i!==orbit).map(i=>({
     args:[slot,parsec,i],card,site:slot,label:card.name+' · Parsec '+parsec+(i>=0?' um '+state.locations[i].name:' im freien Raum')+' (1 Force)',
@@ -479,7 +503,7 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=27;
+const latestCardRulesVersion=29;
 const latestBotStrategyVersion=3;
 const usesBotPlanner=version=>version===2||version===latestBotStrategyVersion;
 const playerSide=()=>currentGame()?.playerSide??'Light';
@@ -573,11 +597,12 @@ function finishSetup(){
 
 function sitePlanet(card){
  if(!card||!isSite(card))return null;
+ if(isHoloSite(card)||card.locationTags?.includes('Vehicle Site'))return null;
  const match=locationTitle(card).match(/^([^:]+):\s*\S/);
  return match?match[1].trim():null;
 }
 
-function locationGroup(card){return card&&isSystem(card)?locationTitle(card):sitePlanet(card)}
+function locationGroup(card){if(isHoloSite(card))return 'holosite';if(card?.hostInstanceId)return 'vehicle:'+card.hostInstanceId;return card&&isSystem(card)?locationTitle(card):sitePlanet(card)}
 
 function locationPlacementRank(card){
  // Inside, Cantina, indoor/outdoor docking bay, Mos Eisley, outside, system.
@@ -604,6 +629,13 @@ function initialLocationOrder(locations){
 function boardLocationOrder(){return state.locationOrder??initialLocationOrder(state.locations)}
 
 function adjacentSites(from,to){
+ const a=state?.locations[from],b=state?.locations[to];
+ if(isHoloSite(a)||isHoloSite(b))return false;
+ if(a?.hostInstanceId||b?.hostInstanceId){
+  if(a?.hostInstanceId&&a.hostInstanceId===b?.hostInstanceId)return Math.abs(boardLocationOrder().indexOf(from)-boardLocationOrder().indexOf(to))===1;
+  const interior=a?.hostInstanceId?a:b,exterior=a?.hostInstanceId?to:from;
+  return PremiereGame.sides.some(side=>PremiereLocations.entries(state,side).some(entry=>entry.card.instanceId===interior.hostInstanceId&&entry.slot===exterior&&!entry.unavailable&&isSite(state.locations[exterior])));
+ }
  const group=sitePlanet(state?.locations[from]);
  if(!group||group!==sitePlanet(state.locations[to]))return false;
  const order=boardLocationOrder(),position=order.indexOf(from);
@@ -634,6 +666,11 @@ function craftStats(card,slot,forMovement=false){
   stats.power++;
   if(!card.ionDamage&&Number.isFinite(stats.maneuver))stats.maneuver++;
  }
+ if(stats.powered)for(const rule of astromechShipRules(card,slot)){
+  stats.power+=rule.power;
+  if(!card.ionDamage&&Number.isFinite(stats.maneuver))stats.maneuver+=rule.maneuver??0;
+  if(!card.ionDamage&&Number.isFinite(stats.hyperspeed))stats.hyperspeed+=rule.hyperspeed??0;
+ }
  const attachments=card.attachments??[];
  if(!card.ionDamage){
   if(Number.isFinite(stats.maneuver)&&attachments.some(effect=>activeCardRules(effect,'doubleWeaponFire').length))stats.maneuver++;
@@ -641,6 +678,10 @@ function craftStats(card,slot,forMovement=false){
    const stat=effect.hullStat;
    if(stat&&Number.isFinite(stats[stat])&&activeCardRules(effect,'falconModification').length)stats[stat]+=2;
   }
+ }
+ if(stats.powered&&card.type==='Vehicle'&&attachments.some(effect=>activeCardRules(effect,'sensorPanel').length)){
+  stats.power++;
+  if(Number.isFinite(stats.landspeed))stats.landspeed++;
  }
  for(const modifier of state?.shipManeuvers?.get(card)??[]){
   if(modifier.turn!==state.game.timing.turn)continue;
@@ -666,6 +707,8 @@ function craftStats(card,slot,forMovement=false){
     characterTraits(entry.card).includes('leader'))))stats.power++;
  }
  stats.power+=falconModificationBonus(card,forMovement?undefined:slot);
+ if(stats.powered)stats.power+=kashyyykCrewBonus(card,slot);
+ if(card.side==='Light'&&PremiereUnits.fighter(card)&&PremiereLocations.ruleAt(state,slot,'Light','trenchManeuver')&&Number.isFinite(stats.maneuver))stats.maneuver=Math.max(0,stats.maneuver-2);
  if(lateralDamage(card))stats.power=0;
  if(!stats.powered&&card.id==='Light:1677'&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10){
   stats.maneuver=0;
@@ -681,6 +724,24 @@ function craftStats(card,slot,forMovement=false){
  return stats;
 }
 
+function astromechShipRules(card,slot){
+ if(card.type!=='Starship'||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<28)return [];
+ const side=card.controller??card.owner??card.side;
+ return (card.occupants??[]).flatMap(({card:unit})=>{
+  if(!PremiereUnits.active(unit)||excludedAtBattle(unit,slot))return [];
+  return activeCardRules(unit,'astromechShipStats').filter(rule=>rule.fighter&&PremiereUnits.fighter(card)||
+   rule.capital&&PremiereUnits.capital(card)&&(unit.owner??unit.side)===side).map(rule=>rule.redFive?{...rule,power:card.id==='Light:2061'?3:2,maneuver:card.id==='Light:2061'?3:2,hyperspeed:card.id==='Light:2061'?3:2}:rule);
+ });
+}
+
+function kashyyykCrewBonus(card,slot){
+ if(card.type!=='Starship'||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<28)return 0;
+ const side=card.controller??card.owner??card.side;
+ const rule=side&&PremiereLocations.ruleAt(state,slot,side,'kashyyykCrew');
+ return rule&&card.occupants?.some(({card:crew})=>PremiereUnits.active(crew)&&
+  !excludedAtBattle(crew,slot)&&characterTraits(crew).includes('wookiee'))?rule.amount:0;
+}
+
 function falconModificationBonus(card,slot){
  if(card.id!=='Light:1677'||!card.occupants?.some(({card,role})=>role==='pilot'&&PremiereUnits.active(card)&&
   !excludedAtBattle(card,slot)&&
@@ -689,9 +750,10 @@ function falconModificationBonus(card,slot){
 }
 
 function movementRestriction(card){
+ if(card.noMoveTurn!==undefined&&card.noMoveTurn===state.game?.timing.turn)return 'Bewegung wurde für diesen Zug verhindert.';
  if(card.asleep)return 'Die Karte schläft und kann sich nicht bewegen.';
  if(PremiereUnits.restrainingBolt(card))return 'Ein Restraining Bolt verhindert die Bewegung.';
- if(activeCardRules(card,'cannotMove').length)return 'Der Kartentext erlaubt keine Bewegung.';
+ if(activeCardRules(card,'cannotMove').length&&!squadGuardReleased(card))return 'Der Kartentext erlaubt keine Bewegung.';
  if(barredThisTurn(card))return 'Imperial Barrier verhindert die Bewegung in diesem Zug.';
  if(movementBlockedByAlert(card))return 'Full Scale Alert verhindert die Bewegung in diesem Zug.';
  return '';
@@ -754,9 +816,9 @@ function groundReach(card,from,to,range){
  });
 }
 
-function travelOptions(card,side,from,to,react=false){
+function baseTravelOptions(card,side,from,to,react=false){
  const origin=state.locations[from],destination=state.locations[to];
- if(from===to||!origin||!destination||!PremiereUnits.active(card)||movementPrevented(card))return [];
+ if(from===to||!origin||!destination||origin.id==='Light:681'||destination.id==='Light:681'||isHoloSite(origin)||isHoloSite(destination)||!PremiereUnits.active(card)||movementPrevented(card))return [];
  const options=[];
  if(card.type==='Starship'){
   const stats=craftStats(card,from,true);
@@ -773,10 +835,13 @@ function travelOptions(card,side,from,to,react=false){
   }
   return options;
  }
- const vehicle=card.type==='Vehicle',character=card.type==='Character'||isDeployableCharacter(card)||!!card.migTarget;
+ const vehicle=card.type==='Vehicle',character=card.type==='Character'||isDeployableCharacter(card)||!!card.migTarget||activeCardRules(card,'remote').length;
+ if(card.type==='Creature')return dianogaHabitat(from)&&dianogaHabitat(to)&&adjacentSites(from,to)?[{kind:'Landspeed',cost:1}]:[];
  if(!vehicle&&!character)return [];
  const kalSpeed=card.id==='Light:1407'&&((currentGame()?.cardRulesVersion??latestCardRulesVersion)<7||!PremiereUnits.textSuppressed(card));
- const speed=vehicle?craftStats(card,from).landspeed:card.id==='Dark:1709'||kalSpeed?3:1;
+ const [flight]=activeCardRules(card,'deployPhaseLandspeed');
+ const speed=flight?(!react&&state.phase===2&&state.activeSide===side?flight.range:0):
+  vehicle?craftStats(card,from).landspeed:card.id==='Dark:1709'||kalSpeed?3:1;
  if(speed>0&&groundReach(card,from,to,react&&card.id==='Light:2250'?1:speed)){
   const free=!react&&state.phase===4&&character&&card.subType==='Imperial'&&adjacentSites(from,to)&&
    garindanBenefit(side,to,'imperialMove');
@@ -805,12 +870,12 @@ const regularMovementUsed=card=>state.movedThisTurn?.includes(card);
 
 function movementOptionsFor(side){
  if(!state||state.gameWinner||state.pendingForceLoss||!PremiereGame.sides.includes(side)||
-    (state.activeSide&&state.activeSide!==side)||![1,4].includes(state.phase))return [];
+    (state.activeSide&&state.activeSide!==side)||![1,2,4].includes(state.phase))return [];
  if((side===botSide())!==!!state.botTurn)return [];
  const {force,board}=PremiereGame.zones(state,side);
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
-  if(regularMovementUsed(card))return [];
+  if(regularMovementUsed(card)||state.phase===2&&!activeCardRules(card,'deployPhaseLandspeed').length)return [];
   return state.locations.flatMap((location,to)=>travelOptions(card,side,from,to)
    .filter(travel=>travel.cost<=forceBudget(side))
    .map(travel=>({...travel,from,to,index,card,name:card.name})));
@@ -852,18 +917,20 @@ function transportOptions(side){
   barredThisTurn(card)||((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10&&PremiereUnits.restrainingBolt(card));
  const move=state.phase===4,ready=card=>PremiereUnits.active(card)&&!state.movedThisTurn?.includes(card)&&!movementPrevented(card);
  const offer=(kind,from,to,unit,host,role,cost,card,carrier,label,opponentCost=0)=>{
+  if(cost>0&&from!==to&&card?.type==='Character')cost+=musicianCoverCharge(state.locations[to]);
   if(cost<=(forceBudget(side)))options.push({args:[kind,from,to,unit,host,role],from,to,card,carrier,cost,label,opponentCost});
  };
  for(const [slot,row] of (board??[]).entries())for(const [i,host] of row.entries()){
   if(!PremiereUnits.active(host))continue;
   const here=state.locations[slot];
+  if(here?.id==='Light:681')continue;
   const landed=isSite(here);
   if(!move&&['Starship','Vehicle'].includes(host.type)){
    for(const [h,card] of (hand??[]).entries()){
     const splitDeploy=expandedDeploy&&jawaCosts.has(card.id);
     const owner=card.owner??card.side;
     if((owner&&owner!==side)||(!splitDeploy&&!Number.isFinite(card.deploy))||!withinDeploymentLimit(card,side)||!hasDeployPresence(side,here))continue;
-    if(card.type==='Character'&&!characterLocationAllowed(card,here))continue;
+    if(card.type==='Character'&&(!characterLocationAllowed(card,here)||activeCardRules(card,'deployUndercover').length))continue;
     const payment=splitDeploy?jawaDeployPayment(card,here,side):null;
     if(splitDeploy&&!canPayJawaDeploy(side,payment))continue;
     for(const role of PremiereUnits.roles(host,card)){
@@ -1176,9 +1243,15 @@ function plannedCarrierGain(offer,slot,unit,sites,side,rival){
 function plannedEffectValue(offer,site,window,frame,target,view){
  const {kind,args,rule,card,amount}=offer,mode=args[0];
  const {side,rival}=view;
+ if(kind==='anhCharacter')return expansionBotValue(offer,view);
+ if(kind==='pileInterrupt'&&rule?.mode==='controlFire')return 2+(offer.shot.target.power??0)*0.5-offer.shot.cost;
+ if(kind==='pileInterrupt'&&['leaderKill','allClearRun'].includes(rule?.mode))return state.attackRun?3:0;
+ if(kind==='pileInterrupt'&&rule?.mode==='leaderWeapon')return offer.entry.side===side&&offer.entry.card.weapons?.length?1:0;
  switch(kind){
   case 'interruptResponse': {
    const response=offer.responseKind;
+   if(offer.responseKind==='anhResponse')return ['captureBattle','transportRetaliation','evaderRecovery','wookieDisarm','prohibitBattle'].includes(offer.mode)?4:offer.mode==='cancelBattle'&&(site?.margin??0)<0?4:-1;
+   if(offer.responseKind==='grabInterrupt')return view.force>=4?1.5:-1;
    if(offer.counterMode==='direct'||['namedCounter','assault','lateralMechanicCounter','battleTieLoss'].includes(response))return 4;
    if(['sense','alter'].includes(response))return offer.ability>=4?2.8:offer.ability>=2?0.8:-1;
    if(response==='battleDamageModifier')return offer.loser===rival&&(offer.amplifies||(site?.margin??0)>2)?4:-2;
@@ -1204,7 +1277,7 @@ function plannedEffectValue(offer,site,window,frame,target,view){
    return PremiereLocations.effectsAt(state,args[1]).some(effect=>effect.card.id===card.id)?-3:site?.own?0.8:-0.4;
   case 'cancelTableEffect': return offer.effect.target===side?3:-2;
   case 'cancelNamedWeapon': return 2.5;
-  case 'cardInformation': return offer.mode==='macroscan'?0:1.5;
+  case 'cardInformation': return ['macroscan','q2Peek'].includes(offer.mode)?0:1.5;
   case 'unitReserveSearch': return 0.5;
   case 'deviceAction': return mode==='stealDroid'?4:0;
   case 'controlTheft': return 3;
@@ -1234,6 +1307,7 @@ function choosePlannedBotAction(offers,required=false){
 }
 
 function botPromptAction(offers=legalActions(state,botSide())){
+ const expanded=expansionPromptChoice(offers);if(expanded)return expanded;
  return plannedBot()?choosePlannedBotAction(offers,true):offers[0];
 }
 
@@ -1276,6 +1350,7 @@ function botForceLossChoice(options){
 function characterTraits(c){return (c.characteristics||[]).map(x=>String(x).toLowerCase())}
 
 function activeCardRules(card,event){
+ if(card?.blownAway||isHoloUnit(card))return [];
  if(PremiereUnits.textSuppressed(card)||battleSession?.excludedUnits?.has(card))return [];
  const version=currentGame()?.cardRulesVersion??latestCardRulesVersion;
  if(version>=21&&isDroid(card)&&prajiSuppresses(card))return [];
@@ -1304,9 +1379,14 @@ function matchesRegisteredTarget(card,target){
  if(target==='imperial-trooper')return card.type==='Character'&&card.subType==='Imperial'&&traits.includes('trooper');
  if(target==='rebel-trooper-or-y-wing')return traits.includes('rebel trooper')||(card.type==='Starship'&&/\bY-Wing\b/i.test(card.subType??''));
  if(target==='stormtrooper-or-tie')return traits.includes('stormtrooper')||PremiereUnits.tie(card);
+ if(target==='star-destroyer')return PremiereUnits.capital(card)&&/star destroyer/i.test(card.subType);
+ if(target==='it0')return card.id==='Dark:1340';
+ if(target==='sandcrawler')return PremiereUnits.crawler(card);
+ if(target==='astromech')return isDroid(card)&&/astromech/i.test((card.extraText??[]).join(' '));
  if(target==='character')return card.type==='Character';
  if(target==='warrior')return card.type==='Character'&&PremiereUnits.hasSkill(card,'warrior');
  if(target==='starship')return card.type==='Starship';
+ if(target==='non-creature-vehicle')return card.type==='Vehicle'&&card.subType!=='Creature';
  if(target==='rebel-or-alien')return alien||(card.type==='Character'&&card.subType==='Rebel');
  if(target==='imperial-or-alien')return alien||(card.type==='Character'&&card.subType==='Imperial');
  if(target==='rebel-or-jawa'||target==='imperial-or-jawa'){
@@ -1389,12 +1469,15 @@ function tooexNightRule(side,slot,event,present=PremiereLocations.presentCards(s
 function cardPowerModifier(c,side,siteIndex,ownPresent){
  const disarmed=PremiereWeapons.disarmed(c)?-1:0;
  if(!state||!['Light','Dark'].includes(side))return disarmed;
+ if(isHoloUnit(c))return holoPowerBonus(c);
+ const anhPower=(activeCardRules(c,'brainiac').length?brainiacPower():0)+(c.power??0)*(tonnikaFactor(c)-1)+(activeCardRules(c,'anhCharacter').length?(c.id==='Dark:1126'?1+(c.salt??[]).length:c.id==='Dark:605'?1+(state.soupAbility?.[c.id]??0):0):0);
  const demotion=(c.attachments??[]).flatMap(card=>activeCardRules(card,'demotionPower'))[0]?.amount??0;
- let bonus=disarmed+demotion+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c)+PremiereUnits.trainingPower(c)+utinniGearBonus(c,siteIndex)-lukeUtinniPenalty(c);
+ const chewie=activeCardRules(c,'chewbacca').length&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>entry.slot===siteIndex&&!entry.unavailable&&locationTitle(entry.card)==='han solo'))?1:0;
+ let bonus=(c.remoteBonus&&c.remoteBonus.turn===state.game?.timing.turn&&c.remoteBonus.stat==='power'?1:0)+chewie+(c.scoutReactTurn!==undefined&&c.scoutReactTurn===state.game?.timing.turn?2:0)+disarmed+anhPower+demotion+deviceCharacterModifier(c,state.locations?.[siteIndex])+registeredLocationModifier('power',c,side,siteIndex)+lukeLarsPower(c)+PremiereUnits.trainingPower(c)+utinniGearBonus(c,siteIndex)-lukeUtinniPenalty(c);
  const [forcePower]=activeCardRules(c,'forceIconPower');
  if(forcePower&&PremiereLocations.present(state,c,siteIndex)){
   bonus+=forcePower.amount*(PremiereLocations.icons(state,siteIndex,'Dark')??0);
-  if(PremiereLocations.conditions(state,siteIndex,side).night)bonus+=forcePower.nightAmount;
+ if(PremiereLocations.conditions(state,siteIndex,side).night)bonus+=forcePower.nightAmount;
  }
  if(!state.locations?.[siteIndex]||!isSite(state.locations[siteIndex]))return bonus;
  if(c.type==='Character'&&(PremiereUnits.bountyHunter(c)||PremiereUnits.hasSkill(c,'smuggler')||locationTitle(c)==='greedo')&&
@@ -1402,6 +1485,11 @@ function cardPowerModifier(c,side,siteIndex,ownPresent){
   bonus+=locationTitle(c)==='greedo'?-1:1;
  const same=ownPresent??PremiereLocations.presentCards(state,side,siteIndex);
  bonus+=registeredCharacterModifier('characterPower',c,siteIndex)+rebelAuraPower(c,side,siteIndex,same);
+ const fly=activeCardRules(c,'tzizvvtPower')[0];
+ if(fly&&(/trash compactor$/.test(locationTitle(state.locations[siteIndex]))||sitePlanet(state.locations[siteIndex])==='dagobah'||
+    PremiereLocations.effectsAt(state,siteIndex).some(effect=>locationTitle(effect.card)==='dark waters')||
+    PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>entry.slot===siteIndex&&!entry.unavailable&&
+     PremiereUnits.active(entry.card)&&locationTitle(entry.card)==='grand moff tarkin'))))bonus+=fly.amount;
  const guard=activeCardRules(c,'detentionPower').length&&PremiereLocations.findEntry(state,c);
  if(guard&&!guard.unavailable){
   const title=locationTitle(state.locations[siteIndex]);
@@ -1411,6 +1499,13 @@ function cardPowerModifier(c,side,siteIndex,ownPresent){
   if(aliens.length)bonus+=aliens.some(card=>characterTraits(card).some(trait=>['wookiee','talz','ewok'].includes(trait)))?3:2;
  }
  if(PremiereLocations.conditions(state,siteIndex,side).night)bonus+=activeCardRules(c,'nightPower')[0]?.amount??0;
+ if(c.attachments?.some(effect=>locationTitle(effect)==="sai'torr kal fas"&&!PremiereUnits.textSuppressed(effect)))
+  bonus+=activeCardRules(c,'saurinProtection')[0]?.amount??0;
+ if(activeCardRules(c,'hetStormtrooperPower').length&&
+    !PremiereGame.sides.some(actor=>PremiereLocations.presentCards(state,actor,siteIndex).some(unit=>
+     PremiereUnits.active(unit)&&locationTitle(unit)==='reegesk'))){
+  bonus+=siteEntries(siteIndex).filter(entry=>characterTraits(entry.card).includes('stormtrooper')).length;
+ }
  const myo=activeCardRules(c,'myoPower')[0],entry=myo&&PremiereLocations.findEntry(state,c);
  if(entry&&!entry.unavailable){
   const place=PremiereLocations.physicalPlace(entry);
@@ -1473,6 +1568,130 @@ function isSpyCharacter(c){
  return (c.characteristics||[]).some(t=>/\bspy\b/i.test(String(t)))||/\bspy\b/i.test(String(c.lore||c.rawFront?.lore||''))||wearingUtinniGear(c,'plastoid-armor');
 }
 
+function undercoverSpies(side,slot){
+ return PremiereLocations.entries(state,side).filter(entry=>entry.slot===slot&&!entry.unavailable&&
+   entry.card.type==='Character'&&entry.card.undercover&&PremiereLocations.presentAt(entry,slot));
+}
+
+function setUndercover(card,side){
+ card.undercover=true;
+ card.tableSide=PremiereGame.otherSide(side);
+ log(card.name+' geht auf der '+card.tableSide+' Side undercover.');
+}
+
+function enterUndercover({side,slot,card,carriers}){
+ if(carriers.length&&detachTableCard(side,slot,card))PremiereGame.zones(state,side).board[slot].push(card);
+ if(card.escortedCaptive){
+  (state.pendingCustody??=[]).push({side:'Light',card:card.escortedCaptive,slot});
+  delete card.escortedCaptive;
+ }
+ setUndercover(card,side);
+}
+
+function breakSpyCover(card){
+ const entry=PremiereLocations.findEntry(state,card);
+ if(!entry||!card.undercover)return false;
+ const {side,slot}=entry;
+ delete card.undercover;
+ delete card.tableSide;
+ const coverEffects=(card.attachments??[]).filter(effect=>activeCardRules(effect,'undercoverEffect').length);
+ for(const effect of coverEffects){
+  const placed=state.tableEffects?.find(record=>record.card===effect);
+  if(placed)cancelTableEffect(placed);
+  else if(detachTableCard(side,slot,effect))loseOwnedCard(effect,side,'table',slot);
+ }
+ log(card.name+' wird als Undercover-Spion enttarnt.');
+ if(side!=='Light'&&activeCardRules(card,'stealOnBrokenCover').length&&withinDeploymentLimit(card,'Light'))
+  state.pendingCardView={mode:'u3poCover',side:'Light',card,shown:[],publicView:true};
+ return true;
+}
+
+function changeCharacterAllegiance(entry,side){
+ const {card,slot}=entry;
+ if(!detachTableCard(entry.side,slot,card))return false;
+ if(card.escortedCaptive){
+  (state.pendingCustody??=[]).push({side:'Light',card:card.escortedCaptive,slot});
+  delete card.escortedCaptive;
+ }
+ function assign(unit){
+  unit.owner=side;
+  unit.controller=side;
+  for(const attachment of [...(unit.weapons??[]),...(unit.attachments??[])])assign(attachment);
+ }
+ assign(card);
+ if(card.undercover)card.tableSide=PremiereGame.otherSide(side);
+ for(const effect of state.tableEffects??[])if(effect.host===card)effect.target=side;
+ PremiereGame.zones(state,side).board[slot].push(card);
+ log(card.name+' wechselt zur '+side+' Side.');
+ return true;
+}
+
+function undercoverMoves(side){
+ if(!state?.game||state.phase!==4||state.activeSide===side||state.spyMovementPassedTurn===state.game.timing.turn)return [];
+ const {board}=PremiereGame.zones(state,side);
+ return (board??[]).flatMap((row,site)=>row.flatMap((card,index)=>{
+  if(!card.undercover||card.inactive||card.captured||card.missing||regularMovementUsed(card)||movementPrevented(card))return [];
+  const origin=state.locations[site];
+  return state.locations.flatMap((target,to)=>{
+    if(to===site||!target||!origin)return [];
+   const moves=[];
+    if(isSite(target)&&isSite(origin)){
+     const speed=!PremiereUnits.textSuppressed(card)&&['Dark:1709','Light:1407'].includes(card.id)?3:1;
+     if(!activeCardRules(card,'deployPhaseLandspeed').length&&groundReach(card,site,to,speed))moves.push({movement:'Landspeed',cost:1});
+     const bay=PremiereLocations.conditions(state,site,side);
+     if(bay.dockingBay&&PremiereLocations.conditions(state,to,side).dockingBay&&Number.isFinite(bay.transitCost))
+      moves.push({movement:'Docking-Bay-Transit',cost:bay.transitCost});
+    }
+   const related=target.hostInstanceId?{host:target,external:site}:origin.hostInstanceId?{host:origin,external:to}:null;
+   if(related&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>
+    entry.slot===related.external&&!entry.unavailable&&entry.card.instanceId===related.host.hostInstanceId))){
+    const rule=PremiereLocations.ruleAt(state,target===related.host?to:site,side,'vehicleSiteTransit');
+    if(rule)moves.push({movement:'Innen-Site',cost:rule.cost});
+   }
+   return moves.filter(move=>move.cost<=forceBudget(side)).map(move=>({...move,card,site,to,
+    args:['move',site,index,to,move.movement],label:card.name+' undercover nach '+target.name+' ('+move.cost+' Force)'}));
+  });
+ }));
+}
+
+function spyActions(side){
+ const moves=undercoverMoves(side);
+ if(!state?.game||state.activeSide!==side)return moves;
+ return PremiereLocations.entries(state,side).flatMap((entry,index)=>{
+  const {card,slot:site,unavailable}=entry;
+  if(unavailable||!isSite(state.locations[site]))return [];
+  if(state.phase===2&&card.undercover)return [{args:['break',index],card,site,cost:0,label:card.name+' · Tarnung aufgeben'}];
+  const key='detectSpy:'+(card.instanceId??card.id);
+  if(state.phase!==1||!activeCardRules(card,'detectSpy').length||PremiereGame.wasUsed(state.game,'phase',key))return [];
+  return PremiereGame.sides.flatMap(actor=>undercoverSpies(actor,site)).map(({card:target},targetIndex)=>({
+   args:['detect',index,targetIndex],key,card,target,site,cost:0,label:card.name+' · '+target.name+' mit Destiny prüfen',
+  }));
+ });
+}
+
+function performSpyAction(side,...args){
+ const option=spyActions(side).find(action=>action.args.length===args.length&&action.args.every((arg,i)=>arg===args[i]));
+ if(!option)return false;
+ const {card,site,to,target,key,cost}=option;
+ if(args[0]==='break')return breakSpyCover(card);
+ if(args[0]==='move'){
+  if(!detachTableCard(side,site,card))return false;
+  spendForce(side,cost);
+  PremiereGame.zones(state,side).board[to].push(card);
+  (state.movedThisTurn??=[]).push(card);
+  clearJuriAfterMove(card,side,to);
+  if(option.movement==='Landspeed')noteMineTraversal(side,site,to,card);
+  log(option.label+'.');
+ }else{
+  PremiereGame.useOnce(state.game,'phase',key);
+  drawDestinySeries(side,'detectSpy',1,0,draws=>{
+   const value=draws.find(draw=>!draw.cancelled)?.value;
+   if(Number.isFinite(value)&&value===cardAbility(target))breakSpyCover(target);
+  });
+ }
+ return true;
+}
+
 function canPayBoardDeploy(c,side,cost){
  const pile=side==='Light'?state.force:state.botForce;
  return !!pile&&forceBudget(side)>=cost&&withinDeploymentLimit(c,side);
@@ -1482,7 +1701,8 @@ function hasDeployPresence(side,loc){
  const index=state.locations.indexOf(loc);
  const ownIcons=index>=0?PremiereLocations.icons(state,index,side):loc.icons?.[side.toLowerCase()];
  if(index>=0&&PremiereLocations.ruleAt(state,index,side,'deployWithoutIcons'))return true;
- return (Number.isFinite(ownIcons)&&ownIcons>=1)||(index>=0&&confirmedPresence(side,index)===true);
+ return (Number.isFinite(ownIcons)&&ownIcons>=1)||(index>=0&&(confirmedPresence(side,index)===true||
+  (currentGame()?.cardRulesVersion??latestCardRulesVersion)>=28&&undercoverSpies(side,index).length>0));
 }
 
 function characterDeployCost(card,site,side){
@@ -1500,6 +1720,7 @@ function characterDeployCost(card,site,side){
 function characterLocationAllowed(card,loc){
  const region=sitePlanet(loc);
  if(isDroid(card)&&PremiereLocations.effectsAt(state,state.locations.indexOf(loc)).some(effect=>effect.siteDevice==='droid-detector'))return false;
+ if(activeCardRules(card,'deployUndercover').length)return isSite(loc);
  if(card.id==='Dark:2648'||activeCardRules(card,'tuskenFallbackDestiny').length)return region==='tatooine';
  if(card.id==='Dark:668')return region==='death star';
  if(card.id==='Dark:1709'){
@@ -1534,7 +1755,10 @@ function crewDeployCost(card,side,loc){
  const imperials=card.id==='Dark:60'?PremiereLocations.activeCards(state,side).filter(unit=>
   unit.type==='Starship'&&unit.side==='Dark'&&!unit.characteristics?.includes('independent')).length:0;
  const sentry=loc?sentryModifier(side,state.locations.indexOf(loc),'deploy'):0;
- return Math.max(0,card.deploy-(imperials>=2?2:0)+warriorDeployIncrease(card,side)-garindan+sentry)+droidTax;
+ const kashyyyk=loc&&card.type==='Character'&&(characterTraits(card).includes('wookiee')||PremiereUnits.hasSkill(card,'smuggler'))?
+  PremiereLocations.ruleAt(state,state.locations.indexOf(loc),side,'kashyyykDeploy')?.amount??0:0;
+ const printed=activeCardRules(card,'brainiac').length?state.hand.length:card.deploy*tonnikaFactor(card);
+ return Math.max(0,printed-(imperials>=2?2:0)+warriorDeployIncrease(card,side)-garindan+sentry-kashyyyk)+droidTax+musicianCoverCharge(loc);
 }
 
 function warriorDeployIncrease(card,side){
@@ -1578,11 +1802,11 @@ function craftDeployCost(card,loc,side,pilot=null){
  return Math.max(0,card.deploy-discount+sentry+tax)+(pilot?crewDeployCost(pilot,side,loc):0);
 }
 
-const jawaCosts=new Map([['Light:1373',1],['Dark:1372',1],['Dark:643',2]]);
+const jawaCosts=new Map([['Light:1373',1],['Light:1136',2],['Dark:1372',1],['Dark:643',2]]);
 function jawaDeployPayment(card,loc,side){
  if(!isSite(loc)||sitePlanet(loc)!=='tatooine'||!hasDeployPresence(side,loc))return null;
  const slot=state.locations.indexOf(loc),deployRule=PremiereLocations.ruleAt(state,slot,side,'jawaDeploy');
- if(deployRule){
+ if(deployRule&&!activeCardRules(card,'jawaPayment').length){
   const sandcrawler=deployRule.freeWithCrawler&&PremiereGame.sides.some(player=>
    PremiereLocations.presentCards(state,player,slot).some(unit=>/Sandcrawler/i.test(unit.name??'')));
   return {own:sandcrawler?0:1,opposing:0};
@@ -1624,7 +1848,9 @@ function payOpposingJawaCost(side,cost){
 }
 
 function boardDeployCost(card,loc,side,free=false){
- if(!state||!card||!loc)return null;
+ if(!state||!card||!loc||loc.id==='Light:681')return null;
+ if(card.type==='Creature'){const cost=card.deploy??0;return (card.owner??card.side)===side&&dianogaHabitat(state.locations.indexOf(loc))&&withinDeploymentLimit(card,side)&&(free||cost<=forceBudget(side))?free?0:cost:null;}
+ if(isHoloSite(loc)){const value=printedBattleDestiny(card);return (card.owner??card.side)===side&&holoEligible(card)&&withinDeploymentLimit(card,side)&&(free||value<=forceBudget(side))?free?0:value:null;}
  const owner=card.owner??card.side;
  if(owner&&owner!==side)return null;
  if(jawaCosts.has(card.id)){
@@ -1636,7 +1862,7 @@ function boardDeployCost(card,loc,side,free=false){
  return cost!==null&&canPayBoardDeploy(card,side,free?0:cost)?(free?0:cost):null;
 }
 
-function weaponMounts(side){
+function weaponMounts(side,includeUndercover=false){
  const {board}=PremiereGame.zones(state,side);
  const entries=PremiereLocations.entries(state,side);
  return state.locations.flatMap((location,slot)=>{
@@ -1644,12 +1870,12 @@ function weaponMounts(side){
   const roots=board?.[slot]??[],local=entries.filter(entry=>entry.slot===slot);
   const mounts=local.flatMap((entry,index)=>{
    const card=entry.card;
-   if(entry.unavailable||(!PremiereUnits.active(card)&&!PremiereWeapons.projector(card))||
+   if(entry.unavailable||(!PremiereUnits.active(card)&&!PremiereWeapons.projector(card)&&!(includeUndercover&&card.undercover))||
       !['Character','Vehicle','Starship'].includes(card.type)&&!PremiereWeapons.projector(card))return [];
    const root=roots.indexOf(card);
    return [{host:card,slot,index:root>=0?root:roots.length+index,place:PremiereLocations.physicalPlace(entry)}];
   });
-  if(isSystem(location)&&location.locationTags?.includes('Mobile'))mounts.push({host:location,slot,index:-1,place:slot});
+  if(isSystem(location)&&location.locationTags?.includes('Mobile')||location.id==='Light:681')mounts.push({host:location,slot,index:-1,place:slot});
   return mounts;
  });
 }
@@ -1673,13 +1899,24 @@ function weaponDeployOptions(side,handIndex){
 function weaponPlacementOptions(side,card,slot,free=false){
 
  if(!PremiereWeapons.definition(card)||deploymentSide(card)!==side||!withinDeploymentLimit(card,side))return [];
- return weaponMounts(side).flatMap(mount=>{
-  if(slot!==undefined&&mount.slot!==slot)return [];
-  const base=weaponDeployCost(card,mount.host);
-  const cost=base===null?null:base+sentryModifier(side,mount.slot,'deploy');
+ return weaponMounts(side,true).flatMap(mount=>{
+  if(slot!==undefined&&mount.slot!==slot||state.locations[mount.slot]?.id==='Light:681'&&card.id!=='Dark:2644')return [];
+  const base=card.id==='Dark:2378'&&spaceParsec(mount.host)!==0?null:weaponDeployCost(card,mount.host);
+  if(base===null)return [];
+  const {cost,discount}=equipmentPrice(side,mount,free?0:base+sentryModifier(side,mount.slot,'deploy'));
   if(cost===null||!free&&cost>forceBudget(side))return [];
-  return [{mount,siteIndex:mount.slot,hostIndex:mount.index,host:mount.host,cost:free?0:cost}];
+  return [{mount,siteIndex:mount.slot,hostIndex:mount.index,host:mount.host,cost,discount}];
  });
+}
+
+function equipmentPrice(side,{host,slot},cost){
+ if(!cost||!state.game||host.type!=='Character'||host.subType!=='Rebel'||!isSite(state.locations[slot]))return {cost};
+ const supplier=PremiereLocations.entries(state,side).find(entry=>{
+  const key='corellian:'+(entry.card.instanceId??entry.card.id);
+  return entry.slot===slot&&!entry.unavailable&&activeCardRules(entry.card,'corellianEquipment').length&&
+   !PremiereGame.wasUsed(state.game,'turn',key);
+ });
+ return supplier?{cost:cost-1,discount:'corellian:'+(supplier.card.instanceId??supplier.card.id)}:{cost};
 }
 
 function weaponDeployCost(weapon,host){
@@ -1699,6 +1936,8 @@ function weaponBearerPower(weapon,host){
 }
 
 function weaponShot(weapon,host,target,defense){
+ if(laserGateRecord(target)){if(weapon.subType!=='Character')return null;const shot=PremiereWeapons.shot(weapon,host,{...target,type:'Character'},cardAbility(host),3);return shot?{...shot,target,defense:3,effect:'destroy'}:null;}
+ if(PremiereWeapons.definition(weapon)?.effect==='ion'&&fireExtinguisherProtects(target))return null;
  return PremiereWeapons.shot(weapon,host,target,cardAbility(host),defense,weaponBearerPower(weapon,host));
 }
 
@@ -1707,6 +1946,7 @@ function deployWeaponFor(side,handIndex,siteIndex,hostIndex){
  if(!option)return false;
  const {hand}=PremiereGame.zones(state,side),[weapon]=hand.splice(handIndex,1);
  spendForce(side,option.cost);
+ if(option.discount)PremiereGame.useOnce(state.game,'turn',option.discount);
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=22)delete weapon.kabeHeld;
  attachWeapon(option.mount,weapon);
  log(side+' rüstet '+option.host.name+' mit '+weapon.name+' aus ('+option.cost+' Force → Used Pile).');
@@ -1737,6 +1977,13 @@ function weaponEffectOptions(side){
  const rack=state.blasterRack;
  const useTableRacks=(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=18;
  const racks=useTableRacks&&side==='Dark'?blasterRacks():[];
+ const bolts=entries.filter(entry=>!entry.unavailable&&activeCardRules(entry.card,'restrainDroid').length);
+ if(bolts.length)for(const [actorIndex,source] of PremiereLocations.entries(state,side).entries()){
+  const [rule]=activeCardRules(source.card,'saurinUnbolt');
+  if(!rule||source.unavailable||rule.cost>forceBudget(side)||!isSite(state.locations[source.slot]))continue;
+  for(const [targetIndex,entry] of bolts.entries())if(entry.slot===source.slot)
+   add(['saurinUnbolt',actorIndex,targetIndex],source.card.name+' · '+entry.card.name+' entfernen (1 Force)',{entry,cost:rule.cost});
+ }
  if(active&&phase===2){
   for(const [index,card] of (hand??[]).entries())if(activeCardRules(card,'blasterScope').length){
    weapons.forEach((entry,i)=>{
@@ -1750,9 +1997,10 @@ function weaponEffectOptions(side){
   mounts.forEach((source,a)=>mountWeapons(source).forEach((weapon,w)=>{
    if(PremiereWeapons.projector(weapon)||(weapon.owner??weapon.side)!==side)return;
    targetMounts.forEach(target=>{
-    if(source.host===target.host||source.slot!==target.slot||source.place!==target.place)return;
-    const normalCost=weaponDeployCost(weapon,target.host);
-    const cost=weapon.kabeHeld&&activeCardRules(source.host,'controlTheft').some(rule=>rule.mode==='kabe')&&target.host.warrior?0:normalCost;
+    if((activeCardRules(target.host,'ra7Transfer').length&&(target.host.weapons??[]).length>=4)||source.host===target.host||source.slot!==target.slot||source.place!==target.place)return;
+    const normalCost=activeCardRules(target.host,'ra7Transfer').length&&weapon.subType==='Character'?0:weaponDeployCost(weapon,target.host);
+    const ra7=[source.host,target.host].some(host=>activeCardRules(host,'ra7Transfer').length);
+    const cost=ra7?0:weapon.kabeHeld&&activeCardRules(source.host,'controlTheft').some(rule=>rule.mode==='kabe')&&target.host.warrior?0:normalCost;
     if(cost!==null&&cost<=(forceBudget(side)))add(['transfer',a,w,target.slot,target.index],weapon.name+' → '+target.host.name+' ('+cost+' Force)',{source,weapon,target,cost});
    });
   }));
@@ -1809,6 +2057,7 @@ function weaponEffectOptions(side){
    (updatedOverload?weapons.concat(stored,permanent):weapons).forEach((entry,index)=>{
     if(entry.card.id==='Dark:1002'||!/^[^:]+:/.test(entry.card.id??'')||
        entry.card.characteristics?.some(trait=>/ewok/i.test(trait)))return;
+    if(entry.card.id==='Light:1962'&&Object.values(state.locationEffects??{}).flat().some(effect=>activeCardRules(effect.card,'attackRunEpic').length))return;
     add(['overload',overload,index],'Overload · '+entry.card.name,{entry,index:overload});
    });
   }
@@ -1871,6 +2120,7 @@ function playWeaponEffect(side,...args){
    break;
   }
   case 'defuse':
+  case 'saurinUnbolt':
    spendForce(side,effect.cost);
    loseTableCard(entry.side,entry.slot,entry.card);
    if(battleSession?.weaponTurn)finishWeaponAction(side,false);
@@ -2165,13 +2415,14 @@ function devicePlacementOptions(side,device,budget=Infinity){
  const [rule]=activeCardRules(device,'device');
  const backpack=side==='Dark'&&device?.id==='Dark:2357';
  const owner=deploymentSide(device);
- if((!rule&&!backpack)||(owner&&owner!==side)||(rule?.cost??0)>budget)return [];
- const mounts=weaponMounts(side).map(mount=>({...mount,hostSide:side}));
+ if((!rule&&!backpack)||(owner&&owner!==side))return [];
+ const mounts=weaponMounts(side,true).map(mount=>({...mount,hostSide:side}));
  if(rule?.allowOpponent||activeCardRules(device,'reusableComlink').length){
   const opponent=PremiereGame.otherSide(side);
   mounts.push(...weaponMounts(opponent).map(mount=>({...mount,hostSide:opponent})));
  }
  return mounts.filter(({host,slot,index})=>{
+  if(state.locations[slot]?.id==='Light:681')return false;
   if(backpack)return host.type==='Character'&&
    (currentGame()?.cardRulesVersion!==0||board[slot][index]===host)&&
    (characterTraits(host).some(trait=>/trooper/.test(trait))||/trooper/i.test(host.name??''))&&
@@ -2180,7 +2431,8 @@ function devicePlacementOptions(side,device,budget=Infinity){
   const loc=state.locations[slot];
   return host.type==='Starship'&&isSystem(loc)&&state.locations.some((site,bay)=>
    sitePlanet(site)===locationGroup(loc)&&PremiereLocations.conditions(state,bay,side).dockingBay);
- }).map(mount=>({...mount,cost:(rule?.cost??0)+sentryModifier(side,mount.slot,'deploy')})).filter(mount=>mount.cost<=budget);
+ }).map(mount=>({...mount,...equipmentPrice(side,mount,(rule?.cost??0)+sentryModifier(side,mount.slot,'deploy'))}))
+  .filter(mount=>mount.cost<=budget);
 }
 
 function deployDevice(side,handIndex,slot,hostIndex,hostSide=side){
@@ -2188,6 +2440,7 @@ function deployDevice(side,handIndex,slot,hostIndex,hostSide=side){
  if(!option)return false;
  const {hand}=PremiereGame.zones(state,side),[device]=hand.splice(handIndex,1);
  spendForce(side,option.cost);
+ if(option.discount)PremiereGame.useOnce(state.game,'turn',option.discount);
  (option.host.attachments??=[]).push(device);
  log(side+' rüstet '+option.host.name+' mit '+device.name+' aus ('+option.cost+' Force).');
  return true;
@@ -2282,7 +2535,7 @@ function theftTargets(actor,mode){
  const opposing=PremiereGame.otherSide(side),entries=allWeaponEntries().filter(entry=>entry.card!==card&&
   entry.slot===slot&&!entry.unavailable&&PremiereLocations.physicalPlace(entry)===place);
  const equipment=entry=>['Weapon','Device'].includes(entry.card.type);
- const stealable=entry=>entry.side===opposing&&equipment(entry)&&!entry.card.occupants?.length&&entries.some(({card:host})=>
+ const stealable=entry=>entry.side===opposing&&equipment(entry)&&!protectedWeapon(entry.card)&&!entry.card.occupants?.length&&entries.some(({card:host})=>
   host.type==='Character'&&(host.weapons?.includes(entry.card)||host.attachments?.includes(entry.card)));
  if(mode==='kabe')return entries.filter(stealable);
  if(mode==='tonnika')return entries.filter(equipment).concat(weaponRecords().filter(entry=>entry.slot===slot&&isLoc(entry.host)))
@@ -2300,20 +2553,60 @@ function controlTheftOptions(side){
  if(state.activeSide!==side||state.phase!==1||!state.game)return [];
 
  return PremiereLocations.entries(state,side).flatMap((actor,index)=>{
+  if(!actor.unavailable&&activeCardRules(actor.card,'reegeskSalvage').length){
+   const key='reegesk:'+(actor.card.instanceId??actor.card.id);
+   if(!capForceLoss(side,1)||PremiereGame.wasUsed(state.game,'phase',key))return [];
+   const rival=PremiereGame.otherSide(side);
+   const piles=[PremiereGame.lostPileFaceDown(state,rival)?[]:PremiereGame.zones(state,rival).lost,
+    ...(state.tableEffects??[]).filter(effect=>effect.card.id==='Light:585'&&effect.target===rival).map(effect=>effect.support)];
+   return piles.flatMap((pile,pileIndex)=>(pile??[]).flatMap((card,targetIndex)=>{
+    const valid=isDroid(card)||card.type==='Vehicle'||card.type==='Weapon'&&card.subType==='Character'||
+     card.type==='Device'&&activeCardRules(card,'device').some(rule=>!['starship','vehicle'].includes(rule.targets));
+    return valid?[{args:[index,pileIndex,targetIndex,'salvage'],card:actor.card,site:actor.slot,salvage:{card,pile},key,cost:0,
+     label:actor.card.name+' · 1 Force für '+card.name+' verlieren'}]:[];
+   }));
+  }
+  const training=spyThiefTraining(actor.card);
+  if(training&&!actor.unavailable&&isSite(state.locations[actor.slot])&&!PremiereGame.wasUsed(state.game,'phase',training)){
+   const items=PremiereLocations.entries(state,PremiereGame.otherSide(side));
+   return items.flatMap((target,targetIndex)=>target.slot===actor.slot&&!target.unavailable&&target.card.type==='Device'&&spyCanSteal(side,target)?
+    [{args:[index,targetIndex,'thiefTraining'],actor,card:actor.card,target,site:actor.slot,cost:0,training,
+     label:actor.card.name+' · '+target.card.name+' stehlen'}]:[]);
+  }
   const [rule]=activeCardRules(actor.card,'controlTheft');
   if(!rule||actor.unavailable||rule.cost>forceBudget(side)||!isSite(state.locations[actor.slot])||
      rule.mode==='kabe'&&actor.card.attachments?.some(card=>activeCardRules(card,'juriJuice').length))return [];
   const targets=theftTargets(actor,rule.mode),uses=state.controlTheftUses?.get(actor.card);
-  if(!targets.length||rule.mode==='tonnika'&&uses?.turn===state.game.timing.turn&&uses.count>=2)return [];
-  const details={card:actor.card,actor,site:actor.slot,rule,cost:rule.cost};
+  if(!targets.length||rule.mode==='tonnika'&&uses?.turn===state.game.timing.turn&&uses.count>=2*tonnikaFactor(actor.card))return [];
+  const details={card:actor.card,actor,site:actor.slot,rule,cost:rule.cost*tonnikaFactor(actor.card)};
+  if(details.cost>forceBudget(side))return [];
   if(rule.mode==='tonnika')return [{...details,args:[index],label:actor.card.name+' · Ausrüstung erbeuten (2 Force)'}];
   return targets.map((target,i)=>({...details,target,args:[index,i],label:actor.card.name+' · '+target.card.name+
    (rule.mode==='wioslea'?' zum Kauf prüfen (1 Force)':' übernehmen')}));
  });
 }
 
+function protectedWeapon(card){
+ return card.type==='Weapon'&&card.attachments?.some(effect=>activeCardRules(effect,'protectWeaponFromTheft').length);
+}
+
+function spyThiefTraining(card){
+ const training=card.attachments?.find(effect=>activeCardRules(effect,'thiefTraining').length);
+ return training&&'thiefTraining:'+(training.instanceId??training.id);
+}
+
+function spyCanSteal(side,entry){
+ const {card,slot}=entry;
+ if((card.owner??card.side??entry.side)===side||protectedWeapon(card)||!withinDeploymentLimit(card,side))return false;
+ if(card.type==='Vehicle')return !tractorShipCrew(card).length;
+ if(card.type==='Weapon')return card.subType==='Character';
+ return card.type==='Device'&&!card.occupants?.length&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(({card:host,slot:at})=>
+  at===slot&&host.type==='Character'&&host.attachments?.includes(card)));
+}
+
 function takeStolenTableCard(side,actor,target){
  const card=target.card;
+ if(protectedWeapon(card))return false;
  if(!detachTableCard(target.side,target.slot,card))return false;
  function assign(unit){
   unit.owner=side;
@@ -2337,20 +2630,32 @@ function performControlTheft(side,...args){
  const option=controlTheftOptions(side).find(choice=>choice.args.length===args.length&&choice.args.every((value,i)=>value===args[i]));
  if(!option)return false;
  const {actor,target,card,rule,cost}=option,{force,used}=PremiereGame.zones(state,side);
+ if(option.salvage){
+  PremiereGame.useOnce(state.game,'phase',option.key);
+  return !!beginForceLoss(side,1,{reason:'reegesk',salvage:option.salvage});
+ }
  spendForce(side,cost);
+ if(option.training){
+  PremiereGame.useOnce(state.game,'phase',option.training);
+  drawDestinySeries(side,'controlTheft',1,0,draws=>{
+   const picked=draws.find(draw=>!draw.cancelled)?.value,limit=printedBattleDestiny(target.card);
+   if(Number.isFinite(picked)&&Number.isFinite(limit)&&picked<limit)takeStolenTableCard(side,card,target);
+  });
+  return true;
+ }
  if(rule.mode==='momaw')return takeStolenTableCard(side,card,target);
  if(rule.mode==='tonnika'){
   const counts=state.controlTheftUses??=new Map(),turn=state.game.timing.turn,previous=counts.get(card);
   counts.set(card,{turn,count:previous?.turn===turn?previous.count+1:1});
  }
- drawDestinySeries(side,'controlTheft',rule.mode==='tonnika'?2:1,0,draws=>{
+ drawDestinySeries(side,'controlTheft',rule.mode==='tonnika'?2*tonnikaFactor(card):1,0,draws=>{
   const values=draws.filter(draw=>!draw.cancelled).map(draw=>draw.value),limit=printedBattleDestiny(target?.card);
   if(rule.mode==='kabe'&&Number.isFinite(limit)&&values[0]<limit)takeStolenTableCard(side,card,target);
   if(rule.mode==='wioslea'&&Number.isFinite(limit)&&values[0]>limit&&target.card.deploy<=force.length){
    state.pendingCardView={mode:'wiosleaPurchase',side,card,target,shown:[]};
   }
-  if(rule.mode==='tonnika'&&values.includes(2)){
-   state.pendingCardView={mode:'tonnikaTheft',side,card,actor,shown:[],remaining:2};
+  if(rule.mode==='tonnika'&&values.includes(2*tonnikaFactor(card))){
+   state.pendingCardView={mode:'tonnikaTheft',side,card,actor,shown:[],remaining:2*tonnikaFactor(card)};
   }
  });
  return true;
@@ -2409,8 +2714,10 @@ function locationDeployPositions(side,handIndex){
  if(!state||state.phase!==2||state.activeSide!==side||!['Light','Dark'].includes(side)||state.gameWinner||state.pendingForceLoss||battleSession)return [];
  const card=(side==='Light'?state.hand:state.botHand)?.[handIndex];
  const group=locationGroup(card);
- if(!group||(card.side&&card.side!==side))return [];
- if(state.locations.some(loc=>loc&&locationTitle(loc)===locationTitle(card)))return [];
+ if(card?.id==='Light:681'){const system=state.locations.findIndex(loc=>loc?.id==='Dark:654'&&!loc.blownAway);return system<0?[]:[boardLocationOrder().indexOf(system)];}
+ if(state.locations.some(loc=>loc?.blownAway&&locationGroup(loc)===group))return [];
+ if(!group||(card.side&&card.side!==side)||activeCardRules(card,'vehicleSite').length)return [];
+ if(state.locations.some(loc=>loc&&(locationTitle(loc)===locationTitle(card)||isHoloSite(card)&&isHoloSite(loc))))return [];
 
  const order=boardLocationOrder();
  const groupAt=index=>locationGroup(state.locations[order[index]]);
@@ -2447,7 +2754,7 @@ function conversionTarget(side,handIndex){
  const card=PremiereGame.zones(state,side).hand?.[handIndex];
  if(!card||!isLoc(card)||card.side!==side)return -1;
  return state.locations.findIndex(old=>old&&old.side===PremiereGame.otherSide(side)&&
-  old.subType===card.subType&&locationTitle(old)===locationTitle(card)&&!old.cannotConvert);
+  old.subType===card.subType&&(locationTitle(old)===locationTitle(card)||isHoloSite(card)&&isHoloSite(old))&&!old.cannotConvert);
 }
 
 function convertLocation(side,handIndex,slot){
@@ -2473,7 +2780,7 @@ function revolutionOptions(side,handIndex){
  const {hand}=PremiereGame.zones(state,side);
  if(hand?.[handIndex]?.id!=='Light:2110'||side!=='Light'||forceBudget(side)<3)return [];
  return state.locations.flatMap((location,slot)=>location&&!activeCardRules(location,'mobileSystem').length&&forceBudget(side)>=3+sentryModifier(side,slot,'deploy')&&!PremiereLocations.effectsAt(state,slot)
-  .some(effect=>effect.card.id==='Light:2110')?[slot]:[]);
+  .some(effect=>effect.card.id==='Light:2110'||effect.justiceMode==='revolution')?[slot]:[]);
 }
 
 function deployRevolution(side,handIndex,slot){
@@ -2558,7 +2865,9 @@ function resolveLocationControlRules(){
 }
 
 function captureCharacter(card,slot){
- if(card.type!=='Character'||(card.owner??card.side)!=='Light'||!detachTableCard('Light',slot,card))return false;
+ if(card.type!=='Character'||(card.owner??card.side)!=='Light')return false;
+ if(card.undercover)breakSpyCover(card);
+ if(!detachTableCard('Light',slot,card))return false;
  card.captured=true;
  if(battleSession?.lastHit?.card===card)battleSession.lastHit=null;
  (state.pendingCustody??=[]).push({side:'Dark',card,slot});
@@ -2691,7 +3000,31 @@ function tableEffectOptions(side){
  return (hand??[]).flatMap((card,index)=>{
   const rule=tableEffectRule(card);
   if(!rule||card.side!==side||!withinDeploymentLimit(card,side))return [];
+  if(rule.ejectPilot){
+   const {deck}=PremiereGame.zones(state,side);
+   if(!PremiereGame.reserveCards(deck).length)return [];
+   return allWeaponEntries().flatMap((entry,targetIndex)=>{
+    const cost=rule.cost+sentryModifier(side,entry.slot,'deploy');
+    return !entry.unavailable&&PremiereUnits.active(entry.card)&&PremiereUnits.fighter(entry.card)&&
+     permanentPilotAbility(entry.card)!==null&&cost<=forceBudget(side)?
+     [{args:[index,targetIndex],card,host:entry.card,target:entry.side,cost,label:card.name+' · '+entry.card.name+' prüfen (1 Force)'}]:[];
+   });
+  }
+  if(rule.thiefTraining){
+   const characters=PremiereLocations.entries(state,side).flatMap((entry,targetIndex)=>{
+    const host=entry.card,cost=sentryModifier(side,entry.slot,'deploy');
+    return host.type==='Character'&&!entry.unavailable&&cost<=forceBudget(side)&&!characterTraits(host).includes('thief')&&!spyThiefTraining(host)?
+     [{args:[index,targetIndex],card,host,target:side,cost,label:card.name+' · '+host.name+' wird Thief'}]:[];
+   });
+   return characters.concat(weaponRecords().flatMap((entry,targetIndex)=>
+    !protectedWeapon(entry.card)&&forceBudget(side)>=sentryModifier(side,entry.slot,'deploy')?
+     [{args:[index,'weapon',targetIndex],card,host:entry.card,target:entry.side,cost:sentryModifier(side,entry.slot,'deploy'),
+      label:card.name+' · '+entry.card.name+' vor Diebstahl schützen'}]:[]));
+  }
+  if(rule.scoutTraining)return trainingOptions(side,card,index,'scout').filter(option=>PremiereUnits.hasSkill(option.host,'warrior')||PremiereUnits.hasSkill(option.host,'scout')).map(option=>({...option,training:{...option.training,power:0}}));
   if(rule.trainingSkill)return trainingOptions(side,card,index,rule.trainingSkill);
+  if(rule.recharge)return weaponRecords().flatMap((entry,hostIndex)=>entry.card.id==='Dark:2378'?[{card,host:entry.card,target:'Dark',cost:0,args:[index,hostIndex],label:card.name+' auf '+entry.card.name}]:[]);
+  if(rule.capturedHost)return (state.capturedShips??[]).map((record,targetIndex)=>({card,host:record.ship,target:side,cost:0,args:[index,targetIndex],label:card.name+' auf '+record.ship.name}));
   if(rule.characterTarget)return characterEffectOptions(side,card,index,rule,forceBudget(side));
   if(rule.hullEffect)return hullModificationOptions(side,card,index,rule,forceBudget(side));
   if(rule.capitalHost)return PremiereGame.sides.flatMap(actor=>PremiereLocations.entries(state,actor)).flatMap((entry,hostIndex)=>{
@@ -2733,12 +3066,14 @@ function characterEffectOptions(side,card,index,rule,budget){
  if(rule.cost>budget)return [];
  if(rule.characterTarget==='juri-alien'&&!state.locations.some(juriDestination)&&
    !PremiereGame.sides.some(actor=>PremiereLocations.activeCards(state,actor).some(unit=>locationTitle(unit)==="jabba's sail barge")))return [];
- const owned=!['demotion','juri-alien'].includes(rule.characterTarget);
+ const owned=!['demotion','juri-alien','program-trap'].includes(rule.characterTarget);
  const entries=(owned?[side]:PremiereGame.sides).flatMap(actor=>PremiereLocations.entries(state,actor));
  return entries.flatMap(({card:host,side:target,slot,unavailable},hostIndex)=>{
-  const cost=rule.cost+sentryModifier(side,slot,'deploy');
-  if(cost>budget||unavailable||!PremiereUnits.active(host)||host.type!=='Character')return [];
-  const valid=rule.characterTarget==='force-user'?forceUser(host):rule.characterTarget==='cape'?matchesRegisteredTarget(host,'rebel-or-alien'):
+  const cost=(rule.characterTarget==='program-trap'?(target===side?1:2):rule.cost)+sentryModifier(side,slot,'deploy');
+  if(cost>budget||unavailable||(!PremiereUnits.active(host)&&!(host.undercover&&target===side))||host.type!=='Character')return [];
+  if(rule.characterTarget==='undercover')return isSite(state.locations[slot])&&isSpyCharacter(host)&&!host.undercover?
+   [{args:[index,hostIndex],card,target,host,cost,label:card.name+' auf '+host.name+' ('+cost+' Force)'}]:[];
+  const valid=rule.characterTarget==='program-trap'?isDroid(host)&&!isArtoo(host)&&locationTitle(host)!=='c-3po':rule.characterTarget==='force-user'?forceUser(host):rule.characterTarget==='cape'?matchesRegisteredTarget(host,'rebel-or-alien'):
    rule.characterTarget==='saber-user'?cardAbility(host)>2&&ownLightsaber(host):rule.characterTarget==='juri-alien'?host.subType==='Alien':host.subType==='Imperial'&&
    !/\bvader\b|\bemperor\b/.test(locationTitle(host))&&!characterTraits(host).includes('stormtrooper')&&locationTitle(host)!=='stormtrooper';
   return valid?[{args:[index,hostIndex],card,target,host,cost,
@@ -2752,7 +3087,7 @@ function trainingOptions(side,card,index,skill){
   const cost=sentryModifier(side,slot,'deploy');
   if(cost>(forceBudget(side))||unavailable||!PremiereUnits.active(host)||host.type!=='Character')return [];
   const granted=!PremiereUnits.hasSkill(host,skill);
-  if(granted&&skill!=='smuggler'&&isDroid(host))return [];
+  if(granted&&!['smuggler','scout'].includes(skill)&&isDroid(host))return [];
   const power=granted?(skill==='pilot'?2:0):1;
   return [{args:[index,hostIndex],card,target:side,host,cost,training:{skill,granted,power},
    label:card.name+' auf '+host.name+' · '+(granted?skill+'-Skill':'+1 Power')+' ('+cost+' Force)'}];
@@ -2774,18 +3109,35 @@ function deployTableEffect(side,index,hostIndex,hullStat){
 }
 
 function placeTableEffect({card,target,host,training,hullStat}){
+ if(host&&tableEffectRule(card)?.ejectPilot){
+  drawDestinySeries(card.owner??card.side,'ejectPilot',1,0,draws=>{
+   if((draws.find(draw=>!draw.cancelled)?.value??-1)<=2||permanentPilotAbility(host)===null){
+    loseOwnedCard(card,card.side);
+    return;
+   }
+   host.pilotsEjected=1;
+   (host.attachments??=[]).push(card);
+   (state.tableEffects??=[]).push({card,target,host});
+   log(card.name+' entfernt den permanenten Piloten von '+host.name+'.');
+  });
+  return;
+ }
  if(host){
   if(training)card.training=training;
   if(hullStat)card.hullStat=hullStat;
   if(tableEffectRule(card)?.cancelsHostText)card.suppressesHostText=true;
   (host.attachments??=[]).push(card);
-  (state.tableEffects??=[]).push({card,target,host});
+  (state.tableEffects??=[]).push({card,target,host,...(tableEffectRule(card)?.recharge?{support:[]}:{} )});
+  if(activeCardRules(card,'undercoverEffect').length){
+   const entry=PremiereLocations.findEntry(state,host);
+   if(entry)enterUndercover(entry);
+  }
   log(card.name+' liegt auf '+host.name+'.');
   return;
  }
  const effect={card,target};
  if(tableEffectRule(card)?.weaponRack)effect.weapons=[];
- if(tableEffectRule(card)?.memorial)effect.support=[];
+ if(tableEffectRule(card)?.memorial||tableEffectRule(card)?.recharge)effect.support=[];
  (state.tableEffects??=[]).push(effect);
  log(card.name+' liegt auf der '+target+' Side.'+(tableEffectRule(card)?.warriorDeploy?' Warriors dieser Seite kosten +1 Force.':''));
 }
@@ -2810,7 +3162,7 @@ function cancelTableEffect(effect){
  if(index<0)return;
  state.tableEffects.splice(index,1);
  for(const weapon of effect.weapons??[])loseOwnedCard(weapon,effect.target);
- for(const card of effect.support??[])loseOwnedCard(card,effect.target,'support');
+ for(const card of effect.support??[])if(activeCardRules(effect.card,'recharge').length)PremiereGame.zones(state,'Dark').used.push(card);else loseOwnedCard(card,effect.target,'support');
  if(effect.card.migTarget){
   const entry=PremiereLocations.findEntry(state,effect.card);
   if(entry)detachTableCard(entry.side,entry.slot,entry.card);
@@ -2818,6 +3170,7 @@ function cancelTableEffect(effect){
  }
  if(effect.host){
   const host=effect.host,index=host.attachments.indexOf(effect.card);
+  if(activeCardRules(effect.card,'removePermanentPilots').length)delete host.pilotsEjected;
   if(index>=0)host.attachments.splice(index,1);
   const entry=PremiereLocations.findEntry(state,host),craft=entry?.carriers[0];
   const seat=craft?.occupants.find(occupant=>occupant.card===host&&occupant.role==='pilot');
@@ -2833,6 +3186,7 @@ function cancelTableEffect(effect){
   }
  }
  loseOwnedCard(effect.card,effect.card.side);
+ if(effect.host?.undercover&&activeCardRules(effect.card,'undercoverEffect').length)breakSpyCover(effect.host);
  log(effect.card.name+' wurde aufgehoben.');
 }
 
@@ -2860,11 +3214,24 @@ function scompOperators(side,actor,deathStarOnly=false){
  });
 }
 
+function atScompLink(card){
+ const entry=PremiereLocations.findEntry(state,card);
+ if(!entry||entry.unavailable)return false;
+ const place=PremiereLocations.physicalPlace(entry);
+ const link=host=>!PremiereUnits.textSuppressed(host)&&host.cardIcons?.includes('Scomp Link');
+ if(typeof place!=='number')return link(place);
+ if(PremiereLocations.conditions(state,entry.slot,entry.side).scompLink)return true;
+ return PremiereGame.sides.some(side=>PremiereLocations.presentCards(state,side,place).some(host=>
+  host.type==='Vehicle'&&!PremiereUnits.enclosed(host)&&PremiereUnits.active(host)&&link(host)));
+}
+
 function namedWeaponCancellationOptions(side){
  const {hand}=PremiereGame.zones(state,side);
  if(!(hand??[]).some(card=>isAlter(card)||activeCardRules(card,'namedCancellation').length))return [];
  const attached=allWeaponEntries().filter(entry=>!entry.unavailable&&activeCardRules(entry.card,'navSabotage').length);
- return hand.flatMap((card,index)=>weaponRecords().concat(attached).flatMap((entry,targetIndex)=>
+ const devices=(state.game?.cardRulesVersion??latestCardRulesVersion)>=28?PremiereGame.sides.flatMap(actor=>
+  PremiereLocations.entries(state,actor).filter(entry=>!entry.unavailable&&entry.card.type==='Device')):[];
+ return hand.flatMap((card,index)=>weaponRecords().concat(attached,devices).flatMap((entry,targetIndex)=>
   namedCancellation(card,entry.card)||isAlter(card)&&attached.includes(entry)&&alterTarget(entry.card)&&highestInterruptAbility(side)>0?[{
   args:[index,targetIndex],card,entry,label:card.name+' · '+entry.card.name+' aufheben',
  }]:[]));
@@ -3007,8 +3374,9 @@ function missionTargets(mission,side){
  const actor=['lateral-damage','yerka-mig'].includes(mission)?PremiereGame.otherSide(side):side;
  const entries=['detachment','luke-recall'].includes(mission)?PremiereGame.sides.flatMap(player=>PremiereLocations.entries(state,player)):PremiereLocations.entries(state,actor);
  return entries.flatMap(({card,slot,carriers,unavailable},targetIndex)=>{
-  if(unavailable)return [];
+  if(unavailable||mission==='lateral-damage'&&fireExtinguisherProtects(card))return [];
   const loc=state.locations[slot];
+  if(mission==='cell2187')return card.type==='Character'&&locationGroup(loc)!=='death star'&&(isSpyCharacter(card)||characterTraits(card).includes('leader'))?[{target:card,targetIndex}]:[];
   if(mission==='necklace')return card.type==='Character'&&card.subType==='Imperial'?[{target:card,targetIndex}]:[];
   if(mission==='yerka-mig')return card.type==='Character'?[{target:card,targetIndex}]:[];
   if(mission==='luke-recall')return card.type==='Character'&&card.subType==='Rebel'?[{target:card,targetIndex}]:[];
@@ -3034,6 +3402,19 @@ function locationEffectOptions(side,index){
  const options=state.locations.flatMap((loc,site)=>{
   if(!loc)return [];
   if(rule.expandsText)return isSite(loc)?[{card,cost:rule.cost,args:[index,site],label:card.name+' bei '+loc.name}]:[];
+  if(rule.imperialJustice){
+   const rival=PremiereGame.otherSide(side);
+   const choices=[{mode:'revolution',label:'Gegen Revolution schützen'}];
+   if(forceFromLocations(rival).count-forceFromLocations(side).count>=4)choices.unshift({mode:'generation',label:'Force-Generierung aufheben'});
+   return choices.map(({mode,label})=>({card,cost:rule.cost,justiceMode:mode,args:[index,site,mode],label:card.name+' · '+label}));
+  }
+  if(rule.darkWaters){
+   const vehicleSite=loc.locationTags?.includes('Interior')&&(loc.locationTags.includes('Vehicle Site')||
+    loc.hostInstanceId&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>
+     entry.card.type==='Vehicle'&&entry.card.instanceId===loc.hostInstanceId)));
+   return isExteriorPlanetSite(loc)&&sitePlanet(loc)!=='hoth'||vehicleSite?
+    [{card,cost:rule.cost,args:[index,site],label:card.name+' bei '+loc.name}]:[];
+  }
   if(rule.sentryRegion)return sitePlanet(loc)===rule.sentryRegion?[
    ['deploy','Gegnerischer Deploy +1'],['destiny','Gegnerische Mindest-Ability +1'],['power','Eigene Gesamt-Power +1'],
   ].map(([mode,label])=>({card,cost:rule.cost,sentryMode:mode,args:[index,site,mode],label:card.name+' · '+label+' (2 Force)'})):[];
@@ -3079,16 +3460,17 @@ function locationEffectOptions(side,index){
   if(sitePlanet(loc)!=='death star'||PremiereLocations.conditions(state,site,side).dockingBay)return [];
   return targets.map(({target,targetIndex})=>({card,cost:0,target,args:[index,site,targetIndex],label:loc.name+' · '+target.name+' als Ziel'}));
  });
- return options.flatMap(option=>{
+ return options.filter(option=>state.locations[option.args[1]]?.id!=='Light:681'||card.id==='Dark:1640').flatMap(option=>{
   const sentry=sentryModifier(side,option.args[1],'deploy'),cost=option.cost+sentry;
   return cost<=(forceBudget(side))?[{...option,cost,label:option.label+(sentry?' · +1 Force durch Sentry':'')}]:[];
  });
 }
 
-function placeLocationEffect({card,site,target,origin,distance,sentryMode}){
+function placeLocationEffect({card,site,target,escort,origin,distance,sentryMode,justiceMode}){
  if(activeCardRules(card,'rotateLocation').length){placeRevolution(card,site);return;}
  const rule=locationEffectRule(card);
  if(rule.darkHours){settleDarkHours(card,site);return;}
+ if(rule.mobileRemote){card.controller=card.owner??card.side;PremiereGame.zones(state,card.controller).board[site].push(card);return;}
  if(rule.mission==='yerka-mig'){
   const side=card.owner??card.side;
   card.migTarget=target;
@@ -3098,7 +3480,16 @@ function placeLocationEffect({card,site,target,origin,distance,sentryMode}){
   return;
  }
  const effect={card};
+ if(escort)effect.escort=escort;
  if(sentryMode)effect.sentryMode=sentryMode;
+ if(justiceMode){
+  effect.justiceMode=justiceMode;
+  if(justiceMode==='revolution'){
+   for(const rotation of [...PremiereLocations.effectsAt(state,site)].filter(entry=>activeCardRules(entry.card,'rotateLocation').length)){
+    cancelLocationEffect(site,rotation);
+   }
+  }
+ }
  if(target)Object.assign(effect,{target,targetInstanceId:target.instanceId,plansCollected:false,origin,distance});
  else if(rule.siteDevice)Object.assign(effect,{siteDevice:rule.siteDevice,requiredTag:rule.requiredTag,deployedTurn:state.game.timing.turn});
  else if(rule.nightfall)effect.nightfall=true;
@@ -3144,7 +3535,8 @@ function deployLocationEffect(side,index,site,targetIndex){
  if(!option)return false;
  const {hand}=PremiereGame.zones(state,side),[card]=hand.splice(index,1);
  if(option.cost)spendForce(side,option.cost);
- const frame={kind:'locationEffect',side,card,site,target:option.target,origin:option.origin,distance:option.distance,sentryMode:option.sentryMode};
+ const frame={kind:'locationEffect',side,card,site,target:option.target,origin:option.origin,distance:option.distance,
+  sentryMode:option.sentryMode,justiceMode:option.justiceMode};
  if(state.game&&hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);
  else placeLocationEffect(frame);
  return true;
@@ -3171,7 +3563,7 @@ function locationCancellationOptions(side){
     card,target:effect.target,label:card.name+' · '+effect.card.name+' im Spiel aufheben'});
   }
   state.locations.forEach((loc,site)=>PremiereLocations.effectsAt(state,site).forEach((effect,effectIndex)=>{
-   if(namedCancellation(card,effect.card)||alter&&(!expandedCardRules()||alterTarget(effect.card))&&
+   if(namedCancellation(card,effect.card)||alter&&(!expandedCardRules()||alterTarget(effect.card,site))&&
      (locationEffectRule(effect.card)||activeCardRules(effect.card,'rotateLocation').length)){
     options.push({kind:'alterLocationEffect',args:[index,site,effectIndex],card,target:effect.card.side,
      label:card.name+' · '+effect.card.name+' bei '+loc.name+' aufheben'});
@@ -3197,6 +3589,9 @@ function cancelLocationEffect(site,effect){
  const row=state.locationEffects?.[site],index=row?.indexOf(effect)??-1;
  if(index<0)return;
  row.splice(index,1);
+ if(locationTitle(effect.card)==='spice mines of kessel'&&effect.target?.captured){
+  releaseSpyRescueTarget(effect.target);
+ }
  loseOwnedCard(effect.card,effect.card.side);
  log(effect.card.name+' wurde aufgehoben.');
 }
@@ -3242,6 +3637,9 @@ function progressLocationMissions(){
   for(const effect of [...PremiereLocations.effectsAt(state,site)]){
    const mission=locationEffectRule(effect.card)?.mission;
    if(!mission)continue;
+   if(mission==='dantooine'){if(effect.target?.blownAway||state.mobileSystems?.['Dark:654']?.orbit===site)cancelLocationEffect(site,effect);continue;}
+   if(mission==='spiceMines'){progressSpiceMines(site,effect);continue;}
+   if(mission==='cell2187'){progressCell2187(site,effect);continue;}
    if(mission==='kessel-run'&&kesselRunBlocked(site)){cancelLocationEffect(site,effect);continue;}
    const target=PremiereLocations.findEntry(state,effect.target);
    if(!target){cancelLocationEffect(site,effect);continue;}
@@ -3453,6 +3851,15 @@ function settleShuffle(frame){
   const pile=PremiereGame.zones(state,frame.target)[frame.zone];
   const shuffle=frame.zone==='deck'?PremiereGame.shuffleReserve:PremiereGame.shuffle;
   pile.splice(0,pile.length,...shuffle(pile,state.game));
+  const leader=PremiereLocations.entries(state,frame.side).find(entry=>!entry.unavailable&&isSite(state.locations[entry.slot])&&
+   activeCardRules(entry.card,'shufflePeek').some(rule=>rule.trigger===frame.card.id));
+  if(leader){
+   const place=PremiereLocations.physicalPlace(leader),count=PremiereGame.sides.reduce((total,side)=>
+    total+PremiereLocations.presentCards(state,side,place).filter(card=>card!==leader.card&&PremiereUnits.active(card)&&
+     characterTraits(card).includes('musician')).length,0);
+   state.pendingCardView={mode:'shuffleMusicians',side:frame.side,card:leader.card,shown:[],shuffleFrame:frame,count,peeked:false};
+   return;
+  }
   PremiereGame.zones(state,frame.side).used.push(frame.card);
  }else loseOwnedCard(frame.card,frame.side);
  if(frame.duringBattle)finishWeaponAction(frame.side,false);
@@ -3555,7 +3962,9 @@ function unitReserveSearchOptions(side){
  if(!state.game||!PremiereGame.reserveCards(PremiereGame.zones(state,side).deck).length)return [];
  return PremiereLocations.entries(state,side).flatMap(({card,slot,unavailable},index)=>{
   const [rule]=activeCardRules(card,'unitReserveSearch');
-  const key='unitSearch:'+(card.instanceId??card.id);
+  const key='unitSearch:'+(card.instanceId??card.id+':'+index);
+  const loc=state.locations[slot];
+  if(rule?.warRoom&&(!isSite(loc)||!/war room/.test(locationTitle(loc))||(loc.owner??loc.side)!==side)||rule?.deathStar&&sitePlanet(loc)!=='death star')return [];
   if(!rule||unavailable||!PremiereUnits.active(card)||forceBudget(side)<rule.cost||
      rule.controlOnly&&(state.activeSide!==side||state.phase!==1||PremiereGame.wasUsed(state.game,'phase',key)))return [];
   return [{args:[index],card,site:slot,key,rule,cost:rule.cost,label:card.name+' · '+rule.display+' suchen ('+rule.cost+' Force)'}];
@@ -3566,6 +3975,7 @@ function beginUnitReserveSearch(side,index){
  const option=unitReserveSearchOptions(side).find(choice=>choice.args[0]===index);
  if(!option)return false;
  spendForce(side,option.cost);
+ if(option.rule.costUsed){const entry=PremiereLocations.findEntry(state,option.card);if(!entry||!tableToUsed(entry))return false;}
  if(option.rule.controlOnly)PremiereGame.useOnce(state.game,'phase',option.key);
  state.pendingReserveSearch={card:option.card,side,names:option.rule.names,sourceOnTable:true,duringBattle:!!battleSession};
  log(option.label+'.');
@@ -3653,6 +4063,42 @@ function settleGravelStorm(frame){
 
 const informationCardTypes=['Character','Device','Effect','Interrupt','Location','Starship','Vehicle','Weapon'];
 
+function spySabotageTargets(side){
+ const entries=allWeaponEntries(),fixed=weaponRecords().filter(entry=>isLoc(entry.host));
+ const devices=state.locations.flatMap((_,slot)=>PremiereLocations.effectsAt(state,slot).flatMap(effect=>
+  effect.card.type==='Device'?[{card:effect.card,slot,effect,side:effect.card.owner??effect.card.side}]:[]));
+ return entries.concat(fixed,devices).flatMap(entry=>{
+  const {card,slot}=entry;
+  if(entry.unavailable||!['Weapon','Device','Vehicle'].includes(card.type)||!isSite(state.locations[slot]))return [];
+  const host=entry.host??entries.find(candidate=>candidate.slot===slot&&
+   [...(candidate.card.weapons??[]),...(candidate.card.attachments??[])].includes(card))?.card;
+  const deploy=card.deploy??(card.type==='Weapon'&&host?weaponDeployCost(card,host):
+   PremiereWeapons.projector(card)?2:PremiereWeapons.seeker(card)?1:locationEffectRule(card)?.cost??activeCardRules(card,'device')[0]?.cost??0);
+  const spies=undercoverSpies(side,slot).map(source=>source.card);
+  return spies.length&&Number.isFinite(deploy)?[{entry,deploy,spies}]:[];
+ });
+}
+
+function scannerSupport(side,mode){
+ return (state.tableEffects??[]).flatMap(effect=>effect.target===side?
+  activeCardRules(effect.card,'scannerSupport').filter(rule=>rule.mode===mode):[])[0];
+}
+
+function sensorPanelSources(side){
+ return PremiereLocations.entries(state,side).flatMap(({card,unavailable})=>{
+  const key='sensorPanel:'+(card.instanceId??card.id);
+  return !unavailable&&activeCardRules(card,'sensorPanel').length&&!PremiereGame.wasUsed(state.game,'turn',key)?[key]:[];
+ });
+}
+
+function releaseSpyRescueTarget(card){
+ const entry=PremiereLocations.findEntry(state,card);
+ if(!entry||!card.captured||!detachTableCard(entry.side,entry.slot,card))return false;
+ (state.pendingCustody??=[]).push({side:'Light',card,slot:entry.slot});
+ log(card.name+' wird am bisherigen Ort befreit.');
+ return true;
+}
+
 function pileInterruptOptions(side){
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<21||!state.game)return [];
  const own=PremiereGame.zones(state,side),rival=PremiereGame.zones(state,PremiereGame.otherSide(side));
@@ -3663,6 +4109,59 @@ function pileInterruptOptions(side){
   const {mode,cost}=rule,budget=forceBudget(side);
   if(cost>budget||activeCardRules(card,'sharedNamedInterruptLimit').length&&!namedInterruptAvailable(card))return [];
   switch(mode){
+   case 'leaderKill':
+    return state.attackRun?runSurvivors('Light').map((target,targetIndex)=>({card,rule,cost,target,args:[index,mode,targetIndex],label:card.name+' · '+target.name+' im Attack Run angreifen'})):[];
+   case 'leaderWeapon':
+    return entries.flatMap((entry,targetIndex)=>PremiereUnits.fighter(entry.card)?[{card,rule,cost,entry,args:[index,mode,targetIndex],label:card.name+' · '+entry.card.name+' Waffen-Destiny +1 bis Zugende'}]:[]);
+   case 'controlFire':
+    return state.activeSide===side&&state.phase===1?controlFireOptions(side,card,index,rule):[];
+   case 'allClearRun':
+    return state.attackRun&&side==='Light'?runSurvivors('Dark').flatMap((target,targetIndex)=>PremiereUnits.fighter(target)?[{card,rule,cost,target,args:[index,mode,targetIndex],label:card.name+' · '+target.name+' aus Trench entfernen (1 Force)'}]:[]):[];
+   case 'captureShipCrew':
+    return (state.capturedShips??[]).flatMap((record,targetIndex)=>{const targets=tractorShipCrew(record.ship),cost=2*targets.length;return targets.length&&cost<=budget?[{card,rule,cost,record,targets,args:[index,mode,targetIndex],label:card.name+' · alle '+targets.length+' Characters für '+cost+' Force fangen'}]:[];});
+   case 'evaderRevolutions':
+    return Object.values(state.locationEffects??{}).some(row=>row.some(effect=>effect.card.id==='Light:2110'))?[{card,rule,cost,args:[index,mode],label:card.name+' · Alle Revolutions aufheben'}]:[];
+   case 'roarSearch':
+    return own.deck.length?[{card,rule,cost,args:[index,mode],label:card.name+' · Chewbacca im Reserve Deck suchen (3 Force)'}]:[];
+   case 'roarMouse':
+    return entries.flatMap((entry,targetIndex)=>entry.card.id==='Dark:1709'?[{card,rule,cost,entry,args:[index,mode,targetIndex],label:card.name+' · Mouse Droid verlieren lassen'}]:[]);
+   case 'cancelBesieged':
+    return (state.tableEffects??[]).flatMap((effect,targetIndex)=>effect.card.id==='Dark:223'?[{card,rule,cost,args:[index,mode,targetIndex],effect,label:card.name+' · Besieged aufheben'}]:[]);
+   case 'escapeCapturedShip':
+    return (state.capturedShips??[]).filter(record=>record.side===side).flatMap((record,targetIndex)=>state.locations.flatMap((loc,site)=>PremiereLocations.conditions(state,site,side).dockingBay?
+     [{card,rule,cost,record,site,args:[index,mode,targetIndex,site],label:card.name+' · Besatzung zu '+loc.name+' befreien'}]:[]));
+   case 'advancePrepare':
+    return own.hand.flatMap((target,targetIndex)=>['Light:169','Light:2892','Light:681','Light:2050'].includes(target.id)?
+     [{card,rule,cost,target,args:[index,mode,targetIndex],label:card.name+' · '+target.name+' aus dem Spiel nehmen und 1 Force zurückholen'}]:[]);
+   case 'advanceRecover':
+    return own.lost.some(target=>target.id==='Light:169')?[{card,rule,cost,args:[index,mode],label:card.name+' · Attack Run zurückholen (3 Force)'}]:[];
+   case 'spySabotage':
+    if(state.phase!==1||state.activeSide!==side)return [];
+    return spySabotageTargets(side).flatMap(({entry,deploy,spies},targetIndex)=>spies.map((spy,spyIndex)=>({
+     card,rule,cost,entry,deploy,spy,args:[index,mode,targetIndex,spyIndex],
+     label:card.name+' · '+spy.name+' sabotiert '+entry.card.name+' (Deploy '+deploy+')',
+    })));
+   case 'spyRescue': {
+    const site=state.locations.findIndex(loc=>loc&&locationTitle(loc)==='death star: detention block corridor');
+    if(site<0)return [];
+    const hostages=PremiereLocations.entries(state,'Dark').filter(entry=>entry.captive&&entry.slot===site&&
+     entry.card.type==='Character'&&PremiereLocations.physicalPlace(entry)===site);
+    return PremiereLocations.entries(state,side).filter(entry=>PremiereLocations.presentAt(entry,site)&&isSpyCharacter(entry.card))
+     .flatMap(({card:spy},spyIndex)=>hostages.map((entry,targetIndex)=>({
+      card,rule,cost,entry,spy,args:[index,mode,spyIndex,targetIndex],label:card.name+' · '+spy.name+' befreit '+entry.card.name,
+     })));
+   }
+   case 'blueMilk':
+    return PremiereGame.sides.flatMap((target,targetIndex)=>activationLocked(target)||!PremiereGame.reserveCards(PremiereGame.zones(state,target).deck).length?[]:
+     [{card,rule,cost,targetSide:target,args:[index,mode,targetIndex],label:card.name+' · '+target+' aktiviert 1 Force'}]);
+   case 'outOfCommissionRelease':
+    if(state.phase!==1||state.activeSide!==side)return [];
+    return (state.capturedShips??[]).flatMap((record,targetIndex)=>record.beam?.id==='Dark:667'&&state.locations.some(loc=>loc?.id==='Dark:669')?[]:
+     [{card,rule,cost,record,args:[index,mode,targetIndex],label:card.name+' · '+record.ship.name+' freigeben (2 Force)'}]);
+   case 'outOfCommissionRemove':
+    return [{pile:rival.lost,label:'Gegnerische Lost Pile'},
+     ...blasterRacks().filter(rack=>rack.target!==side).map(rack=>({pile:rack.weapons,label:rack.card.name}))]
+     .flatMap(({pile,label},targetIndex)=>pile?.length?[{card,rule,cost,targetPile:pile,args:[index,mode,targetIndex],label:card.name+' · Zufallsziel aus '+label}]:[]);
    case 'trimHand':
     return rival.hand?.length>=13?[{card,rule,cost,args:[index,mode],label:card.name+' · Used: Gegner behält 8 zufällige Handkarten'}]:[];
    case 'revealDuplicates':
@@ -3712,6 +4211,10 @@ function pileInterruptOptions(side){
     return state.phase===1&&state.activeSide!==side&&own.lost.length&&drained?.turn===state.game.timing.turn&&drained.amount>=5&&
      entries.some(entry=>entry.side===side&&isDroid(entry.card))?[{card,rule,cost,args:[index,mode],label:card.name+' · Zufällige Karten zurückholen (1 Force)'}]:[];
    }
+   case 'tonnikaConvert':
+    return PremiereLocations.entries(state,PremiereGame.otherSide(side)).flatMap((entry,targetIndex)=>entry.card.id==='Dark:2613'&&
+     isSite(state.locations[entry.slot])&&PremiereLocations.presentAt(entry,entry.slot)?
+     [{card,rule,cost,entry,args:[index,mode,targetIndex],label:card.name+' · '+entry.card.name+' übernehmen'}]:[]);
    case 'setStun':
    case 'chokeTrooper':
    case 'nevar':
@@ -3791,7 +4294,8 @@ function encounterInterruptTargets(side,card,index,rule){
    if(!isSite(state.locations[entry.slot])||!isSpyCharacter(target)&&!target.undercover||
       target.captured||target.missing||target.inactive||!PremiereLocations.entries(state,side).some(own=>
        own.slot===entry.slot&&!own.card.captured&&!own.card.missing&&!own.card.inactive&&
-       (own.card.undercover||isSpyCharacter(own.card))))return [];
+      (own.card.undercover||isSpyCharacter(own.card))&&(!rule.physical||PremiereLocations.presentAt(own,entry.slot)))||
+      rule.physical&&!PremiereLocations.presentAt(entry,entry.slot))return [];
   }else if(entry.unavailable||!PremiereUnits.active(target)||
     rule.mode==='chokeTrooper'&&locationTitle(target)!=='rebel trooper')return [];
   return [{card,rule,cost:rule.cost,entry,args:[index,rule.mode,targetIndex],label:label(entry)}];
@@ -3873,7 +4377,7 @@ function announcePileInterrupt(side,option){
  if(activeCardRules(option.card,'sharedNamedInterruptLimit').length)recordNamedInterruptUse(option.card);
  if(option.rule.mode==='beruStew')PremiereGame.useOnce(state.game,'turn',option.card.id);
  spendForce(side,option.cost);
- const frame={...option,kind:'interrupt',interrupt:'pileInterrupt',side,duringBattle:!!battleSession};
+ const frame={...option,kind:'interrupt',interrupt:'pileInterrupt',side,duringBattle:!!battleSession,felthUsed:felthMakesUsed(option.card)};
  log(side+' spielt '+option.label+'.');
  if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);
  else settlePileInterrupt(frame);
@@ -3882,9 +4386,10 @@ function announcePileInterrupt(side,option){
 
 function finishPileInterrupt(frame){
  const own=PremiereGame.zones(state,frame.side);
- if(frame.cancelled||frame.rule.pile==='Lost')loseOwnedCard(frame.card,frame.side);
+ if(frame.cancelled||frame.rule.pile==='Lost'&&!frame.felthUsed)loseOwnedCard(frame.card,frame.side);
  else own.used.push(frame.card);
  if(frame.duringBattle&&battleSession?.weaponTurn===frame.side)finishWeaponAction(frame.side,false);
+ frame.resumeAttack?.();
 }
 
 function settlePileInterrupt(frame){
@@ -3893,6 +4398,96 @@ function settlePileInterrupt(frame){
  const rival=PremiereGame.zones(state,opponent);
  const view={side,card,opponent,interruptFrame:frame,shown:[]};
  switch(mode){
+  case 'leaderWeapon':frame.entry.card.leaderWeaponTurn=state.game.timing.turn;finishPileInterrupt(frame);return;
+  case 'leaderKill':{
+   const run=state.attackRun,ships=runSurvivors('Dark'),bonus=ships.reduce((sum,ship)=>sum+(/^Squadron/.test(ship.subType)?3:1),0);
+   drawDestinySeries(side,'interrupt',1,bonus,draws=>{
+    const entry=PremiereLocations.findEntry(state,frame.target);let abort=false;
+    if(entry&&draws[0]?.value>craftStats(entry.card,entry.slot).maneuver){abort=entry.card===run.lead;loseTableCard(entry.side,entry.slot,entry.card);}
+    finishPileInterrupt(frame);if(abort)pullUpAttackRun(false);
+   });return;
+  }
+  case 'controlFire':
+   if(forceBudget(side)<frame.shot.cost){finishPileInterrupt(frame);return;}
+   fireImmediateWeapon(side,frame.shot,()=>finishPileInterrupt(frame));return;
+  case 'allClearRun':{
+   const run=state.attackRun,entry=PremiereLocations.findEntry(state,frame.target);
+   if(run&&entry?.slot===run.site){detachTableCard(entry.side,entry.slot,entry.card);state.dark[run.system].push(entry.card);
+    if((run.lead.occupants??[]).some(({card,role})=>role==='pilot'&&PremiereUnits.active(card)&&PremiereUnits.matchingPilot(run.lead,card,true)))run.bonus++;
+   }
+   finishPileInterrupt(frame);return;
+  }
+  case 'captureShipCrew':
+   for(const target of frame.targets)captureCharacter(target,frame.record.bay);finishPileInterrupt(frame);return;
+  case 'evaderRevolutions':{
+   const tally={Light:0,Dark:0};
+   for(const [site,row] of Object.entries(state.locationEffects??{}))for(const effect of row.slice())if(effect.card.id==='Light:2110'){tally[effect.card.owner??effect.card.side]++;cancelLocationEffect(Number(site),effect);}
+   finishPileInterrupt(frame);
+   loseForceInOrder(PremiereGame.sides.map(payer=>({payer,amount:tally[payer],reason:'Evader'})));return;
+  }
+  case 'roarMouse':loseEncounterTarget(frame);finishPileInterrupt(frame);return;
+  case 'roarSearch':state.pendingReserveSearch={...frame,names:['chewbacca']};return;
+  case 'holoCancel':{const entry=PremiereLocations.findEntry(state,frame.target);if(entry)loseTableCard(entry.side,entry.slot,entry.card);finishPileInterrupt(frame);return;}
+  case 'cancelBesieged':cancelTableEffect(frame.effect);finishPileInterrupt(frame);return;
+  case 'escapeCapturedShip':{
+   const {record,site}=frame;
+   const entries=PremiereLocations.entries(state,side).filter(entry=>entry.card.type==='Character'&&entry.carriers.includes(record.ship));
+   for(const entry of entries)if(detachTableCard(side,entry.slot,entry.card))PremiereGame.zones(state,side).board[site].push(entry.card);
+   finishPileInterrupt(frame);return;
+  }
+  case 'advancePrepare':{
+   const own=PremiereGame.zones(state,side),index=own.hand.indexOf(frame.target);
+   if(index>=0)(state.outOfPlay??=[]).push(own.hand.splice(index,1)[0]);
+   PremiereGame.retrieveForce(state,side,1);
+   finishPileInterrupt(frame);return;
+  }
+  case 'advanceRecover':{
+   const own=PremiereGame.zones(state,side),index=own.lost.findIndex(target=>target.id==='Light:169');
+   if(index>=0)PremiereGame.retrieveCard(state,side,index);
+   finishPileInterrupt(frame);return;
+  }
+  case 'spySabotage':
+   drawDestinySeries(side,'interrupt',1,0,draws=>{
+    const value=draws.find(draw=>!draw.cancelled)?.value;
+    if(!Number.isFinite(value)||value<=frame.deploy){finishPileInterrupt(frame);return;}
+    if((characterTraits(frame.spy).includes('thief')||spyThiefTraining(frame.spy))&&spyCanSteal(side,entry)){
+     state.pendingCardView={...view,mode:'spySabotage',shown:[entry.card],publicView:true};
+     return;
+    }
+    if(entry.effect)cancelLocationEffect(entry.slot,entry.effect);
+    else loseTableCard(entry.side,entry.slot,entry.card);
+    finishPileInterrupt(frame);
+   });
+   return;
+  case 'informantReact':
+   state.pendingCardView={...view,mode:'informantReact',site:frame.site};
+   return;
+  case 'spyRescue':
+   drawDestinySeries(side,'interrupt',1,0,draws=>{
+    const value=draws.find(draw=>!draw.cancelled)?.value,ability=cardAbility(frame.spy);
+    if(Number.isFinite(value)&&Number.isFinite(ability)&&value+ability>cardAbility(entry.card))releaseSpyRescueTarget(entry.card);
+    else captureCharacter(frame.spy,entry.slot);
+    finishPileInterrupt(frame);
+   });
+   return;
+  case 'blueMilk':
+   activateReserve(frame.targetSide,1);
+   finishPileInterrupt(frame);
+   return;
+  case 'outOfCommissionRelease':
+   state.pendingCardView={...view,mode:'tractorRelease',record:frame.record,card:frame.record.ship,side:frame.record.side};
+   return;
+  case 'outOfCommissionRemove': {
+   const pile=frame.targetPile;
+   const target=PremiereGame.shuffle(pile,state.game)[0];
+   if(target){
+    pile.splice(pile.indexOf(target),1);
+    (state.outOfPlay??=[]).push(target);
+    log(target.name+' wird aus dem Spiel genommen.');
+   }
+   finishPileInterrupt(frame);
+   return;
+  }
   case 'trimHand': {
    const removed=new Set(PremiereGame.shuffle(rival.hand,state.game).slice(8));
    rival.hand.splice(0,rival.hand.length,...rival.hand.filter(item=>!removed.has(item)));
@@ -3991,7 +4586,11 @@ function settlePileInterrupt(frame){
    loseEncounterTarget(frame);
    finishPileInterrupt(frame);
    return;
-  case 'setStun':
+   case 'tonnikaConvert':
+    changeCharacterAllegiance(entry,side);
+    finishPileInterrupt(frame);
+    return;
+   case 'setStun':
   case 'nevar':
    drawDestinySeries(side,'interrupt',1,0,draws=>{
     const value=draws.find(draw=>!draw.cancelled)?.value,target=entry.card;
@@ -4049,10 +4648,13 @@ function settlePileInterrupt(frame){
    finishPileInterrupt(frame);
    return;
   case 'scanning':
-  case 'radar':
-   state.pendingCardView={...view,mode,shown:rival.hand.slice(),publicView:true};
+  case 'radar': {
+   const support=scannerSupport(side,mode);
+   state.pendingCardView={...view,mode,shown:rival.hand.slice(),publicView:true,
+    scannerPenalty:!!support&&rival.hand.length>=support.limit,scanningMoveUsed:false};
    log(opponent+' deckt die Hand auf · '+rival.hand.map(card=>card.name).join(', ')+'.');
    return;
+  }
   case 'destroyDroid':
    if(loseTableCard(entry.side,entry.slot,entry.card))log(entry.card.name+' geht verloren.');
    finishPileInterrupt(frame);
@@ -4079,7 +4681,7 @@ function settlePileInterrupt(frame){
    if(Number.isFinite(destiny)&&targets.length&&(mode==='deadJawa'?destiny>targets.length:destiny<targets.length)){
     if(mode==='deadJawa')for(const entry of targets)loseTableCard(entry.side,entry.slot,entry.card);
     else{
-     state.pendingCardView={...view,mode:'tableLossChoice',side:opponent,targets,shown:targets.map(entry=>entry.card),publicView:true};
+     state.pendingCardView={...view,mode:'tableLossChoice',side:mode==='accident'&&targets.some(entry=>activeCardRules(entry.card,'felth').length)?side:opponent,targets,shown:targets.map(entry=>entry.card),publicView:true};
      return;
     }
    }
@@ -4207,7 +4809,7 @@ function emergencyPlacements(side,card,revealed){
      options.push({kind:'board',slot,pilot});
    }
   }
-  if(isDeployableCharacter(card)&&!jawaCosts.has(card.id))for(const {host,slot} of weaponMounts(side)){
+  if(isDeployableCharacter(card)&&!jawaCosts.has(card.id)&&!activeCardRules(card,'deployUndercover').length)for(const {host,slot} of weaponMounts(side)){
    if(!hasDeployPresence(side,state.locations[slot])||!characterLocationAllowed(card,state.locations[slot]))continue;
    for(const role of PremiereUnits.roles(host,card).filter(role=>['pilot','passenger','astromech'].includes(role))){
     options.push({kind:'crew',slot,host,role});
@@ -4249,6 +4851,7 @@ function finishEmergencyDeployment(frame,args){
    card.controller=side;
    if(pilot)PremiereUnits.add(card,pilot,'pilot',side);
    board[slot].push(card);
+   if(activeCardRules(card,'deployUndercover').length)setUndercover(card,side);
    if(jawaCosts.has(card.id)){
     const opposition=jawaDeployPayment(card,state.locations[slot],side)?.opposing;
     if(opposition)payOpposingJawaCost(side,opposition);
@@ -4337,7 +4940,8 @@ function initiateGroupRelocation(frame,destination){
  hand.splice(hand.indexOf(card),1);
  state.game.rootAction=side;
  drawDestinySeries(side,'interrupt',1,0,draws=>{
-  const cost=draws.find(draw=>!draw.cancelled)?.value;
+  const baseCost=draws.find(draw=>!draw.cancelled)?.value;
+  const cost=baseCost===undefined?undefined:baseCost+(baseCost?musicianCoverCharge(state.locations[destination]):0);
   if(!Number.isInteger(cost)||cost>force.length){
    loseOwnedCard(card,side);
    log(card.name+' · Kosten konnten nicht bezahlt werden.');
@@ -4359,6 +4963,7 @@ function relocateCharacter(side,target,to){
 function finishGroupRelocation(frame){
  for(const target of frame.targets)relocateCharacter(frame.side,target,frame.destination);
  PremiereGame.zones(state,frame.side).used.push(frame.card);
+ queueRuleResponse({kind:'transportCompleted',side:frame.side,card:frame.card,site:frame.destination,targets:frame.targets.map(target=>target.card??target)});
 }
 
 function moveUsedPileLosses(side,order){
@@ -4378,6 +4983,7 @@ function cardInformationOptions(side){
  for(const effect of state.tableEffects??[])if(effect.card.side===side&&!effect.host)cards.push(effect.card);
  return cards.flatMap((card,index)=>activeCardRules(card,'cardInformation').flatMap(rule=>{
   if(rule.ownControl&&(state.phase!==1||state.activeSide!==side||PremiereGame.wasUsed(state.game,'turn',card.id)))return [];
+  if(rule.mode==='q2Peek'&&(state.phase!==5||state.activeSide!==side||!atScompLink(card)))return [];
   const available=rule.mode==='leesub'||rule.mode==='miiyoom'?opposing.hand?.length:
    PremiereGame.reserveCards(rule.mode==='macroscan'?opposing.deck:own.deck).length;
   const cost=rule.mode==='miiyoom'?available:rule.cost;
@@ -4416,6 +5022,7 @@ function beginCardInformation(side,index){
   }
   pending.shown=[top];
  }else if(mode==='electrobinoculars')pending.shown=[own.deck.at(-1)];
+ else if(mode==='q2Peek')pending.shown=PremiereGame.reserveCards(own.deck).slice(-3).reverse();
  else if(mode==='macroscan'){
   const count=state.locations.some((location,slot)=>location&&PremiereLocations.conditions(state,slot,side).night)?3:1;
   pending.shown=PremiereGame.reserveCards(opposing.deck).slice(-count).reverse();
@@ -4426,6 +5033,36 @@ function beginCardInformation(side,index){
 }
 
 function cardInformationChoices(frame){
+ if(frame.mode==='advoszeConflict')return frame.shown.map((card,index)=>({args:['lose',index],card,label:card.name+' verlieren'}));
+ if(frame.mode==='epicRoomChoice')return [{args:['yes'],label:'Standortbonus anwenden ('+frame.room.amount+')'},{args:['no'],label:'Auf optionalen Standortbonus verzichten'}];
+ if(['runSelectLight','runSelectDark','runLead','runCover','runPilot','ignitionZ','ignitionGunner'].includes(frame.mode))return epicChoices(frame);
+ if(['creatureTargetSide','creatureFight','creaturePower'].includes(frame.mode))return creatureChoices(frame);
+ if(frame.mode==='goldRescue')return [{args:['sacrifice'],label:'Gold 2 statt '+frame.target.name+' verlieren'},{args:['decline'],label:frame.target.name+' getroffen verlieren'}];
+ if(frame.mode==='besiegedChoose')return frame.targets.map((card,index)=>({args:['toggle',index],card,label:(frame.selected.includes(index)?'✓ ':'')+card.name})).concat(frame.selected.some(index=>cardAbility(frame.targets[index])>0)?[{args:['fight'],label:'Mit ausgewählten Figuren kämpfen (1 Force)'}]:[]).concat({args:['cancel'],label:'Abbrechen'});
+ if(frame.mode==='cellRescue')return cellRescueChoices(frame);
+ if(frame.mode==='bluffReveal'){const legal=['Character','Vehicle'].includes(frame.card.type)&&boardDeployCost(frame.card,state.locations[frame.site],'Dark',true)!==null;return [...(legal?[{args:['deploy'],label:frame.card.name+' kostenlos ausspielen'}]:[]),{args:['lose'],label:'Bluff und 2 Force verlieren'}];}
+ if(frame.mode==='hypoQuestion')return [...new Map([...catalog,...aNewHopeCatalog].map(card=>[locationTitle(card),card])).values()].map(card=>({args:[card.id],label:'Hast du '+card.name+' auf der Hand?'}));
+ if(frame.mode==='hypoAnswer'){const yes=PremiereGame.zones(state,frame.side).hand.some(card=>locationTitle(card)===frame.title);return [{args:[yes?'yes':'no'],label:yes?'Wahrheitsgemäß: Ja':'Wahrheitsgemäß: Nein'},{args:['lose'],label:'Statt Antwort 1 Force verlieren'}];}
+ if(frame.mode==='squadronTransfer')return squadronTransferChoices(frame);
+ if(frame.mode==='rogueTrample')return frame.targets.map((entry,index)=>({args:[index],card:entry.card,label:entry.card.name+' niedertrampeln'}));
+ if(frame.mode==='suctionDestination')return [{args:['used'],label:frame.target.name+' auf eigene Used Pile verlegen'},...state.locations.flatMap((loc,slot)=>loc?.hostInstanceId&&loc.hostInstanceId===frame.host.instanceId&&isSite(loc)&&loc.locationTags?.includes('Interior')?[{args:['site',slot],site:slot,label:loc.name+' betreten'}]:[])];
+ if(frame.mode==='destinyValue')return frame.values.map(value=>({args:[value],label:'Destiny '+value+' wählen'}));
+ if(frame.mode==='anhDestinyTrigger')return anhDestinyTriggerChoices(frame);
+ if(frame.mode==='greedoThreat')return [{args:['pay'],label:'Gesamte Force Pile einsetzen'},{args:['risk'],label:'Threat-Destiny zulassen'}];
+ if(frame.mode==='shuffleMusicians'){
+  const done={args:['done'],label:'Abschließen'};
+  if(frame.peeked)return [done];
+  return [...(frame.count>0?[{args:['peek'],label:'Bis zu '+frame.count+' Karten oben ansehen'}]:[]),
+   {args:['reshuffle'],label:'Blind erneut mischen'},done];
+ }
+ if(frame.mode==='hunchback'){
+  const choices=frame.shown.flatMap((card,index)=>locationTitle(card).includes('back')?
+   [{args:['remove',index],label:card.name+' aus dem Spiel nehmen'}]:[]);
+  return choices.length?choices:[{args:['done'],label:'Force Pile mischen und zurücklegen'}];
+ }
+ if(frame.mode==='spySabotage')return [{args:['steal'],label:'Ziel stehlen'},{args:['destroy'],label:'Ziel verlieren lassen'}];
+ if(frame.mode==='informantReact')return [...informantReactChoices(frame.side,frame.site),{args:['done'],label:'Informant-React abschließen'}];
+ if(frame.mode==='u3poCover')return [{args:['steal'],label:'U-3PO übernehmen'},{args:['done'],label:'Bei aktueller Seite lassen'}];
  if(frame.mode==='namedRecovery'){
   return namedLostTargets(frame.side,lostRetrieval.get(frame.card.id))
    .map(({card,index})=>({args:['recover',index],label:card.name+' zurückholen'}));
@@ -4457,7 +5094,7 @@ function cardInformationChoices(frame){
   {args:['decline'],label:frame.card.name+' verloren geben'}];
  if(frame.mode==='relocateGroup'){
   const choices=frame.targets.map(({card,slot},index)=>({args:['toggle',index],site:slot,card,label:(frame.selected.includes(index)?'✓ ':'')+card.name}));
-  if(frame.selected.length)choices.push(...frame.destinations.map(slot=>({args:['relocate',slot],to:slot,label:'Nach '+state.locations[slot].name+' verlegen'})));
+  if(frame.selected.length)choices.push(...frame.destinations.filter(slot=>advoszeDestinationAllowed({kind:'anhCharacter',args:['squad'],members:frame.selected.map(index=>frame.targets[index].card),to:slot})).map(slot=>({args:['relocate',slot],to:slot,label:'Nach '+state.locations[slot].name+' verlegen'})));
   return [...choices,{args:['cancel'],label:'Abbrechen'}];
  }
  if(frame.mode==='beruOrder')return PremiereGame.sides.map(side=>({args:['first',side],label:side+' aktiviert zuerst'}));
@@ -4483,8 +5120,12 @@ function cardInformationChoices(frame){
   const {hand}=PremiereGame.zones(state,frame.opponent);
   const eligible=card=>frame.mode==='scanning'?card.type==='Character'&&card.subType==='Rebel':
    matchesRegisteredTarget(card,'tusken')||matchesRegisteredTarget(card,'jawa')&&!/dathcha/i.test(locationTitle(card));
-  return [...frame.shown.flatMap((card,index)=>hand.includes(card)&&eligible(card)?
-   [{args:['move',index],label:card.name+' auf die Used Pile legen'}]:[]),{args:['done'],label:'Ansicht schließen'}];
+  const normal=frame.scanningMoveUsed?[]:frame.shown.flatMap((card,index)=>hand.includes(card)&&eligible(card)?
+   [{args:['move',index],label:card.name+' auf die Used Pile legen'}]:[]);
+  const sensor=frame.mode==='radar'&&forceBudget(frame.side)>=1?sensorPanelSources(frame.side)[0]:null;
+  const extra=sensor?frame.shown.flatMap((card,index)=>hand.includes(card)&&['Interrupt','Effect'].includes(card.type)?
+   [{args:['sensor',index],label:'Sensor Panel · '+card.name+' auf Used legen (1 Force)'}]:[]):[];
+  return [...normal,...extra,{args:['done'],label:'Ansicht schließen'}];
  }
  if(frame.mode==='scavenge')return [{args:['search'],label:'Used Pile durchsuchen'},{args:['done'],label:'Auf Suche verzichten'}];
  if(frame.mode==='usedSearch')return [{args:['done'],label:'Suche abschließen'}];
@@ -4494,7 +5135,7 @@ function cardInformationChoices(frame){
   const {hand}=PremiereGame.zones(state,PremiereGame.otherSide(frame.side));
   return informationCardTypes.flatMap(type=>hand.map((_,index)=>({args:[type,index]})));
  }
- const choices=[{args:['deck'],label:frame.mode==='macroscan'?'Ansicht schließen':'Im Reserve Deck lassen'}];
+ const choices=[{args:['deck'],label:['macroscan','conquestPeek'].includes(frame.mode)?'Ansicht schließen':'Im Reserve Deck lassen'}];
  if(['labria','electrobinoculars'].includes(frame.mode))choices.push({args:['force'],label:'Auf die Force Pile legen'});
  if(frame.mode==='labria')choices.push({args:['used'],label:'Auf die Used Pile legen'});
  return choices;
@@ -4503,6 +5144,114 @@ function cardInformationChoices(frame){
 function finishCardInformation(side,...args){
  const frame=state.pendingCardView;
  if(!frame||frame.side!==side)return false;
+ if(frame.mode==='advoszeConflict'){
+  const card=frame.shown[args[1]],entry=PremiereLocations.findEntry(state,card);
+  state.pendingCardView=null;return !!entry&&loseTableCard(entry.side,entry.slot,card);
+ }
+ if(frame.mode==='epicRoomChoice'){state.pendingCardView=null;frame.resume(frame.fixed+(args[0]==='yes'?frame.room.amount:0));return true;}
+ if(['runSelectLight','runSelectDark','runLead','runCover','runPilot','ignitionZ','ignitionGunner'].includes(frame.mode))return finishEpicChoice(frame,...args);
+ if(['creatureTargetSide','creatureFight','creaturePower'].includes(frame.mode))return finishCreatureChoice(frame,...args);
+ if(frame.mode==='goldRescue'){state.pendingCardView=null;if(args[0]==='sacrifice')loseTableCard('Light',frame.site,frame.gold,false,true);else {frame.target.hitForLoss=true;loseTableCard('Light',frame.site,frame.target);}frame.resume();return true;}
+ if(frame.mode==='besiegedChoose'){
+  if(args[0]==='toggle'){const index=args[1];frame.selected=frame.selected.includes(index)?frame.selected.filter(i=>i!==index):[...frame.selected,index];return true;}
+  state.pendingCardView=null;if(args[0]==='cancel')return true;
+  const trapped=tractorShipCrew(frame.record.ship),dark=frame.selected.map(index=>frame.targets[index]);
+  state.besiegedBattle={record:frame.record,cards:[...trapped,...dark]};spendForce('Dark',1);return initiateBattleFor('Dark',frame.record.bay,{Light:trapped,Dark:dark});
+ }
+ if(frame.mode==='cellRescue'){
+  const target=cellRescueChoices(frame).find(option=>option.args[0]===args[0])?.card;if(!target)return false;
+  releaseSpyRescueTarget(target);frame.remaining--;if(!frame.remaining||!cellRescueChoices(frame).length)state.pendingCardView=null;return true;
+ }
+ if(frame.mode==='bluffReveal'){
+  state.pendingCardView=null;if(args[0]==='deploy'){frame.card.controller='Dark';state.dark[frame.site].push(frame.card);(state.deployedThisTurn??=[]).push(frame.card);openDeploymentReaction('Dark',[frame.card]);}
+  else{loseOwnedCard(frame.card,'Dark');beginForceLoss('Dark',2,{reason:'Bluff'});}return true;
+ }
+ if(frame.mode==='hypoQuestion'){const question=[...catalog,...aNewHopeCatalog].find(card=>card.id===args[0]);state.pendingCardView={...frame,mode:'hypoAnswer',side:PremiereGame.otherSide(side),title:locationTitle(question)};log('Hypo fragt nach '+question.name+'.');return true;}
+ if(frame.mode==='hypoAnswer'){state.pendingCardView=null;if(args[0]==='lose')beginForceLoss(side,1,{reason:'Hypo'});else log(side+' antwortet auf Hypo: '+(args[0]==='yes'?'Ja.':'Nein.'));return true;}
+ if(frame.mode==='squadronTransfer')return finishSquadronTransfer(frame,...args);
+ if(frame.mode==='rogueTrample'){
+  state.pendingCardView=null;const entry=frame.targets[args[0]];loseTableCard(entry.side,entry.slot,entry.card);beginBattleResponses();return true;
+ }
+ if(frame.mode==='suctionDestination'){
+  const entry=PremiereLocations.findEntry(state,frame.target);state.pendingCardView=null;
+  if(!entry)return false;
+  if(args[0]==='used')tableToUsed(entry);
+  else if(detachTableCard(entry.side,entry.slot,entry.card))PremiereGame.zones(state,entry.side).board[args[1]].push(entry.card);
+  return true;
+ }
+ if(frame.mode==='destinyValue'){
+  state.pendingCardView=null;frame.draw.value=Math.max(0,args[0]+frame.modifier);frame.resume();return true;
+ }
+ if(frame.mode==='anhDestinyTrigger')return finishAnhDestinyTrigger(frame,...args);
+ if(frame.mode==='greedoThreat'){
+  state.pendingCardView=null;
+  const {actor,target,owner}=frame,amount=forceBudget(side);
+  if(args[0]==='pay'){spendForce(side,amount);activateReserve(owner,amount);}
+  else drawDestinySeries(owner,'threat',1,0,draws=>{
+   const value=draws.find(draw=>!draw.cancelled)?.value;
+   if(Number.isFinite(value)&&value+cardAbility(actor)>6){
+    const entry=PremiereLocations.findEntry(state,target);
+    if(entry)loseTableCard(entry.side,entry.slot,target);
+   }
+  });
+  return true;
+ }
+ if(frame.mode==='shuffleMusicians'){
+  const action=frame.shuffleFrame,pile=PremiereGame.zones(state,action.target)[action.zone];
+  if(args[0]==='peek'){
+   const visible=action.zone==='deck'?PremiereGame.reserveCards(pile):pile;
+   frame.shown=visible.slice(-frame.count).reverse();
+   frame.peeked=true;
+   return true;
+  }
+  if(args[0]==='reshuffle'){
+   const shuffle=action.zone==='deck'?PremiereGame.shuffleReserve:PremiereGame.shuffle;
+   pile.splice(0,pile.length,...shuffle(pile,state.game));
+  }
+  state.pendingCardView=null;
+  PremiereGame.zones(state,side).used.push(action.card);
+  if(action.duringBattle)finishWeaponAction(side,false);
+  return true;
+ }
+ if(frame.mode==='hunchback'){
+  const {force}=PremiereGame.zones(state,PremiereGame.otherSide(side));
+  const target=frame.shown[args[1]],index=force.indexOf(target);
+  if(args[0]==='remove'&&index>=0){
+   (state.outOfPlay??=[]).push(force.splice(index,1)[0]);
+   log(frame.card.name+' nimmt '+target.name+' aus dem Spiel.');
+  }
+  force.splice(0,force.length,...PremiereGame.shuffle(force,state.game));
+  state.pendingCardView=null;
+  return true;
+ }
+ if(frame.mode==='spySabotage'){
+  const {entry,spy}=frame.interruptFrame;
+  state.pendingCardView=null;
+  if(args[0]==='steal')takeStolenTableCard(side,spy,entry);
+  else loseTableCard(entry.side,entry.slot,entry.card);
+  finishPileInterrupt(frame.interruptFrame);
+  return true;
+ }
+ if(frame.mode==='informantReact'){
+  if(args[0]==='done'){
+   state.pendingCardView=null;
+   finishPileInterrupt(frame.interruptFrame);
+   return true;
+  }
+  const option=informantReactChoices(side,frame.site).find(choice=>choice.args[1]===args[1]);
+  if(!option||!detachTableCard(side,option.from,option.card))return false;
+  PremiereGame.zones(state,side).board[frame.site].push(option.card);
+  (state.reactedThisTurn??=[]).push(option.card);
+  noteMineTraversal(side,option.from,frame.site,option.card);
+  clearJuriAfterMove(option.card,side,frame.site);
+  log(option.label+'.');
+  return true;
+ }
+ if(frame.mode==='u3poCover'){
+  state.pendingCardView=null;
+  const entry=PremiereLocations.findEntry(state,frame.card);
+  return args[0]!=='steal'||!entry||changeCharacterAllegiance(entry,side);
+ }
  if(frame.mode==='namedRecovery'){
   const retrieval=frame.retrieval,{lost}=PremiereGame.zones(state,side);
   retrieval.target=lost[args[1]];
@@ -4521,7 +5270,11 @@ function finishCardInformation(side,...args){
   finishPileInterrupt(frame.interruptFrame);
   return true;
  }
- if(frame.mode==='tractorRelease')return releaseCapturedStarship(frame.record,args[0]==='launch');
+ if(frame.mode==='tractorRelease'){
+  const released=releaseCapturedStarship(frame.record,args[0]==='launch');
+  if(released&&frame.interruptFrame)finishPileInterrupt(frame.interruptFrame);
+  return released;
+ }
  if(frame.mode==='beggarAmount'){
   if(args[0]!=='done')state.beggarPayment={side,turn:state.game.timing.turn,amount:args[0]};
   state.pendingCardView=null;
@@ -4760,11 +5513,21 @@ function resolvePileChoice(frame,choice,index){
   frame.shown=rival.used.slice().reverse();
   frame.matches=rival.used.filter(card=>['Vehicle','Weapon','Device'].includes(card.type));
   return true;
- }else if(choice==='move'){
+ }else if(choice==='move'||choice==='sensor'){
+  if(choice==='sensor'){
+   spendForce(frame.side,1);
+   PremiereGame.useOnce(state.game,'turn',sensorPanelSources(frame.side)[0]);
+  }
   const [card]=frame.shown.splice(index,1);
   rival.used.push(...rival.hand.splice(rival.hand.indexOf(card),1));
   log(card.name+' kommt oben auf die Used Pile von '+opponent+'.');
-  if(frame.mode==='radar'&&cardInformationChoices(frame).some(option=>option.args[0]==='move'))return true;
+  if(frame.mode==='scanning')frame.scanningMoveUsed=true;
+  if(frame.mode==='radar'&&cardInformationChoices(frame).some(option=>['move','sensor'].includes(option.args[0])))return true;
+ }
+ if(frame.scannerPenalty){
+  const targets=rival.hand.filter(card=>frame.mode==='scanning'?locationTitle(card).includes('rebel'):
+   card.type==='Character'&&(matchesRegisteredTarget(card,'jawa')||matchesRegisteredTarget(card,'tusken')||characterTraits(card).includes('stormtrooper')));
+  for(const target of targets)loseOwnedCard(rival.hand.splice(rival.hand.indexOf(target),1)[0],opponent);
  }
  state.pendingCardView=null;
  finishPileInterrupt(interruptFrame);
@@ -4791,6 +5554,7 @@ function deployBoardCardFor(side,handIndex,siteIndex){
  }else spendForce(side,cost);
  rows[siteIndex].push(card);
  if(card.owner||card.side)card.controller=side;
+ if(activeCardRules(card,'deployUndercover').length)setUndercover(card,side);
  (state.deployedThisTurn??=[]).push(card);
  openDeploymentReaction(side,[card]);
  return {card,loc,cost};
@@ -4799,6 +5563,10 @@ function deployBoardCardFor(side,handIndex,siteIndex){
 function openDeploymentReaction(side,cards){
  if(!state.game||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<21)return;
  const targets=cards.filter(card=>card.type==='Character'||card.type==='Starship');
+ if(state.game.cardRulesVersion>=29)for(const card of targets.filter(card=>card.type==='Character')){
+  const entry=PremiereLocations.findEntry(state,card);
+  if(entry)(state.deploymentLocations??=[]).push({card,site:entry.slot,side,turn:state.game.timing.turn});
+ }
  const frame={kind:'deployment',side,targets};
  if(targets.length&&hasInterruptResponse(frame)){
   PremiereGame.openResponse(state.game,frame);
@@ -5193,6 +5961,7 @@ function endTurn(side){
 function checkpoint(event,next){return PremiereGame.checkpoint(state.game,event,state.activeSide,next)}
 function changePhase(phase){
  if(phase===state.phase)return;
+ if(state.phase===3&&phase!==3&&offerMandatoryCreatureAttack(()=>changePhase(phase)))return;
  checkpoint('phase:end',()=>{
   PremiereGame.setPhase(state,phase);
   if(phase===1&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=9&&state.game)applyWuher(true);
@@ -5215,6 +5984,10 @@ function advance(){
     (state.phase===0&&!state.activated))return false;
  if(state.phase===4){
   const side=botSide(),move=chooseBotSeekerMove(seekerMoves(side));
+  const spy=undercoverMoves(side).find(({site,to,cost})=>
+   !PremiereLocations.icons(state,site,side)&&PremiereLocations.icons(state,to,side)>cost&&
+   PremiereLocations.control(state,state.activeSide,to,cardAbility)===true);
+  if(spy)return performSpyAction(side,...spy.args);
   if(move)return moveSeeker(side,...move.args);
  }
  if(state.phase===5)endTurn(playerSide());
@@ -5251,7 +6024,7 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
  };
  const presentAt=side=>PremiereLocations.presentCards(state,side,i).filter(card=>!excludedAtBattle(card,i));
  const lightPresent=presentAt('Light'),darkPresent=presentAt('Dark');
- const cards=(side,present)=>present.filter(card=>!['Weapon','Device','Effect'].includes(card.type)&&
+ const cards=(side,present)=>present.filter(card=>(!['Weapon','Device','Effect','Creature'].includes(card.type)||isHoloUnit(card))&&
   PremiereUnits.active(card)&&(!participants||participants[side].includes(card)));
  const power=(cards,side,present)=>{
   const jungle=cards.reduce((total,card)=>total+jungleBonus(card,side,i,cards),0);
@@ -5260,18 +6033,33 @@ function battleTotals(i,initiator=battleSession?.site===i?battleSession.initiato
   const bonus=battleSession?.site===i?battleSession.bonusPower?.[side]??0:0;
   return cards.reduce((total,card)=>{
    if(lateralDamage(card)||card.asleep)return total;
-   const base=['Starship','Vehicle'].includes(card.type)?craftStats(card,i).power:(card.power??0);
+   const base=isHoloUnit(card)?printedBattleDestiny(card):['Starship','Vehicle'].includes(card.type)?craftStats(card,i).power:(card.power??0);
    const defense=initiator&&side!==initiator?activeCardRules(card,'defendingPower')[0]?.amount??0:0;
    const partner=initiator?combatPartnerPower(card,side,i):0;
    const charge=charges?.get(card),chargePower=charge?.amount??0;
    const basePower=Math.max(0,base+defense+partner+cardPowerModifier(card,side,i,present)-tacticalPenalty(card)+(initiator?saberTraining(card)?.amount??0:0));
    return total+(basePower+(charge?.afterDouble?0:chargePower))*(doubled?.has(card)?2:1)+(charge?.afterDouble?chargePower:0);
-  },jungle+bonus+fleetPowerAtSite(side,i)+rebelPlannerPower(side,i)+droidRebelPower(i,present)+
-   (initiator?fearPowerAtSite(side,i)+orbitalSupportPower(side,i):0)+sentryModifier(side,i,'power')+tuskenGroupPower(present)-migPowerPenalty(side,i));
+  },jungle+bonus+kiffexPower(side,i)+fleetPowerAtSite(side,i)+rebelPlannerPower(side,i)+droidRebelPower(i,present)+
+    (initiator?fearPowerAtSite(side,i)+orbitalSupportPower(side,i)+spyBattlePower(side,i):0)+dockingControlPower(side,i)+
+    sentryModifier(side,i,'power')+tuskenGroupPower(present)-migPowerPenalty(side,i));
  };
  const light=cards('Light',lightPresent),dark=cards('Dark',darkPresent);
  return {lightPower:power(light,'Light',lightPresent),darkPower:power(dark,'Dark',darkPresent),
   lightAbility:ability(light,'Light'),darkAbility:ability(dark,'Dark')};
+}
+
+function spyBattlePower(side,slot){
+ if(side!=='Light')return 0;
+ return PremiereGame.sides.flatMap(actor=>undercoverSpies(actor,slot)).reduce((power,{card,side:owner})=>
+  activeCardRules(card,'spyBattlePower').length?power+Math.max(0,(card.power??0)+cardPowerModifier(card,owner,slot,[])):power,0);
+}
+
+function dockingControlPower(side,slot){
+ if(!state.locations[slot]||locationTitle(state.locations[slot])!=='death star: docking bay 327')return 0;
+ const control=state.locations.findIndex(location=>location&&locationTitle(location)==='death star: docking control room 327');
+ if(control<0)return 0;
+ return PremiereLocations.presentCards(state,side,control).reduce((power,card)=>
+  power+(activeCardRules(card,'dockingControlPower')[0]?.amount??0),0);
 }
 
 function migPowerPenalty(side,site){
@@ -5346,7 +6134,7 @@ function fearPowerAtSite(side,slot){
 }
 
 function excludedFromCurrentBattle(card){
- return card.excludedFromBattle||battleSession?.excludedUnits?.has(card)||card.cannotBattle||barredThisTurn(card);
+ return card.noBattleTurn!==undefined&&card.noBattleTurn===state.game?.timing.turn||card.excludedFromBattle||battleSession?.excludedUnits?.has(card)||card.cannotBattle||barredThisTurn(card);
 }
 
 function excludedAtBattle(card,slot){
@@ -5357,7 +6145,8 @@ function excludedAtBattle(card,slot){
 function battleCandidates(side,slot){
  const {board}=PremiereGame.zones(state,side);
  function units(card){
-  if(!PremiereUnits.active(card)||excludedFromCurrentBattle(card)||['Weapon','Device','Effect'].includes(card.type))return [];
+  if(!PremiereUnits.active(card)&&state.besiegedBattle)return (card.occupants??[]).flatMap(entry=>units(entry.card));
+  if(!PremiereUnits.active(card)||excludedFromCurrentBattle(card)||['Weapon','Device','Effect','Creature'].includes(card.type)&&!isHoloUnit(card))return [];
   return [card,...(card.occupants??[]).filter(entry=>!['cargo','hangar'].includes(entry.role)).flatMap(entry=>units(entry.card))];
  }
  return (board?.[slot]??[]).flatMap(units);
@@ -5444,6 +6233,8 @@ function initiateBattleFor(side,i,restrictedFighters=null,extra=0){
 
 function beginBattleResponses(){
  const {initiator,site}=battleSession;
+ if(offerRogueTrample(site))return;
+ if(!battlePresence('Light',site)||!battlePresence('Dark',site)){battleSession=null;endBattleTiming(site);return;}
  if(!openReactWindow('battle',initiator,site))enterBattleSegments();
 }
 
@@ -5532,6 +6323,7 @@ function enterBattleSegments(){
  });
 }
 function endBattleTiming(site,result,participants){
+ delete state.besiegedBattle;
  for(const card of state.scopeHits??[]){
   const entry=PremiereLocations.findEntry(state,card);
   if(entry)loseTableCard(entry.side,entry.slot,card);
@@ -5550,7 +6342,7 @@ function deathStarTractorBeams(bay){
  return PremiereLocations.effectsAt(state,bay).filter(({card})=>locationEffectRule(card)?.siteDevice==='death-star-tractor-beam');
 }
 
-function tractorBeamOptions(side,window){
+function deathStarTractorOptions(side,window){
  const system=state.locations[window.site];
  if(side!=='Dark'||!system||system.id!=='Dark:654'||!state.game||forceBudget(side)<2)return [];
  const bay=state.locations.findIndex(isDockingBay327);
@@ -5568,16 +6360,16 @@ function tractorShipCrew(ship){
 }
 
 function settleTractorBeam(frame){
- drawDestinySeries(frame.side,'tractorBeam',2,0,draws=>{
+ drawDestinySeries(frame.side,'tractorBeam',frame.holder?1:2,0,draws=>{
   const {card,target,bay,site}=frame,entry=PremiereLocations.findEntry(state,target);
   const defense=PremiereWeapons.defense(target,cardAbility(target),craftStats(target,site)),total=PremiereBattle.total(draws);
-  if(entry?.slot!==site||entry.unavailable||!Number.isFinite(defense)||!Number.isFinite(total)||total<=defense||!deathStarTractorBeams(bay).length)return;
+  if(entry?.slot!==site||entry.unavailable||!Number.isFinite(defense)||!Number.isFinite(total)||total<=defense||!(frame.holder?frame.holder.attachments?.includes(card):deathStarTractorBeams(bay).length))return;
   if(!tractorShipCrew(target).length){takeStolenTableCard('Dark',card,entry);return;}
   if(!detachTableCard(entry.side,site,target))return;
   target.inactive=true;
   target.tractorCaptured=true;
   PremiereGame.zones(state,entry.side).board[bay].push(target);
-  (state.capturedShips??=[]).push({ship:target,bay,site,side:entry.side,beam:card});
+  (state.capturedShips??=[]).push({ship:target,bay,site,side:entry.side,beam:card,holder:frame.holder});
   log(card.name+' hält '+target.name+' an Docking Bay 327 fest.');
  });
 }
@@ -5588,6 +6380,7 @@ function updateCapturedStarships(){
   const {ship,bay,side,beam,site}=record,entry=PremiereLocations.findEntry(state,ship);
   if(!entry){state.capturedShips.splice(state.capturedShips.indexOf(record),1);continue;}
   if(!tractorShipCrew(ship).length){
+   const besieged=ship.attachments?.find(card=>activeCardRules(card,'besieged').length);if(besieged)loseTableCard(side,bay,besieged);
    delete ship.inactive;
    delete ship.tractorCaptured;
    if(takeStolenTableCard('Dark',beam,{...entry,slot:bay})){
@@ -5595,7 +6388,7 @@ function updateCapturedStarships(){
     state.dark[site].push(ship);
    }
    state.capturedShips.splice(state.capturedShips.indexOf(record),1);
-  }else if(!deathStarTractorBeams(bay).length){
+  }else if(!(record.holder?PremiereLocations.findEntry(state,record.holder)&&record.holder.attachments?.includes(beam):deathStarTractorBeams(bay).length)){
    state.pendingCardView={mode:'tractorRelease',card:ship,side,shown:[],record};
    return;
   }
@@ -5609,7 +6402,7 @@ function releaseCapturedStarship(record,launch){
  delete ship.tractorCaptured;
  if(launch)board[site].push(ship);
  else{
-  const move=card=>PremiereGame.zones(state,card.owner??card.side??side).used.push(card);
+  const move=card=>activeCardRules(card,'besieged').length?loseOwnedCard(card,card.side):PremiereGame.zones(state,card.owner??card.side??side).used.push(card);
   PremiereUnits.remove(ship,move,move);
  }
  state.capturedShips.splice(state.capturedShips.indexOf(record),1);
@@ -5755,7 +6548,8 @@ function battleEffectOptions(side){
    ((currentGame()?.cardRulesVersion??latestCardRulesVersion)>=10&&names.has('yoda')))],
   ['Dark:613',names.has('grand moff tarkin')&&(names.has('admiral motti')||names.has('general tagge'))]
  ]);
- const options=(hand??[]).flatMap((card,index)=>eligible.get(card.id)?[{args:[index],card,label:card.name+' · zwei Battle Destiny hinzufügen'}]:[]);
+ const holoOptions=isHoloSite(state.locations[x.site])?(hand??[]).flatMap((card,index)=>activeCardRules(card,'holositeDestiny').map(()=>({args:[index,1],card,draws:1,label:card.name+' · ein Battle Destiny am Holosite'}))):[];
+ const options=holoOptions.concat((hand??[]).flatMap((card,index)=>eligible.get(card.id)?[{args:[index],card,label:card.name+' · zwei Battle Destiny hinzufügen'}]:[]));
  const involved=new Set(PremiereGame.sides.flatMap(actor=>activeBattleUnits(actor)).map(locationTitle));
  if(involved.has('darth vader')&&involved.has('obi-wan kenobi')){
   for(const [index,card] of (hand??[]).entries()){
@@ -5939,14 +6733,16 @@ function drawDestinySeries(side,kind,count,modifier,complete){
   revealReserveInserts(side);
   const finish=frame=>{
    draws.push(PremiereBattle.settle(piles,frame.draw));
-   next(frame.redraw);
+   resolveAnhDestinyTriggers(side,frame.draw,()=>next(frame.redraw));
   };
   const frame={kind:'destiny',purpose:kind,side,draw,site:battleSession?.site,finish};
-  if(game&&battleSession?.segmented&&PremiereGame.sides.some(actor=>destinyResponses(actor,frame).length)){
-   PremiereGame.openResponse(game,frame);
-   return;
-  }
-  finish(frame);
+  const resume=()=>{
+   if((game?.cardRulesVersion??0)>=29&&Number.isFinite(draw.value))draw.value=Math.max(0,draw.value+clakdorDestinyModifier(draw.card)+(tonnikaFactor(draw.card)-1)*(draw.card.destiny??0));
+   if(game&&battleSession?.segmented&&PremiereGame.sides.some(actor=>destinyResponses(actor,frame).length))PremiereGame.openResponse(game,frame);
+   else finish(frame);
+  };
+  if((game?.cardRulesVersion??0)>=29&&draw.card.id==='Light:1992')state.pendingCardView={mode:'destinyValue',side,draw,values:[2,5],modifier,shown:[draw.card],publicView:true,resume};
+  else resume();
  }
  next();
 }
@@ -6004,13 +6800,20 @@ function answerDestiny(side,kind,index){
  return true;
 }
 
-function battleDestiny(side){
+function battleDestiny(side,allowResponse=true){
  if(!battleSession||battleSession.weaponTurn||state.phase!==3)return;
  const x=battleSession,t=battleTotals(x.site),light=side==='Light',key=light?'lightCard':'darkCard',val=light?'lightDestiny':'darkDestiny';
  if(x[key]!==null)return;
  const first=x.initiator==='Dark'?'Dark':'Light';if(side!==first&&x[first==='Dark'?'darkCard':'lightCard']===null){log('Zuerst entscheidet die initiierende Seite über Battle Destiny.');return}
  const ability=light?t.lightAbility:t.darkAbility,count=battleDestinyDrawCount(side,x.site,ability);
  if(count===null||count<1){log(side+' darf keine Battle Destiny ziehen (Ability '+(ability??'?')+', Mindestwert '+minimumBattleDestinyAbility(side,x.site)+').');return}
+ if(allowResponse&&state.game&&PremiereGame.reserveCards(PremiereGame.zones(state,side).deck).length){
+  const frame={kind:'beforeBattleDestiny',side,site:x.site};
+  if(beforeBattleDestinyOptions(PremiereGame.otherSide(side),frame).length){
+   PremiereGame.openResponse(state.game,frame);
+   return;
+  }
+ }
  const vaderBonus=vaderBattleDestinyBonus(side,x.site);
  const alderaanPenalty=alderaanBattleDestinyPenalty(side,x.site);
  drawDestinySeries(side,'battle',count,vaderBonus-alderaanPenalty,draws=>{
@@ -6022,6 +6825,7 @@ function battleDestiny(side){
   }
   x[key]=draws[0]?.card||{name:'Reserve Deck leer'};
   x[val]=PremiereBattle.total(draws);
+  if(Number.isFinite(x[val])&&x.beforeDestinyReduction?.[side])x[val]=Math.max(0,x[val]-x.beforeDestinyReduction[side]);
   if(x.segmented){
    (x.drawCounts??={})[side]=draws.filter(draw=>!draw.cancelled&&Number.isFinite(draw.value)).length;
    x.battleDrawSucceeded[side]=x.drawCounts[side]>0;
@@ -6170,7 +6974,7 @@ function battleWeaponOptions(side,timing='weapons',x=battleSession,budget){
    if(!PremiereUnits.canUseWeapon(state,host,weapon))return [];
    if(host.type==='Starship'&&!craftStats(host,from).powered)return [];
    const external=from!==x.site;
-   if(external&&(!rule.adjacent||place!==from||!adjacentSites(from,x.site)))return [];
+   if(external&&!(rule.superlaser&&state.mobileSystems?.[host.id]?.orbit===x.site)&&(!rule.adjacent||place!==from||!adjacentSites(from,x.site)))return [];
    if(!external&&x.segmented&&!x.participants[side].includes(host)&&!rule.projector&&!isLoc(host))return [];
    if(rule.generator&&!PremiereLocations.presentCards(state,side,place).some(unit=>isPowerDroid(unit)||
       unit.characteristics?.includes('fusion generator')||/^portable fusion generator$/i.test(unit.name??'')))return [];
@@ -6181,10 +6985,16 @@ function battleWeaponOptions(side,timing='weapons',x=battleSession,budget){
    return targets.concat(scopeTargets).flatMap(({card:target,index:targetIndex,place:targetPlace,slot=x.site})=>{
     const scopeExternal=slot!==x.site;
     if(scopeExternal?targetPlace!==slot||state.scopeHits?.includes(target):external?targetPlace!==x.site:targetPlace!==place)return [];
-    const defense=wearingUtinniGear(target,'plastoid-armor')?5:PremiereWeapons.defense(target,cardAbility(target),craftStats(target,slot));
+    const defense=laserGateRecord(target)?3:wearingUtinniGear(target,'plastoid-armor')?5:PremiereWeapons.defense(target,cardAbility(target),craftStats(target,slot));
     const shot=weaponShot(weapon,host,target,defense);
     if(!shot||shot.cost>budget||shot.effect!=='block'&&droidProtectedFrom(target,side)||
       shot.effect==='capture'&&(side!=='Dark'||(target.owner??target.side)!=='Light'))return [];
+    if(shot.effect==='jawaSteal'){
+     shot.defense=cardForfeitValueAt(target,opponent,slot);
+     shot.bonus=1;
+     if(!Number.isFinite(shot.defense)||!withinDeploymentLimit(target,side))return [];
+    }
+    if(shot.effect==='exclude'&&scopeExternal)return [];
     const args=[mount.index,weaponIndex,targetIndex];
     if(external||scopeExternal)args.push(from);
     if(scopeExternal)args.push(slot);
@@ -6194,7 +7004,7 @@ function battleWeaponOptions(side,timing='weapons',x=battleSession,budget){
  });
 }
 
-function weaponTargets(side,slot,includeNonparticipants=false,x=battleSession){
+function baseWeaponTargets(side,slot,includeNonparticipants=false,x=battleSession){
  const roots=PremiereGame.zones(state,side).board?.[slot]??[];
  return PremiereLocations.entries(state,side).filter(entry=>entry.slot===slot).flatMap((entry,index)=>{
   const target=entry.card,automated=PremiereWeapons.projector(target)||PremiereWeapons.seeker(target);
@@ -6277,7 +7087,8 @@ function markWeaponFired(shot){
 }
 
 function recordBattleShot(battle,side,shot,total,defense,hit){
- const effects={ion:'Ionenschaden',capture:'Gefangennahme',block:'Waffen blockiert',destroy:'Karte verloren'};
+ const effects={ion:'Ionenschaden',capture:'Gefangennahme',block:'Waffen blockiert',destroy:'Karte verloren',
+  jawaSteal:'Gestohlen',exclude:'Vom Battle ausgeschlossen'};
  (battle.weaponResults??=[]).push({side,weapon:shot.weapon.name,target:shot.target.name,total,defense,
   outcome:hit?(effects[shot.effect]??'Treffer'):total===null?'Kein verwertbarer Destiny-Draw':'Kein Treffer'});
 }
@@ -6286,7 +7097,7 @@ function weaponDestinyModifier(side,shot){
  const passenger=shot.host?.occupants?.some(({card,role})=>role==='passenger'&&PremiereUnits.active(card)&&
   !excludedAtBattle(card,shot.from)&&activeCardRules(card,'passengerWeaponDestiny').length)?1:0;
  return PremiereLocations.rulesAt(state,shot.from,side,'weaponDestiny').reduce((sum,rule)=>sum+rule.amount,passenger)+
-  (shot.computerPenalty??0)+(battleSession?.weaponDestinyPenalty?.get(shot.weapon)??0);
+  (shot.host.leaderWeaponTurn!==undefined&&shot.host.leaderWeaponTurn===state.game?.timing.turn?1:0)+(shot.computerPenalty??0)+(battleSession?.weaponDestinyPenalty?.get(shot.weapon)??0);
 }
 
 function shootWeapon(side,shot,complete){
@@ -6303,11 +7114,21 @@ function shootWeapon(side,shot,complete){
    const sum=PremiereBattle.total(draws),total=valid.length&&sum!==null?Math.max(0,sum+shot.bonus+(automated?holocamDestiny(side,shot.from):0)):null;
    const afterShot=()=>afterCharacterFires(side,shot.host,shot.from,complete);
    const finish=()=>{
-    const defense=updatedShotDefense(shot,slot),hit=total!==null&&total>defense;
+    if(shot.weapon.id==='Dark:1376'&&valid[0]?.value===0){
+     log(shot.weapon.name+' explodiert. Waffe und '+shot.host.name+' gehen verloren.');
+     recordBattleShot(x,side,shot,total,shot.defense,false);
+     x.weaponResults.at(-1).outcome='Explodiert';
+     loseTableCard(side,shot.from,shot.host);
+     afterShot();
+     return;
+    }
+    const defense=updatedShotDefense(shot,slot);
+    const hit=total!==null&&(shot.effect==='exclude'?total===defense:total>defense);
     recordBattleShot(x,side,shot,total,defense,hit);
     log(side+' feuert '+shot.weapon.name+' auf '+shot.target.name+' ('+shot.cost+' Force). Waffen-Destiny: '+
      (draws.length?draws.map(draw=>draw.card.name+(draw.cancelled?' (aufgehoben)':'')).join(', ')+' · '+(total??'unbekannt'):'Reserve Deck leer')+
-     ' gegen Verteidigung '+defense+' → '+(hit?({ion:'Ionenschaden',capture:'Gefangennahme'}[shot.effect]??'Treffer'):'kein Treffer')+'.');
+     ' gegen '+(shot.effect==='jawaSteal'?'Forfeit ':'Verteidigung ')+defense+' → '+(hit?
+      ({ion:'Ionenschaden',capture:'Gefangennahme',jawaSteal:'gestohlen',exclude:'ausgeschlossen'}[shot.effect]??'Treffer'):'kein Treffer')+'.');
     if(hit){
      applyWeaponResult(shot,opponent,slot);
      if(x.hitUnits?.[opponent]?.includes(shot.target)&&openEvazanResponse(side,shot.target,slot,afterShot))return;
@@ -6551,11 +7372,17 @@ function settleCombinedAttack(frame){
 
 function applyWeaponResult(shot,opponent,slot){
  const x=battleSession,target=shot.target;
+ const gate=laserGateRecord(target);if(gate){cancelLocationEffect(gate.site,gate.effect);return;}
  if(shot.scopeExternal&&['hit','zero'].includes(shot.effect)){
   (state.scopeHits??=[]).push(target);
   log(target.name+' wurde an der Nachbar-Site getroffen und geht nach dem Battle verloren.');
  }else if(shot.effect==='capture'){
   captureCharacter(target,slot);
+ }else if(shot.effect==='jawaSteal'){
+  const entry=PremiereLocations.findEntry(state,target);
+  if(entry)changeCharacterAllegiance(entry,PremiereGame.otherSide(opponent));
+ }else if(shot.effect==='exclude'&&x){
+  (x.excludedUnits??=new Set()).add(target);
  }else if(shot.effect==='ion'){
   for(const weapon of [...(target.weapons??[])].filter(card=>card.subType==='Starship')){
    target.weapons.splice(target.weapons.indexOf(weapon),1);
@@ -6667,10 +7494,12 @@ function battleImmunity(side,card,slot=battleSession.site,members=activeBattleUn
   if(card.id==='Dark:2700'&&pilots.includes('darth vader'))limit=Math.max(limit,4);
   if(PremiereUnits.capital(card)&&card.occupants?.some(entry=>entry.card.id==='Dark:1989'&&PremiereUnits.active(entry.card)&&
     !PremiereUnits.textSuppressed(entry.card)&&!excludedAtBattle(entry.card,slot)))limit=Math.max(limit,3);
+  for(const rule of astromechShipRules(card,slot))limit=Math.max(limit,rule.below??0);
  }
  if(card.id==='Dark:12'&&rules.night&&!PremiereUnits.textSuppressed(card))return Infinity;
  if(jungleBonus(card,side,slot,members))return Infinity;
  const attachments=card.attachments??[];
+ for(const effect of attachments)for(const rule of activeCardRules(effect,'grantedAttritionImmunity'))limit=Math.max(limit,rule.below);
  if(attachments.some(effect=>effect.id==='Light:1810'&&
     ((currentGame()?.cardRulesVersion??latestCardRulesVersion)<21||activeCardRules(effect,'battleMoveAway').length)))limit=Math.max(limit,5);
  if(site.locationTags?.includes('Planet')&&((currentGame()?.cardRulesVersion??latestCardRulesVersion)<10||isSite(site))&&
@@ -6719,11 +7548,26 @@ function battleForfeitValue(card,side,ignoreWeaponHit=false){
 
 function cardForfeitValueAt(card,side,slot){
  if(card.asleep)return 0;
- const base=card.battleForfeit??card.forfeit;
+ const base=isHoloUnit(card)?printedBattleDestiny(card):card.battleForfeit??(activeCardRules(card,'brainiac').length?state.botHand.length:activeCardRules(card,'septoid').length?card.septoidForfeit??7:(card.forfeit??null)===null?null:card.forfeit*tonnikaFactor(card));
  if(!Number.isFinite(base))return null;
  const loc=state.locations[slot];
  let modifier=(card.battleForfeitModifier??0)+registeredLocationModifier('forfeit',card,side,slot)+deviceCharacterModifier(card,loc)+falconModificationBonus(card,slot);
+ modifier+=kashyyykCrewBonus(card,slot);
+ if(card.remoteBonus&&card.remoteBonus.turn===state.game?.timing.turn&&card.remoteBonus.stat==='forfeit')modifier++;
+ if(card.type==='Character'&&!isDroid(card)&&isSite(loc)&&PremiereGame.sides.some(actor=>PremiereLocations.entries(state,actor).some(entry=>
+  !entry.unavailable&&!entry.card.switchedOff&&activeCardRules(entry.card,'binaryForfeit').length&&
+  (entry.slot===slot||adjacentSites(entry.slot,slot)))))modifier+=2;
+ if(card.type==='Character'&&characterTraits(card).includes('wookiee')&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=28){
+  for(const [site,location] of state.locations.entries()){
+   if(location?.id!=='Dark:1412')continue;
+   for(const actor of PremiereGame.sides){
+    const rule=PremiereLocations.ruleAt(state,site,actor,'kashyyykForfeit');
+    if(rule&&PremiereLocations.control(state,actor,site,cardAbility)===true)modifier-=rule.amount;
+   }
+  }
+ }
  modifier+=registeredCharacterModifier('characterForfeit',card,slot);
+ if(card.type==='Character'&&isSite(loc)&&squadTrooper(card,side)&&PremiereLocations.presentCards(state,side,slot).some(unit=>unit!==card&&activeCardRules(unit,'squadLeader').length))modifier++;
  const region=sitePlanet(loc);
  if(card.type==='Character'&&['tatooine','hoth'].includes(region)&&PremiereLocations.findEntry(state,card)?.slot===slot){
   const owner=region==='tatooine'?side:PremiereGame.otherSide(side);
@@ -6806,7 +7650,7 @@ function prepareDamageSegment(){
    const protection=battleAttritionProtection(side,card,x.site,members);
    return protection.below>attrition||protection.atThree&&attrition===3;
   });
-  return [side,{damage:result[key+'Damage'],attrition,hits,immunity,charged}];
+  return [side,{damage:Math.round(result[key+'Damage']),attrition,hits,immunity,charged}];
  }));
  x.segment='damage';
  const initial=Object.fromEntries(PremiereGame.sides.map(side=>[side,{...debt[side]}]));
@@ -6871,19 +7715,33 @@ function loseOwnedCard(card,fallback,source='table',site,forfeited=false){
  if(source!=='support'&&(source!=='lifeForce'||!PremiereGame.lostPileFaceDown(state,owner)))queueMemorialLoss(owner,card,site);
 }
 
-function loseTableCard(side,slot,card,outOfPlay=false,forfeited=false,skipEvacuation=false){
+function loseTableCard(side,slot,card,outOfPlay=false,forfeited=false,skipEvacuation=false,skipCapture=false){
+ if(!outOfPlay&&!skipCapture&&side==='Light'&&card.type==='Character'&&battleSession?.participants?.Light?.includes(card)){
+  const frame={kind:'aboutToLoseBattle',side,target:card,site:slot,forfeited,finish:()=>loseTableCard(side,slot,card,outOfPlay,forfeited,skipEvacuation,true)};
+  if(queueRuleResponse(frame))return true;
+ }
+ for(const record of (state.capturedShips??[]).slice())if(record.holder===card){
+  state.capturedShips.splice(state.capturedShips.indexOf(record),1);loseTableCard(record.side,record.bay,record.ship,outOfPlay,false,true,true);
+ }
  if(!outOfPlay&&!skipEvacuation&&PremiereUnits.capital(card)&&PremiereLocations.findEntry(state,card)?.slot===slot){
   const frame={kind:'shipLoss',side:PremiereGame.otherSide(side),owner:side,site:slot,ship:card,forfeited};
   if(state.ruleResponses?.some(event=>event.kind==='shipLoss'&&event.ship===card))return true;
   if(queueRuleResponse(frame))return true;
  }
+ const chewieUsed=!outOfPlay&&isSite(state.locations[slot])&&['Vehicle','Starship','Character'].includes(card.type)&&(card.type!=='Character'||isDroid(card))&&
+  (card.hitForLoss||battleSession?.hitUnits?.[side]?.includes(card))&&PremiereLocations.presentCards(state,side,slot).some(unit=>activeCardRules(unit,'chewbacca').length);
+ cleanupVehicleSites(card);
  if(!detachTableCard(side,slot,card))return false;
  PremiereUnits.remove(card,unit=>{
   state.mouseUtinni?.delete(unit);
   state.sleepingCharacters?.delete(unit);
   delete unit.asleep;
   delete unit.migTarget;
-  if(unit.type==='Effect'&&state.tableEffects?.length)state.tableEffects=state.tableEffects.filter(effect=>effect.card!==unit);
+  if(unit.type==='Effect'&&state.tableEffects?.length){
+   const placed=state.tableEffects.find(effect=>effect.card===unit);
+   for(const card of placed?.support??[])loseOwnedCard(card,placed.target,'support');
+   state.tableEffects=state.tableEffects.filter(effect=>effect.card!==unit);
+  }
   if(unit.escortedCaptive){
    const captive=unit.escortedCaptive;
    delete unit.escortedCaptive;
@@ -6897,7 +7755,8 @@ function loseTableCard(side,slot,card,outOfPlay=false,forfeited=false,skipEvacua
     log(captive.name+' geht mit '+card.name+' verloren.');
    }
   }
-  if(outOfPlay&&unit===card)(state.outOfPlay??=[]).push(unit);
+  if(chewieUsed&&unit===card)PremiereGame.zones(state,unit.owner??unit.side??side).used.push(unit);
+  else if(outOfPlay&&unit===card)(state.outOfPlay??=[]).push(unit);
   else if(battleSession?.site===slot&&battleSession.participants?.[side]?.includes(unit)&&activeCardRules(unit,'regenerate').length){
    PremiereGame.zones(state,unit.owner??unit.side??side).used.push(unit);
    log(unit.name+' regeneriert und kommt oben auf die Used Pile.');
@@ -7009,7 +7868,11 @@ function battleDamageAction(side,kind,args){
   debt.damage=Math.max(debt.damage,debt.forceOnly??0);
   log(side+' forfeitet '+option.card.name+' aus der Hand für '+option.value+'.');
  }else if(kind==='battleForfeit'){
-  if(!removeBattleUnit(side,option.card))return false;
+  if(activeCardRules(option.card,'septoid').length&&!option.hit){
+   const absorbed=Math.min(option.value,Math.max(debt.attrition,debt.damage));
+   option.card.septoidForfeit=(option.card.septoidForfeit??7)-absorbed;
+   if(option.card.septoidForfeit<=0&&!removeBattleUnit(side,option.card))return false;
+  }else if(!removeBattleUnit(side,option.card))return false;
   PremiereBattle.forfeit(debt,option.value);
   debt.damage=Math.max(debt.damage,debt.forceOnly??0);
   debt.hits=debt.hits.filter(card=>activeBattleUnits(side).includes(card));
@@ -7168,11 +8031,21 @@ function reactOptions(side, window){
  if(!force||!board)return [];
  return board.flatMap((row,from)=>row.flatMap((card,index)=>{
   if(reactMovementUsed(card))return [];
+  if(window.kind==='battle'&&from===window.site&&activeCardRules(card,'reactAway').length){
+   return state.locations.flatMap((loc,to)=>travelOptions(card,side,from,to,true)
+    .filter(option=>option.kind==='Landspeed'&&option.cost<=forceBudget(side))
+    .map(option=>({from,to,index,card,cost:option.cost,movement:option.kind,away:true,
+     label:card.name+' · als React zu '+loc.name+' ('+option.cost+' Force)'})));
+  }
   const shipReact=card.type==='Starship'&&(PremiereLocations.ruleAt(state,window.site,side,'shipReact')||officerShipReact(side,card,window.site));
-  if(!shipReact&&!['Light:2250','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
+  const scout=card.attachments?.find(effect=>activeCardRules(effect,'scoutReact').length);
+  const shuttle=activeCardRules(card,'shuttleVehicle').length;
+  const floater=card.id==='Dark:1685'&&activeCardRules(card,'floaterReact').length&&window.kind==='battle'&&
+   battleCandidates(side,window.site).some(unit=>characterTraits(unit).includes('thief')||PremiereUnits.hasSkill(unit,'smuggler')||PremiereUnits.bountyHunter(unit));
+  if(!shipReact&&!scout&&!shuttle&&!floater&&!['Light:2250','Light:2125','Dark:191','Light:1548','Dark:1547','Light:1609','Light:2307','Dark:2660'].includes(card.id))return [];
   if(!shipReact&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=7&&PremiereUnits.textSuppressed(card))return [];
-  return travelOptions(card,side,from,window.site,true).filter(option=>option.cost<=forceBudget(side))
-   .map(option=>({from,to:window.site,index,card,cost:option.cost,movement:option.kind}));
+  return travelOptions(card,side,from,window.site,true).filter(option=>floater||option.cost<=forceBudget(side))
+   .map(option=>({from,to:window.site,index,card,cost:floater?0:option.cost,movement:option.kind,scoutBonus:!!scout&&!scout.training?.granted}));
  }));
 }
 
@@ -7214,14 +8087,14 @@ function reactDeployOptions(side,window){
   const offer=options.concat(deployPilotOptions(side,index,window.site)
    .filter(option=>!updated||cost===null).map(pilot=>({card,index,cost:pilot.cost,args:[index,pilot.index],pilot:pilot.pilot})),
    weaponPlacementOptions(side,card,window.site).map(option=>
-    ({card,index,cost:option.cost,args:[index,-1,option.hostIndex],mount:option.mount,
+    ({card,index,cost:option.cost,args:[index,-1,option.hostIndex],mount:option.mount,discount:option.discount,
      label:card.name+' an '+option.mount.host.name+' (Deploy-React, '+option.cost+' Force)'})));
   if(updated){
-   const extra=(kind,item,cost,args,label)=>offer.push({card,index,cost,args:[index,-1,kind,...args],placement:kind,item,label,opponentCost});
+   const extra=(kind,item,cost,args,label,discount)=>offer.push({card,index,cost,args:[index,-1,kind,...args],placement:kind,item,label,opponentCost,discount});
    for(const action of automation.filter(option=>option.index===index))extra('automated',null,action.cost,[],null);
    if(card.type==='Device'){
     for(const mount of deviceHosts(side,index).filter(option=>option.slot===window.site)){
-     extra('device',mount.host,mount.cost,[mount.index,mount.hostSide],card.name+' an '+mount.host.name+' (Deploy-React, '+mount.cost+' Force)');
+     extra('device',mount.host,mount.cost,[mount.index,mount.hostSide],card.name+' an '+mount.host.name+' (Deploy-React, '+mount.cost+' Force)',mount.discount);
     }
     for(const option of boltDeployOptions(side,index).filter(option=>option.args[1]===window.site)){
      extra('device',option.host,option.cost,[-1,option.args[2]],option.label);
@@ -7231,7 +8104,7 @@ function reactDeployOptions(side,window){
     }
    }
    if(card.type==='Character'&&(card.owner??card.side)===side&&withinDeploymentLimit(card,side)&&
-     characterLocationAllowed(card,loc)&&hasDeployPresence(side,loc)){
+     characterLocationAllowed(card,loc)&&hasDeployPresence(side,loc)&&!activeCardRules(card,'deployUndercover').length){
     const jawa=jawaCosts.has(card.id),payment=jawa?jawaDeployPayment(card,loc,side):{own:crewDeployCost(card,side,loc),opposing:0};
     if(Number.isFinite(payment?.own)&&(jawa?canPayJawaDeploy(side,payment):payment.own<=forceBudget(side))){
      for(const [hostIndex,host] of (board[window.site]??[]).entries())for(const role of PremiereUnits.roles(host,card)){
@@ -7259,6 +8132,8 @@ function resolveResponsePass(side){
  const game=state.game;
  const frame=PremiereGame.passResponse(game,side);
  if(!frame||frame===true)return frame;
+ if(frame.kind==='extinguishAbility'){resolveAnhResponse(frame,PremiereGame.responseWindow(game));return true;}
+ if(frame.kind==='beforeBattleDestiny'){battleDestiny(frame.side,false);return true;}
  if(frame.kind==='justFired'){frame.finish();return true;}
  if(frame.kind==='poisonStinger'){settlePoisonStinger(frame);return true;}
  if(frame.kind==='tractorBeam'){settleTractorBeam(frame);return true;}
@@ -7285,11 +8160,12 @@ function resolveResponsePass(side){
   return true;
  }
  if(frame.kind==='deployment'){
+  frame.afterDeployment?.();
   if(frame.resumeEmergency)state.pendingCardView=frame.resumeEmergency;
   settleCancelledResponse(game);
   return true;
  }
- if(['shipLoss','characterLost','finishedBattle','equipmentLost'].includes(frame.kind)){
+ if(['aboutToLoseBattle','shipLoss','characterLost','finishedBattle','equipmentLost'].includes(frame.kind)){
   finishQueuedRuleResponse(frame);
   return true;
  }
@@ -7319,7 +8195,9 @@ function resolveResponsePass(side){
  }
  if(frame.kind==='interrupt'){
   const parent=PremiereGame.responseWindow(game);
-  if(frame.interrupt==='battleEffect'){
+  if(frame.interrupt==='anhResponse'){
+   resolveAnhResponse(frame,parent);
+  }else if(frame.interrupt==='battleEffect'){
    settleBattleEffect(frame);
   }else if(frame.interrupt==='combinedAttack'){
    settleCombinedAttack(frame);
@@ -7435,7 +8313,7 @@ function resolveResponsePass(side){
   if(frame.deploy||index>=0){
    if(frame.deploy){
     if(frame.mount){
-     const stillPresent=weaponMounts(frame.side).find(mount=>mount.slot===frame.site&&mount.host===frame.mount.host);
+     const stillPresent=weaponMounts(frame.side,true).find(mount=>mount.slot===frame.site&&mount.host===frame.mount.host);
      if(stillPresent&&!PremiereWeapons.disarmed(stillPresent.host))attachWeapon(stillPresent,frame.card);
      else loseOwnedCard(frame.card,frame.side);
     }else if(frame.placement){
@@ -7452,14 +8330,21 @@ function resolveResponsePass(side){
      frame.card.controller=frame.side;
      if(frame.pilot)PremiereUnits.add(frame.card,frame.pilot,'pilot',frame.side);
      board[frame.site].push(frame.card);
+     if(activeCardRules(frame.card,'deployUndercover').length)setUndercover(frame.card,frame.side);
      (state.deployedThisTurn??=[]).push(frame.card);
     }
    }else{
     board[frame.site].push(...board[frame.from].splice(index,1));
+    if(frame.scoutBonus)frame.card.scoutReactTurn=state.game.timing.turn;
     if(frame.movement==='Landspeed')noteMineTraversal(frame.side,frame.from,frame.site,frame.card);
+    if(frame.away)clearJuriAfterMove(frame.card,frame.side,frame.site);
    }
    log(frame.side+' · '+frame.card.name+' reagiert bei '+state.locations[frame.site].name+'.');
    const parent=PremiereGame.responseWindow(game);
+   if(parent.kind==='battle'){
+    const completed={kind:'reactCompleted',side:frame.side,site:frame.site};
+    if(hasInterruptResponse(completed))PremiereGame.openResponse(game,completed);
+   }
    if(parent.kind==='drain'&&confirmedPresence(frame.side,frame.site)===true){
     PremiereGame.cancelResponse(game,parent);
     log('Force Drain aufgehoben: Der React hat Presence an den Ort gebracht.');
@@ -7612,8 +8497,8 @@ function queueRuleResponse(frame){
 }
 
 function queueCharacterLoss(side,card,site,forfeited){
- if(card.type!=='Character')return;
- queueRuleResponse({kind:'characterLost',side,fallen:card,site,forfeited});
+ if(card.type!=='Character'&&!(card.type==='Starship'&&locationTitle(card)==="vader's custom tie"))return;
+ queueRuleResponse({kind:'characterLost',side,fallen:card,site,forfeited,duringBattle:!!battleSession});
 }
 
 function queueMemorialLoss(side,card,site){
@@ -7662,6 +8547,7 @@ function openQueuedRuleResponse(){
 }
 
 function finishQueuedRuleResponse(frame){
+ if(frame.kind==='aboutToLoseBattle'){if(!frame.replaced)frame.finish();return;}
  if(frame.kind!=='shipLoss')return;
  loseTableCard(frame.owner,frame.site,frame.ship,false,frame.forfeited,true);
  const fight=battleSession;
@@ -7863,12 +8749,12 @@ function increasedLossOptions(side,window){
  }))));
 }
 
-function initiateReact(side,from,index){
+function initiateReact(side,from,index,to){
  const game=state.game,window=PremiereGame.responseWindow(game);
- const option=reactOptions(side,window).find(x=>x.from===from&&x.index===index);
+ const option=reactOptions(side,window).find(x=>x.from===from&&x.index===index&&(!x.away||x.to===to));
  if(!option)return false;
 
- if(!PremiereGame.answer(game,side,{kind:'react',site:window.site,from,card:option.card,movement:option.movement}))return false;
+ if(!PremiereGame.answer(game,side,{kind:'react',site:option.to,from,card:option.card,movement:option.movement,away:option.away,scoutBonus:option.scoutBonus}))return false;
  spendForce(side,option.cost);
  (state.reactedThisTurn??=[]).push(option.card,...(option.card.occupants??[]).map(entry=>entry.card));
  if(option.card.instanceId)PremiereGame.useOnce(game,'turn','react:'+option.card.instanceId);
@@ -7886,6 +8772,7 @@ function initiateReactDeploy(side,...args){
  for(const i of [index,pilotIndex].filter(i=>i>=0).sort((a,b)=>b-a))hand.splice(i,1);
  if(jawaCosts.has(option.card.id))spendJawaDeployForce(side,option.cost,option.opponentCost);
  else spendForce(side,option.cost);
+ if(option.discount)PremiereGame.useOnce(game,'turn',option.discount);
  if(option.opponentCost)payOpposingJawaCost(side,option.opponentCost);
  if((currentGame()?.cardRulesVersion??latestCardRulesVersion)<18&&option.comlinkHost&&window.comlinkHost!==option.comlinkHost){
   window.comlinkHost=option.comlinkHost;
@@ -7898,8 +8785,14 @@ function initiateReactDeploy(side,...args){
 
 const isAlter=card=>['Light:95','Dark:94'].includes(card.id);
 const isSense=card=>['Light:2217','Dark:2216'].includes(card.id);
-const alterTarget=card=>card?.type==='Effect'&&!/immune to alter\b/i.test(card.gametext??'')&&
- !['Starting','Immediate','Political'].includes(card.subType);
+function alterTarget(card,site){
+ if(card?.type!=='Effect'||['Starting','Immediate','Political'].includes(card.subType))return false;
+ if(activeCardRules(card,'locationEffect').some(rule=>rule.darkWaters)){
+  return !Number.isInteger(site)||!PremiereGame.sides.some(actor=>PremiereLocations.presentCards(state,actor,site)
+   .some(creature=>creature.type==='Creature'&&creature.subType==='Swamp'));
+ }
+ return !/immune to alter\b/i.test(card.gametext??'');
+}
 
 function highestInterruptCharacters(side){
  const characters=PremiereLocations.activeCards(state,side)
@@ -8056,13 +8949,33 @@ function settlePostBattleChoke(frame){
  });
 }
 
-function interruptResponses(side,window){
+function informantReactChoices(side,site){
+ return PremiereLocations.entries(state,side).flatMap((entry,index)=>{
+  const {card,slot:from}=entry;
+  if(card.type!=='Character'||entry.carriers.length||entry.unavailable||!adjacentSites(from,site)||reactMovementUsed(card)||
+     !travelOptions(card,side,from,site,true).some(option=>option.kind==='Landspeed'))return [];
+  return [{args:['move',index],card,from,to:site,label:card.name+' · kostenlos zum Battle bei '+state.locations[site].name}];
+ });
+}
+
+function beforeBattleDestinyOptions(side,window){
+ if(side===window.side)return [];
+ return PremiereLocations.entries(state,side).flatMap((entry,index)=>{
+  const {card,slot,unavailable}=entry,[rule]=activeCardRules(card,'beforeBattleDestiny');
+  return rule&&!unavailable&&slot===window.site&&PremiereUnits.active(card)&&!excludedAtBattle(card,slot)&&
+   !window.used?.includes(card)&&rule.cost<=forceBudget(side)?
+    [{index:-1,args:[-1,'zutton',index],kind:'zutton',rule,card,cost:rule.cost,label:card.name+' · Battle Destiny −1 (1 Force)'}]:[];
+ });
+}
+
+function baseInterruptResponses(side,window){
  if(!window||window.cancelled)return [];
+ if(window.kind==='beforeBattleDestiny')return beforeBattleDestinyOptions(side,window);
  if(window.kind==='justFired')return poisonStingerOptions(side,window);
  if(window.kind==='equipmentLost')return memorialLossOptions(side,window);
  if(window.kind==='shipLoss')return shipEvacuationOptions(side,window);
  if(window.kind==='battleOutcome')return postBattleChokeOptions(side,window);
- if(window.kind==='characterLost'||window.kind==='finishedBattle')return recentlyLostOptions(side,window).concat(
+ if(window.kind==='characterLost'||window.kind==='finishedBattle')return recentlyLostOptions(side,window).concat(anhLostResponses(side,window),
   tacticalRecallOptions(side,window),gearMissionOptions(side,window),window.kind==='finishedBattle'?tractorBeamOptions(side,window):[]);
  if(window.kind==='deployment')return barrierOptions(side,window).concat(nobleSacrificeOptions(side,window));
  const protection=droidShutdownOptions(side,window);
@@ -8077,9 +8990,18 @@ function interruptResponses(side,window){
  if(window.kind==='battleForceLost')return loss;
  if(expandedCardRules()){
   const counter=counterResponses(side,window);
-  if(counter)return counter.concat(protection,damage,loss,corellianSlipResponses(side,window));
+  if(counter)return counter.concat(immediateEffectResponses(side,window),protection,damage,loss,corellianSlipResponses(side,window));
  }
- const accidents=battleAccidentOptions(side,window).concat(battleRetreatOptions(side,window),damage,battleTieLossOptions(side,window),
+ const conquest=window.kind==='battle'&&window.side===side&&!window.conquestPeekUsed&&
+  battleCandidates(PremiereGame.otherSide(side),window.site).some(card=>locationTitle(card)==='millennium falcon')&&
+  battleCandidates(side,window.site).find(card=>activeCardRules(card,'conquestPeek').length);
+ const peek=conquest&&PremiereGame.zones(state,PremiereGame.otherSide(side)).hand.length?
+  [{kind:'conquestPeek',card:conquest,index:-1,args:[-1,'conquestPeek'],label:conquest.name+' · Gegnerische Hand ansehen'}]:[];
+ const informant=window.kind==='battle'&&window.side!==side&&undercoverSpies(side,window.site).length&&informantReactChoices(side,window.site).length?
+  PremiereGame.zones(state,side).hand.flatMap((card,index)=>activeCardRules(card,'informantReact').map(rule=>({
+   kind:'informantReact',card,index,rule,args:[index,'informantReact'],label:card.name+' · Figuren kostenlos zum Battle bewegen',
+  }))):[];
+ const accidents=peek.concat(informant,battleAccidentOptions(side,window),battleRetreatOptions(side,window),damage,battleTieLossOptions(side,window),
   garbageChuteOptions(side,window),emergencyResponses(side,window),bastEvacuationOptions(side,window),helpRebelOptions(side,window),
   interiorExclusionOptions(side,window));
  if(window.kind==='battle'&&side===window.side)return accidents;
@@ -8102,7 +9024,13 @@ function interruptResponses(side,window){
  if(window.kind==='drain'){
   const id=side==='Light'?'Light:2385':'Dark:575';
   if(!forceBudget(side))return [];
-  return (hand??[]).flatMap((card,index)=>card.id===id?[{kind:'assault',card,index,cost:1}]:[]);
+  const hunchback=PremiereGame.zones(state,window.side).force.length?PremiereLocations.entries(state,side).flatMap((entry,index)=>{
+   const {card,slot,unavailable}=entry;
+   const [rule]=activeCardRules(card,'hunchback');
+   return rule&&!unavailable&&rule.cost<=forceBudget(side)&&adjacentSites(slot,window.site)&&!window.hunchbackUsed?.includes(card)?
+    [{kind:'hunchback',card,index:-1,cost:rule.cost,args:[-1,'hunchback',index],label:card.name+' · Gegnerische Force Pile durchsuchen (1 Force)'}]:[];
+  }):[];
+  return hunchback.concat((hand??[]).flatMap((card,index)=>card.id===id?[{kind:'assault',card,index,cost:1}]:[]));
  }
  const effectWindow=['lostPileEffect','locationEffect'].includes(window.kind);
  const kind=effectWindow?'alter':window.kind==='react'?'sense':window.kind==='interrupt'?window.interrupt==='sense'?'alter':'sense':null;
@@ -8171,8 +9099,9 @@ function counterResponses(side,window){
   for(const rule of activeCardRules(card,'counter')){
    const direct=rule.mode==='direct';
    const damageRelief=activeCardRules(window.card,'damageRelief').length;
-   const immune=rule.name==='Alter'?effect&&!alterTarget(window.card):
-    window.kind==='interrupt'&&/immune to sense\b/i.test(window.card?.gametext??'')&&(!damageRelief||window.interrupt==='damageRelief');
+   const immune=rule.name==='Alter'?effect&&!alterTarget(window.card,window.site):
+    window.kind==='interrupt'&&(!!scannerSupport(window.side,window.rule?.mode)||
+     /immune to sense\b/i.test(window.card?.gametext??'')&&(!damageRelief||window.interrupt==='damageRelief'));
    if(immune)continue;
    const valid=direct?window.kind==='interrupt'&&window.interrupt===rule.targets:
     characters.length>0&&(rule.name==='Alter'?effect:!effect&&window.interrupt!=='alter');
@@ -8198,6 +9127,65 @@ function initiateInterruptResponse(side,index,mode,...extraArgs){
  const game=state.game,window=PremiereGame.responseWindow(game);
  const option=interruptResponses(side,window).find(response=>response.index===index&&response.args?.[1]===mode&&
   (response.args?.slice(2)??[]).length===extraArgs.length&&extraArgs.every((value,index)=>value===response.args[index+2]));
+ if(option?.kind==='zutton'){
+  const reduction=battleSession.beforeDestinyReduction??={Light:0,Dark:0};
+  reduction[window.side]+=option.rule.amount;
+  spendForce(side,option.cost);
+  (window.used??=[]).push(option.card);
+  window.priority=window.side;
+  window.passes=0;
+  log(option.label+'.');
+  return true;
+ }
+ if(option?.kind==='extinguishBattle'){
+  if(!PremiereGame.answer(game,side,{...option,kind:'extinguishAbility',mode:'cancelBattle',side,site:window.site}))return false;
+  option.equipment=true;
+  detachTableCard(side,option.entry.slot,option.card);
+  return true;
+ }
+ if(option?.kind==='anhResponse'){
+  if(!PremiereGame.answer(game,side,{...option,kind:'interrupt',interrupt:'anhResponse',side,site:window.site}))return false;
+  PremiereGame.zones(state,side).hand.splice(index,1);
+  if(option.cost)spendForce(side,option.cost);
+  return true;
+ }
+ if(option?.kind==='grabInterrupt'){
+  PremiereGame.zones(state,side).hand.splice(index,1);
+  spendForce(side,option.cost);
+  const effect={card:option.card,target:side,interruptTitle:locationTitle(window.card),stackTax:!!option.rule.tax,support:[],stackPending:window.card};
+  (state.tableEffects??=[]).push(effect);
+  window.card.grabbedBy=option.card.instanceId??option.card.id;
+  if(!effect.stackTax)PremiereGame.useOnce(game,'turn','uniqueInterrupt:'+effect.interruptTitle);
+  window.passes=0;window.priority=window.side;
+  log(option.label+'.');
+  return true;
+ }
+ if(option?.kind==='eatSoup'){
+  const lost=PremiereGame.zones(state,window.side).lost,target=window.fallen,index=lost.indexOf(target);
+  if(index<0)return false;
+  spendForce(side,1);
+  PremiereGame.useOnce(game,'battle','soup:'+option.card.id);
+  (state.outOfPlay??=[]).push(lost.splice(index,1)[0]);
+  (state.soupAbility??={})[option.card.id]=(state.soupAbility?.[option.card.id]??0)+(cardAbility(target)??0);
+  window.passes=0;window.priority=window.side;
+  return true;
+ }
+ if(option?.kind==='conquestPeek'){
+  const rival=PremiereGame.otherSide(side);
+  window.conquestPeekUsed=true;
+  window.passes=0;
+  window.priority=rival;
+  state.pendingCardView={mode:'conquestPeek',side,card:option.card,shown:[...PremiereGame.zones(state,rival).hand]};
+  return true;
+ }
+ if(option?.kind==='hunchback'){
+  (window.hunchbackUsed??=[]).push(option.card);
+  window.passes=0;
+  window.priority=window.side;
+  spendForce(side,option.cost);
+  state.pendingCardView={mode:'hunchback',side,card:option.card,shown:[...PremiereGame.zones(state,window.side).force].reverse()};
+  return true;
+ }
  if(option?.kind==='tractorBeam'){
   if(!PremiereGame.answer(game,side,{...option,side}))return false;
   spendForce(side,option.cost);
@@ -8332,7 +9320,7 @@ function initiateInterruptResponse(side,index,mode,...extraArgs){
   log(side+' spielt '+option.card.name+'.');
   return true;
  }
- if(option?.kind==='battleAccident'){
+ if(['battleAccident','informantReact'].includes(option?.kind)){
   if(!PremiereGame.answer(game,side,{...option,kind:'interrupt',interrupt:'pileInterrupt',side,site:window.site}))return false;
   PremiereGame.zones(state,side).hand.splice(index,1);
   log(side+' spielt '+option.card.name+'.');
@@ -8374,7 +9362,7 @@ function resolveAssault(frame,opponent){
  });
 }
 
-function legalActions(position,side,request){
+function baseLegalActions(position,side,request){
  if(!PremiereGame.sides.includes(side)||position!==state)return [];
  const offer=(kind,args,details)=>PremiereGame.offer(currentGame(),side,kind,args,details);
  if(!position){
@@ -8405,7 +9393,7 @@ function legalActions(position,side,request){
   if(side!==window.priority)return [];
   if(window.kind==='destiny')return [...destinyResponses(side,window).map(answer=>offer('destinyResponse',answer.args??[answer.kind],answer)),offer('passResponse')];
   return [...(window.kind==='battle'?battleWeaponOptions(side,'initiation').map(shot=>offer('gaderffii',shot.args,{...shot,label:shot.weapon.name+' → '+shot.target.name})):[]),
-   ...reactOptions(side,window).map(x=>offer('react',[x.from,x.index],x)),
+    ...reactOptions(side,window).map(x=>offer('react',x.away?[x.from,x.index,x.to]:[x.from,x.index],x)),
    ...reactDeployOptions(side,window).map(x=>offer('reactDeploy',x.args,x)),
    ...interruptResponses(side,window).map(x=>offer('interruptResponse',x.args??[x.index],{...x,responseKind:x.kind})),offer('passResponse')];
  }
@@ -8443,6 +9431,7 @@ function legalActions(position,side,request){
     ...gravelStormOptions(side).map(option=>offer('gravelStorm',option.args,option)),
     ...cardInformationOptions(side).map(option=>offer('cardInformation',option.args,option)),
     ...pileInterruptOptions(side).map(option=>offer('pileInterrupt',option.args,option)),
+     ...anhCharacterActions(side).map(option=>offer('anhCharacter',option.args,option)),
     ...shuffleOptions(side).map(option=>offer('shufflePile',option.args,option)),
     ...tableCancellationOptions(side).map(option=>offer('cancelTableEffect',option.args,option)),
     ...locationCancellationOptions(side).map(option=>offer(option.kind,option.args,option)),
@@ -8454,7 +9443,7 @@ function legalActions(position,side,request){
     ...holocamPowerOptions(side).map(option=>offer('holocamPower',option.args,option)),
     ...obiAssistOptions(side).map(option=>offer('obiAssist',option.args,option)),
     ...battleEffectOptions(side).map(option=>offer('battleEffect',option.args,option)),
-    ...weaponEffectOptions(side).filter(option=>['defuse','overload','rackIn'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
+    ...weaponEffectOptions(side).filter(option=>['defuse','overload','rackIn','saurinUnbolt'].includes(option.args[0])).map(option=>offer('weaponEffect',option.args,option))]),
    offer('passWeapons'),...training];
   }
   const first=x.initiator==='Dark'?'Dark':'Light',key=side==='Light'?'lightCard':'darkCard';
@@ -8470,6 +9459,11 @@ function legalActions(position,side,request){
  }
  const active=position.activeSide??(position.botTurn?botSide():playerSide());
  const actions=side===playerSide()&&(!position.game||position.trainingBattle)?[offer('trainingNight',[!position.nightConditions])]:[];
+ for(const option of anhCharacterActions(side))actions.push(offer('anhCharacter',option.args,option));
+ const spyOptions=spyActions(side);
+ for(const option of spyOptions)actions.push(offer('spyAction',option.args,option));
+ if(side===playerSide()&&side!==active&&spyOptions.length)
+  actions.push(offer('passSpyMovement',[],{label:'Undercover-Bewegung beenden'}));
  if(beggarPaymentOptions(side).length){
   const {site,effect}=beggarAt(side),credit=beggarCredit(side);
   actions.push(offer('beggarPayment',[],{site,card:effect.card,label:credit?'Beggar · '+credit+' Force für nächste Zahlung ausgewählt':'Beggar · gegnerische Force für nächste Zahlung auswählen'}));
@@ -8505,7 +9499,8 @@ function legalActions(position,side,request){
  }
  const botStep=position.botTurn?.steps[position.botTurn.index];
  if(side===botSide()&&position.botTurn?.decision)return [offer('botDecision',[position.botTurn.decision])];
- if(side===botSide()&&botStep&&!(position.phase===4&&seekerMoves(playerSide()).length))actions.push(offer('botStep',[botStep.kind]));
+ if(side===botSide()&&botStep&&!(position.phase===4&&(seekerMoves(playerSide()).length||undercoverMoves(playerSide()).length)))
+  actions.push(offer('botStep',[botStep.kind]));
  for(const option of deviceActions(side))actions.push(offer('deviceAction',option.args,option));
  for(const option of duelOptions(side))actions.push(offer('duel',option.args,option));
  if(side===playerSide()&&(position.phase!==0||position.activated))actions.push(offer('advance'));
@@ -8687,6 +9682,8 @@ function executeAction(action){
   case 'buryMineCard': return buryWeaponCard(side,...args);
   case 'moveSeeker': return moveSeeker(side,...args);
   case 'skipSeekerMove': state.seekerPassedTurn=state.game.timing.turn;return true;
+   case 'spyAction': return performSpyAction(side,...args);
+   case 'passSpyMovement': state.spyMovementPassedTurn=state.game.timing.turn;return true;
   case 'automatedTarget': return resolveAutomatedTarget(side,...args);
   case 'resolveMine': return handleTrippedMine(side,...args);
   case 'weaponEffect': return playWeaponEffect(side,...args);
@@ -8694,6 +9691,7 @@ function executeAction(action){
   case 'deployBolt': return deployBolt(side,...args);
   case 'deviceAction': return performDeviceAction(side,...args);
   case 'controlTheft': return performControlTheft(side,...args);
+   case 'anhCharacter': return performAnhCharacter(side,...args);
   case 'wager': return playWager(side,...args);
   case 'moveMobileSystem': return moveMobileSystem(side,...args);
   case 'tractorDisembark': {
@@ -8771,15 +9769,57 @@ function performAction(action,followUp=true){
    const {view,actions}=plannedBotPosition([valid]);
    reason=PremiereBot.explain(view,actions[0]);
   }
-  return executeAction(valid);
+  const terms=state?.game?.cardRulesVersion>=29?interruptStackTerms(valid.side,valid):{cost:0};
+  if(terms.cost)spendForce(valid.side,terms.cost);
+  if(terms.unique)PremiereGame.useOnce(game,'turn',terms.key);
+  const fromHand=!!(state&&valid.card&&PremiereGame.zones(state,valid.side).hand?.includes(valid.card));
+  if(fromHand&&valid.card.type==='Interrupt')delete valid.card.grabbedBy;
+  const result=executeAction(valid);
+  if(result&&fromHand&&['Weapon','Device'].includes(valid.card.type)&&!PremiereGame.zones(state,valid.side).hand.includes(valid.card)){
+   const entry=PremiereLocations.findEntry(state,valid.card);
+   const slot=entry?.slot??valid.site??valid.siteIndex??valid.slot;
+   if(Number.isInteger(slot)&&PremiereLocations.entries(state,valid.side).some(other=>!other.unavailable&&other.slot===slot&&activeCardRules(other.card,'advosze').length))activateReserve(valid.side,1);
+  }
+  if(result&&terms.records?.some(effect=>effect.stackTax)){
+   const effect=terms.records.find(effect=>effect.stackTax);
+   effect.stackPending=valid.card;
+   valid.card.grabbedBy=effect.card.instanceId??effect.card.id;
+  }
+  return result;
  });
  if(!result)return false;
  logBotDecision(reason);
+ if(state?.game)settleInterruptStacks();
+ if(state?.game?.cardRulesVersion>=29){syncTractorHolders();resolveCreatureClashes();}
+ if(state?.game?.cardRulesVersion>=29)for(const [site,row] of Object.entries(state.locationEffects??{}))for(const effect of row.slice())if(effect.card.id==='Dark:1480'&&fireExtinguisherProtects(effect.target))cancelLocationEffect(Number(site),effect);
+ if(state?.game?.cardRulesVersion>=29&&!state.pendingCardView){
+  const all=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side));
+  for(const entry of all){
+   if(entry.unavailable||!activeCardRules(entry.card,'advosze').length)continue;
+   const copies=all.filter(other=>!other.unavailable&&other.slot===entry.slot&&activeCardRules(other.card,'advosze').length);
+   if(copies.length>1){state.pendingCardView={mode:'advoszeConflict',side:entry.side,shown:copies.map(other=>other.card),publicView:true};break;}
+  }
+ }
  if(startingPhase===3&&state?.phase===3&&state.game&&startingTimingPhase===state.game.timing.phase&&
     topLevelActions.has(action.kind)&&!(action.kind==='pileInterrupt'&&action.args[1]==='localTrouble')){
   state.localTroubleBlockedPhase=startingTimingPhase;
  }
  if(state?.game)wakeSleepingCharacters();
+ if(state?.game?.cardRulesVersion>=29&&state.phase===1&&!state.pendingForceLoss){
+  const defels=PremiereLocations.entries(state,state.activeSide).filter(entry=>!entry.unavailable&&entry.card.id==='Dark:687'&&
+   activeCardRules(entry.card,'anhCharacter').length&&PremiereLocations.effectsAt(state,entry.slot).some(effect=>effect.card.id==='Light:2110'));
+  for(const {card} of defels){
+   const key='defelDrain:'+(card.instanceId??card.id);
+   if(!PremiereGame.wasUsed(state.game,'phase',key)){
+    PremiereGame.useOnce(state.game,'phase',key);
+    beginForceLoss(PremiereGame.otherSide(state.activeSide),1,{reason:'defel'});
+    break;
+   }
+  }
+ }
+ if(state?.game?.cardRulesVersion>=28)for(const side of PremiereGame.sides)for(const {card} of PremiereLocations.entries(state,side)){
+  if(card.undercover&&isDeployableCharacter(card)&&!isSpyCharacter(card))breakSpyCover(card);
+ }
  if(game&&state)runContinuousInterruptCounters(game);
  if(state?.game)for(const side of PremiereGame.sides)revealReserveInserts(side);
  if(state?.game)openQueuedRuleResponse();
@@ -8811,3 +9851,1004 @@ function requestAction(kind,side,args=[],followUp=true){
 function chooseStart(index){return requestAction('chooseStart',playerSide(),[index])}
 function retryStartingLocations(){return requestAction('retrySetup',playerSide())}
 function beginStartingGame(){return requestAction('beginGame',playerSide())}
+
+function anhCharacterActions(side){
+ if(!state?.game||(state.game.cardRulesVersion??0)<29)return [];
+ const all=PremiereGame.sides.flatMap(actor=>PremiereLocations.entries(state,actor));
+ return creatureActions(side).concat(epicActions(side),prisonerMissionActions(side),besiegedActions(side),holoAndBluffActions(side),gateDeployActions(side),formationActions(side),vehicleSiteActions(side),advancedDeviceActions(side),squadMovementActions(side),shuttleVehicleActions(side),all.flatMap((entry,index)=>{
+  const {card,slot,unavailable}=entry;
+  if(unavailable)return [];
+  const args=mode=>[mode,index],offer=(mode,label,cost=0,extra={})=>({args:args(mode),card,site:slot,cost,label:card.name+' · '+label,...extra});
+  if(card.id==='Light:1674'&&PremiereCardRules.effects(card,'binaryForfeit').length&&forceBudget(side)>=1)
+   return [offer('binary',card.switchedOff?'einschalten (1 Force)':'ausschalten (1 Force)',1)];
+  if(entry.side!==side||!activeCardRules(card,'anhCharacter').length)return [];
+  const key=card.id+':'+(card.instanceId??index);
+  if(card.id==='Dark:1126'&&state.activeSide===side&&state.phase===2&&!PremiereGame.wasUsed(state.game,'phase',key)){
+   const own=PremiereGame.zones(state,side);
+   return ['hand','force'].flatMap(zone=>own[zone].map((_,i)=>({...offer('salt','verdeckte Karte unterlegen'),args:['salt',index,zone,i],key})));
+  }
+  if(card.id==='Dark:687'){
+   if(battleSession?.segment==='weapons'&&battleSession.weaponTurn===side&&battleSession.site===slot&&
+    PremiereLocations.conditions(state,slot,side).night&&forceBudget(side)>=1&&!excludedAtBattle(card,slot))
+    return [offer('hide','aus dem Battle ausblenden (1 Force)',1)];
+  }
+  if(card.id==='Dark:1073'&&state.phase===1&&state.activeSide!==side&&!PremiereGame.wasUsed(state.game,'phase',key))
+   return all.flatMap((target,targetIndex)=>target.side!==side&&target.slot===slot&&!target.unavailable&&
+    target.card.type==='Character'&&PremiereUnits.hasSkill(target.card,'smuggler')?
+    [{...offer('threat',target.card.name+' bedrohen'),args:['threat',index,targetIndex],target:target.card,key}]:[]);
+  return [];
+ }));
+}
+
+function performAnhCharacter(side,...args){
+ const option=anhCharacterActions(side).find(action=>action.args.length===args.length&&action.args.every((arg,i)=>arg===args[i]));
+ if(!option)return false;
+ const {card,cost,key,site}=option;
+ if(cost)spendForce(side,cost);
+ if(key)PremiereGame.useOnce(state.game,'phase',key);
+ switch(args[0]){
+  case 'creatureEat':offerCreatureTargetSide(option.entry,()=>{});return true;
+  case 'creatureHunt':startCreatureFight(option.entry,side,option.fighters,null,()=>{});return true;
+  case 'dantooine':{
+   PremiereGame.zones(state,side).hand.splice(args[1],1);PremiereGame.useOnce(state.game,'game','dantooine');
+   const frame={kind:'locationEffect',side,card,site,target:state.locations[deathStarSlot()]};if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);else placeLocationEffect(frame);break;
+  }
+  case 'deployEpic':{PremiereGame.zones(state,side).hand.splice(args[1],1);((state.locationEffects??={})[site]??=[]).push({card});break;}
+  case 'chargeSuperlaser':PremiereGame.moveTop(state.botForce,option.effect.support);break;
+  case 'attackRun':state.attackRun={card,site,system:option.system,light:[],dark:[],selected:[],usedWeapons:[],bonus:0};state.pendingCardView={mode:'runSelectLight',side:'Light',card,shown:[]};break;
+  case 'primaryIgnition':{
+   PremiereGame.zones(state,side).hand.splice(args[1],1);state.pendingCardView={mode:'ignitionZ',side:'Light',card,site,weapon:option.weapon,x:option.cost,shown:[card],publicView:true};break;
+  }
+  case 'besieged':state.pendingCardView={mode:'besiegedChoose',side,card,record:option.record,targets:option.targets,selected:[],shown:[],publicView:true};return true;
+  case 'spiceMines':{
+   PremiereGame.zones(state,side).hand.splice(args[1],1);const frame={kind:'locationEffect',side,card,site,target:option.target,escort:option.escort};
+   if(hasInterruptResponse(frame))PremiereGame.openResponse(state.game,frame);else placeLocationEffect(frame);break;
+  }
+  case 'holoReturn':{const entry=PremiereLocations.findEntry(state,card);detachTableCard(side,entry.slot,card);PremiereGame.zones(state,side).hand.push(card);break;}
+  case 'holoCancel':return announcePileInterrupt(side,{...option,args:[PremiereGame.zones(state,side).hand.indexOf(card)],rule:{mode:'holoCancel',pile:'Lost',cost:0}});
+  case 'placeBluff':{
+   const own=PremiereGame.zones(state,side);own.hand.splice(args[2],1);(state.locations[site].bluffs??=[]).push(card);PremiereGame.useOnce(state.game,'turn','bluff');break;
+  }
+  case 'challengeBluff':{
+   const revealed=state.locations[site].bluffs.splice(args[2],1)[0];
+   state.pendingCardView={mode:'bluffReveal',side:'Dark',card:revealed,site,shown:[revealed],publicView:true};break;
+  }
+  case 'laserGate':{
+   PremiereGame.zones(state,side).hand.splice(args[1],1);((state.locationEffects??={})[site]??=[]).push({card,gateTo:option.to});break;
+  }
+  case 'hypo':{
+   if(args[3]==='drain')card.hypoDrainTurn=state.game.timing.turn;
+   else state.pendingCardView={mode:'hypoQuestion',side,card,shown:[]};break;
+  }
+  case 'vehicleSite':{
+   const own=PremiereGame.zones(state,side);own.hand.splice(own.hand.indexOf(card),1);
+   option.host.instanceId??='vehicle-'+state.game.revision+'-'+args[2];card.hostInstanceId=option.host.instanceId;
+   ensureFreeLocationSlot();const slot=state.locations.indexOf(null);state.locations[slot]=card;state.locationOrder=[...boardLocationOrder().filter(index=>index!==slot),slot];ensureFreeLocationSlot();break;
+  }
+  case 'mobileCrew':{
+   const entry=PremiereLocations.findEntry(state,card);if(!entry||!detachTableCard(side,entry.slot,card))return false;
+   if(option.role)PremiereUnits.add(option.host,card,option.role,side);else PremiereGame.zones(state,side).board[option.to].push(card);
+   (state.movedThisTurn??=[]).push(card);break;
+  }
+  case 'formSquadron':{
+   const own=PremiereGame.zones(state,side);own.hand.splice(own.hand.indexOf(card),1);own.board[site].push(card);card.controller=side;
+   state.pendingCardView={mode:'squadronTransfer',side,card,site,originals:option.members,shown:[]};break;
+  }
+  case 'suction':
+   drawDestinySeries(side,'suction',1,0,draws=>{if(draws[0]?.value>cardAbility(option.target))state.pendingCardView={mode:'suctionDestination',side,target:option.target,host:option.host,card,shown:[]};});break;
+  case 'remote':option.target.remoteBonus={stat:args[3],turn:state.game.timing.turn};break;
+  case 'cancelSeeker':{const entry=PremiereLocations.findEntry(state,option.target);if(entry)loseTableCard(entry.side,entry.slot,entry.card);break;}
+  case 'squad':{
+   const row=PremiereGame.zones(state,side).board[site];
+   for(const unit of option.members){row.splice(row.indexOf(unit),1);PremiereGame.zones(state,side).board[option.to].push(unit);(state.movedThisTurn??=[]).push(unit);}
+   break;
+  }
+case 'shuttle':{
+   const entry=PremiereLocations.findEntry(state,option.target);
+   if(!entry||!detachTableCard(side,entry.slot,entry.card))return false;
+   if(option.host)PremiereUnits.add(option.host,entry.card,option.role,side);
+   else PremiereGame.zones(state,side).board[args[3]].push(entry.card);
+   (state.movedThisTurn??=[]).push(entry.card);
+   const uses=card.shuttleUsesTurn===state.game.timing.turn?card.shuttleUses??0:0;
+   card.shuttleUsesTurn=state.game.timing.turn;card.shuttleUses=uses+1;
+   if(card.shuttleUses>=(activeCardRules(card,'shuttleVehicle')[0]?.amount??1))(state.movedThisTurn??=[]).push(card);
+   break;
+  }
+  case 'binary':card.switchedOff=!card.switchedOff;break;
+  case 'salt':(card.salt??=[]).push(PremiereGame.zones(state,side)[args[2]].splice(args[3],1)[0]);break;
+  case 'hide':(battleSession.excludedUnits??=new Set()).add(card);finishWeaponAction(side,false);break;
+  case 'threat':state.pendingCardView={mode:'greedoThreat',side:PremiereGame.otherSide(side),owner:side,card,actor:card,target:option.target,shown:[]};break;
+ }
+ log(option.label+'.');
+ return true;
+}
+
+function anhLostResponses(side,window){
+ if(window.kind!=='characterLost'||window.side===side||!window.duringBattle||isDroid(window.fallen)||forceBudget(side)<1)return [];
+ return PremiereLocations.entries(state,side).flatMap(({card,slot,unavailable},index)=>
+  !unavailable&&slot===window.site&&activeCardRules(card,'anhCharacter').length&&card.id==='Dark:605'&&
+  !PremiereGame.wasUsed(state.game,'battle','soup:'+card.id)&&PremiereGame.zones(state,window.side).lost.includes(window.fallen)?
+   [{kind:'eatSoup',index:-1,args:[-1,'eatSoup',index],card,cost:1,label:card.name+' · Soup von '+window.fallen.name+' aufnehmen (1 Force)'}]:[]);
+}
+
+function shuttleVehicleActions(side){
+ if(state.activeSide!==side||state.phase!==4)return [];
+ const all=PremiereLocations.entries(state,side);
+ return all.flatMap((entry,index)=>{
+  const {card:shuttle,slot,unavailable}=entry;
+  const [rule]=activeCardRules(shuttle,'shuttleVehicle');
+  if(!rule||unavailable||!craftStats(shuttle,slot).powered||regularMovementUsed(shuttle))return [];
+  const origin=state.locations[slot];
+  return all.flatMap((unit,unitIndex)=>{
+   if(unit.unavailable||unit.card.type!=='Character'||regularMovementUsed(unit.card)||movementPrevented(unit.card))return [];
+   const down=unit.carriers.length&&unit.carriers[0].type==='Starship'&&isPlanetSystem(state.locations[unit.slot])&&locationGroup(state.locations[unit.slot])===sitePlanet(origin);
+   if(down)return [{card:shuttle,target:unit.card,args:['shuttle',index,unitIndex,slot],site:slot,cost:0,label:unit.card.name+' kostenlos zum Site shutteln'}];
+   if(unit.slot!==slot||unit.carriers.length)return [];
+   return all.flatMap(host=>host.card.type==='Starship'&&isPlanetSystem(state.locations[host.slot])&&locationGroup(state.locations[host.slot])===sitePlanet(origin)?
+    PremiereUnits.roles(host.card,unit.card).map(role=>({card:shuttle,target:unit.card,host:host.card,role,args:['shuttle',index,unitIndex,host.slot,all.indexOf(host),role],
+     site:slot,cost:0,label:unit.card.name+' kostenlos auf '+host.card.name+' shutteln'})):[]);
+  });
+ });
+}
+
+function interruptStackTerms(side,action){
+ const card=action.card;
+ if(card?.type!=='Interrupt'||['finishCardInformation','takeFromReserve','battleHandForfeit','loseForce','battleForceLoss'].includes(action.kind))return {cost:0,unique:false};
+ const title=locationTitle(card),records=(state.tableEffects??[]).filter(effect=>effect.interruptTitle===title);
+ const tax=records.filter(effect=>effect.stackTax).reduce((total,effect)=>total+(effect.support?.length??0)+1,0);
+ const unique=records.some(effect=>!effect.stackTax);
+ return {cost:tax,unique,key:'uniqueInterrupt:'+title,records};
+}
+
+function legalActions(position,side,request){
+ const actions=baseLegalActions(position,side,request);
+ if(!state?.game||(state.game.cardRulesVersion??0)<29)return actions;
+ return actions.filter(action=>{
+  if(!advoszeDestinationAllowed(action))return false;
+  const terms=interruptStackTerms(side,action);
+  return (!terms.unique||!PremiereGame.wasUsed(state.game,'turn',terms.key))&&
+   (!terms.cost||terms.cost+(action.cost??0)<=forceBudget(side));
+ }).map(action=>{
+  const terms=interruptStackTerms(side,action);
+  return terms.cost?{...action,cost:(action.cost??0)+terms.cost,interruptSurcharge:terms.cost}:action;
+ });
+}
+
+function immediateEffectResponses(side,window){
+ if(window.kind!=='interrupt'||window.side===side||window.card?.grabbedBy)return [];
+ return PremiereGame.zones(state,side).hand.flatMap((card,index)=>{
+  const [rule]=activeCardRules(card,'grabInterrupt');
+  return rule&&withinDeploymentLimit(card,side)&&forceBudget(side)>=rule.cost?[{kind:'grabInterrupt',card,index,rule,cost:rule.cost,args:[index,'grabInterrupt'],
+   label:card.name+' · '+window.card.name+' festhalten ('+rule.cost+' Force)'}]:[];
+ });
+}
+
+function settleInterruptStacks(){
+ for(const effect of state.tableEffects??[]){
+  if(!effect.stackPending)continue;
+  const target=effect.stackPending;
+  for(const side of PremiereGame.sides)for(const zone of ['used','lost','outOfPlay']){
+   const pile=zone==='outOfPlay'?state.outOfPlay:PremiereGame.zones(state,side)[zone];
+   const index=pile?.indexOf(target)??-1;
+   if(index>=0){pile.splice(index,1);effect.support.push(target);delete effect.stackPending;break;}
+  }
+ }
+}
+
+function musicianCoverCharge(loc){
+ if(!isSite(loc)||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<29)return 0;
+ const slot=state.locations.indexOf(loc),present=PremiereGame.sides.flatMap(side=>PremiereLocations.presentCards(state,side,slot));
+ const lirin=present.find(card=>activeCardRules(card,'coverCharge').length);
+ return lirin?present.filter(card=>card!==lirin&&characterTraits(card).includes('musician')).length:0;
+}
+function travelOptions(card,side,from,to,react=false){
+ if(laserGateBlocks(card,side,from,to))return [];
+ const mobile=vehicleSiteTravel(card,side,from,to);
+ if(mobile!==null)return mobile;
+ const options=baseTravelOptions(card,side,from,to,react);
+ if(card.type!=='Character')return options;
+ return options.map(option=>({...option,cost:option.cost?option.cost+musicianCoverCharge(state.locations[to]):0}));
+}
+function squadTrooper(card,side){
+ return characterTraits(card).includes('trooper')||side==='Light'&&locationTitle(card)==='rebel guard';
+}
+function squadGuardReleased(card){
+ if(!['rebel guard','imperial trooper guard'].includes(locationTitle(card)))return false;
+ const entry=PremiereLocations.findEntry(state,card);
+ return entry&&!entry.unavailable&&PremiereLocations.presentCards(state,entry.side,PremiereLocations.physicalPlace(entry)).some(unit=>activeCardRules(unit,'squadLeader').length);
+}
+function squadMovementActions(side){
+ if(state.activeSide!==side||state.phase!==4)return [];
+ const board=PremiereGame.zones(state,side).board,actions=[];
+ for(const [from,row] of board.entries())for(const leader of row){
+  if(!activeCardRules(leader,'squadLeader').length||regularMovementUsed(leader)||movementPrevented(leader))continue;
+  const others=row.filter(card=>card!==leader&&squadTrooper(card,side)&&PremiereUnits.active(card)&&!regularMovementUsed(card)&&!movementPrevented(card));
+  for(let a=0;a<others.length;a++)for(let b=a+1;b<others.length;b++)for(let c=b+1;c<others.length;c++){
+   const members=[leader,others[a],others[b],others[c]],indices=members.map(card=>row.indexOf(card));
+   for(const [to,loc] of state.locations.entries()){
+    if(!members.every(card=>baseTravelOptions(card,side,from,to).some(option=>option.kind==='Landspeed')))continue;
+    const cost=1+musicianCoverCharge(loc);
+    if(cost<=forceBudget(side))actions.push({card:leader,members,site:from,to,cost,args:['squad',from,to,...indices],label:'Squad → '+loc.name+' ('+cost+' Force insgesamt)'});
+   }
+  }
+ }
+ return actions;
+}
+function advoszeDestinationAllowed(action){
+ if((state.game?.cardRulesVersion??0)<29)return true;
+ let cards=[action.card],to;
+ if(['deploy','deployWithPilot'].includes(action.kind))to=action.args[1];
+ else if(['move','transport','react'].includes(action.kind))to=action.to;
+ else if(action.kind==='anhCharacter'&&action.args[0]==='squad'){cards=action.members;to=action.to;}
+ if(!Number.isInteger(to)||!cards?.some(card=>activeCardRules(card,'advosze').length))return true;
+ return !PremiereGame.sides.some(side=>PremiereLocations.entries(state,side).some(entry=>entry.slot===to&&!entry.unavailable&&activeCardRules(entry.card,'advosze').length&&!cards.includes(entry.card)));
+}
+
+function interruptResponses(side,window){
+ return (baseInterruptResponses(side,window)??[]).concat(anhResponseOptions(side,window),fireExtinguisherResponses(side,window));
+}
+function anhResponseOptions(side,window){
+ if(!window||(state.game?.cardRulesVersion??0)<29)return [];
+ return PremiereGame.zones(state,side).hand.flatMap((card,index)=>activeCardRules(card,'anhResponse').flatMap(rule=>{
+  const result=[],offer=(mode,label,cost=0,extra={})=>({kind:'anhResponse',card,index,rule,cost,mode,args:[index,'anhResponse',mode,...(extra.choice??[])],label:card.name+' · '+label,...extra});
+  if(rule.prisoner&&window.kind==='aboutToLoseBattle'&&side==='Dark'&&forceBudget(side)>=1)result.push(offer('captureBattle',window.target.name+' statt Verlust fangen (1 Force)',1,{target:window.target}));
+  if(rule.evader&&window.kind==='characterLost'&&window.side===side){
+   const target=window.fallen,title=locationTitle(target);
+   if(PremiereGame.zones(state,side).lost.includes(target)&&(title==='darth vader'||title==="vader's custom tie"||target.subType==='Imperial'&&sitePlanet(state.locations[window.site])==='death star'))result.push(offer('evaderRecovery',target.name+' auf Used retten',0,{target}));
+  }
+  if(rule.wookieDisarm&&window.kind==='finishedBattle'&&window.winner&&window.winner!==side&&window.participants?.[side]?.some(unit=>characterTraits(unit).includes('wookiee')&&PremiereLocations.present(state,unit,window.site)))
+   PremiereLocations.presentCards(state,PremiereGame.otherSide(side),window.site).forEach((target,i)=>{if(target.type==='Character'&&cardAbility(target)<5)result.push(offer('wookieDisarm',target.name+' entwaffnen',0,{target,choice:[i]}));});
+  if(rule.badFeeling&&window.side!==side){
+   if(window.kind==='reactCompleted')result.push(offer('cancelBattle','Battle nach React aufheben'));
+   if(window.kind==='deployment'){
+    const entry=window.targets.map(target=>PremiereLocations.findEntry(state,target)).find(Boolean);
+    const deployed=entry&&(state.deploymentLocations??[]).filter(record=>record.turn===state.game.timing.turn&&record.site===entry.slot&&record.side===window.side);
+    if(deployed?.length>=4)result.push(offer('prohibitBattle','gerade ausgespielte Gruppe vom Battle ausschließen',0,{targets:deployed.map(record=>record.card)}));
+   }
+  }
+  if(rule.smugglerStop&&window.kind==='deployment'&&window.side!==side)window.targets.forEach((target,i)=>{
+   if(PremiereUnits.hasSkill(target,'smuggler'))result.push(offer('stopSmuggler',target.name+' an Bewegung hindern',0,{target,choice:[i]}));
+  });
+  if(rule.transport&&window.kind==='transportCompleted'&&window.card.id===rule.transport&&forceBudget(side)>=2)
+   result.push(offer('transportRetaliation','Transport beantworten (2 Force)',2,{transport:window.card,targets:window.targets}));
+  if(rule.spaceBattle&&window.kind==='battle'&&(isSystem(state.locations[window.site])||state.locations[window.site]?.subType==='Sector')&&forceBudget(side)>=3)
+   result.push(offer('cancelBattle','Raumbattle aufheben (3 Force)',3));
+  return result;
+ }));
+}
+function resolveAnhResponse(frame,parent){
+ const {side,mode}=frame;
+ if(mode==='captureBattle'){
+  if(parent?.target===frame.target&&captureCharacter(frame.target,parent.site)){parent.replaced=true;for(const property of ['battleForfeit','battleForfeitModifier','ionDamage','armedTurn','noMoveTurn','noBattleTurn'])delete frame.target[property];}
+  loseOwnedCard(frame.card,side);return;
+ }
+ if(mode==='evaderRecovery'){const own=PremiereGame.zones(state,side),i=own.lost.indexOf(frame.target);if(i>=0)own.used.push(own.lost.splice(i,1)[0]);own.lost.push(frame.card);return;}
+ if(mode==='wookieDisarm'){
+  const entry=PremiereLocations.findEntry(state,frame.target);
+  if(entry){for(const weapon of (frame.target.weapons??[]).slice())loseTableCard(entry.side,entry.slot,weapon);(frame.target.attachments??=[]).push(frame.card);}
+  else loseOwnedCard(frame.card,side);return;
+ }
+ if(mode==='cancelBattle'){
+  const battleFrame=state.game.responses?.find(window=>window.kind==='battle');
+  if(parent?.kind==='battle')PremiereGame.cancelResponse(state.game,parent);
+  else if(battleFrame)PremiereGame.cancelResponse(state.game,battleFrame);
+  if(battleSession){loseHitsFromInterruptedBattle(battleSession);const site=battleSession.site;battleSession=null;endBattleTiming(site);}
+ }
+ if(mode==='prohibitBattle')for(const card of frame.targets)card.noBattleTurn=state.game.timing.turn;
+ if(mode==='stopSmuggler')frame.target.noMoveTurn=state.game.timing.turn;
+ if(mode==='transportRetaliation'){
+  const used=PremiereGame.zones(state,frame.transport.side).used,index=used.indexOf(frame.transport);
+  if(index>=0)loseOwnedCard(used.splice(index,1)[0],frame.transport.side);
+  for(const card of frame.targets){
+   const entry=PremiereLocations.findEntry(state,card);if(!entry)continue;
+   if(locationTitle(frame.transport)==='nabrun leids'){if(card.subType==='Rebel')captureCharacter(card,entry.slot);}
+   else loseTableCard(entry.side,entry.slot,card);
+  }
+ }
+ if(frame.equipment)loseOwnedCard(frame.card,side);else PremiereGame.zones(state,side).used.push(frame.card);
+ settleCancelledResponse(state.game);
+}
+
+function brainiacPower(){
+ const icons=side=>state.locations.reduce((sum,loc,index)=>sum+(loc?PremiereLocations.icons(state,index,side)??0:0),0);
+ return Math.max(1,Math.sqrt(Math.max(0,3*(state.botHand.length-state.hand.length)+2*(icons('Dark')-icons('Light'))+Math.PI)));
+}
+function kiffexOccupants(side,slot){
+ return !!PremiereLocations.ruleAt(state,slot,side,'kiffex')&&PremiereLocations.presence(state,side,slot,card=>card.ability??permanentPilotAbility(card)??0)===true&&
+  PremiereLocations.presentCards(state,side,slot).filter(card=>card.type==='Starship'&&PremiereUnits.active(card)).length===2;
+}
+function kiffexPower(side,slot){return kiffexOccupants(side,slot)?2:0;}
+function tonnikaFactor(card){
+ if(!state?.locations||locationTitle(card)!=='tonnika sisters'||(currentGame()?.cardRulesVersion??latestCardRulesVersion)<29)return 1;
+ return state.locations.some((loc,slot)=>loc?.id==='Dark:1434'&&kiffexOccupants('Dark',slot))?2:1;
+}
+function clakdorDestinyModifier(card){
+ if(!characterTraits(card).includes('bith'))return 0;
+ const slot=state.locations.findIndex(loc=>loc?.id==='Light:416');
+ if(slot<0)return 0;
+ let amount=0;
+ if(PremiereLocations.ruleAt(state,slot,'Light','clakdor')&&PremiereLocations.presence(state,'Light',slot,cardAbility)===true)amount+=2;
+ if(PremiereLocations.ruleAt(state,slot,'Dark','clakdor')&&PremiereLocations.control(state,'Dark',slot,cardAbility)===true)amount--;
+ return amount;
+}
+function resolveAnhDestinyTriggers(drawSide,draw,resume){
+ if((state.game?.cardRulesVersion??0)<29||draw.cancelled){resume();return;}
+ const side=PremiereGame.otherSide(drawSide),sources=[];
+ for(const actor of PremiereGame.sides)for(const entry of PremiereLocations.entries(state,actor)){
+  if(entry.unavailable||!activeCardRules(entry.card,'programTrap').length||!isSite(state.locations[entry.slot]))continue;
+  const count=PremiereGame.sides.flatMap(owner=>PremiereLocations.entries(state,owner)).filter(other=>other.slot===entry.slot&&other.card.type==='Character'&&!other.card.imprisoned).length;
+  if(draw.value===count)sources.push({kind:'trap',card:entry.card,entry});
+ }
+ for(const effect of state.tableEffects??[])if(effect.target===side&&activeCardRules(effect.card,'kraytBones').length)sources.push({kind:'bones',card:effect.card,effect});
+ for(const entry of PremiereLocations.entries(state,side))if(!entry.unavailable&&activeCardRules(entry.card,'r2Destiny').length&&atScompLink(entry.card)&&draw.value>=1&&draw.value<=6)sources.push({kind:'r2',card:entry.card});
+ function next(){
+  const source=sources.shift();if(!source){resume();return;}
+  const frame={mode:'anhDestinyTrigger',side,draw,...source,shown:[],resume:next};
+  if(source.kind==='trap'){resolveProgramTrap(source);next();return;}
+  if(source.kind==='bones'){
+   const own=PremiereGame.zones(state,side),n=draw.value;
+   if(n===0&&own.used.length)PremiereGame.moveTop(own.used,own.hand);
+   if(n===1&&beginForceLoss(side,1,{reason:'kraytBones',after:next}))return;
+   if(n===2)activateReserve(side,1);
+   if(n===3)cancelTableEffect(source.effect);
+   if(n===4)PremiereGame.retrieveForce(state,side,1);
+   if(n!==5){next();return;}
+  }
+  if(anhDestinyTriggerChoices(frame).length===1&&source.kind==='bones'){next();return;}
+  state.pendingCardView=frame;
+ }
+ next();
+}
+function anhDestinyTriggerChoices(frame){
+ if(frame.kind==='r2')return [{args:['accept'],label:frame.draw.value<=3?'1 Force aktivieren':'Oberste Reserve-Karte ziehen'},{args:['skip'],label:'Verzichten'}];
+ const hand=PremiereGame.zones(state,frame.side).hand;
+ const choices=hand.flatMap((card,index)=>card.type==='Character'?emergencyPlacements(frame.side,card,[card]).map((destination,destinationIndex)=>({args:['deploy',index,destinationIndex],card,destination,label:card.name+' kostenlos bei '+state.locations[destination.slot].name+' ausspielen'})):[])
+  ;
+ return choices.length?choices:[{args:['skip'],label:'Keine Figur ausspielbar'}];
+}
+function finishAnhDestinyTrigger(frame,...args){
+ state.pendingCardView=null;
+ if(frame.kind==='r2'&&args[0]==='accept'){
+  const own=PremiereGame.zones(state,frame.side);
+  if(frame.draw.value<=3)activateReserve(frame.side,1);else PremiereGame.moveTop(own.deck,own.hand);
+ }else if(args[0]==='deploy'){
+  const option=anhDestinyTriggerChoices(frame).find(option=>option.args.every((arg,i)=>arg===args[i]));
+  const own=PremiereGame.zones(state,frame.side),{card,destination}=option;
+  own.hand.splice(own.hand.indexOf(card),1);
+  card.controller=frame.side;
+  if(destination.host)PremiereUnits.add(destination.host,card,destination.role,frame.side);else own.board[destination.slot].push(card);
+  if(activeCardRules(card,'deployUndercover').length)setUndercover(card,frame.side);
+  if(jawaCosts.has(card.id)){const amount=jawaDeployPayment(card,state.locations[destination.slot],frame.side)?.opposing;if(amount)payOpposingJawaCost(frame.side,amount);}
+  (state.deployedThisTurn??=[]).push(card);
+  openDeploymentReaction(frame.side,[card]);
+  const window=PremiereGame.responseWindow(state.game);
+  if(window?.kind==='deployment'){window.afterDeployment=frame.resume;return true;}
+ }
+ frame.resume();return true;
+}
+
+function felthMakesUsed(card){
+ return ['local trouble','look sir, droids'].includes(locationTitle(card))&&PremiereGame.sides.some(side=>PremiereLocations.entries(state,side).some(entry=>
+  !entry.unavailable&&sitePlanet(state.locations[entry.slot])==='tatooine'&&activeCardRules(entry.card,'felth').length));
+}
+function loseForceInOrder(items,resume=()=>{}){
+ const item=items.shift();if(!item){resume();return;}
+ const next=()=>loseForceInOrder(items,resume);
+ if(!beginForceLoss(item.payer,item.amount,{...item,after:next}))next();
+}
+
+function advancedDeviceActions(side){
+ if(state.activeSide!==side||state.phase!==1)return [];
+ const entries=PremiereGame.sides.flatMap(owner=>PremiereLocations.entries(state,owner));
+ return entries.flatMap((entry,index)=>{
+  const {card,slot}=entry;if(entry.side!==side||entry.unavailable)return [];
+  const hypo=activeCardRules(card,'hypo').length;
+  const suction=activeCardRules(card,'suction').length,remote=activeCardRules(card,'remote').length;
+  if(!suction&&!remote&&!hypo)return [];
+  const key='device29:'+(card.instanceId??card.id)+':'+index;
+  if(PremiereGame.wasUsed(state.game,'phase',key))return [];
+  const host=suction||hypo?entries.find(other=>other.card.attachments?.includes(card))?.card:card;
+  if(!host)return [];
+  if(hypo){const here=PremiereLocations.findEntry(state,host),place=here&&PremiereLocations.physicalPlace(here);if(!entries.some(entry=>entry.captive&&entry.slot===slot&&PremiereLocations.physicalPlace(entry)===place))return [];
+   return ['question','drain'].map(mode=>({card,host,site:slot,key,cost:0,args:['hypo',index,0,mode],label:card.name+' · '+(mode==='question'?'Ja/Nein-Frage stellen':'Force Drain hier +1')}));}
+  return entries.flatMap((target,targetIndex)=>{
+   if(target.slot!==slot||target.unavailable||!PremiereLocations.presentAt(target,slot))return [];
+   const base={card,site:slot,host,target:target.card,key,cost:0};
+   if(target.card.type==='Character'&&!movementPrevented(target.card)){
+    if(suction)return [{...base,args:['suction',index,targetIndex],label:card.name+' · '+target.card.name+' ansaugen'}];
+    return ['power','forfeit'].map(stat=>({...base,args:['remote',index,targetIndex,stat],label:card.name+' · '+target.card.name+' '+stat+' +1'}));
+   }
+   if(remote&&PremiereWeapons.seeker(target.card)&&forceBudget(side)>=2)return [{...base,cost:2,args:['cancelSeeker',index,targetIndex],label:card.name+' · Seeker für 2 Force aufheben'}];
+   return [];
+  });
+ });
+}
+function tableToUsed(entry){
+ const {card,side,slot}=entry;cleanupVehicleSites(card);if(!detachTableCard(side,slot,card))return false;
+ if(card.escortedCaptive){const captive=card.escortedCaptive;delete card.escortedCaptive;(state.pendingCustody??=[]).push({side:'Light',card:captive,slot});}
+ PremiereUnits.remove(card,unit=>unit===card?PremiereGame.zones(state,unit.owner??unit.side??side).used.push(unit):loseOwnedCard(unit,side),unit=>loseOwnedCard(unit,side));
+ return true;
+}
+function fireExtinguisherProtects(ship){
+ return ship?.type==='Starship'&&PremiereGame.sides.some(side=>PremiereLocations.entries(state,side).some(entry=>!entry.unavailable&&entry.carriers.includes(ship)&&activeCardRules(entry.card,'fireExtinguisher').length));
+}
+function resolveProgramTrap(source){
+ const entry=PremiereLocations.findEntry(state,source.card);if(!entry||entry.unavailable)return;
+ const place=PremiereLocations.physicalPlace(entry),entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side));
+ if(entries.some(other=>PremiereLocations.presentAt(other,place)&&activeCardRules(other.card,'fireExtinguisher').length)){loseTableCard(entry.side,entry.slot,entry.card);log('Fire Extinguisher löscht Program Trap.');return;}
+ const victims=entries.filter(other=>other.slot===entry.slot&&PremiereLocations.physicalPlace(other)===place&&other.card.type==='Character'&&!other.card.imprisoned);
+ // Captives and escorts affected by the same explosion leave together.
+ for(const victim of victims)if(victim.card.escortedCaptive){const captive=victim.card.escortedCaptive;delete victim.card.escortedCaptive;clearCaptivity(captive);loseOwnedCard(captive,captive.side);}
+ for(const victim of victims)if(PremiereLocations.findEntry(state,victim.card))loseTableCard(victim.side,victim.slot,victim.card);
+ log('Program Trap explodiert · '+victims.length+' Characters verloren.');
+}
+function fireExtinguisherResponses(side,window){
+ if(window?.kind!=='battle'||!isSite(state.locations[window.site]))return [];
+ return PremiereLocations.entries(state,side).flatMap((entry,index)=>{
+  if(!activeCardRules(entry.card,'fireExtinguisher').length||!PremiereLocations.presentAt(entry,window.site))return [];
+  const host=PremiereLocations.entries(state,side).find(other=>other.card.attachments?.includes(entry.card))?.card;
+  return isArtoo(host)?[{kind:'extinguishBattle',card:entry.card,entry,equipment:true,index:-1,args:[-1,'extinguishBattle',index],label:'Fire Extinguisher verlieren · Battle aufheben'}]:[];
+ });
+}
+
+function vehicleSiteActions(side){
+ if(state.activeSide!==side||![2,4].includes(state.phase))return [];
+ const own=PremiereGame.zones(state,side),entries=PremiereLocations.entries(state,side),actions=[];
+ if(state.phase===2)own.hand.forEach((card,index)=>{if(activeCardRules(card,'vehicleSite').length)entries.forEach(({card:host,slot,unavailable},hostIndex)=>{
+  if(!unavailable&&PremiereUnits.crawler(host)&&!state.locations.some(loc=>loc?.hostInstanceId&&loc.hostInstanceId===host.instanceId&&locationTitle(loc)===locationTitle(card)))
+   actions.push({card,host,site:slot,cost:0,args:['vehicleSite',index,hostIndex],label:card.name+' auf '+host.name});
+ });});
+ if(state.phase===4)for(const [slot,loc] of state.locations.entries()){
+  if(!loc?.hostInstanceId)continue;
+  const hostEntry=entries.find(entry=>entry.card.instanceId===loc.hostInstanceId&&!entry.unavailable);if(!hostEntry)continue;
+  const host=hostEntry.card;
+  for(const entry of entries){
+   const {card}=entry;if(entry.unavailable||card.type!=='Character'||regularMovementUsed(card)||movementPrevented(card))continue;
+   if(entry.slot===slot&&!entry.carriers.length)for(const role of PremiereUnits.roles(host,card))actions.push({card,host,role,site:slot,to:hostEntry.slot,cost:0,args:['mobileCrew',slot,entries.indexOf(entry),hostEntry.slot,role],label:card.name+' zum Fahrer-/Besatzungsplatz ('+role+')'});
+   if(entry.carriers[0]===host)actions.push({card,host,site:hostEntry.slot,to:slot,cost:0,args:['mobileCrew',hostEntry.slot,entries.indexOf(entry),slot],label:card.name+' in '+loc.name+' (0 Force)'});
+  }
+ }
+ return actions;
+}
+function vehicleSiteTravel(card,side,from,to){
+ const origin=state.locations[from],target=state.locations[to];
+ if(!origin?.hostInstanceId&&!target?.hostInstanceId)return null;
+ if(card.type!=='Character'||from===to||!PremiereUnits.active(card)||movementPrevented(card)||!adjacentSites(from,to))return [];
+ if(origin.hostInstanceId&&origin.hostInstanceId===target.hostInstanceId)return [{kind:'Landspeed',cost:1}];
+ const slot=origin.hostInstanceId?from:to,loc=state.locations[slot];
+ const host=PremiereGame.sides.flatMap(actor=>PremiereLocations.entries(state,actor)).find(entry=>entry.card.instanceId===loc.hostInstanceId);
+ if(!host||host.unavailable)return [];
+ const rule=PremiereLocations.ruleAt(state,slot,side,'vehicleSiteTransit');
+ return rule?[{kind:'Innen-Site',cost:rule.cost}]:[];
+}
+function cleanupVehicleSites(host){
+ if(!host.instanceId)return;
+ for(const [slot,loc] of state.locations.entries()){
+  if(loc?.hostInstanceId!==host.instanceId)continue;
+  for(const side of PremiereGame.sides)for(const card of PremiereGame.zones(state,side).board[slot].slice())loseTableCard(side,slot,card);
+  for(const effect of [...PremiereLocations.effectsAt(state,slot)])cancelLocationEffect(slot,effect);
+  for(const weapon of (state.locationWeapons?.[slot]??[]).slice())loseTableCard(weapon.owner??weapon.side,slot,weapon,false,false,true,true);
+  if(state.locationWeapons)delete state.locationWeapons[slot];
+  for(const old of state.convertedLocations?.[slot]??[])loseOwnedCard(old,old.side);
+  if(state.convertedLocations)delete state.convertedLocations[slot];
+  loseOwnedCard(loc,loc.side);state.locations[slot]=null;state.locationOrder=boardLocationOrder().filter(index=>index!==slot);
+ }
+}
+function formationActions(side){
+ if(state.activeSide!==side||state.phase!==2)return [];
+ const own=PremiereGame.zones(state,side),actions=[];
+ own.hand.forEach((card,index)=>{if(!activeCardRules(card,'squadron').length)return;
+  own.board.forEach((row,site)=>{
+   const fighters=row.filter(ship=>PremiereUnits.fighter(ship)&&PremiereUnits.active(ship)&&(card.id==='Light:2908'?/Y-Wing/i.test(ship.subType):tieLn(ship)));
+   for(let a=0;a<fighters.length;a++)for(let b=a+1;b<fighters.length;b++)for(let c=b+1;c<fighters.length;c++){
+    const members=[fighters[a],fighters[b],fighters[c]];
+    actions.push({card,members,site,cost:0,args:['formSquadron',index,site,...members.map(ship=>row.indexOf(ship))],label:card.name+' · drei Jäger bei '+state.locations[site].name+' ersetzen'});
+   }
+  });
+ });return actions;
+}
+function squadronTransferChoices(frame){
+ const entries=PremiereLocations.entries(state,frame.side).filter(entry=>frame.originals.some(ship=>entry.carriers.includes(ship)||ship.weapons?.includes(entry.card)||ship.attachments?.includes(entry.card)));
+ const choices=[];
+ entries.forEach((entry,index)=>{
+  const item=entry.card;
+  if(item.type==='Character')for(const role of PremiereUnits.roles(frame.card,item))choices.push({args:['crew',index,role],entry,role,label:item.name+' auf Squadron übernehmen ('+role+')'});
+  if(item.type==='Weapon'&&weaponDeployCost(item,frame.card)!==null)choices.push({args:['weapon',index],entry,label:item.name+' übernehmen'});
+  if(item.type==='Device'&&activeCardRules(item,'device').some(rule=>matchesRegisteredTarget(frame.card,rule.targets)))choices.push({args:['device',index],entry,label:item.name+' übernehmen'});
+ });return choices.concat({args:['done'],label:'Squadron fertigstellen · übrige Karten auf Used'});
+}
+function finishSquadronTransfer(frame,...args){
+ if(args[0]!=='done'){
+  const option=squadronTransferChoices(frame).find(option=>option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]));
+  if(!option)return false;const {entry}=option;if(!detachTableCard(entry.side,entry.slot,entry.card))return false;
+  if(args[0]==='crew')PremiereUnits.add(frame.card,entry.card,option.role,frame.side);
+  else (frame.card[args[0]==='weapon'?'weapons':'attachments']??=[]).push(entry.card);
+  return true;
+ }
+ state.pendingCardView=null;
+ for(const ship of frame.originals){
+  if(!detachTableCard(frame.side,frame.site,ship))continue;
+  for(const effect of targetedUtinniEffects(ship)){if(locationEffectRule(effect.card)?.mission==='lateral-damage')cancelLocationEffect(frame.site,effect);else effect.target=frame.card;}
+  PremiereUnits.remove(ship,card=>PremiereGame.zones(state,card.owner??card.side??frame.side).used.push(card),card=>PremiereGame.zones(state,card.owner??card.side??frame.side).used.push(card));
+ }return true;
+}
+function offerRogueTrample(site){
+ const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side)),used=battleSession.trampledRogues??=[];
+ const rogue=entries.find(entry=>entry.slot===site&&!entry.unavailable&&activeCardRules(entry.card,'rogueTrample').length&&!used.includes(entry.card));
+ if(!rogue)return false;used.push(rogue.card);
+ const targets=entries.filter(entry=>entry.slot===site&&!entry.unavailable&&matchesRegisteredTarget(entry.card,'tusken')&&PremiereLocations.presentAt(entry,site));
+ if(!targets.length)return offerRogueTrample(site);
+ state.pendingCardView={mode:'rogueTrample',side:rogue.side,card:rogue.card,targets,shown:targets.map(entry=>entry.card),publicView:true};return true;
+}
+
+function isHoloSite(card){return ['Light:694','Dark:1274'].includes(card?.id);}
+function holoEligible(card){return ['Effect','Interrupt'].includes(card?.type)&&/\b(dejarik|hologram)\b/i.test(card.lore??'');}
+function isHoloUnit(card){return !!state?.locations&&holoEligible(card)&&isHoloSite(state.locations[PremiereLocations.findEntry(state,card)?.slot]);}
+function holoPowerBonus(card){
+ const slot=state.locations.findIndex(loc=>loc?.id==='Light:416');
+ return locationTitle(card)==='ghhhk'&&slot>=0&&PremiereLocations.ruleAt(state,slot,'Dark','clakdor')&&PremiereLocations.control(state,'Dark',slot,cardAbility)===true?2:0;
+}
+function holoAndBluffActions(side){
+ const own=PremiereGame.zones(state,side),actions=[];
+ for(const [site,loc] of state.locations.entries()){
+  if(isHoloSite(loc)&&!battleSession&&PremiereLocations.control(state,side,site,cardAbility)===true)for(const [index,card] of own.board[site].entries())
+   actions.push({card,site,cost:0,args:['holoReturn',site,index],label:card.name+' auf die Hand nehmen'});
+  if(isHoloSite(loc))own.hand.forEach((card,index)=>{if(namedInterruptAvailable(card))PremiereGame.zones(state,PremiereGame.otherSide(side)).board[site].forEach((target,i)=>{if(namedCancellation(card,target))actions.push({card,target,site,cost:0,args:['holoCancel',site,index,i],label:card.name+' · '+target.name+' am Holosite aufheben'});});});
+  if(loc?.id!=='Dark:2438')continue;
+  if(side==='Dark'&&state.activeSide==='Dark'&&!PremiereGame.wasUsed(state.game,'turn','bluff'))own.hand.forEach((card,index)=>actions.push({card,site,cost:0,args:['placeBluff',site,index],label:'Bluff verdeckt auslegen'}));
+  if(side==='Light'&&state.activeSide==='Dark'&&state.phase===2)(loc.bluffs??[]).forEach((_,index)=>actions.push({card:loc,site,cost:0,args:['challengeBluff',site,index],label:'Bluff '+(index+1)+' aufdecken'}));
+ }return actions;
+}
+function hypoDrainBonus(side,slot){return PremiereLocations.entries(state,side).some(entry=>!entry.unavailable&&entry.slot===slot&&activeCardRules(entry.card,'hypo').length&&entry.card.hypoDrainTurn===state.game?.timing.turn)?1:0;}
+function gateDeployActions(side){
+ if(state.activeSide!==side||state.phase!==2)return [];
+ const own=PremiereGame.zones(state,side),actions=[];
+ own.hand.forEach((card,index)=>{if(!activeCardRules(card,'laserGate').length||!withinDeploymentLimit(card,side))return;
+  for(const a of state.locations.keys())for(const b of state.locations.keys())if(a<b&&adjacentSites(a,b)&&[a,b].every(slot=>state.locations[slot]?.locationTags?.includes('Interior')&&state.locations[slot].locationTags.includes('Mobile')))
+   actions.push({card,site:a,to:b,cost:0,args:['laserGate',index,a,b],label:card.name+' zwischen '+state.locations[a].name+' und '+state.locations[b].name});
+ });return actions;
+}
+function laserGateRecords(){return Object.entries(state?.locationEffects??{}).flatMap(([site,row])=>row.filter(effect=>Number.isInteger(effect.gateTo)).map(effect=>({site:Number(site),effect})));}
+function laserGateRecord(card){return laserGateRecords().find(record=>record.effect.card===card);}
+function laserGateBlocks(card,side,from,to){
+ if(!state?.locations||from===to||!laserGateRecords().length||!isSite(state.locations[from])||!isSite(state.locations[to]))return false;
+ const order=boardLocationOrder(),a=order.indexOf(from),b=order.indexOf(to),path=order.slice(Math.min(a,b),Math.max(a,b)+1);
+ const crossed=laserGateRecords().some(({site,effect})=>path.includes(site)&&path.includes(effect.gateTo));
+ if(!crossed)return false;if(PremiereUnits.tube(card))return false;
+ if(card.type==='Vehicle')return true;
+ return card.type==='Character'&&(card.power??0)+cardPowerModifier(card,side,from)+cardAbility(card)<=4;
+}
+function weaponTargets(side,slot,includeNonparticipants=false,x=battleSession){
+ return baseWeaponTargets(side,slot,includeNonparticipants,x).concat(laserGateRecords().filter(({site,effect})=>(site===slot||effect.gateTo===slot)&&(effect.card.owner??effect.card.side)===side)
+  .map(({effect},index)=>({card:effect.card,index:10000+index,place:slot})));
+}
+
+function tractorBeamOptions(side,window){
+ const original=deathStarTractorOptions(side,window);
+ if(side!=='Dark'||window.kind!=='finishedBattle'||forceBudget(side)<2)return original;
+ const sources=PremiereLocations.entries(state,side).filter(entry=>entry.slot===window.site&&!entry.unavailable&&entry.card.attachments?.some(card=>activeCardRules(card,'tractorDevice').length));
+ const targets=PremiereLocations.presentCards(state,'Light',window.site).filter(card=>card.type==='Starship'&&PremiereUnits.active(card)&&!/mon calamari star cruiser/i.test(card.subType));
+ return original.concat(sources.flatMap(({card:holder},i)=>holder.attachments.flatMap(card=>activeCardRules(card,'tractorDevice').length&&!window.tractorUsed?.includes(card)?targets.map((target,j)=>({kind:'tractorBeam',card,holder,target,site:window.site,bay:window.site,index:-1,cost:2,args:[-1,'tractorBeam',1000+i,j],label:card.name+' · '+target.name+' einfangen (2 Force)'})):[])));
+}
+function syncTractorHolders(){
+ for(const record of state.capturedShips??[]){
+  if(!record.holder)continue;const holder=PremiereLocations.findEntry(state,record.holder);
+  if(!holder||holder.slot===record.bay)continue;
+  if(detachTableCard(record.side,record.bay,record.ship))PremiereGame.zones(state,record.side).board[holder.slot].push(record.ship);
+  record.bay=holder.slot;record.site=holder.slot;
+ }
+}
+function besiegedActions(side){
+ if(side!=='Dark'||state.activeSide!==side||state.phase!==3||battleSession||forceBudget(side)<1)return [];
+ return (state.capturedShips??[]).flatMap((record,index)=>{
+  const effect=record.ship.attachments?.find(card=>activeCardRules(card,'besieged').length);
+  if(!effect||state.battledSitesThisTurn?.includes(record.bay)||!tractorShipCrew(record.ship).length)return [];
+  const targets=record.holder?(record.holder.occupants??[]).filter(entry=>entry.card.type==='Character'&&PremiereUnits.active(entry.card)).map(entry=>entry.card):PremiereLocations.presentCards(state,side,record.bay).filter(card=>card.type==='Character'&&PremiereUnits.active(card));
+  return targets.length?[{card:effect,record,targets,site:record.bay,cost:0,args:['besieged',index],label:effect.name+' · Gefangene Schiffsbesatzung angreifen (1 Force)'}]:[];
+ });
+}
+function prisonerMissionActions(side){
+ if(side!=='Dark'||state.activeSide!==side||state.phase!==2)return [];
+ const own=PremiereGame.zones(state,side),entries=PremiereLocations.entries(state,side),site=state.locations.findIndex(loc=>isPlanetSystem(loc)&&locationTitle(loc)==='kessel');
+ if(site<0)return [];
+ return own.hand.flatMap((card,index)=>activeCardRules(card,'spiceMines').length?entries.flatMap((entry,escortIndex)=>entry.card.escortedCaptive&&characterTraits(entry.card).includes('trooper')&&!entry.unavailable?
+  [{card,site,escort:entry.card,target:entry.card.escortedCaptive,cost:0,args:['spiceMines',index,escortIndex],label:card.name+' · '+entry.card.name+' eskortiert '+entry.card.escortedCaptive.name+' nach Kessel'}]:[]):[]);
+}
+function progressSpiceMines(site,effect){
+ const escort=PremiereLocations.findEntry(state,effect.escort),target=PremiereLocations.findEntry(state,effect.target);
+ if(!escort||effect.escort.escortedCaptive!==effect.target){cancelLocationEffect(site,effect);return;}
+ if(escort.slot!==site)return;
+ const amount=effect.target.forfeit??0;
+ delete effect.escort.escortedCaptive;clearCaptivity(effect.target);PremiereUnits.remove(effect.target,card=>loseOwnedCard(card,card.side??'Light'),card=>loseOwnedCard(card,card.side??'Light'));
+ PremiereGame.retrieveForce(state,'Dark',amount);cancelLocationEffect(site,effect);
+}
+function progressCell2187(site,effect){
+ const target=PremiereLocations.findEntry(state,effect.target);if(!target){cancelLocationEffect(site,effect);return;}if(target.unavailable||target.slot!==site)return;
+ const row=state.locationEffects[site];row.splice(row.indexOf(effect),1);
+ drawDestinySeries('Light','cell2187',1,0,draws=>{
+  loseOwnedCard(effect.card,'Light');const frame={mode:'cellRescue',side:'Light',card:effect.card,remaining:Math.floor(draws[0]?.value??0),shown:[],publicView:true};
+  if(frame.remaining>0&&cellRescueChoices(frame).length)state.pendingCardView=frame;
+ });
+}
+function cellRescueChoices(frame){return PremiereLocations.entries(state,'Dark').filter(entry=>entry.card.captured&&locationTitle(state.locations[entry.slot])==='death star: detention block corridor').map((entry,index)=>({args:[index],card:entry.card,label:entry.card.name+' befreien'}));}
+
+function deathStarSlot(){return state.locations.findIndex(loc=>loc?.id==='Dark:654'&&!loc.blownAway);}
+function trenchSlot(){return state.locations.findIndex(loc=>loc?.id==='Light:681');}
+function epicActions(side){
+ const actions=[],own=PremiereGame.zones(state,side),trench=trenchSlot(),system=deathStarSlot();
+ if(side==='Light'&&state.activeSide===side&&state.phase===2&&system>=0&&forceBudget(side)>=2&&!PremiereGame.wasUsed(state.game,'game','dantooine')){
+  const site=state.locations.findIndex(loc=>isPlanetSystem(loc)&&locationTitle(loc)==='dantooine');
+  if(site>=0)own.hand.forEach((card,index)=>{if(activeCardRules(card,'dantooineBlock').length)actions.push({card,site,cost:2,args:['dantooine',index,site],label:card.name+' · Death Star nach Dantooine locken (2 Force)'});});
+ }
+ if(state.activeSide===side&&state.phase===2&&trench>=0)own.hand.forEach((card,index)=>{if(activeCardRules(card,'attackRunEpic').length)actions.push({card,site:trench,cost:0,args:['deployEpic',index,trench],label:'Attack Run auf Trench ausspielen'});});
+ const effect=(state.tableEffects??[]).find(effect=>activeCardRules(effect.card,'recharge').length);
+ if(side==='Dark'&&effect&&(effect.support??[]).length<8&&state.botForce.length)actions.push({card:effect.card,effect,site:system,cost:0,args:['chargeSuperlaser'],label:'Commence Recharging · oberste Force-Karte verdeckt stapeln ('+(effect.support.length+1)+'/8)'});
+ if(side==='Light'&&state.activeSide===side&&state.phase===4&&trench>=0&&system>=0&&!state.attackRun){
+  const deployed=PremiereLocations.effectsAt(state,trench).find(effect=>activeCardRules(effect.card,'attackRunEpic').length);
+  if(deployed&&runEligibleLight(system).some(card=>card.weapons?.some(weapon=>weapon.id==='Light:1962')))actions.push({card:deployed.card,site:trench,system,cost:0,args:['attackRun',trench],label:'Attack Run beginnen · 1–3 Starfighters auswählen'});
+ }
+ if(side==='Dark'&&state.activeSide===side&&state.phase===1&&system>=0){
+  const target=state.mobileSystems?.['Dark:654']?.orbit,weapon=(state.locationWeapons?.[system]??[]).find(card=>card.id==='Dark:2378');
+  const blocked=Object.values(state.locationEffects??{}).flat().some(effect=>effect.card.id==='Light:2563');
+  const site=target??-1;
+  if(weapon&&isPlanetSystem(state.locations[site])&&!blocked&&(!effect||(effect.support??[]).length>=8)){
+   const cost=planetSites(locationGroup(state.locations[site])).length;
+   if(cost<=forceBudget(side))own.hand.forEach((card,index)=>{if(activeCardRules(card,'ignitionEpic').length)actions.push({card,site,weapon,cost,args:['primaryIgnition',index,site],label:'Commence Primary Ignition · '+state.locations[site].name+' ('+cost+' Force)'});});
+  }
+ }
+ return actions;
+}
+function planetSites(region){return state.locations.flatMap((loc,index)=>loc&&!loc.blownAway&&isSite(loc)&&sitePlanet(loc)===region?[index]:[]);}
+function rebelBaseSize(){return Math.max(planetSites('yavin 4').length,planetSites('hoth').length);}
+function runEligibleLight(system){return state.light[system].filter(card=>PremiereUnits.fighter(card)&&craftStats(card,system).powered&&!regularMovementUsed(card));}
+function runTies(system){return state.dark[system].filter(card=>PremiereUnits.tie(card)&&craftStats(card,system).powered);}
+function runSurvivors(side){const run=state.attackRun;return (run?.[side==='Light'?'light':'dark']??[]).filter(card=>PremiereLocations.findEntry(state,card)?.slot===run.site);}
+function pilotMaximum(ship){return Math.max(permanentPilotAbility(ship)===null?0:/^Squadron/.test(ship.subType)?1:permanentPilotAbility(ship),...(ship.occupants??[]).filter(entry=>entry.role==='pilot'&&PremiereUnits.active(entry.card)).map(entry=>cardAbility(entry.card)??0));}
+function epicChoices(frame){
+ const run=state.attackRun;
+ if(frame.mode==='ignitionZ')return [...new Set([frame.x,...['yavin 4','hoth'].filter(region=>state.locations.some(loc=>loc&&locationGroup(loc)===region)).map(region=>planetSites(region).length)])].map(value=>({args:[value],label:'Z = '+value+' wählen'}));
+ if(frame.mode==='ignitionGunner')return PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side)).filter(entry=>entry.card.id==='Dark:657'&&!entry.unavailable).map((entry,index)=>({args:[index],entry,card:entry.card,label:entry.card.name+' verlieren'}));
+ if(frame.mode==='runSelectLight'||frame.mode==='runSelectDark'){
+  const light=frame.mode==='runSelectLight',pool=light?runEligibleLight(run.system):runTies(run.system),selected=run.selected;
+  const choices=pool.flatMap((card,index)=>selected.includes(index)||selected.reduce((n,i)=>n+(/^Squadron/.test(pool[i].subType)?3:1),0)+(/^Squadron/.test(card.subType)?3:1)<=3?
+   [{args:['toggle',index],card,label:(selected.includes(index)?'✓ ':'')+card.name}]:[]);
+  if(!light||selected.some(index=>pool[index].weapons?.some(weapon=>weapon.id==='Light:1962')))choices.push({args:['done'],label:light?'In Trench einfliegen':'Verfolgung abschließen'});
+  return choices;
+ }
+ if(frame.mode==='runLead')return runSurvivors('Light').filter(card=>card.weapons?.some(weapon=>weapon.id==='Light:1962')).map((card,index)=>({args:[index],card,label:card.name+' als Lead bestimmen'}));
+ if(frame.mode==='runPilot'){
+  const pilot=pilotMaximum(run.lead),computer=run.lead.attachments?.some(card=>activeCardRules(card,'targetingComputer').length);
+  return [...new Set([pilot,...(computer?[3]:[])])].map(x=>({args:[x],label:'Attack Run mit X = '+x+(x===3&&computer?' (Targeting Computer)':' (Pilot)')}));
+ }
+ if(frame.mode==='runCover'){
+  const side=frame.side,shots=side==='Dark'?runWeaponOptions():[];
+  return shots.map((shot,index)=>({args:['fire',index],card:shot.weapon,label:shot.weapon.name+' → '+shot.target.name+' ('+shot.cost+' Force)'}))
+   .concat(pileInterruptOptions(side).map((option,index)=>({args:['interrupt',index],card:option.card,label:option.label})))
+   .concat({args:['pass'],label:'Im Attack Run passen'});
+ }
+ return [];
+}
+function showRun(mode,side){state.pendingCardView={mode,side,card:state.attackRun.card,shown:[]};}
+function finishEpicChoice(frame,...args){
+ const run=state.attackRun;
+ if(frame.mode==='ignitionZ'){state.pendingCardView=null;resolveIgnition(frame,args[0]);return true;}
+ if(frame.mode==='ignitionGunner'){const selected=epicChoices(frame)[args[0]];state.pendingCardView=null;if(selected)loseTableCard(selected.entry.side,selected.entry.slot,selected.entry.card);return true;}
+ if(frame.mode==='runSelectLight'||frame.mode==='runSelectDark'){
+  if(args[0]==='toggle'){run.selected=run.selected.includes(args[1])?run.selected.filter(i=>i!==args[1]):[...run.selected,args[1]];return true;}
+  const light=frame.mode==='runSelectLight',side=light?'Light':'Dark',pool=light?runEligibleLight(run.system):runTies(run.system),cards=run.selected.map(i=>pool[i]);
+  run[light?'light':'dark']=cards;
+  for(const card of cards){detachTableCard(side,run.system,card);PremiereGame.zones(state,side).board[run.site].push(card);if(light)(state.movedThisTurn??=[]).push(card);}
+  if(light){run.dark=state.dark[run.site].filter(PremiereUnits.tie);run.selected=[];showRun('runSelectDark','Dark');}
+  else {run.dark=[...new Set([...run.dark,...state.dark[run.site].filter(PremiereUnits.tie)])];showRun('runLead','Light');}
+  return true;
+ }
+ if(frame.mode==='runLead'){run.lead=epicChoices(frame)[args[0]].card;run.passes=0;showRun('runCover','Dark');return true;}
+ if(frame.mode==='runCover'){
+  if(args[0]==='fire'){
+   const shot=runWeaponOptions()[args[1]];state.pendingCardView=null;run.usedWeapons.push(shot.weapon);run.passes=0;
+   fireImmediateWeapon('Dark',shot,()=>{if(!runSurvivors('Light').includes(run.lead))pullUpAttackRun(false);else showRun('runCover','Light');});return true;
+  }
+  if(args[0]==='interrupt'){
+   const option=pileInterruptOptions(frame.side)[args[1]];state.pendingCardView=null;run.passes=0;
+   return announcePileInterrupt(frame.side,{...option,resumeAttack:()=>state.attackRun&&showRun('runCover',PremiereGame.otherSide(frame.side))});
+  }
+  if(++run.passes>=2)showRun('runPilot','Light');else showRun('runCover',PremiereGame.otherSide(frame.side));return true;
+ }
+ if(frame.mode==='runPilot'){
+  state.pendingCardView=null;run.x=args[0];run.z=Math.max(0,...runSurvivors('Dark').map(pilotMaximum));
+  chooseEpicRoom('attackRun',bonus=>{run.roomBonus=bonus;drawDestinySeries('Light','epicWeapon',2,0,draws=>{run.total=PremiereBattle.total(draws)+run.x+rebelBaseSize()-run.z+attackRunBonus(run);log('Attack Run: '+run.total+' gegen 15.');pullUpAttackRun(run.total>15);});});return true;
+ }
+ return false;
+}
+function runWeaponOptions(){
+ const run=state.attackRun,targets=runSurvivors('Light'),wingmen=targets.filter(card=>card!==run.lead),legalTargets=wingmen.length?wingmen:targets;
+ return weaponMounts('Dark').filter(mount=>mount.slot===run.site||mount.slot===run.system&&isLoc(mount.host)).flatMap(mount=>mountWeapons(mount).flatMap(weapon=>{
+  if(run.usedWeapons.includes(weapon)||!PremiereUnits.canUseWeapon(state,mount.host,weapon))return [];
+  if(mount.host.type==='Starship'&&!craftStats(mount.host,mount.slot).powered)return [];
+  return legalTargets.flatMap(target=>{const defense=PremiereWeapons.defense(target,cardAbility(target),craftStats(target,run.site)),shot=weaponShot(weapon,mount.host,target,defense);
+   if(!shot)return [];const cost=mount.slot===run.site?0:shot.cost;
+   return cost<=forceBudget('Dark')?[{...shot,cost,weapon,host:mount.host,target,from:mount.slot,targetSlot:run.site}]:[];
+  });
+ }));
+}
+function fireImmediateWeapon(side,shot,complete){
+ spendForce(side,shot.cost);PremiereUnits.recordWeaponUse(state,shot.host,shot.weapon);
+ withShipWeaponResponse({kind:'weaponTarget',side,shot,site:shot.targetSlot},frame=>{
+  if(frame?.cancelled){complete();return;}
+  drawDestinySeries(side,'weapon',shot.draws,weaponDestinyModifier(side,shot)+(shot.extraDestiny??0),draws=>{
+   const value=PremiereBattle.total(draws),hit=value!==null&&(shot.effect==='exclude'?value+shot.bonus===shot.defense:value+shot.bonus>shot.defense);
+   if(hit){const entry=PremiereLocations.findEntry(state,shot.target),gate=laserGateRecord(shot.target);
+    if(gate)cancelLocationEffect(gate.site,gate.effect);
+    else if(entry){if(['hit','zero','destroy'].includes(shot.effect)){
+     const gold=entry.side==='Light'&&state.locations[entry.slot]?.id==='Light:681'&&PremiereUnits.fighter(entry.card)&&state.light[entry.slot].find(card=>card!==entry.card&&activeCardRules(card,'goldRescue').length);
+     if(gold){state.pendingCardView={mode:'goldRescue',side:'Light',card:gold,gold,target:entry.card,site:entry.slot,shown:[],resume:complete};return;}
+     shot.target.hitForLoss=true;loseTableCard(entry.side,entry.slot,entry.card);}else applyWeaponResult(shot,entry.side,entry.slot);}
+   }
+   log(shot.weapon.name+' → '+shot.target.name+': '+(value===null?'kein Destiny':value+shot.bonus)+' / '+shot.defense+(hit?' · Treffer.':' · verfehlt.'));
+   complete();
+  });
+ });
+}
+function pullUpAttackRun(success){
+ const run=state.attackRun,cards=[...runSurvivors('Light').map(card=>({card,side:'Light'})),...runSurvivors('Dark').map(card=>({card,side:'Dark'}))];
+ function next(){
+  const entry=cards.shift();if(!entry){state.attackRun=null;state.pendingCardView=null;if(success)blowAwaySystem(run.system);return;}
+  const finish=()=>{if(detachTableCard(entry.side,run.site,entry.card))PremiereGame.zones(state,entry.side).board[run.system].push(entry.card);next();};
+  if(PremiereUnits.fighter(entry.card)&&PremiereLocations.effectsAt(state,run.site).some(effect=>(effect.card.owner??effect.card.side)!==entry.side&&activeCardRules(effect.card,'maneuverCheck').length)){
+   const maneuver=craftStats(entry.card,run.site).maneuver;drawDestinySeries(entry.side,'movement',1,0,draws=>{if((draws[0]?.value??0)+maneuver<5)loseTableCard(entry.side,run.site,entry.card);finish();});
+  }else finish();
+ }next();
+}
+function attackRunBonus(run){
+ let bonus=run.bonus??0;
+ for(const entry of PremiereLocations.entries(state,'Light')){
+  if(entry.unavailable)continue;const loc=state.locations[entry.slot];
+  if(activeCardRules(entry.card,'techAttack').length&&/war room/.test(locationTitle(loc))&&(loc.owner??loc.side)==='Light')bonus++;
+  if(entry.slot===run.site&&entry.card.id==='Light:1047')bonus+=(entry.card.occupants??[]).filter(({card,role})=>role==='pilot'&&PremiereUnits.active(card)&&activeCardRules(card,'tireeAttack').length).length;
+ }
+ if(activeCardRules(run.lead,'redFiveAttack').length)bonus++;
+ return bonus+(run.roomBonus??epicRoomBonus('attackRun'));
+}
+function resolveIgnition(frame,z){chooseEpicRoom('ignition',bonus=>drawIgnition(frame,z,bonus));}
+function drawIgnition(frame,z,roomBonus){
+ const y=planetSites('death star').filter(slot=>PremiereLocations.presence(state,'Light',slot,cardAbility)===false).length;
+ drawDestinySeries('Dark','epicWeapon',1,0,draws=>{
+  const success=(draws[0]?.value??0)+y-z+ignitionBonus()-epicRoomBonus('ignition')+roomBonus>8;
+  PremiereGame.zones(state,'Dark')[success?'lost':'used'].push(frame.card);
+  const recharge=(state.tableEffects??[]).find(effect=>effect.host===frame.weapon&&activeCardRules(effect.card,'recharge').length);if(recharge)cancelTableEffect(recharge);
+  if(success)blowAwaySystem(frame.site);
+  else {const choice={mode:'ignitionGunner',side:'Dark',card:frame.card,shown:[]};if(epicChoices(choice).length)state.pendingCardView=choice;}
+ });
+}
+function ignitionBonus(){return epicRoomBonus('ignition')+PremiereLocations.entries(state,'Dark').filter(entry=>!entry.unavailable&&sitePlanet(state.locations[entry.slot])==='death star').reduce((sum,entry)=>sum+(activeCardRules(entry.card,'gunnerIgnition').length?2:0),0);}
+function blowAwaySystem(slot){
+ const target=state.locations[slot],region=locationGroup(target),sites=planetSites(region),mobile=target.id==='Dark:654';
+ const payer=mobile?'Dark':'Light',penalty=mobile||['yavin 4','hoth'].includes(region)?2*[slot,...sites].reduce((sum,i)=>sum+(PremiereLocations.icons(state,i,payer)??0),0):0;
+ const finish=()=>{
+  for(const site of sites){
+   if(!state.locations[site])continue;
+   for(const side of PremiereGame.sides)for(const card of PremiereGame.zones(state,side).board[site].slice())loseTableCard(side,site,card,false,false,true,true);
+   for(const effect of [...PremiereLocations.effectsAt(state,site)])cancelLocationEffect(site,effect);
+   for(const weapon of (state.locationWeapons?.[site]??[]).slice())loseTableCard(weapon.owner??weapon.side,site,weapon,false,false,true,true);
+   if(state.locationWeapons)delete state.locationWeapons[site];
+   for(const bluff of state.locations[site].bluffs??[])loseOwnedCard(bluff,'Dark');delete state.locations[site].bluffs;
+   for(const old of state.convertedLocations?.[site]??[])loseOwnedCard(old,old.side);if(state.convertedLocations)delete state.convertedLocations[site];
+   loseOwnedCard(state.locations[site],state.locations[site].side);state.locations[site]=null;state.locationOrder=boardLocationOrder().filter(i=>i!==site);
+  }
+  for(const weapon of state.locationWeapons?.[slot]??[])loseOwnedCard(weapon,weapon.side);if(state.locationWeapons)delete state.locationWeapons[slot];
+  for(const effect of [...PremiereLocations.effectsAt(state,slot)])cancelLocationEffect(slot,effect);
+  for(const side of PremiereGame.sides)for(const card of PremiereGame.zones(state,side).board[slot].slice())if(card.type!=='Starship')loseTableCard(side,slot,card,false,false,true,true);
+  for(const old of state.convertedLocations?.[slot]??[])loseOwnedCard(old,old.side);if(state.convertedLocations)delete state.convertedLocations[slot];
+  target.parsec=spaceParsec(target);target.blownAway=true;target.gameTextCancelled=true;target.icons={light:0,dark:0};target.locationTags=['Space'];
+  log(target.name+' ist zerstört. Schiffe im System bleiben bestehen.');
+ };
+ if(!beginForceLoss(payer,penalty,{reason:'blownAway',after:finish}))finish();
+}
+
+function epicRoomBonus(event){
+ let total=0;
+ for(const [site,loc] of state.locations.entries())for(const side of PremiereGame.sides){
+  if(!loc||PremiereLocations.control(state,side,site,cardAbility)!==true)continue;
+  for(const rule of PremiereLocations.rulesAt(state,site,side,'epicRoom'))if(rule.epic===event&&(!rule.leader||PremiereLocations.presentCards(state,side,site).some(card=>characterTraits(card).includes('leader'))))total+=rule.amount;
+ }return total;
+}
+
+function controlFireOptions(side,card,index,rule){
+ const opponent=PremiereGame.otherSide(side),targets=PremiereLocations.entries(state,opponent).filter(entry=>!entry.unavailable).concat(PremiereLocations.entries(state,side).filter(entry=>entry.card.type==='Creature'));
+ for(const record of laserGateRecords())if((record.effect.card.owner??record.effect.card.side)===opponent)for(const site of [record.site,record.effect.gateTo])targets.push({card:record.effect.card,slot:site,side:opponent,carriers:[]});
+ const shots=weaponMounts(side).flatMap(mount=>mountWeapons(mount).flatMap(weapon=>{
+  if(!PremiereUnits.canUseWeapon(state,mount.host,weapon)||(PremiereWeapons.definition(weapon)?.timing??'weapons')!=='weapons')return [];
+  if(mount.host.type==='Starship'&&!craftStats(mount.host,mount.slot).powered)return [];
+  return targets.flatMap(entry=>{
+   const target=entry.card,place=PremiereLocations.physicalPlace(entry),external=entry.slot!==mount.slot;
+   if(external?(!PremiereWeapons.definition(weapon)?.adjacent||!adjacentSites(mount.slot,entry.slot)||place!==entry.slot):place!==mount.place)return [];
+   const seeker=PremiereWeapons.seeker(target)&&weapon.subType==='Character';
+   const defense=seeker?4:laserGateRecord(target)?3:PremiereWeapons.defense(target,cardAbility(target),craftStats(target,entry.slot));
+   const shot=seeker?PremiereWeapons.shot(weapon,mount.host,{...target,type:'Character'},cardAbility(mount.host),4):weaponShot(weapon,mount.host,target,defense);
+   return shot&&shot.cost<=forceBudget(side)?[{...shot,...(seeker?{effect:'destroy'}:{}),weapon,host:mount.host,target,from:mount.slot,targetSlot:entry.slot}]:[];
+  });
+ }));
+ return shots.flatMap((shot,shotIndex)=>{
+  const special=side==='Light'?locationTitle(shot.host)==='han solo'?1:0:locationTitle(shot.host)==="urorrur'r'r"?2:0;
+  return [0,...(special?[special]:[])].map(extra=>({card,rule,cost:0,shot:{...shot,extraDestiny:extra},args:[index,'controlFire',shotIndex,extra],weaponCost:shot.cost,
+   label:card.name+' · '+shot.weapon.name+' → '+shot.target.name+' ('+shot.cost+' Force'+(extra?', +'+extra+' je Draw':'')+')'}));
+ });
+}
+function dianogaHabitat(site){
+ const loc=state?.locations?.[site];
+ return !!loc&&isSite(loc)&&(sitePlanet(loc)==='dagobah'&&loc.locationTags?.includes('Exterior')||/trash compactor$/.test(locationTitle(loc))||PremiereLocations.effectsAt(state,site).some(effect=>locationEffectRule(effect.card)?.darkWaters));
+}
+function creaturePrey(entry){
+ return PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side)).filter(target=>target.slot===entry.slot&&!target.carriers.length&&!target.card.missing&&!target.card.imprisoned&&
+  (target.card.type==='Character'&&!isDroid(target.card)||target.card.type==='Vehicle'&&target.card.subType==='Creature'));
+}
+function creatureActions(side){
+ if(state.activeSide!==side||state.phase!==3||battleSession||state.creatureAttack)return [];
+ const entries=PremiereGame.sides.flatMap(owner=>PremiereLocations.entries(state,owner)),actions=[];
+ entries.filter(entry=>!entry.unavailable&&entry.card.type==='Creature').forEach((entry,index)=>{
+  if(entry.side===side&&!(state.creatureAttacksThisTurn??[]).includes(entry.card)&&creaturePrey(entry).length)actions.push({card:entry.card,entry,site:entry.slot,cost:0,args:['creatureEat',index],label:entry.card.name+' · verpflichtenden Creature-Angriff beginnen'});
+  if(state.attackedCreatureSitesThisTurn?.includes(entry.slot))return;
+  const fighters=PremiereLocations.presentCards(state,side,entry.slot).filter(card=>['Character','Vehicle','Starship'].includes(card.type)&&PremiereUnits.active(card));
+  if(fighters.length)actions.push({card:entry.card,entry,fighters,site:entry.slot,cost:0,args:['creatureHunt',index],label:entry.card.name+' mit eigenen Karten angreifen'});
+ });return actions;
+}
+function offerMandatoryCreatureAttack(resume){
+ if((state.game?.cardRulesVersion??0)<29)return false;
+ const entry=PremiereLocations.entries(state,state.activeSide).find(entry=>!entry.unavailable&&entry.card.type==='Creature'&&!state.creatureAttacksThisTurn?.includes(entry.card)&&creaturePrey(entry).length);
+ if(!entry)return false;offerCreatureTargetSide(entry,resume);return true;
+}
+function offerCreatureTargetSide(entry,resume){state.pendingCardView={mode:'creatureTargetSide',side:entry.side,card:entry.card,entry,resume,shown:[]};}
+function startCreatureFight(entry,fighterSide,fighters,prey,resume){
+ const attacking=!!prey;
+ if(attacking)(state.creatureAttacksThisTurn??=[]).push(entry.card);else (state.attackedCreatureSitesThisTurn??=[]).push(entry.slot);
+ state.creatureAttack={entry,creature:entry.card,fighterSide,fighters,prey,resume,attacking,priority:state.activeSide,passes:0,usedWeapons:[],hit:false};
+ showCreature('creatureFight',state.activeSide);
+}
+function showCreature(mode,side){state.pendingCardView={mode,side,card:state.creatureAttack.creature,shown:[]};}
+function creatureShots(side){
+ const attack=state.creatureAttack;if(side!==attack.fighterSide)return [];
+ const mounts=weaponMounts(side),inactive=PremiereLocations.entries(state,side).filter(entry=>attack.fighters.includes(entry.card)&&!mounts.some(mount=>mount.host===entry.card)).map(entry=>({host:entry.card,slot:entry.slot,place:PremiereLocations.physicalPlace(entry)}));
+ return mounts.concat(inactive).flatMap(mount=>{
+  const longRange=!attack.fighters.includes(mount.host);
+  if(longRange&&!adjacentSites(mount.slot,attack.entry.slot))return [];
+  return mountWeapons(mount).flatMap(weapon=>{
+   if(attack.usedWeapons.includes(weapon)||!PremiereUnits.canUseWeapon(state,mount.host,weapon)||longRange&&!PremiereWeapons.definition(weapon)?.adjacent)return [];
+   const shot=weaponShot(weapon,mount.host,attack.creature,5);
+   return shot&&shot.cost<=forceBudget(side)?[{...shot,weapon,host:mount.host,target:attack.creature,from:mount.slot,targetSlot:attack.entry.slot}]:[];
+  });
+ });
+}
+function creatureChoices(frame){
+ if(frame.mode==='creatureTargetSide')return PremiereGame.sides.filter(side=>creaturePrey(frame.entry).some(entry=>entry.side===side)).map(side=>({args:[side],label:'Ziel zufällig auf '+side+'-Seite bestimmen'}));
+ if(frame.mode==='creaturePower')return [{args:['draw'],label:'Attack Destiny ziehen'},{args:['skip'],label:'Ohne Attack Destiny fortsetzen'}];
+ return creatureShots(frame.side).map((shot,index)=>({args:['fire',index],card:shot.weapon,label:shot.weapon.name+' → '+shot.target.name+' ('+shot.cost+' Force)'})).concat({args:['pass'],label:'Im Creature-Angriff passen'});
+}
+function finishCreatureChoice(frame,...args){
+ if(frame.mode==='creatureTargetSide'){
+  const pool=creaturePrey(frame.entry).filter(entry=>entry.side===args[0]),target=pool[Math.floor(PremiereGame.random(state.game)*pool.length)];
+  state.pendingCardView=null;startCreatureFight(frame.entry,target.card.owner??target.card.side??target.side,[target.card],target,frame.resume);return true;
+ }
+ const attack=state.creatureAttack;
+ if(frame.mode==='creaturePower'){state.pendingCardView=null;resolveCreaturePower(args[0]==='draw');return true;}
+ if(args[0]==='fire'){
+  const shot=creatureShots(frame.side)[args[1]];attack.usedWeapons.push(shot.weapon);attack.passes=0;state.pendingCardView=null;spendForce(frame.side,shot.cost);PremiereUnits.recordWeaponUse(state,shot.host,shot.weapon);
+  drawDestinySeries(frame.side,'weapon',shot.draws,weaponDestinyModifier(frame.side,shot),draws=>{
+   const value=PremiereBattle.total(draws);
+   if(value!==null&&value+shot.bonus>shot.defense){
+    if(shot.effect==='destroy'){loseTableCard(attack.entry.side,attack.entry.slot,attack.creature);finishCreatureAttack();return;}
+    attack.hit=true;
+   }
+   showCreature('creatureFight',PremiereGame.otherSide(frame.side));
+  });return true;
+ }
+ if(++attack.passes>=2){
+  const ability=attack.fighters.reduce((sum,card)=>sum+(battleAbilityAt(card,attack.entry.slot)??0),0);
+  if(ability>=4)showCreature('creaturePower',attack.fighterSide);else {state.pendingCardView=null;resolveCreaturePower(false);}
+ }else showCreature('creatureFight',PremiereGame.otherSide(frame.side));
+ return true;
+}
+function creaturePower(card,side,site){return ['Starship','Vehicle'].includes(card.type)?craftStats(card,site).power+cardPowerModifier(card,side,site):(card.power??0)+cardPowerModifier(card,side,site);}
+function resolveCreaturePower(drawAttackDestiny){
+ const attack=state.creatureAttack;
+ const resolve=extra=>drawDestinySeries(attack.entry.side,'creatureFerocity',1,0,draws=>{
+  const ferocity=(attack.creature.lastMealPower??0)+(draws[0]?.value??0),power=attack.fighters.reduce((sum,card)=>sum+Math.max(0,creaturePower(card,attack.fighterSide,attack.entry.slot)),0)+extra;
+  const won=attack.attacking?ferocity>power:power>ferocity+5;
+  log('Creature-Angriff · Ferocity '+ferocity+(attack.attacking?'':' + Abwehr 5')+' / Power '+power+'.');
+  if(attack.attacking&&won){const target=PremiereLocations.findEntry(state,attack.prey.card);if(target){attack.creature.lastMealPower=creaturePower(target.card,attack.fighterSide,target.slot);loseTableCard(target.side,target.slot,target.card);}}
+  if((!attack.attacking&&won)||attack.hit)loseTableCard(attack.entry.side,attack.entry.slot,attack.creature);
+  finishCreatureAttack();
+ });
+ if(drawAttackDestiny)drawDestinySeries(attack.fighterSide,'attack',1,0,draws=>resolve(draws[0]?.value??0));else resolve(0);
+}
+function finishCreatureAttack(){const resume=state.creatureAttack?.resume;state.creatureAttack=null;state.pendingCardView=null;resume?.();}
+function resolveCreatureClashes(){
+ if(state.pendingCardView||state.creatureAttack||state.creatureClashInProgress||battleSession||PremiereGame.responseWindow(state.game))return;
+ const entries=PremiereGame.sides.flatMap(side=>PremiereLocations.entries(state,side)).filter(entry=>entry.card.type==='Creature'&&!entry.unavailable);
+ for(const entry of entries)if(!dianogaHabitat(entry.slot))loseTableCard(entry.side,entry.slot,entry.card);
+ const group=entries.filter(entry=>dianogaHabitat(entry.slot)).find(entry=>entries.filter(other=>other.slot===entry.slot&&dianogaHabitat(other.slot)).length>1);
+ if(!group)return;
+ const pool=entries.filter(entry=>entry.slot===group.slot),a=pool.splice(Math.floor(PremiereGame.random(state.game)*pool.length),1)[0],b=pool[Math.floor(PremiereGame.random(state.game)*pool.length)];
+ state.creatureClashInProgress=true;
+ drawDestinySeries(a.side,'creatureFerocity',1,0,left=>drawDestinySeries(b.side,'creatureFerocity',1,0,right=>{
+  const x=(a.card.lastMealPower??0)+(left[0]?.value??0),y=(b.card.lastMealPower??0)+(right[0]?.value??0);
+  if(x<=y)loseTableCard(a.side,a.slot,a.card);if(y<=x)loseTableCard(b.side,b.slot,b.card);
+  if(x>y)a.card.lastMealPower=y;if(y>x)b.card.lastMealPower=x;
+  state.creatureClashInProgress=false;resolveCreatureClashes();
+ }));
+}
+
+function expansionPromptChoice(offers){
+ const frame=state?.pendingCardView;if(!frame||frame.side!==botSide()||(currentGame()?.cardRulesVersion??0)<29)return null;
+ const find=(mode,index)=>offers.find(offer=>offer.args[0]===mode&&(index===undefined||offer.args[1]===index));
+ if(['runSelectLight','runSelectDark'].includes(frame.mode)){
+  const run=state.attackRun,pool=frame.mode==='runSelectLight'?runEligibleLight(run.system):runTies(run.system);
+  const select=offers.find(offer=>offer.args[0]==='toggle'&&!run.selected.includes(offer.args[1]));return select??find('done');
+ }
+ if(frame.mode==='besiegedChoose')return offers.find(offer=>offer.args[0]==='toggle'&&!frame.selected.includes(offer.args[1]))??find('fight')??find('cancel');
+ if(frame.mode==='squadronTransfer')return offers.find(offer=>['crew','weapon','device'].includes(offer.args[0]))??find('done');
+ if(frame.mode==='hypoQuestion')return offers.find(offer=>offer.args[0]===(botSide()==='Dark'?'Light:1593':'Dark:634'))??offers[0];
+ if(frame.mode==='runLead')return offers.slice().sort((a,b)=>pilotMaximum(b.card)-pilotMaximum(a.card))[0];
+ if(frame.mode==='epicRoomChoice')return find('yes');
+ if(frame.mode==='runPilot')return offers.slice().sort((a,b)=>b.args[0]-a.args[0])[0];
+ if(frame.mode==='runCover'){
+  if(frame.side==='Dark'){
+   const shots=runWeaponOptions();const shot=offers.find(offer=>offer.args[0]==='fire'&&2.5*shots[offer.args[1]].draws+shots[offer.args[1]].bonus>shots[offer.args[1]].defense-1);if(shot)return shot;
+  }
+  const options=pileInterruptOptions(frame.side),interrupt=offers.find(offer=>offer.args[0]==='interrupt'&&['allClearRun','leaderKill'].includes(options[offer.args[1]]?.rule.mode));
+  return interrupt??find('pass');
+ }
+ if(frame.mode==='creatureTargetSide')return find(playerSide())??offers[0];
+ if(frame.mode==='creatureFight')return offers.find(offer=>offer.args[0]==='fire')??find('pass');
+ if(frame.mode==='creaturePower')return find('draw');
+ if(frame.mode==='goldRescue')return state.attackRun?.lead===frame.gold?find('decline'):find('sacrifice');
+ if(frame.mode==='ignitionZ')return offers.slice().sort((a,b)=>b.args[0]-a.args[0])[0];
+ return null;
+}
+function expansionBotValue(offer,view){
+ const mode=offer.args[0],side=view.side,site=offer.site,to=offer.to,own=PremiereGame.zones(state,side),rival=PremiereGame.otherSide(side);
+ switch(mode){
+  case 'salt':return own.hand.length>3&&offer.args[2]==='hand'?0.7:offer.args[2]==='force'&&view.force>4?0.5:-1;
+  case 'binary':{
+   const allies=PremiereLocations.entries(state,side).filter(entry=>entry.slot===site&&!entry.unavailable&&entry.card.type==='Character'&&!isDroid(entry.card)).length;
+   const enemies=PremiereLocations.entries(state,rival).filter(entry=>entry.slot===site&&!entry.unavailable&&entry.card.type==='Character'&&!isDroid(entry.card)).length;
+   return offer.card.switchedOff?allies>enemies?1:-1:enemies>allies?1:-1;
+  }
+  case 'threat':return 2;
+  case 'hide':return (view.sites[site]?.margin??0)<0?3:-1;
+  case 'formSquadron':return 1.2;
+  case 'vehicleSite':return 1;
+  case 'mobileCrew':return offer.role==='driver'||offer.role==='pilot'?1:-1;
+  case 'squad':return view.sites[to]?.rival?(view.sites[to].margin??0)>0?2:-1:!view.sites[to]?.own?2:-1;
+  case 'shuttle':return offer.host&&offer.role==='pilot'?1:!view.sites[offer.args[3]]?.own?0.8:-1;
+  case 'placeBluff':return PremiereLocations.control(state,side,site,cardAbility)===true?1:-1;
+  case 'challengeBluff':return 0.5;
+  case 'holoReturn':return own.hand.length<2?0.5:-1;
+  case 'holoCancel':return 3;
+  case 'laserGate':return 0.5;
+  case 'hypo':return offer.args[3]==='drain'?1.5:0.5;
+  case 'suction':return (offer.target.owner??offer.target.side)!==side?2:-1;
+  case 'remote':return 0.5;
+  case 'cancelSeeker':return 2;
+  case 'spiceMines':return 2;
+  case 'besieged':return offer.targets.reduce((sum,card)=>sum+(card.power??0),0)>tractorShipCrew(offer.record.ship).reduce((sum,card)=>sum+(card.power??0),0)?2:-1;
+  case 'deployEpic':return 1;
+  case 'dantooine':return 1;
+  case 'chargeSuperlaser':return own.hand.some(card=>card.id==='Dark:508')&&view.force>2?0.5:-1;
+  case 'primaryIgnition':return 2.5+planetSites('death star').length-offer.cost+ignitionBonus()>=7?3:-1;
+  case 'attackRun':return runEligibleLight(offer.system).some(card=>pilotMaximum(card)+rebelBaseSize()>=7)?2:-1;
+  case 'creatureEat':return 1;
+  case 'creatureHunt':return offer.fighters.reduce((sum,card)=>sum+creaturePower(card,side,site),0)>(offer.card.lastMealPower??0)+7.5?1:-1;
+  default:return -1;
+ }
+}
+
+function chooseEpicRoom(event,resume){
+ const rooms=[];
+ for(const [site,loc] of state.locations.entries())for(const side of PremiereGame.sides){
+  if(!loc||PremiereLocations.control(state,side,site,cardAbility)!==true)continue;
+  for(const rule of PremiereLocations.rulesAt(state,site,side,'epicRoom'))if(rule.epic===event&&(!rule.leader||PremiereLocations.presentCards(state,side,site).some(card=>characterTraits(card).includes('leader'))))rooms.push({...rule,site,side});
+ }
+ const room=rooms.find(rule=>rule.optional),fixed=rooms.filter(rule=>!rule.optional).reduce((sum,rule)=>sum+rule.amount,0);
+ if(!room){resume(fixed);return;}
+ state.pendingCardView={mode:'epicRoomChoice',side:room.side,card:state.locations[room.site],room,fixed,resume,shown:[]};
+}

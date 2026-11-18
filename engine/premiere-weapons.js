@@ -4,6 +4,7 @@ const PremiereWeapons = (() => {
   const saberTargets = ['Character','Creature'];
   const space = ['Starship'];
   const warrior = card => card.type === 'Character' && units.hasSkill(card, 'warrior');
+  const jawa = card => card.type === 'Character' && card.characteristics?.some(trait=>trait.toLowerCase()==='jawa');
   const title = card => (card?.name ?? '').trim().replace(/^[•*]+\s*/, '').toLowerCase();
   const persona = (card, name) => card.type === 'Character' &&
     (card.personas?.some(item=>item.toLowerCase()===name) || title(card)===name || title(card).startsWith(name+' '));
@@ -21,6 +22,7 @@ const PremiereWeapons = (() => {
   const blaster = (cost, bonus) => ({deploy:withHost(warrior,cost), cost, bonus, targets:ground});
   const saber = (deploy, cost, effect, extra = {}) => ({deploy, cost, draws:2, targets:saberTargets, effect, saber:true, ...extra});
   const attached = new Map([
+    ['Dark:2378',{deploy:host=>host.id==='Dark:654'?0:null,cost:4,draws:2,targets:['Starship'],capitalOnly:true,superlaser:true}],
     ['Light:259', blaster(1,0)], ['Light:265', blaster(2,1)], ['Dark:264', blaster(2,1)], ['Dark:1264', blaster(1,0)],
     ['Light:1106', {deploy:byPersona('han',1,3),cost:1,bonus:1,targets:ground,zeroBy:'han'}],
     ['Light:1503', {deploy:byPersona('leia',1,2),cost:0,bonus:-1,targets:ground,zeroBy:'leia'}],
@@ -28,6 +30,9 @@ const PremiereWeapons = (() => {
       targets:saberTargets,bonus:(_,category)=>category==='Creature'?2:1,onlyPrintedTargets:true}],
     ['Light:1606', huntingRifle('luke','owen lars')],
     ['Dark:2687', huntingRifle("urorrur'r'r",'chief bast')],
+    ['Light:1377', {deploy:host=>jawa(host)?1:warrior(host)?3:null,cost:1,targets:['Character'],onlyPrintedTargets:true,
+      effect:target=>target.subType==='Droid'?'jawaSteal':'exclude'}],
+    ['Dark:1376', {deploy:withHost(jawa,0),cost:0,bonus:-1,targets:saberTargets,onlyPrintedTargets:true}],
     ['Light:1386', saber(genericSaber,amount,'hit')], ['Dark:620', saber(genericSaber,amount,'hit')],
     ['Light:1813', saber(byPersona('obi-wan',0),0,'zero')], ['Dark:2702', saber(byPersona('vader',0),0,'zero')],
     ['Dark:146', {...blaster(2,1),deploy:withHost(warrior,3),adjacent:true}],
@@ -37,28 +42,30 @@ const PremiereWeapons = (() => {
       effect:target=>target.type==='Character'?'capture':'destroy',onlyPrintedTargets:true}],
     ['Dark:1002', {deploy:withHost(card=>card.type==='Character'&&title(card)==='tusken raider',2),
       cost:0,draws:2,targets:['Character'],timing:'initiation',effect:'block',threshold:5}],
-    ['Light:1962', {deploy:withHost(card=>units.fighter(card)&&/\b[XYB]-wing\b/i.test(card.subType),1),cost:1,targets:space}],
-    ['Light:2389', {deploy:withHost(card=>units.fighter(card)&&/\b[YB]-wing\b/i.test(card.subType),1),cost:1,targets:space,effect:'ion'}],
+    ['Light:1962', {deploy:withHost(card=>card.type==='Starship'&&/\b[XYB]-wing\b/i.test(card.subType),1),cost:1,targets:space}],
+    ['Light:2389', {deploy:withHost(card=>card.type==='Starship'&&/\b[YB]-wing\b/i.test(card.subType),1),cost:1,targets:space,effect:'ion'}],
     ['Light:1971', {deploy:withHost(card=>['Light:530','Light:1677'].includes(card.id),2),cost:1,
       targets:space,bonus:target=>units.fighter(target)?1:0}],
     ['Dark:303', {deploy:withHost(card=>units.fighter(card)&&/TIE Advanced x1/i.test(card.subType),1),cost:1,
       targets:space,bonus:target=>units.capital(target)?-1:units.fighter(target)?1:0}],
     ['Dark:872', {deploy:withHost(units.tie,1),cost:1,targets:space,bonus:target=>units.capital(target)?-2:0}],
     ['Dark:1327', {deploy:withHost(starDestroyer,2),cost:1,bonus:2,targets:space,effect:'ion'}],
-    ['Dark:2644', {deploy:withHost(card=>starDestroyer(card)||(card.subType==='System'&&card.locationTags?.includes('Mobile')),3),
+    ['Dark:2644', {deploy:withHost(card=>starDestroyer(card)||(card.subType==='System'&&card.locationTags?.includes('Mobile'))||card.id==='Light:681',3),
       cost:2,draws:2,targets:space,bonus:target=>units.capital(target)?-2:-5}]
   ]);
   const seekers = new Map([
     ['Light:2400', {persona:'tagge',fallback:'warrior',limit:3}],
     ['Light:2426', {persona:'tarkin',fallback:'alien',limit:3}],
     ['Dark:1096', {persona:'han',fallback:'alien',limit:3}],
-    ['Dark:1592', {persona:'luke',fallback:'pilot',primary:4,limit:3}]
+    ['Dark:1592', {persona:'luke',fallback:'pilot',primary:4,limit:3}],
+    ['Light:1705', {persona:'motti',fallback:'pilot',limit:3}],
+    ['Dark:1496', {persona:'leia',fallback:'warrior',limit:3}],
   ]);
   const projector = card => card?.id === 'Dark:1479';
   const mine = card => ['Light:2610','Dark:2609'].includes(card?.id);
   const seeker = card => seekers.has(card?.id);
   const miningDroid = card => ['Light:1556','Dark:1557'].includes(card?.id);
-  const disarmed = host => (host?.attachments ?? []).some(card=>['Light:735','Dark:734'].includes(card.id));
+  const disarmed = host => (host?.attachments ?? []).some(card=>['Light:735','Dark:734','Light:1507'].includes(card.id));
 
   function definition(card) {
     if (card?.type !== 'Weapon') return null;
@@ -74,6 +81,7 @@ const PremiereWeapons = (() => {
   function shot(weapon, host, target, ability, defense, power = host?.power) {
     const rule=definition(weapon);
     if(rule?.timing==='initiation'&&target.type!=='Character')return null;
+    if(rule?.capitalOnly&&!units.capital(target))return null;
     const category=target.type==='Vehicle'&&target.subType==='Creature'?'Creature':target.type;
     if (rule?.onlyPrintedTargets && (projector(target) || seeker(target))) return null;
     if (!rule || (!rule.targets.includes(category) && !projector(target) && !(rule.projector&&seeker(target)))) return null;
@@ -93,6 +101,7 @@ const PremiereWeapons = (() => {
       const numbers=[ability,card.armor,card.maneuver].filter(Number.isFinite);
       return numbers.length?Math.max(...numbers):null;
     }
+    if(card.type==='Creature')return Number((card.extraText??[]).join(' ').match(/SLITHER:\s*(\d+)/i)?.[1]??0);
     if (['Vehicle','Starship','Creature'].includes(card.type)) {
       return [stats.armor,stats.maneuver,card.armor,card.maneuver].find(Number.isFinite)??null;
     }
@@ -102,7 +111,8 @@ const PremiereWeapons = (() => {
   function seekerTarget(weapon, card, ability) {
     const rule=seekers.get(weapon.id);
     if(!rule||card.type!=='Character'||!Number.isFinite(ability))return false;
-    const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin');
+    const matching=persona(card,rule.persona)|| (rule.persona==='tarkin'&&title(card)==='grand moff tarkin')||
+      (rule.persona==='motti'&&title(card)==='admiral motti');
     if(matching&&ability<(rule.primary??rule.limit))return true;
     return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':units.hasSkill(card,rule.fallback));
   }
