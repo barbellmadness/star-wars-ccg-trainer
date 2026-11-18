@@ -75,3 +75,16 @@ Browser-Speicher ist an die Origin gebunden. Ein auf GitHub Pages gespeicherter 
 - [ALL-INKL: Let's-Encrypt-Zertifikat einbinden](https://all-inkl.com/wichtig/anleitungen/kas/ssl-protection/ssl-certificate/how-to-install-a-lets-encrypt-certificate_470.html)
 - [Apache: Komprimierung mit mod_deflate](https://httpd.apache.org/docs/2.4/mod/mod_deflate.html)
 - [MDN: HTTP-Caching und versionierte Ressourcen](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching)
+
+## Erste Veröffentlichung
+
+Am 18.11.2026 wurde **V2.15.38**, Release **6d55720487d2ea1a**, auf [www.starwarsccg.de](https://www.starwarsccg.de/) veröffentlicht. Der KAS-Redirect auf GitHub Pages wurde durch das Domainziel `/starwarsccg.de/` ersetzt. Die zugehörige ältere WordPress-Installation wurde auf ausdrücklichen Wunsch nach einer geprüften privaten Sicherung außerhalb des öffentlichen Webverzeichnisses gelöscht. Das Zertifikatsverzeichnis `.well-known` blieb erhalten. Es wurde keine Datenbank gelöscht.
+
+Abnahme:
+
+- 605 Node-Tests, beide Daten-/Deckprüfungen und beide lokalen Chrome-Browserprüfungen bestanden. Auch die neuen GitHub-Push- und PR-Workflows mit Chromium waren erfolgreich.
+- Alle 28 per SFTP übertragenen Dateien stimmen auf dem Server per SHA-256 mit dem geprüften Paket überein. Das öffentliche `release.json` nennt dieselbe Releasekennung.
+- Öffentliche Startseite, alle fünf Anleitungsseiten und beide Spielformate funktionieren. Neue Light-Side-Premiere- und Dark-Side-Mischpartien wurden bis zur Starthand begonnen und nach Browser-Neuladen mit identischen Seed-, Aktions- und Revisionsdaten fortgesetzt.
+- Die beiden V2-Aufrufe waren in dieser Abnahme nach rund 1,0 Sekunden startbereit. Das ist eine Messung aus dieser Verbindung und kein allgemeines Ladezeitversprechen; weitere Geräte- und Netzbedingungen bleiben separat zu messen.
+- Hash-Ressourcen werden mit einem Jahr Cache-Laufzeit und `immutable` ausgeliefert, HTML mit `no-cache`; gzip wurde auf dem öffentlichen Server nachgewiesen.
+- Private Drucktext-Dateien, Git-Metadaten und die alten WordPress-Einstiege waren im öffentlichen Abruf nicht verfügbar. Genau 16 Drucktexte stehen im Paket; die übrigen 308 bleiben privat.

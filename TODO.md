@@ -7,7 +7,7 @@
 - [x] Statisches ALL-INKL-Paket mit expliziter Dateiauswahl, versionierten Ressourcen, Cache-Regeln und Komprimierung vorbereiten; die 308 privaten Drucktexte ausschließen.
 - [x] Homepage ohne Engine-/Katalog-Downloads ausliefern, Deck-Cover verzögert laden und Browserprüfung des fertigen Pakets in den Veröffentlichungsworkflow aufnehmen.
 - [x] Architekturentscheidung und Erweiterungspfad für weitere Editionen [dokumentieren](docs/ALL_INKL.md): aktuell ohne Datenbank; vor starkem Ausbau Kataloge und Regeln je Format nachladen.
-- [ ] SSH-Schlüssel im KAS hinterlegen, absolutes Zielverzeichnis bestätigen und getestetes Paket auf www.starwarsccg.de veröffentlichen. Anschließend HTTPS, Caching, Komprimierung und neue/fortgesetzte Partien auf dem Zielserver prüfen.
+- [x] SSH-Schlüssel im KAS hinterlegen, absolutes Zielverzeichnis bestätigen und getestetes Paket auf www.starwarsccg.de veröffentlichen. HTTPS, Caching, Komprimierung und neue/fortgesetzte Partien auf dem Zielserver sind geprüft. Die alte WordPress-Installation wurde auf ausdrücklichen Wunsch nach privater Sicherung entfernt. [Release-Abnahme](docs/ALL_INKL.md#erste-veröffentlichung)
 
 Ziel ist eine vollständige lokale Einzelspielerpartie mit dem Premiere-Set und deutscher Lernführung. In freien Partien spielt der Bot die jeweils andere Seite. Der [Entwicklungsplan](ENTWICKLUNGSPLAN.md) hält den vorgesehenen Regelumfang fest.
 
