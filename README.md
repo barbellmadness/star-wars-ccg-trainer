@@ -4,6 +4,7 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 
 ## Aktueller Stand
 
+- V2.16.1 bietet während laufender Partien die gespeicherte **Spielfeldansicht**: „Klassisch“, „Kommandozentrale“ oder „Direkt am Spieltisch“. Die neuen Ansichten bündeln Phase, Force und Zugsteuerung und zeigen vor dem Ausspielen und Bewegen Kosten sowie Ziel. Ein Ansichtswechsel verändert weder Spielstand noch Aktionsprotokoll. Ortsfarben entstehen ohne zusätzliche Bilddownloads.
 - V2.16.0 integriert alle **162 Hoth-Karten** im zusätzlichen Format **Premiere + A New Hope + Hoth**. Über „Hoth-Decks laden“ stehen je acht Themendecks mit Strategieeinweisung zur Wahl; zusammen enthalten sie jede Hoth-Karte. Katalog und Regelmodule laden erst bei Bedarf. Energieschild, Suchgruppen, Wetter, Kampffahrzeuge, Artillerie, Wampa und Generator-Angriff sind mit Bot, Spielstand und Replay verbunden. [Regelstand und Prüfmatrix](HOTH_REGELSTAND.md).
 - Dauerhafte Effects stehen anklickbar unter dem Protokoll ihres Besitzers. Befristete Einschränkungen wie **Imperial Barrier** werden separat mit Ziel und Ablauf erklärt.
 
