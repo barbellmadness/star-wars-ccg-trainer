@@ -1201,6 +1201,487 @@
               "count": 1
             }
           ]
+        },
+        {
+          "theme": {
+            "id": "rettungsteam",
+            "name": "Rettungsteam 2187",
+            "description": "Leia und getarnte Spione stören gegnerische Drains; Han und Chewbacca sichern den Einsatz und befreien Gefangene."
+          },
+          "strategy": {
+            "start": "Beginne im Massassi War Room für Force oder bei Docking Bay 327 für den Einsatz auf dem Todesstern. Leia und Momaw können als Spione auch ohne eigene Icons beim Gegner ausspielen.",
+            "opening": "Baue Force auf und sichere eine Site mit Leia, Han und Troopern. Undercover nimmt einen Spion aus dem Battle und blockiert gegnerische Drains; zum Kämpfen oder Befreien muss er seine Tarnung vorher aufgeben. Halte mindestens einen aktiven Spion bereit.",
+            "tactics": "Spiele Cell 2187 auf eine Death-Star-Site und bringe den außerhalb des Todessterns bestimmten Spion oder Anführer dorthin. I’m Here To Rescue You braucht dagegen einen aktiven Spion am Detention Block Corridor und Gefangene dort; die andere Variante hebt Spice Mines Of Kessel auf. Ohne Gefangene gewinnst du über Site-Kontrolle, Sabotage und Drains. Alternatives To Fighting kann eine eingeschlossene Schiffsbesatzung zu einer Docking Bay befreien."
+          },
+          "startingLocations": [
+            "Light:2859",
+            "Light:676",
+            "Light:672"
+          ],
+          "cards": [
+            {
+              "id": "Light:2859",
+              "count": 1
+            },
+            {
+              "id": "Light:2853",
+              "count": 1
+            },
+            {
+              "id": "Light:676",
+              "count": 1
+            },
+            {
+              "id": "Light:680",
+              "count": 1
+            },
+            {
+              "id": "Light:672",
+              "count": 1
+            },
+            {
+              "id": "Light:2849",
+              "count": 1
+            },
+            {
+              "id": "Light:2857",
+              "count": 1
+            },
+            {
+              "id": "Light:1495",
+              "count": 3
+            },
+            {
+              "id": "Light:1690",
+              "count": 2
+            },
+            {
+              "id": "Light:504",
+              "count": 2
+            },
+            {
+              "id": "Light:1992",
+              "count": 2
+            },
+            {
+              "id": "Light:1098",
+              "count": 2
+            },
+            {
+              "id": "Light:394",
+              "count": 2
+            },
+            {
+              "id": "Light:2052",
+              "count": 5
+            },
+            {
+              "id": "Light:2035",
+              "count": 2
+            },
+            {
+              "id": "Light:2040",
+              "count": 2
+            },
+            {
+              "id": "Light:529",
+              "count": 1
+            },
+            {
+              "id": "Light:1677",
+              "count": 2
+            },
+            {
+              "id": "Light:2418",
+              "count": 2
+            },
+            {
+              "id": "Light:2838",
+              "count": 2
+            },
+            {
+              "id": "Light:259",
+              "count": 2
+            },
+            {
+              "id": "Light:1106",
+              "count": 1
+            },
+            {
+              "id": "Light:318",
+              "count": 1
+            },
+            {
+              "id": "Light:2056",
+              "count": 1
+            },
+            {
+              "id": "Light:943",
+              "count": 1
+            },
+            {
+              "id": "Light:2673",
+              "count": 2
+            },
+            {
+              "id": "Light:385",
+              "count": 1
+            },
+            {
+              "id": "Light:1229",
+              "count": 2
+            },
+            {
+              "id": "Light:762",
+              "count": 2
+            },
+            {
+              "id": "Light:100",
+              "count": 2
+            },
+            {
+              "id": "Light:1749",
+              "count": 1
+            },
+            {
+              "id": "Light:1987",
+              "count": 1
+            },
+            {
+              "id": "Light:2217",
+              "count": 1
+            },
+            {
+              "id": "Light:95",
+              "count": 1
+            },
+            {
+              "id": "Light:282",
+              "count": 1
+            },
+            {
+              "id": "Light:2151",
+              "count": 1
+            },
+            {
+              "id": "Light:2033",
+              "count": 2
+            },
+            {
+              "id": "Light:1872",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "corellianische-eskorte",
+            "name": "Corellianische Eskorte",
+            "description": "Han, Chewbacca und die Falcon sichern einen langen Kessel Run; Korvetten und X-wings halten die Route offen."
+          },
+          "strategy": {
+            "start": "Corellia unterstützt Falcon und Korvetten mit Deploy-Reacts. Der Massassi War Room ist die Force-Alternative, wenn du noch keine vollständige Schiffsbesatzung hast.",
+            "opening": "Bringe Han oder Chewbacca als Piloten auf die Falcon. Ergänze danach den zweiten passenden Piloten und einen Quad Laser Cannon. Korvetten mit permanentem Piloten können bereits ein System besetzen; setze zusätzliche Piloten für mehr Power ein.",
+            "tactics": "Ein Kessel Run von Corellia nach Kessel hat Distanz 7. Die Falcon kann mit ihrer normalen Hyperspeed nicht direkt so weit springen: nutze Yavin 4 als Zwischenstation und plane Force für Hin- und Rückweg ein. Der Ziel-Schmuggler muss beim Ausspielen an einem anderen System sein; erst die Rückkehr nach Corellia bringt die Retrieval. Corellian Slip verteidigt gegen Tallon Roll. Opfere den Rückweg nicht für einen ungünstigen Kampf."
+          },
+          "startingLocations": [
+            "Light:527",
+            "Light:2859",
+            "Light:2853"
+          ],
+          "cards": [
+            {
+              "id": "Light:527",
+              "count": 2
+            },
+            {
+              "id": "Light:1427",
+              "count": 1
+            },
+            {
+              "id": "Light:1413",
+              "count": 1
+            },
+            {
+              "id": "Light:2849",
+              "count": 1
+            },
+            {
+              "id": "Light:2853",
+              "count": 1
+            },
+            {
+              "id": "Light:2859",
+              "count": 1
+            },
+            {
+              "id": "Light:1098",
+              "count": 3
+            },
+            {
+              "id": "Light:394",
+              "count": 3
+            },
+            {
+              "id": "Light:529",
+              "count": 3
+            },
+            {
+              "id": "Light:305",
+              "count": 2
+            },
+            {
+              "id": "Light:1495",
+              "count": 1
+            },
+            {
+              "id": "Light:2040",
+              "count": 3
+            },
+            {
+              "id": "Light:2052",
+              "count": 3
+            },
+            {
+              "id": "Light:493",
+              "count": 2
+            },
+            {
+              "id": "Light:504",
+              "count": 1
+            },
+            {
+              "id": "Light:2003",
+              "count": 2
+            },
+            {
+              "id": "Light:1677",
+              "count": 3
+            },
+            {
+              "id": "Light:530",
+              "count": 3
+            },
+            {
+              "id": "Light:2059",
+              "count": 1
+            },
+            {
+              "id": "Light:2838",
+              "count": 2
+            },
+            {
+              "id": "Light:1971",
+              "count": 3
+            },
+            {
+              "id": "Light:259",
+              "count": 1
+            },
+            {
+              "id": "Light:2056",
+              "count": 1
+            },
+            {
+              "id": "Light:1429",
+              "count": 2
+            },
+            {
+              "id": "Light:585",
+              "count": 1
+            },
+            {
+              "id": "Light:534",
+              "count": 3
+            },
+            {
+              "id": "Light:100",
+              "count": 2
+            },
+            {
+              "id": "Light:1874",
+              "count": 1
+            },
+            {
+              "id": "Light:994",
+              "count": 1
+            },
+            {
+              "id": "Light:1755",
+              "count": 1
+            },
+            {
+              "id": "Light:2217",
+              "count": 1
+            },
+            {
+              "id": "Light:2033",
+              "count": 1
+            },
+            {
+              "id": "Light:1987",
+              "count": 1
+            },
+            {
+              "id": "Light:282",
+              "count": 1
+            },
+            {
+              "id": "Light:1872",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "bith-ensemble",
+            "name": "Bith-Ensemble",
+            "description": "Die Cantina-Band verteuert benachbarte Drains, verändert Destiny und gewinnt verlorene Force durch Figrins Wetten zurück."
+          },
+          "strategy": {
+            "start": "Beginne in der Cantina für die Musiker oder in Obi-Wan’s Hut beziehungsweise im Massassi War Room für eine vorsichtigere Force-Basis. Lege Tatooine-Sites nebeneinander.",
+            "opening": "Bringe Ickabel mit anderen Musikern zusammen: gegnerische Drains an angrenzenden Sites kosten dann zusätzliche Force. Halte die einzigartigen Musiker verteilt in deiner Hand bereit, statt mehrere Exemplare derselben Figur gleichzeitig ausspielen zu wollen. Traffic Control recycelt überschüssige Kopien.",
+            "tactics": "Besetze Clak’dor VII mit einer Korvette oder einem bemannten X-wing, damit Bith-Karten höhere Destiny-Werte liefern. Figrin kann dann mit seinen Wetten Retrieval erzielen; nach The Bith Shuffle lässt Nalan die obersten Karten des gemischten Stapels ansehen. Doikk erhöht die Battle-Destiny-Hürde für beide Seiten: rechne deine Ability vor einem Kampf mit ein und nutze Luke oder Obi-Wan als Absicherung."
+          },
+          "startingLocations": [
+            "Light:2440",
+            "Light:2471",
+            "Light:2859"
+          ],
+          "cards": [
+            {
+              "id": "Light:2440",
+              "count": 2
+            },
+            {
+              "id": "Light:2466",
+              "count": 1
+            },
+            {
+              "id": "Light:2447",
+              "count": 1
+            },
+            {
+              "id": "Light:2471",
+              "count": 1
+            },
+            {
+              "id": "Light:416",
+              "count": 2
+            },
+            {
+              "id": "Light:2859",
+              "count": 1
+            },
+            {
+              "id": "Light:942",
+              "count": 3
+            },
+            {
+              "id": "Light:751",
+              "count": 3
+            },
+            {
+              "id": "Light:1242",
+              "count": 3
+            },
+            {
+              "id": "Light:1752",
+              "count": 3
+            },
+            {
+              "id": "Light:1098",
+              "count": 2
+            },
+            {
+              "id": "Light:394",
+              "count": 1
+            },
+            {
+              "id": "Light:1593",
+              "count": 2
+            },
+            {
+              "id": "Light:1803",
+              "count": 1
+            },
+            {
+              "id": "Light:2052",
+              "count": 4
+            },
+            {
+              "id": "Light:2040",
+              "count": 2
+            },
+            {
+              "id": "Light:530",
+              "count": 2
+            },
+            {
+              "id": "Light:2838",
+              "count": 2
+            },
+            {
+              "id": "Light:1609",
+              "count": 1
+            },
+            {
+              "id": "Light:259",
+              "count": 3
+            },
+            {
+              "id": "Light:1106",
+              "count": 1
+            },
+            {
+              "id": "Light:2041",
+              "count": 1
+            },
+            {
+              "id": "Light:2625",
+              "count": 2
+            },
+            {
+              "id": "Light:585",
+              "count": 1
+            },
+            {
+              "id": "Light:2514",
+              "count": 3
+            },
+            {
+              "id": "Light:282",
+              "count": 2
+            },
+            {
+              "id": "Light:2217",
+              "count": 2
+            },
+            {
+              "id": "Light:95",
+              "count": 1
+            },
+            {
+              "id": "Light:1183",
+              "count": 2
+            },
+            {
+              "id": "Light:2308",
+              "count": 1
+            },
+            {
+              "id": "Light:1749",
+              "count": 1
+            },
+            {
+              "id": "Light:2033",
+              "count": 2
+            },
+            {
+              "id": "Light:1081",
+              "count": 1
+            }
+          ]
         }
       ],
       "Dark": [
@@ -2252,6 +2733,451 @@
             },
             {
               "id": "Dark:1815",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "imperiales-spionagenetz",
+            "name": "Imperiales Spionagenetz",
+            "description": "Getarnte Droiden blockieren Drains, während Garindan Verstärkung holt und Scanning Crew die gegnerische Hand angreift."
+          },
+          "strategy": {
+            "start": "Der Death Star War Room sorgt für Force. Beginne bei Docking Bay 94, wenn Garindan und deine Kampfgruppe früh auf Tatooine eingreifen sollen.",
+            "opening": "Sichere eine Site mit Motti, Yularen und Troopern. 5D6-RA-7 erhält am selben Ort mit Motti oder Yularen zusätzliche Power. Tarnung blockiert Drains, ersetzt aber keine eigene Presence für Kontrolle. U-3PO ist bereits Undercover und sollte zunächst allein einen gegnerischen Drain stören.",
+            "tactics": "Garindan senkt bei einem starken gegnerischen Rebel deine Imperial-Deploy-Kosten und kann angrenzende Imperials heranführen. Nutze Informant für kostenlose Reacts neben einem getarnten Spion. Hyperwave Scan schützt Scanning Crew vor Sense und bestraft Hände ab 13 Karten; Monnok kann große Hände ebenfalls reduzieren. U-3PO erhöht in einem Battle die Light-Side-Power: plane ihn nicht als Verstärkung für deine eigene Kampfgruppe ein."
+          },
+          "startingLocations": [
+            "Dark:682",
+            "Dark:673",
+            "Dark:2446"
+          ],
+          "cards": [
+            {
+              "id": "Dark:682",
+              "count": 2
+            },
+            {
+              "id": "Dark:670",
+              "count": 1
+            },
+            {
+              "id": "Dark:673",
+              "count": 1
+            },
+            {
+              "id": "Dark:675",
+              "count": 1
+            },
+            {
+              "id": "Dark:2439",
+              "count": 1
+            },
+            {
+              "id": "Dark:2446",
+              "count": 1
+            },
+            {
+              "id": "Dark:2659",
+              "count": 3
+            },
+            {
+              "id": "Dark:12",
+              "count": 3
+            },
+            {
+              "id": "Dark:1011",
+              "count": 3
+            },
+            {
+              "id": "Dark:1460",
+              "count": 2
+            },
+            {
+              "id": "Dark:1587",
+              "count": 2
+            },
+            {
+              "id": "Dark:478",
+              "count": 2
+            },
+            {
+              "id": "Dark:60",
+              "count": 2
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:1267",
+              "count": 2
+            },
+            {
+              "id": "Dark:1279",
+              "count": 2
+            },
+            {
+              "id": "Dark:519",
+              "count": 2
+            },
+            {
+              "id": "Dark:2604",
+              "count": 2
+            },
+            {
+              "id": "Dark:1264",
+              "count": 3
+            },
+            {
+              "id": "Dark:1551",
+              "count": 1
+            },
+            {
+              "id": "Dark:2672",
+              "count": 3
+            },
+            {
+              "id": "Dark:1198",
+              "count": 2
+            },
+            {
+              "id": "Dark:2373",
+              "count": 1
+            },
+            {
+              "id": "Dark:2176",
+              "count": 3
+            },
+            {
+              "id": "Dark:1308",
+              "count": 2
+            },
+            {
+              "id": "Dark:1697",
+              "count": 2
+            },
+            {
+              "id": "Dark:2216",
+              "count": 2
+            },
+            {
+              "id": "Dark:94",
+              "count": 1
+            },
+            {
+              "id": "Dark:2577",
+              "count": 1
+            },
+            {
+              "id": "Dark:1263",
+              "count": 2
+            },
+            {
+              "id": "Dark:891",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "schwarze-eskorte",
+            "name": "Schwarze Eskorte",
+            "description": "Die drei schwarzen TIEs bilden mit passenden Piloten und Reserve Pilots eine bewegliche Eskorte für die Devastator."
+          },
+          "strategy": {
+            "start": "Ralltiir senkt die Deploy-Kosten deiner Capital Ships und erlaubt der Devastator kostenlose Hin- und Rückbewegungen. Der War Room ist die sichere Force-Alternative.",
+            "opening": "Spiele zunächst einen TIE mit passendem Piloten aus. Black 2 mit DS-61-2, Black 3 mit DS-61-3 und Black 4 mit DS-61-4 ergänzen sich; ein Reserve Pilot kann stattdessen einen der drei TIEs unterstützen und Battle Destiny ermöglichen. Unbemannte TIEs zunächst in der Hand halten.",
+            "tactics": "Black 4 kann mit Pilot zu einem Battle mit einem anderen TIE reagieren, neben Black 2 oder Black 3 sogar kostenlos. Halte passende Besatzung und Force zurück. Genau zwei eigene Schiffe auf Kiffex bringen einen Power-Bonus; ein drittes Schiff beendet ihn. R3-T6 stärkt ein Capital Ship, während Tractor Beam gegnerische Schiffe nach einem Battle festsetzen kann. Berechne vor Tallon Roll die sichtbaren Werte und halte Evader für Verluste bereit."
+          },
+          "startingLocations": [
+            "Dark:2016",
+            "Dark:1434",
+            "Dark:682"
+          ],
+          "cards": [
+            {
+              "id": "Dark:2016",
+              "count": 2
+            },
+            {
+              "id": "Dark:1434",
+              "count": 2
+            },
+            {
+              "id": "Dark:1426",
+              "count": 1
+            },
+            {
+              "id": "Dark:2429",
+              "count": 1
+            },
+            {
+              "id": "Dark:682",
+              "count": 1
+            },
+            {
+              "id": "Dark:790",
+              "count": 3
+            },
+            {
+              "id": "Dark:791",
+              "count": 3
+            },
+            {
+              "id": "Dark:792",
+              "count": 3
+            },
+            {
+              "id": "Dark:2094",
+              "count": 3
+            },
+            {
+              "id": "Dark:1279",
+              "count": 3
+            },
+            {
+              "id": "Dark:60",
+              "count": 2
+            },
+            {
+              "id": "Dark:1824",
+              "count": 2
+            },
+            {
+              "id": "Dark:1999",
+              "count": 1
+            },
+            {
+              "id": "Dark:1994",
+              "count": 1
+            },
+            {
+              "id": "Dark:2002",
+              "count": 1
+            },
+            {
+              "id": "Dark:247",
+              "count": 2
+            },
+            {
+              "id": "Dark:249",
+              "count": 2
+            },
+            {
+              "id": "Dark:250",
+              "count": 2
+            },
+            {
+              "id": "Dark:2604",
+              "count": 2
+            },
+            {
+              "id": "Dark:723",
+              "count": 2
+            },
+            {
+              "id": "Dark:2715",
+              "count": 1
+            },
+            {
+              "id": "Dark:872",
+              "count": 5
+            },
+            {
+              "id": "Dark:1327",
+              "count": 1
+            },
+            {
+              "id": "Dark:2620",
+              "count": 1
+            },
+            {
+              "id": "Dark:2410",
+              "count": 3
+            },
+            {
+              "id": "Dark:622",
+              "count": 2
+            },
+            {
+              "id": "Dark:1263",
+              "count": 2
+            },
+            {
+              "id": "Dark:2216",
+              "count": 2
+            },
+            {
+              "id": "Dark:1035",
+              "count": 1
+            },
+            {
+              "id": "Dark:891",
+              "count": 1
+            },
+            {
+              "id": "Dark:1230",
+              "count": 1
+            },
+            {
+              "id": "Dark:1282",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "theme": {
+            "id": "jawa-schrottmarkt",
+            "name": "Jawa-Schrottmarkt",
+            "description": "Jawas und Reegesk verwerten verlorene Ausrüstung; Sandcrawler und ihr Innenraum bilden einen geschützten Stützpunkt."
+          },
+          "strategy": {
+            "start": "Beginne im Jawa Camp oder bei Docking Bay 94 und erweitere deine Tatooine-Reihe. Der Droid Junkheap ist keine freie Starting Location: spiele ihn später an deinen Sandcrawler.",
+            "opening": "Bringe günstige Jawas und einen Sandcrawler ins Spiel. Droid Junkheap gibt deinen Jawas im Innenraum mehr Forfeit; seine Figuren sind vom Außengelände getrennt. Erweitere draußen eine echte Kampfgruppe mit Troopern und Felth, statt dich nur auf niedriges Jawa-Power zu verlassen.",
+            "tactics": "Reegesk kann für verlorene Force passende Fahrzeuge, Droiden, Waffen oder Devices aus dem gegnerischen Lost Pile übernehmen. Restraining Bolt und Caller ermöglichen zusätzlichen Droidendiebstahl. Magnetic Suction Tube versetzt Figuren in den Innenraum oder auf die Used Pile ihres Besitzers. Dathcha und Jawa Pack benötigen Force von beiden Spielern; spare sie für passende Gelegenheiten. Beim Jawa-Blaster kann Destiny 0 Waffe und Schützen kosten."
+          },
+          "startingLocations": [
+            "Dark:2454",
+            "Dark:2446",
+            "Dark:2458"
+          ],
+          "cards": [
+            {
+              "id": "Dark:2454",
+              "count": 2
+            },
+            {
+              "id": "Dark:2446",
+              "count": 1
+            },
+            {
+              "id": "Dark:2458",
+              "count": 1
+            },
+            {
+              "id": "Dark:2465",
+              "count": 1
+            },
+            {
+              "id": "Dark:2461",
+              "count": 1
+            },
+            {
+              "id": "Dark:2439",
+              "count": 1
+            },
+            {
+              "id": "Dark:2164",
+              "count": 2
+            },
+            {
+              "id": "Dark:1372",
+              "count": 8
+            },
+            {
+              "id": "Dark:643",
+              "count": 2
+            },
+            {
+              "id": "Dark:2075",
+              "count": 3
+            },
+            {
+              "id": "Dark:2117",
+              "count": 1
+            },
+            {
+              "id": "Dark:1011",
+              "count": 1
+            },
+            {
+              "id": "Dark:2355",
+              "count": 4
+            },
+            {
+              "id": "Dark:2635",
+              "count": 2
+            },
+            {
+              "id": "Dark:1284",
+              "count": 1
+            },
+            {
+              "id": "Dark:2784",
+              "count": 2
+            },
+            {
+              "id": "Dark:1709",
+              "count": 1
+            },
+            {
+              "id": "Dark:2160",
+              "count": 3
+            },
+            {
+              "id": "Dark:1685",
+              "count": 1
+            },
+            {
+              "id": "Dark:1618",
+              "count": 2
+            },
+            {
+              "id": "Dark:347",
+              "count": 2
+            },
+            {
+              "id": "Dark:2099",
+              "count": 2
+            },
+            {
+              "id": "Dark:1376",
+              "count": 3
+            },
+            {
+              "id": "Dark:1264",
+              "count": 2
+            },
+            {
+              "id": "Dark:1378",
+              "count": 1
+            },
+            {
+              "id": "Dark:2392",
+              "count": 1
+            },
+            {
+              "id": "Dark:2290",
+              "count": 2
+            },
+            {
+              "id": "Dark:1565",
+              "count": 1
+            },
+            {
+              "id": "Dark:1579",
+              "count": 1
+            },
+            {
+              "id": "Dark:1064",
+              "count": 1
+            },
+            {
+              "id": "Dark:2216",
+              "count": 1
+            },
+            {
+              "id": "Dark:94",
+              "count": 1
+            },
+            {
+              "id": "Dark:649",
+              "count": 1
+            },
+            {
+              "id": "Dark:1770",
               "count": 1
             }
           ]

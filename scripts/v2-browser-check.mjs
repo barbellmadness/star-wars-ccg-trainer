@@ -52,7 +52,13 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('select#playFormat').count(),0);
     assert.ok(await page.getByRole('heading',{name:'Premiere: Decks',exact:true}).isVisible());
     const anhSection=page.getByRole('region',{name:'A New Hope: Deckauswahl',exact:true});
-    assert.equal(await anhSection.locator('[data-deck]').count(),5);
+    assert.equal(await anhSection.locator('[data-deck]').count(),8);
+    assert.match(await anhSection.locator('[data-deck="corellianische-eskorte"]').innerHTML(),/chewbacca/);
+    await anhSection.getByRole('button',{name:'Strategie und Karten zu Corellianische Eskorte ansehen',exact:true}).click();
+    const escort=page.getByRole('dialog',{name:'Corellianische Eskorte · 60 Karten',exact:true});
+    assert.match(await escort.textContent(),/Kessel Run.*Corellia|Corellia.*Kessel Run/s);
+    assert.equal(await page.locator('#playFormat').inputValue(),'premiere');
+    await page.keyboard.press('Escape');
     await anhSection.getByRole('button',{name:'Strategie und Karten zu Trench-Staffel ansehen',exact:true}).click();
     assert.ok(await page.getByRole('dialog',{name:'Trench-Staffel · 60 Karten',exact:true}).isVisible());
     assert.equal(await page.locator('#playFormat').inputValue(),'premiere');
@@ -79,6 +85,8 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await deckTiles.filter({hasText: 'Vaders Jagd'}).innerHTML(), /darthvader\.gif.*Darth Vader/s);
     assert.match(await deckTiles.filter({hasText: 'Sturmtruppen-Offensive'}).innerHTML(), /stormtrooper\.gif.*Stormtrooper/s);
     assert.match(await deckTiles.filter({hasText: 'Blockade von Kessel'}).innerHTML(), /devastator\.gif.*Devastator/s);
+    assert.equal(await anhSection.locator('[data-deck]').count(),8);
+    assert.match(await anhSection.locator('[data-deck="jawa-schrottmarkt"]').textContent(),/Jawa-Schrottmarkt/);
     await anhSection.locator('[data-deck="imperiale-garnison"]').click();
     assert.equal(await page.locator('#playFormat').inputValue(), 'premiere-a-new-hope');
     await page.getByRole('button', {name: 'Seite wechseln'}).click();
