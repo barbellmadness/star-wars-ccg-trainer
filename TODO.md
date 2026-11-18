@@ -2,22 +2,22 @@
 
 ## 15. Hoth integrieren
 
-Ziel: Premiere und Premiere + A New Hope weiter spielbar halten; Hoth anschließend als zusätzliches Format integrieren. [Regelstand, Quellen und Reihenfolge](HOTH_REGELSTAND.md)
+Ziel: Premiere und Premiere + A New Hope weiter spielbar halten; Hoth ist seit V2.16.0 als zusätzliches Format integriert. [Regelstand, Quellen und Reihenfolge](HOTH_REGELSTAND.md)
 
 - [x] Alle 162 Hoth-Karten (81 je Seite) aus fixierten Quellen importieren und prüfen; aktive Texte, Scans und Errata getrennt halten.
-- [x] Hoth als verzögert geladenen Katalog in V2 anzeigen und ausdrücklich noch nicht für Decks/Partien freigeben.
+- [x] Hoth als verzögert geladenen Katalog in V2 anzeigen und nach Regelprüfung für Decks/Partien freigeben.
 - [x] Nummerierte Marker-Anordnung und Einfügepositionen einschließlich Wampa Cave ergänzen und testen.
-- [ ] Main Power Generators mit Pflichtsuche und sicherer Starting-Location-Abwicklung umsetzen.
-- [ ] Energieschild mit allen Deploy-, Bewegungs- und Kampf-Beschränkungen umsetzen; spätere Klarstellung (Echo Base und Marker 1–3) beachten.
-- [ ] Übrige Standorttexte, Konvertierung, eingestürzte Sites und Wiederaufbau implementieren.
-- [ ] Missing, Suchgruppen, Scouts und Wettereffekte implementieren.
-- [ ] Kampffahrzeuge, Fahrer/Piloten/Kanoniere, AT-ATs und Snowspeeder vervollständigen.
-- [ ] Artillerie, Energieversorgung, Reichweite, Artillery Remote, Harpunen und Abstürze implementieren.
-- [ ] Wampa und zugehörige Creature-/Beute-Abläufe implementieren.
-- [ ] Target The Main Generator vollständig abwickeln.
-- [ ] Alle 162 Kartentexte einzeln und in Kombination prüfen und erst danach freigeben.
-- [ ] Spielformat Premiere + A New Hope + Hoth mit legalen Decks für beide Seiten ergänzen.
-- [ ] Bot, Hilfen und Anzeigen ergänzen; Autosave/Replays sowie vollständige Partien testen und veröffentlichen.
+- [x] Main Power Generators mit Pflichtsuche und sicherer Starting-Location-Abwicklung umsetzen.
+- [x] Energieschild mit allen Deploy-, Bewegungs- und Kampf-Beschränkungen umsetzen; spätere Klarstellung (Echo Base und Marker 1–3) beachten.
+- [x] Übrige Standorttexte, Konvertierung, eingestürzte Sites und Wiederaufbau implementieren.
+- [x] Missing, Suchgruppen, Scouts und Wettereffekte implementieren.
+- [x] Kampffahrzeuge, Fahrer/Piloten/Kanoniere, AT-ATs und Snowspeeder vervollständigen.
+- [x] Artillerie, Energieversorgung, Reichweite, Artillery Remote, Harpunen und Abstürze implementieren.
+- [x] Wampa und zugehörige Creature-/Beute-Abläufe implementieren.
+- [x] Target The Main Generator vollständig abwickeln.
+- [x] Alle 162 Kartentexte einzeln und in Kombination prüfen und erst danach freigeben.
+- [x] Spielformat Premiere + A New Hope + Hoth mit legalen Decks für beide Seiten ergänzen.
+- [x] Bot, Hilfen und Anzeigen ergänzen; Autosave/Replays sowie vollständige Partien testen und veröffentlichen.
 
 ## Aktuelle Priorität: eigener Webspace und Domain
 

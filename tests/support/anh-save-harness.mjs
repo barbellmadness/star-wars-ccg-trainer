@@ -7,9 +7,9 @@ const html=readFileSync(new URL('v2.html',root),'utf8');
 const inline=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace(/load\(\);\s*$/,'');
 const scripts=['data','game','battle','units','locations','card-rules','weapons','bot','learning','session']
  .map(name=>readFileSync(new URL('engine/premiere-'+name+'.js',root),'utf8'));
-const files=Object.fromEntries(['premiere','premiere-starter-decks','premiere-themed-decks','premiere-supplemental-cards','play-format-decks','a-new-hope']
+const files=Object.fromEntries(['premiere','premiere-starter-decks','premiere-themed-decks','premiere-supplemental-cards','play-format-decks','a-new-hope','hoth','hoth-decks']
  .map(name=>['data/'+name+'.json',JSON.parse(readFileSync(new URL('data/'+name+'.json',root),'utf8'))]));
-const cards=[...data.readCatalog(files['data/premiere.json']),...data.readCatalog(files['data/a-new-hope.json'],'2')];
+const cards=[...data.readCatalog(files['data/premiere.json']),...data.readCatalog(files['data/a-new-hope.json'],'2'),...data.readCatalog(files['data/hoth.json'],'3')];
 
 function definitions(spec){
  const ids=[...spec.setup.matchAll(/['"]((?:Light|Dark):\d+)['"]/g)].map(match=>match[1]);
@@ -24,7 +24,7 @@ function definitions(spec){
   definitions[side]={cards:[...counts].map(([id,count])=>({id,count})),startingLocations:[starting]};
  }
  const result={schema:1,decks:definitions};
- data.readStarterDecks(result,cards,{format:'premiere-a-new-hope',cardRulesVersion:spec.rulesVersion??30});
+ data.readStarterDecks(result,cards,{format:spec.format??'premiere-a-new-hope',cardRulesVersion:spec.rulesVersion??30});
  return result;
 }
 
@@ -36,9 +36,12 @@ export async function savedPosition(spec,value){
   setTimeout(fn){timers.set(++timer,fn);return timer},clearTimeout:id=>timers.delete(id),location:{hostname:''},
   fetch:async path=>files[path]?{ok:true,json:async()=>structuredClone(files[path])}:{ok:false,status:404}});
  const run=code=>vm.runInContext(code,context);
- for(const script of scripts)run(script);run(inline);
+ for(const script of scripts)run(script);
+ if(spec.format==='premiere-a-new-hope-hoth')for(const name of ['rules','card-rules','session','interrupts','creatures','mines','timing'])run(readFileSync(new URL('engine/hoth-'+name+'.js',root),'utf8'));
+ run(inline);
  if(value){storage.clear();storage.set(run('saveKey'),value)}
  await run('load()');
+ if(spec.format==='premiere-a-new-hope-hoth'){run('loadHothScript=async()=>{}');await run('ensureHothFormat()');}
  // Only the starting position is arranged. No pending window, response, legal-action,
  // save, import, or replay handler is replaced: these are exercised by real commands.
  run(`const qaAllInstances=new Map();const qaFinishSetup=finishSetup;finishSetup=function(){
@@ -71,14 +74,14 @@ export async function savedPosition(spec,value){
    return typeof value==='function'?undefined:value;
   });
  }
- function qaAct(kind,side,args,where){const action=legalActions(state,side).find(action=>action.kind===kind&&(args===undefined||JSON.stringify(action.args)===JSON.stringify(args))&&(!where||where(action)));if(!action)throw Error('No '+kind+' for '+side+' '+JSON.stringify(args)+'; mode '+state.pendingCardView?.mode+'; response '+PremiereGame.responseWindow(state.game)?.kind);return dispatchUI(action)}
+ function qaAct(kind,side,args,where){const action=legalActions(state,side,args?{kind,args}:undefined).find(action=>action.kind===kind&&(args===undefined||JSON.stringify(action.args)===JSON.stringify(args))&&(!where||where(action)));if(!action)throw Error('No '+kind+' for '+side+' '+JSON.stringify(args)+'; mode '+state.pendingCardView?.mode+'; response '+PremiereGame.responseWindow(state.game)?.kind);return dispatchUI(action)}
  el('autoBot').checked=false;el('autoBotBattle').checked=false;`);
  const definition=definitions(spec),rules=spec.rulesVersion??30;
  if(!value){
-  run(`selectPlayFormat(mixedFormat);const qaDefinition=${JSON.stringify(definition)};
-   const qaDecks=readStarterDecks(qaDefinition,[...catalog,...aNewHopeCatalog],{format:mixedFormat,cardRulesVersion:${rules}});
-   beginSavedScenario(7001,false,qaDecks,${rules},2,undefined,${JSON.stringify(spec.player??'Light')},undefined,mixedFormat);
-   activateSave({version:saveVersion,seed:7001,cardRevision:REVISION,expansionRevision:REVISION,cardRulesVersion:${rules},botStrategyVersion:2,playerSide:${JSON.stringify(spec.player??'Light')},trainingBattle:false,decks:qaDefinition,commands:[],playFormat:mixedFormat});
+  run(`const qaFormat=${JSON.stringify(spec.format??'premiere-a-new-hope')};selectPlayFormat(qaFormat);const qaDefinition=${JSON.stringify(definition)};
+   const qaDecks=readStarterDecks(qaDefinition,[...catalog,...aNewHopeCatalog,...(hothCatalog??[])],{format:qaFormat,cardRulesVersion:${rules}});
+   beginSavedScenario(7001,false,qaDecks,${rules},2,undefined,${JSON.stringify(spec.player??'Light')},undefined,qaFormat);
+   activateSave({version:saveVersion,seed:7001,cardRevision:REVISION,expansionRevision:REVISION,cardRulesVersion:${rules},botStrategyVersion:2,playerSide:${JSON.stringify(spec.player??'Light')},trainingBattle:false,decks:qaDefinition,commands:[],playFormat:qaFormat});
    const qaStart=legalActions(null,playerSide()).find(action=>action.kind==='chooseStart');dispatchUI(qaStart);dispatchUI(legalActions(null,playerSide()).find(action=>action.kind==='beginGame'));launchOpen=false;presentGame();`);
  }
  return {run,elements,tick(){const [id,callback]=timers.entries().next().value??[];if(!callback)return false;timers.delete(id);callback();return true},saved:()=>localStorage.getItem(run('saveKey')),snapshot:()=>run('qaSnapshot()'),act(step){

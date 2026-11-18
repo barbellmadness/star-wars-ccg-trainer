@@ -19,16 +19,31 @@ test('Hoth validates all 162 pinned cards with distinct scan, errata and histori
   assert.throws(()=>data.readCatalog(snapshot),/Premiere-Snapshot/);
 });
 
-test('Hoth cannot enter either playable format or bypass expansion release checks',()=>{
-  assert.ok(cards.every(c=>!data.isReleasedExpansionCard(c)));
-  assert.ok(Object.values(data.PLAY_FORMATS).every(sets=>!sets.includes(data.HOTH)));
+test('Hoth requires its explicit three-edition format and rules 31',()=>{
+  assert.ok(cards.every(c=>data.isReleasedExpansionCard(c,31)&&!data.isReleasedExpansionCard(c,30)));
+  assert.deepEqual(data.PLAY_FORMATS['premiere-a-new-hope-hoth'],['1','2','3']);
   const base=data.readCatalog(json('premiere')),anh=data.readCatalog(json('a-new-hope'),data.A_NEW_HOPE);
-  for(const format of Object.keys(data.PLAY_FORMATS)){
+  for(const format of ['premiere','premiere-a-new-hope']){
     const definition=json('premiere-starter-decks');
     const first=definition.decks.Light.cards[0];first.count--;definition.decks.Light.cards=definition.decks.Light.cards.filter(c=>c.count>0);
     definition.decks.Light.cards.push({id:cards.find(c=>c.side==='Light'&&c.type==='Character').id,count:1});
     assert.throws(()=>data.readStarterDecks(definition,[...base,...anh,...cards],{format,cardRulesVersion:30}),/anderen Edition/);
   }
+  const definition=json('premiere-starter-decks');definition.decks.Light.cards[0].count--;definition.decks.Light.cards=definition.decks.Light.cards.filter(c=>c.count>0);definition.decks.Light.cards.push({id:'Light:498',count:1});
+  assert.throws(()=>data.readStarterDecks(definition,[...base,...anh,...cards],{format:'premiere-a-new-hope-hoth',cardRulesVersion:30}),/Regelstand/);
+  assert.equal(data.readStarterDecks(definition,[...base,...anh,...cards],{format:'premiere-a-new-hope-hoth',cardRulesVersion:31}).light.cards.length,60);
+  assert.equal(data.isReleasedExpansionCard({...cards[0],gempId:'3_999'},31),false);
+});
+
+test('Eight Hoth decks per side contain all 162 cards, legal starts and distinct strategies',()=>{
+ const all=[...data.readCatalog(json('premiere')),...data.readCatalog(json('a-new-hope'),'2'),...cards];
+ const choices=data.readFormatDeckChoices('premiere-a-new-hope-hoth',json('premiere-starter-decks'),json('premiere-themed-decks'),json('hoth-decks'),all);
+ for(const side of ['light','dark']){
+  const decks=choices[side].filter(({deck})=>deck.cards.some(card=>card.set==='3'));assert.equal(decks.length,8);
+  assert.equal(new Set(decks.map(({deck})=>deck.cards.map(c=>c.id).sort().join(','))).size,8);
+  for(const {deck,definition} of decks){assert.equal(deck.cards.length,60);assert.ok(deck.startingIndices.length>=2);assert.ok(deck.strategy.start&&deck.strategy.opening&&deck.strategy.tactics);assert.ok(deck.cards.some(c=>c.id===definition.theme.cover));}
+ }
+ const available=new Set(Object.values(choices).flatMap(decks=>decks.flatMap(({deck})=>deck.cards.map(c=>c.id))));assert.ok(cards.every(c=>available.has(c.id)));
 });
 
 test('Artillery Remote preserves the exact documented text-only erratum without fabricating a slip',()=>{

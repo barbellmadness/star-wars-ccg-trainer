@@ -156,10 +156,14 @@ async function main(args) {
   if (edition === HOTH) {
     if (mode === '--verify-scans') return writeScanReport(catalog);
     const report = expansionReport(catalog, HOTH);
-    if (report.cardsReleased !== 0) throw new Error('Hoth benötigt eine explizite Regelfreigabe.');
+    if (report.cardsReleased !== 162) throw new Error('Die explizite Hoth-Regelfreigabe ist unvollständig.');
+    const [basePayload,anhPayload,starters,themes,hothDecks]=await Promise.all([readJson(snapshotPaths[EDITION]),readJson(snapshotPaths[A_NEW_HOPE]),readJson(deckPath),readJson(themesPath),readJson(new URL('../data/hoth-decks.json',import.meta.url))]);
+    const choices=readFormatDeckChoices('premiere-a-new-hope-hoth',starters,themes,hothDecks,[...readCatalog(basePayload),...readCatalog(anhPayload,A_NEW_HOPE),...catalog]);
+    const available=new Set(Object.values(choices).flatMap(decks=>decks.flatMap(({deck})=>deck.cards.map(card=>card.id))));
+    if(catalog.some(card=>!available.has(card.id)))throw new Error('Hoth-Karte ohne wählbares Deck.');
     if (mode === '--report') return process.stdout.write(serialize(report));
     if (mode === undefined) await replaceSnapshot(snapshot, snapshotPath);
-    console.log(`Hoth ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, 0 freigegeben, ${report.cardsOpenForRuleReview.length} zur Regelprüfung.`);
+    console.log(`Hoth ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, ${report.cardsReleased} freigegeben, alle über Hoth-Decks verfügbar.`);
     return;
   }
   if (edition === A_NEW_HOPE) {

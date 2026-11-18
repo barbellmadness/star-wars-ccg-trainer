@@ -18,6 +18,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     const origin = 'http://127.0.0.1:' + server.address().port;
     browser = await chromium.launch({channel: process.env.SWCCG_CHROMIUM_CHANNEL || 'chrome'});
     const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
+    page.setDefaultTimeout(6000);
     const errors = [], requests = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('request', request => requests.push(request.url()));
@@ -34,7 +35,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.setViewportSize({width: 390, height: 844});
     await page.screenshot({path: '.hosting-qa-mobile.png', fullPage: true});
     await page.getByRole('link', {name: 'Anleitungen', exact: true}).click();
-    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope']) {
+    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope','hoth']) {
       await page.goto(origin + '/anleitungen/' + name + '.html');
       assert.equal(await page.getByRole('heading', {level: 1}).count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Guide overflow: ' + name);
@@ -77,7 +78,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     assert.equal(await page.locator('#cardRows .card-name').evaluate(button=>button===document.activeElement),true);
     await page.locator('[data-edition="hoth"]').click();
     await page.waitForFunction(()=>document.querySelector('#cardLoadStatus').textContent.includes('162 Standardkarten'));
-    assert.equal(await page.locator('#playEdition').isVisible(),false);
+    assert.equal(await page.locator('#playEdition').isVisible(),true);
     assert.equal(await page.locator('#cardSearch').inputValue(),'');
     const cachedRequests=requests.filter(url=>url.includes('/data/')).length;
     await page.locator('[data-edition="premiere"]').click();
@@ -147,7 +148,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     const hothCatalog=page.getByRole('dialog',{name:'Hoth-Kartenkatalog · 162 Karten',exact:true});
     await hothCatalog.waitFor({state:'visible'});
     assert.equal(await hothCatalog.locator('#starterDeckCards button').count(),162);
-    assert.match(await hothCatalog.locator('#starterDeckDescription').textContent(),/noch nicht.*freigegeben/);
+    assert.match(await hothCatalog.locator('#starterDeckDescription').textContent(),/Alle 162 Hoth-Karten.*integriert/);
     assert.equal(requests.filter(url=>/data\/hoth\.[a-f0-9]{12}\.json$/.test(url)).length,1);
     await page.locator('#catalogSearch').fill('Artillery Remote');
     await hothCatalog.locator('#starterDeckCards button').click();
@@ -156,11 +157,28 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     assert.match(await artillery.textContent(),/kein Korrekturslip hinterlegt/);
     assert.equal(await artillery.getByRole('link',{name:/Korrekturslip/}).count(),0);
     await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+    await page.getByRole('button',{name:'Hoth-Decks laden'}).click();
+    const hothDecks=page.locator('[data-deck-format="premiere-a-new-hope-hoth"] [data-deck]');
+    await hothDecks.first().waitFor({state:'visible'});
+    assert.equal(await hothDecks.count(),8);
+    await hothDecks.first().click();
+    await page.locator('#start').click();
+    await page.locator('#setup button.start-location-option').first().click();
+    for(let attempts=0;attempts<5&&await page.getByRole('button',{name:'Erneut wählen'}).isVisible();attempts++){
+      await page.getByRole('button',{name:'Erneut wählen'}).click();
+      await page.locator('#setup button.start-location-option').first().click();
+    }
+    await page.getByRole('button',{name:'Partie beginnen',exact:true}).click();
+    await page.waitForFunction(()=>!!state?.game?.playFormat&&state.game.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
+    assert.equal(await page.evaluate(()=>state.game.cardRulesVersion),31);
+    await page.reload();
+    await page.getByRole('button',{name:'Partie fortsetzen',exact:true}).click();
+    await page.waitForFunction(()=>state?.game?.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
     assert.deepEqual(errors, []);
   } finally {
     try { await browser?.close(); }
     finally {
-      if (server) await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      if (server) {server.closeAllConnections();await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));}
       const target = resolve(output);
       if (!target.startsWith(resolve(tmpdir()) + sep) || !target.includes('swccg-web-browser-')) throw new Error('Unexpected cleanup path');
       await rm(target, {recursive: true});

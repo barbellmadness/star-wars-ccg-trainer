@@ -1,13 +1,15 @@
 const PremiereUnits = (() => {
   const capital = card => card?.type === 'Starship' && /^Capital\b/i.test(card.subType ?? '');
   const fighter = card => card?.type === 'Starship' && /^Starfighter\b/i.test(card.subType ?? '');
+  const combat = card => card?.type === 'Vehicle' && /^Combat\b/.test(card.subType ?? '');
+  const creatureVehicle = card => card?.type === 'Vehicle' && card.subType === 'Creature';
   const tie = card => card?.type==='Starship' && /\bTIE\b/i.test(card.subType);
   const tube = card => ['Light:1548', 'Dark:1547'].includes(card?.id);
   const bantha = card => ['Dark:191','Light:2125'].includes(card?.id) && card.type === 'Vehicle';
   const crawler = card => ['Light:2161', 'Dark:2160'].includes(card?.id);
   const active = card => !!card && !card.inactive && !card.switchedOff && !card.captured && !card.missing && !card.undercover;
   const restrainingBolt = card => card?.attachments?.find(item => ['Light:2100', 'Dark:2099'].includes(item.id));
-  const textSuppressed = card => !!card?.gameTextCancelled || !!card?.switchedOff || !!card?.asleep || !!restrainingBolt(card) ||
+  const textSuppressed = card => !!card?.gameTextCancelled || !!card?.switchedOff || !!card?.asleep || !!card?.crashed || !!restrainingBolt(card) ||
     !!card?.attachments?.some(effect=>effect.suppressesHostText&&!effect.gameTextCancelled);
   const training = card => (card?.attachments ?? []).filter(effect => effect.training && !textSuppressed(effect));
   function hasSkill(card, skill) {
@@ -31,6 +33,11 @@ const PremiereUnits = (() => {
     (hasSkill(card,'warrior') || bountyHunter(card) || card.characteristics?.includes('battle droid'));
 
   const capacity = new Map([
+    ['Light:1665',{pilot:1,passenger:4,cargo:1}], ['Light:2119',{shared:2}], ['Light:2120',{shared:2}],
+    ['Light:2121',{shared:2}], ['Light:2294',{shared:1}], ['Light:2480',{passenger:1}],
+    ['Dark:267',{pilot:2,passenger:8}], ['Dark:269',{pilot:1,passenger:8}],
+    ['Dark:272',{shared:1}], ['Dark:274',{pilot:2,passenger:8}],
+    ['Dark:2339',{pilot:6,passenger:8,cargo:2,hangar:4}], ['Dark:2657',{pilot:6,passenger:8,cargo:2,hangar:4}],
     ['Light:1047',{shared:2}], ['Light:2061',{pilot:1,astromech:1}], ['Light:2125',{passenger:2}], ['Light:2908',{shared:3}], ['Light:1298', {passenger:1}], ['Dark:227', {passenger:3}], ['Dark:1685', {driver:1,passenger:1}],
     ['Light:530', {pilot:3, passenger:4, cargo:1}], ['Light:1045', {shared:2}],
     ['Light:1050', {shared:2, astromech:1}], ['Light:1548', {passenger:4}],
@@ -46,7 +53,8 @@ const PremiereUnits = (() => {
     ['Dark:2715', {pilot:4, passenger:6, cargo:1, hangar:3}]
   ]);
   const hasDock = card => card?.type === 'Starship' && /ship-docking capability/i.test(card.gametext ?? '');
-  const enclosed = card => card.type === 'Starship' || tube(card) || crawler(card) || card.enclosed === true;
+  const enclosed = card => card.type === 'Starship' || tube(card) || crawler(card) || card.enclosed === true ||
+    card.set === '3' && card.characteristics?.includes('enclosed');
 
   function accepts(host, card, role, ignored = null, captiveSeats = Number(!!card?.escortedCaptive)) {
     if (!active(host) || !active(card) || host === card) return false;
@@ -68,7 +76,7 @@ const PremiereUnits = (() => {
       if (crew.filter(entry => isCrew(entry.role)).length + captiveCount + captiveSeats + Number(isCrew(role)) >
           (spec.shared ?? spec.crew ?? Infinity)) return false;
     }
-    if (role === 'cargo') return card.type === 'Vehicle' && !bantha(card);
+    if (role === 'cargo') return card.type === 'Vehicle' && !creatureVehicle(card);
     if (role === 'hangar') return tie(card)&&crew.filter(entry=>entry.role==='hangar').reduce((n,entry)=>n+(/^Squadron/.test(entry.card.subType)?3:1),0)+(/^Squadron/.test(card.subType)?3:1)<=(spec.hangar??0);
     if (card.migTarget) return role === 'passenger';
     if (card.type !== 'Character' || (['Dark:1445','Light:1407'].includes(card.id) && enclosed(host) && !capital(host)) ||
@@ -84,6 +92,9 @@ const PremiereUnits = (() => {
   }
 
   const matchingPilots = new Map([
+    ['Dark:1029',['Dark:267',0,true]],
+    ['Light:498',['Light:2119',2]], ['Light:707',[null,2,false,'Rogue 4']],
+    ['Light:2911',['Light:2120',3,true]],
     ['Light:2611',['Light:1047',1]], ['Light:394', ['Light:1677',1]], ['Light:239', ['Light:2060', 1, true]], ['Light:799', ['Light:1045', 1, true]], ['Light:1098', ['Light:1677', 2, true]],
     ['Light:1390', [null, 1, true, 'Red 6']], ['Light:1593', ['Light:2068', 2]],
     ['Light:1924', ['Light:1050', 1, true, 'Gold 5']], ['Light:2067', ['Light:2057', 1, true]], ['Light:2786', ['Light:2059', 2, true]],
@@ -103,23 +114,37 @@ const PremiereUnits = (() => {
     const pilots = occupants.filter(({role}) => role === 'pilot').map(({card}) => card);
     const motor = card.type === 'Starship' ? permanentAbility !== null || pilots.length > 0
       : permanentAbility !== null || tube(card) || bantha(card) || occupants.some(({role,card}) => role === 'driver' && canDrive(card));
-    const powered = motor && !landed && active(card) && !card.disabled;
+    const combatMotor = combat(card) && (permanentAbility !== null || pilots.length > 0);
+    const effectiveMotor = motor || combatMotor || creatureVehicle(card);
+    const powered = effectiveMotor && !landed && active(card) && !card.disabled && !card.crashed;
     let power = card.power ?? 0, maneuver = card.maneuver, hyperspeed = card.hyperspeed, landspeed = card.landspeed;
     if(permanentAbility!==null&&card.subType==='Shuttle'&&!Number.isFinite(landspeed))landspeed=card.id==='Light:1298'?4:3;
     const ability = permanentAbility ?? 0;
     const navComputer = !!card.navComputer&&!card.attachments?.some(item=>item.id==='Dark:1238'&&!textSuppressed(item)) ||
       occupants.some(({card,role}) => (rUnit(card)||card.navComputer) && ['passenger','astromech'].includes(role));
-    if (powered && (card.type === 'Starship'||card.subType==='Shuttle')) for (const pilot of pilots) {
+    const hothPilotTitles=new Set();
+    if (powered && (card.type === 'Starship'||card.subType==='Shuttle'||combat(card))) for (const pilot of pilots) {
       power += trainingPower(pilot, true);
       if (activePilotText && textSuppressed(pilot) || suspendsPilotText(pilot)) continue;
+      if(pilot.set==='3'&&hothPilotTitles.has(pilot.id))continue;
+      if(pilot.set==='3')hothPilotTitles.add(pilot.id);
       const text = pilot.gametext ?? '';
       const bonus = Number(text.match(activePilotText?/Adds (\d+) to power of anything (?:he|she) pilots/i:/Adds (\d+) to power of anything he pilots/i)?.[1] ?? 0);
-      power += pilot.id === 'Dark:634' && card.id === 'Dark:2700' ? 4 : bonus;
+      let actualBonus=pilot.id === 'Dark:634' && card.id === 'Dark:2700' ? 4 : bonus;
+      if(pilot.id==='Dark:160'&&combat(card))actualBonus=/\bAT-AT\b/.test(card.subType)?3:2;
+      if(pilot.id==='Dark:1029'&&combat(card))actualBonus=3;
+      if(pilot.id==='Dark:363'&&card.id==='Dark:2657')actualBonus=3;
+      if(pilot.id==='Dark:368'&&/Executor/.test(name(card)))actualBonus=3;
+      if(pilot.id==='Dark:1521'&&card.type==='Starship')actualBonus=2;
+      if(pilot.id==='Light:2128')actualBonus=1;
+      power += actualBonus;
       const match = matchingPilot(card, pilot, activePilotText);
       if (Number.isFinite(maneuver) && match) maneuver += match[1];
       if (Number.isFinite(maneuver) && pilot.id === 'Dark:1539' && fighter(card)) maneuver--;
+      if(Number.isFinite(maneuver)&&pilot.id==='Light:2128')maneuver++;
       if (Number.isFinite(hyperspeed) && pilot.id === 'Dark:502' && card.id === 'Dark:723') hyperspeed++;
     }
+    let hothR5Applied=false;
     if (powered) for (const {card: occupant} of occupants) {
       if (textSuppressed(occupant)) continue;
       const r2 = occupant.id === 'Light:1995' && fighter(card);
@@ -128,6 +153,7 @@ const PremiereUnits = (() => {
       if (r1 || r2 || r4) power++;
       if ((r2 || r4) && Number.isFinite(maneuver)) maneuver++;
       if ((r1 || r2) && Number.isFinite(hyperspeed)) hyperspeed++;
+      if(occupant.id==='Light:2004'&&capital(card)&&!hothR5Applied){hothR5Applied=true;power++;if(Number.isFinite(hyperspeed))hyperspeed++;}
       if (r4 && Number.isFinite(landspeed)) landspeed++;
     }
     if (powered && (card.attachments??[]).some(device=>['Light:997','Dark:996'].includes(device.id))) {
@@ -140,9 +166,16 @@ const PremiereUnits = (() => {
       if (Number.isFinite(hyperspeed)) hyperspeed=0;
     }
     const pilotAbility = pilots.reduce((sum, pilot) => sum + (pilot.ability ?? 0), 0);
-    return {powered, motor, navComputer, power: powered ? power : 0, armor:card.ionDamage&&Number.isFinite(card.armor)?0:card.armor, maneuver: powered ? maneuver : null,
+    let armor=card.ionDamage&&Number.isFinite(card.armor)?0:card.armor;
+    if(powered&&Number.isFinite(armor)){
+      if(card.id==='Dark:267'&&pilots.some(pilot=>pilot.id==='Dark:1029'&&!textSuppressed(pilot)))armor++;
+      if(card.id==='Dark:2657'&&pilots.some(pilot=>pilot.id==='Dark:1521'&&!textSuppressed(pilot)))armor++;
+      if(card.attachments?.some(item=>item.id==='Dark:692'&&!textSuppressed(item)))armor+=2;
+    }
+    if(combat(card)&&/\bAT-AT\b/.test(card.subType)&&Number.isFinite(landspeed))landspeed=Math.min(1,landspeed);
+    return {powered, motor:effectiveMotor, navComputer, power: powered ? power : 0, armor, maneuver: powered ? maneuver : null,
       hyperspeed: powered ? hyperspeed : null, landspeed: powered ? landspeed : null,
-      ability: powered && card.type === 'Starship' ? ability + pilotAbility : 0};
+      ability: powered && (card.type === 'Starship'||combat(card)) ? ability + pilotAbility : 0};
   }
 
   function landspeedCost(card) {
@@ -157,7 +190,7 @@ const PremiereUnits = (() => {
   }
 
   function usesMultipleWeapons(host) {
-    return capital(host) || (host.attachments ?? []).some(item=>item.id==='Dark:2357');
+    return capital(host) || (host.attachments ?? []).some(item=>['Dark:2357','Light:811'].includes(item.id)&&!textSuppressed(item));
   }
 
   function canUseWeapon(state, host, weapon) {
@@ -168,6 +201,15 @@ const PremiereUnits = (() => {
   function recordWeaponUse(state, host, weapon) {
     if(!(state.weaponUsesThisTurn ?? []).some(use=>use.host===host&&use.weapon===weapon))
       (state.weaponUsesThisTurn??=[]).push({host,weapon});
+  }
+  function canUseDevice(state,host,device) {
+    if(usesMultipleWeapons(host))return true;
+    const others=(state.deviceUses??[]).filter(use=>use.host===host&&use.device!==device&&use.turn===state.game?.timing.turn);
+    return others.length<(/^Squadron/.test(host.subType??'')?3:1);
+  }
+  function recordDeviceUse(state,host,device){
+    if(!(state.deviceUses??[]).some(use=>use.host===host&&use.device===device&&use.turn===state.game?.timing.turn))
+      (state.deviceUses??=[]).push({host,device,turn:state.game?.timing.turn});
   }
 
   function remove(card, process, survive) {
@@ -186,6 +228,20 @@ const PremiereUnits = (() => {
     delete card.noMoveTurn;
     delete card.noBattleTurn;
     delete card.switchedOff;
+    delete card.crashed;
+    delete card.hothIonDamage;
+    delete card.hothWeaponBlocked;
+    delete card.hothDoublePower;
+    delete card.hothFerocityBonus;
+    delete card.hothPowerDoubleTurn;
+    delete card.hothDeltaTurn;
+    delete card.hothForfeitZero;
+    delete card.hothSwitchBack;
+    delete card.exposureProtectionTurn;
+    delete card.shieldDoorExemptTurn;
+    delete card.missing;
+    delete card.searchPartyTurn;
+    delete card.weatherProtectionTurn;
     delete card.occupants;
     delete card.weapons;
     delete card.attachments;
@@ -199,13 +255,13 @@ const PremiereUnits = (() => {
     process(card);
     for (const attachment of attachments) remove(attachment, process, survive);
     for (const entry of occupants) {
-      if (bantha(card) && entry.role === 'passenger') survive(entry.card);
+      if (creatureVehicle(card) && entry.role === 'passenger') survive(entry.card);
       else remove(entry.card, process, survive);
     }
   }
 
   return {active, accepts, add, bantha, bountyHunter, canEscort, canUseWeapon, capital, crawler, enclosed, fighter, hasDock, hasSkill, landspeedCost, matchingBattleDestiny, matchingPilot, trainingPower,
-    recordWeaponUse, remove, restrainingBolt, roles, stats, textSuppressed, tie, tube, usesMultipleWeapons};
+    canUseDevice,recordDeviceUse,recordWeaponUse, remove, restrainingBolt, roles, stats, textSuppressed, tie, tube, usesMultipleWeapons};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereUnits;

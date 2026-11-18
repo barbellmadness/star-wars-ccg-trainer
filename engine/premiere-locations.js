@@ -81,7 +81,7 @@ const PremiereLocations = (() => {
     let known = 0, uncertain = false;
     for (const {card} of entries(state, side).filter(entry => entry.slot === slot && !entry.unavailable)) {
       if (card.undercover) continue;
-      if (card.presence === true) return true;
+      if (card.presence === true || (state.game?.cardRulesVersion??0)>=31 && ['Light:1404','Dark:1950'].includes(card.id) && !units.textSuppressed(card)) return true;
       if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)&&!['Light:694','Dark:1274'].includes(state.locations[slot]?.id)) continue;
       const value = ability(card);
       if (Number.isFinite(value)) known += value;
@@ -106,6 +106,7 @@ const PremiereLocations = (() => {
   }
 
   function rulesAt(state, slot, side, event) {
+    if(state.locations?.[slot]?.collapsed || state.locations?.[slot]?.blownAway)return [];
     const registry = typeof PremiereCardRules === 'undefined' ? require('./premiere-card-rules.js') : PremiereCardRules;
     const version = state.game?.cardRulesVersion ?? Infinity;
     const card = state.locations?.[slot], printed = printedSide(state, slot, side);
@@ -132,6 +133,7 @@ const PremiereLocations = (() => {
 
   function icons(state, slot, side) {
     const card = state.locations[slot];
+    if(card?.collapsed || card?.blownAway)return 0;
     const printed = card?.icons?.[printedSide(state, slot, side).toLowerCase()];
     if (!Number.isInteger(printed)) return null;
     const effects = effectsAt(state, slot);
@@ -149,8 +151,10 @@ const PremiereLocations = (() => {
   function conditions(state, slot, side) {
     const card = state.locations[slot], tags = card?.locationTags ?? [];
     const transit = ruleAt(state, slot, side, 'dockingTransit');
+    const registry = typeof PremiereCardRules === 'undefined' ? require('./premiere-card-rules.js') : PremiereCardRules;
+    const collapsedBay = card?.collapsed && registry.effects(card,'dockingTransit').length>0;
     return {interior: tags.includes('Interior'), exterior: tags.includes('Exterior'),
-      scompLink: tags.includes('Scomp Link'), dockingBay: !!transit, transitCost: transit?.cost ?? null,
+      scompLink: tags.includes('Scomp Link'), dockingBay: !!transit||!!collapsedBay, transitCost: transit?.cost ?? (collapsedBay?0:null),
       night: !!ruleAt(state,slot,side,'alwaysNight') || !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
   }
 
@@ -172,7 +176,7 @@ const PremiereLocations = (() => {
     return {count, unknown};
   }
 
-  const lightsabers = new Set(['Light:1386', 'Light:1813', 'Dark:620', 'Dark:2702']);
+  const lightsabers = new Set(['Light:109','Light:1386', 'Light:1813', 'Dark:620', 'Dark:2702']);
 
   function drain(state, side, slot, ability) {
     const location = state.locations[slot];
