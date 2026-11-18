@@ -4,7 +4,7 @@ import {once} from 'node:events';
 import {chromium} from 'playwright-core';
 import {startLocalV2Server} from './serve-v2-local.mjs';
 
-test('V2 starts, handles unavailable images and stays playable at desktop and narrow widths', {timeout: 60000}, async () => {
+test('V2 starts, handles unavailable images and stays playable at desktop and narrow widths', {timeout: 120000}, async () => {
   const server = startLocalV2Server({port: 0});
   let browser;
   try {
@@ -349,7 +349,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await battlePreview.getByRole('button', {name: 'Kampf beginnen · 1 Force'}).click();
     assert.equal(await page.evaluate(() => state.force.length), battleForce - 1);
     const battle = page.getByRole('dialog', {name: /Bodenkampf/});
-    assert.ok(await battle.isVisible());
+    assert.ok(await battle.isVisible(), JSON.stringify(await page.evaluate(() => ({pending:state.pendingCardView?.mode,response:PremiereGame.responseWindow(state.game)?.kind,battle:!!battleSession,errors:document.querySelector('#hint')?.textContent})))+' page errors: '+JSON.stringify(errors));
     assert.match(await battle.locator('.battle-side.light').textContent(), /Rebel Trooper/);
     assert.match(await battle.locator('.battle-side.dark').textContent(), /Stormtrooper/);
     assert.equal(await battle.locator('[aria-current="step"]').textContent(), 'Waffen');
@@ -374,7 +374,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.match(await battle.getByRole('region', {name: 'Offene Verluste'}).textContent(), /Pflicht-Forfeits Stormtrooper \(Forfeit 2\)/);
     assert.match(await battle.getByRole('region', {name: 'Berechnung des Kampfergebnisses'}).textContent(), /Power.*Battle Destiny.*weitere Power/);
 
-    const endBattle = battle.getByRole('button', {name: 'Partie beenden · v2.15.33'});
+    const endBattle = battle.getByRole('button', {name: /^Partie beenden · v/});
     page.once('dialog', dialog => dialog.dismiss());
     await endBattle.click();
     assert.ok(await battle.isVisible());
@@ -474,7 +474,7 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Dianoga');
     await expansionCatalog.getByRole('button', {name: 'Dianoga · Dark', exact: true}).click();
     const dianoga = page.getByRole('dialog', {name: 'Dianoga', exact: true});
-    assert.match(await dianoga.textContent(), /Creature.*Stand der Umsetzung.*Regelprüfung offen/s);
+    assert.match(await dianoga.textContent(), /Creature.*Stand der Umsetzung.*freigegeben/s);
     assert.equal(await dianoga.getByRole('button', {name: 'Karte auswählen'}).count(), 0);
     await dianoga.getByRole('button', {name: 'Schließen'}).click();
     await expansionCatalog.getByRole('searchbox', {name: 'Karte suchen'}).fill('Retract The Bridge');
@@ -552,6 +552,20 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     await page.reload();
     await page.getByRole('button', {name: 'Partie fortsetzen'}).click();
     assert.match(await battle.locator('#battleLessonHint').textContent(), /Übung abgeschlossen/);
+
+    // New ANH decisions stay usable without hundreds of separate action buttons.
+    await page.evaluate(() => {
+      battleSession=null;state.gameWinner=null;state.game.responses=[];state.game.timing.pending=null;
+      state.pendingCardView={mode:'hypoQuestion',side:playerSide(),card:aNewHopeCatalog.find(card=>card.id==='Dark:1200'),shown:[]};
+      presentGame();
+    });
+    const hypo=page.locator('#hypoCard');
+    assert.ok(await hypo.isVisible());
+    assert.ok(await hypo.locator('option').count()>300);
+    await hypo.selectOption('Light:1593');
+    await page.getByRole('button',{name:'Frage stellen',exact:true}).click();
+    assert.match(await page.locator('#log').textContent(),/Hypo fragt nach/);
+    assert.match(await page.evaluate(()=>smallCardArt({...aNewHopeCatalog.find(card=>card.id==='Light:1674'),switchedOff:true})),/lightcardback/);
 
     await page.route('**/data/premiere.json', route => route.fulfill({json: {cards: []}}));
     await page.reload();

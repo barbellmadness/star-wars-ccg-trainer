@@ -1,7 +1,7 @@
 const PremiereGame = (() => {
   const sides = ['Light', 'Dark'];
   const otherSide = side => side === 'Light' ? 'Dark' : 'Light';
-  const turnMarkers = ['movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn', 'drainedCardsThisTurn',
+  const turnMarkers = ['creatureAttacksThisTurn','attackedCreatureSitesThisTurn','movedThisTurn', 'deployedThisTurn', 'drainedSitesThisTurn', 'drainedCardsThisTurn',
     'battledSitesThisTurn', 'battledCardsThisTurn', 'weaponUsersThisTurn', 'weaponUsesThisTurn', 'reactedThisTurn', 'cancelledReactTitles', 'comlinkUsedBy'];
 
   function actionState(id, seed) {
@@ -123,7 +123,19 @@ const PremiereGame = (() => {
 
   function playerView(state, side) {
     if (!state || !sides.includes(side)) return null;
-    const clone = card => card && JSON.parse(JSON.stringify(card));
+    const clone = card => {
+      if (!card) return card;
+      const visible = JSON.parse(JSON.stringify(card));
+      function conceal(unit) {
+        if(unit.bluffs&&side!=='Dark')unit.bluffs=unit.bluffs.map(()=>({faceDown:true}));
+        if(unit.escortedCaptive)conceal(unit.escortedCaptive);
+        if (unit.salt) unit.salt = unit.salt.map(() => ({faceDown:true}));
+        for (const item of [...(unit.weapons ?? []), ...(unit.attachments ?? []),
+          ...(unit.occupants ?? []).map(occupant => occupant.card)]) conceal(item);
+      }
+      conceal(visible);
+      return visible;
+    };
     const players = Object.fromEntries(sides.map(player => {
       const piles = zones(state, player);
       const faceDown = lostPileFaceDown(state, player);
@@ -153,11 +165,11 @@ const PremiereGame = (() => {
   function lifeForce(state, side) {
     const {deck, force, used} = zones(state, side);
     const draws = state.game?.responses.filter(frame=>frame.kind==='destiny'&&frame.side===side&&frame.draw).length??0;
-    return reserveCards(deck).length + (force?.length ?? 0) + (used?.length ?? 0) + draws;
+    return Number(state.pendingCardView?.mode==='destinyValue'&&state.pendingCardView.side===side)+reserveCards(deck).length + (force?.length ?? 0) + (used?.length ?? 0) + draws;
   }
 
   function outcome(state) {
-    if (state.gameWinner || state.pendingForceLoss || state.pendingReserveSearch || state.pendingCustody?.length || state.automatedPending || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
+    if (state.gameWinner || state.pendingForceLoss || state.pendingReserveSearch || state.pendingCustody?.length || state.automatedPending || state.pendingCardView || state.attackRun || state.creatureAttack || state.creatureClashInProgress || responseWindow(state.game) || state.game?.timing.pending) return state.gameWinner ?? null;
     const light = lifeForce(state, 'Light'), dark = lifeForce(state, 'Dark');
     if (!light && !dark) return 'Simultaneous';
     if (!light) return 'Dark';

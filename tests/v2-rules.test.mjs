@@ -116,7 +116,7 @@ test('Tooex does not grant nighttime bonus at a system or unqualified location',
 
 test('every catalog card receives an explicit effect coverage status',()=>{
  const {run}=harness();
- run("catalog=[{id:'Light:2',name:'Tooex',gametext:'nighttime conditions'},{id:'Dark:99',name:'Other',gametext:'Power +1'},{id:'Light:100',name:'Blank',gametext:''},{id:'Dark:613',name:'Counter',gametext:'Interrupt'},{id:'Test:Ship',name:'Ship',type:'Starship',gametext:'Permanent pilot aboard provides ability of 1.'}]");
+ run("catalog=[{id:'Light:2',name:'Tooex',gametext:'nighttime conditions'},{id:'Dark:99',name:'Other',gametext:'Power +1'},{id:'Test:Blank',name:'Blank',gametext:''},{id:'Dark:613',name:'Counter',gametext:'Interrupt'},{id:'Test:Ship',name:'Ship',type:'Starship',gametext:'Permanent pilot aboard provides ability of 1.'}]");
  assert.equal(run("effectCoverage().total"),5);
  assert.equal(run("effectCoverage().complete.length"),2);
  assert.equal(run("effectCoverage().partial.length"),1);
@@ -2964,7 +2964,7 @@ test('selectable Premiere decks complete matches with legal decisions and conser
    return chooseStart(choices[1]?.index??choices[0]?.index??null);
   };
   choose();
-  while(setupDecks.revealed.collision){retryStartingLocations();choose();}
+  for(let retries=0;setupDecks.revealed.collision;retries++){if(retries>40)throw Error("Setup collision loop "+seed);retryStartingLocations();choose();}
   beginStartingGame();
   const summary={seed,ground:false,space:false,responses:0,reactions:0,botActions:0,validated:0};
   for(let step=0;step<1600&&!state.gameWinner;step++){
@@ -3033,6 +3033,12 @@ test('selectable Premiere decks complete matches with legal decisions and conser
    dark:choices.dark.find(({deck})=>deck.theme?.id==='tusken-ueberfall').deck};
   JSON.stringify([playMatch(19,latestCardRulesVersion,3,decks,'Light'),playMatch(21,latestCardRulesVersion,3,decks,'Dark'),
    playMatch(22,latestCardRulesVersion,3,tatooine,'Light')])`));
+ const expanded=JSON.parse(run(`JSON.stringify(['rote-staffel','droidenstuetzpunkt','jedi-auf-tatooine'].flatMap((id,index)=>{
+  const choices=formatDeckChoices[mixedFormat],decks={light:choices.light.find(({deck})=>deck.theme?.id===id).deck,
+   dark:choices.dark.find(({deck})=>deck.theme?.id===['schwarze-staffel','blockade-von-kessel','imperiale-sondereinheit'][index]).deck};
+  return ['Light','Dark'].map((side,n)=>playMatch(31+index*2+n,latestCardRulesVersion,3,decks,side));
+ }))`));
+ assert.ok(expanded.every(match=>match.winner&&match.validated>0),JSON.stringify(expanded.map(({trace,...summary})=>summary)));
  assert.ok(mixed.every(match=>match.winner&&match.botActions>0&&match.validated>0),
   JSON.stringify(mixed.map(({trace,...summary})=>summary)));
 });
@@ -3277,7 +3283,8 @@ test('a mixed match keeps its format through save, reload and restart and reject
   forged.playFormat='premiere';delete forged.expansionRevision;
   replayScenario(forged,[],false)`),false);
  assert.equal(run(`forged.playFormat='premiere-a-new-hope';forged.expansionRevision=REVISION;
-  forged.decks.decks.Dark.cards[0].id='Dark:729';replayScenario(forged,[],false)`),false);
+  forged.decks.decks.Dark.cards[0].id='Dark:729';forged.cardRulesVersion=28;replayScenario(forged,[],false)`),false);
+ assert.equal(run(`forged.cardRulesVersion=29;replayScenario(forged,[],false)`),true);
  assert.equal(run(`forged.decks.decks.Dark.cards[0].id='Dark:2915';replayScenario(forged,[],false)`),false);
 });
 
@@ -7205,4 +7212,473 @@ test('Zutton reduces the total once before a battle destiny draw',async()=>{
  assert.equal(run(`requestAction('interruptResponse','Light',[-1,'zutton',0])&&requestAction('passResponse','Dark')&&
   !legalActions(state,'Light').some(option=>option.responseKind==='zutton')&&requestAction('passResponse','Light')&&
   battleSession.darkDestiny===3&&state.force.length===4`),true);
+});
+
+async function anhHarness(){
+ const fixture=await craftHarness();
+ fixture.run(`setupDecks=null;state.game=PremiereGame.actionState(400,0);state.game.cardRulesVersion=29;
+ const anh=id=>({...aNewHopeCatalog.find(card=>card.id===id)});state.hand=[];state.botHand=[];`);
+ return fixture;
+}
+
+test('ANH Leader targets attack-run fighters and improves ordinary weapon destiny',async()=>{
+ const {run}=await anhHarness();
+ run("const fighter=card('Light:2838');state.locations[0]=anh('Dark:654');state.locations[3]=anh('Light:681');state.light[3]=[fighter];state.dark[3]=[tie];state.attackRun={card:anh('Light:169'),site:3,system:0,light:[fighter],dark:[tie],lead:fighter};state.botHand=[anh('Dark:1230')];state.botDeck=[{destiny:6}];");
+ assert.ok(run("requestAction('pileInterrupt','Dark',[0,'leaderKill',0])&&state.lost.includes(fighter)&&!state.attackRun&&state.dark[0].includes(tie)"));
+});
+
+test('ANH control firing resolves costs, optional shooter bonus and immediate hits',async()=>{
+ for(const [owner,id,shooterId,targetId,weaponId] of [['Light','Light:2308','Light:1098','Dark:2355','Light:259'],['Dark','Dark:2290','Dark:2683','Light:2052','Dark:1264']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',foe=PremiereGame.otherSide(owner),shooter={...(catalog.find(card=>card.id==='${shooterId}')??aNewHopeCatalog.find(card=>card.id==='${shooterId}'))},target=card('${targetId}');shooter.weapons=[card('${weaponId}')];PremiereGame.zones(state,owner).board[3]=[shooter];PremiereGame.zones(state,foe).board[3]=[target];PremiereGame.zones(state,owner).hand.push(anh('${id}'));state.activeSide=owner;state.phase=1;PremiereGame.zones(state,owner).deck.push({destiny:6});`);
+  assert.ok(run("const shot=pileInterruptOptions(owner).find(option=>option.rule.mode==='controlFire');shot&&requestAction('pileInterrupt',owner,shot.args)&&PremiereGame.zones(state,foe).lost.includes(target)&&PremiereGame.zones(state,owner).force.length===4&&!battleSession"),owner);
+ }
+});
+
+test('ANH Dianoga attacks select a side then random prey and remember the last meal',async()=>{
+ const {run}=await anhHarness();
+ run("const creature=anh('Dark:729'),victim=card('Light:2052');state.locations[3]={...state.locations[3],name:'Death Star: Trash Compactor'};state.dark[3]=[creature];state.light[3]=[victim];state.activeSide='Dark';state.phase=3;state.botDeck=[{destiny:6}];presentGame=()=>{};");
+ assert.ok(run("const attack=creatureActions('Dark').find(option=>option.args[0]==='creatureEat');requestAction('anhCharacter','Dark',attack.args)&&requestAction('finishCardInformation','Dark',['Light'])&&requestAction('finishCardInformation','Dark',['pass'])&&requestAction('finishCardInformation','Light',['pass'])&&state.lost.includes(victim)&&creature.lastMealPower===victim.power&&!state.creatureAttack&&!battleSession"));
+ assert.ok(run("!creatureActions('Dark').some(action=>action.args[0]==='creatureEat')&&PremiereWeapons.defense(creature,0)===5&&!battleCandidates('Dark',3).includes(creature)"));
+});
+
+test('ANH epic rooms require control and leaders for the printed positive bonus',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[3]=anh('Light:2851');state.light[3]=[anh('Light:2048')];state.locations[4]=anh('Dark:670');state.dark[4]=[anh('Dark:1284')];");
+ assert.equal(run("epicRoomBonus('attackRun')"),1);
+ assert.equal(run("epicRoomBonus('ignition')"),1);
+ assert.equal(run("state.light[3]=[card('Light:2052')];epicRoomBonus('attackRun')"),0);
+ assert.equal(run("state.dark[3]=[card('Dark:2355')];state.light[3]=[];epicRoomBonus('attackRun')"),-1);
+});
+
+test('ANH Maneuver Check resolves each departing opposing starfighter',async()=>{
+ const {run}=await anhHarness();
+ run("const fighter=card('Light:2907');state.locations[0]=anh('Dark:654');state.locations[3]=anh('Light:681');state.light[3]=[fighter];state.locationEffects={3:[{card:anh('Dark:1640')}]};state.attackRun={card:anh('Light:169'),site:3,system:0,light:[fighter],dark:[]};state.deck=[{destiny:0}];pullUpAttackRun(false);");
+ assert.ok(run('state.lost.includes(fighter)&&!state.attackRun&&!state.light[0].includes(fighter)'));
+});
+
+test('ANH Dantooine diversion blocks ignition until the mobile system arrives',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[6]=anh('Dark:654');state.hand=[anh('Light:2563')];");
+ assert.ok(run("requestAction('anhCharacter','Light',['dantooine',0,0])&&PremiereGame.wasUsed(state.game,'game','dantooine')&&state.locationEffects[0][0].target===state.locations[6]"));
+ assert.ok(run("state.mobileSystems={'Dark:654':{parsec:1,orbit:0}};progressLocationMissions();!state.locationEffects[0].length&&!epicActions('Light').some(action=>action.args[0]==='dantooine')"));
+});
+
+test('ANH All Clear cancels the leader and ejects only one actual TIE',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Dark:654');state.locations[3]=anh('Light:681');const squadron=anh('Dark:2596'),fighter=card('Dark:2600'),red=anh('Light:2061');PremiereUnits.add(red,card('Light:1593'),'pilot','Light');state.dark[3]=[squadron,fighter];state.light[3]=[red];state.attackRun={site:3,system:0,lead:red,light:[red],dark:[squadron,fighter],bonus:0};state.hand=[anh('Light:2892')];");
+ assert.ok(run("const options=pileInterruptOptions('Light').filter(option=>option.rule.mode==='allClearRun');options.length===1&&options[0].target===fighter&&requestAction('pileInterrupt','Light',options[0].args)&&state.dark[0].includes(fighter)&&state.attackRun.bonus===1&&state.used.some(card=>card.id==='Light:2892')"));
+});
+
+test('ANH Gold 2 sacrifices itself to save another hit starfighter',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[3]=anh('Light:681');const gold=anh('Light:1047'),target=card('Light:2838');state.light[3]=[gold,target];state.pendingCardView={mode:'goldRescue',side:'Light',card:gold,gold,target,site:3,shown:[],resume:()=>{}};");
+ assert.ok(run("requestAction('finishCardInformation','Light',['sacrifice'])&&state.lost.includes(gold)&&state.light[3].includes(target)"));
+});
+
+test('ANH Red 5 and Tiree apply matching pilot and Attack Run bonuses',async()=>{
+ const {run}=await anhHarness();
+ run("const red=anh('Light:2061'),gold=anh('Light:1047'),tiree=anh('Light:2611'),luke=card('Light:1593');state.locations[3]=anh('Light:681');PremiereUnits.add(red,luke,'pilot','Light');PremiereUnits.add(gold,tiree,'pilot','Light');state.light[3]=[red,gold];");
+ assert.equal(run("battleImmunity('Light',red,0,[])"),4);
+ assert.equal(run('craftStats(red,0).maneuver'),run('red.maneuver+2'));
+ assert.equal(run('craftStats(gold,0).maneuver'),run('gold.maneuver+1'));
+ assert.equal(run('attackRunBonus({site:3,lead:red,bonus:0})'),2);
+});
+
+test('ANH Tech and Gunner bonuses accumulate and their searches pay with the source',async()=>{
+ for(const [owner,id,locId,searchId] of [['Light','Light:2050','Light:2857','Light:681'],['Dark','Dark:657','Dark:669','Dark:2378']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',source=anh('${id}');state.locations[3]=${owner==='Light'?"card('Light:2859')":"card('Dark:669')"};PremiereGame.zones(state,owner).board[3]=[source,{...source}];state.activeSide=owner;state.phase=1;PremiereGame.zones(state,owner).deck.splice(0,Infinity,anh('${searchId}'));`);
+  assert.equal(run(owner==='Light'?'attackRunBonus({site:0,lead:ship,bonus:0})':'ignitionBonus()'),owner==='Light'?2:4);
+  assert.ok(run("const search=unitReserveSearchOptions(owner)[0];requestAction('unitReserveSearch',owner,search.args)"),owner+' starts search');
+  assert.ok(run("PremiereGame.zones(state,owner).used.includes(source)"),owner+' pays source');
+  assert.ok(run("requestAction('takeFromReserve',owner,[0])"),owner+' chooses');
+  assert.ok(run("PremiereGame.zones(state,owner).hand[0].id==='"+searchId+"'"),owner+' receives target');
+ }
+});
+
+test('ANH Attack Run selects a lead and wingmen before cover fire',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Dark:654');state.locations[3]=anh('Light:681');const fighter=card('Light:2838'),torpedo=card('Light:1962'),event=anh('Light:169');fighter.weapons=[torpedo];state.light[0]=[fighter];state.dark[0]=[];state.locationEffects={3:[{card:event}]};state.phase=4;state.deck=[{destiny:4},{destiny:4}];");
+ assert.ok(run("requestAction('anhCharacter','Light',['attackRun',3])&&requestAction('finishCardInformation','Light',['toggle',0])&&requestAction('finishCardInformation','Light',['done'])&&requestAction('finishCardInformation','Dark',['done'])&&requestAction('finishCardInformation','Light',[0])&&state.pendingCardView.mode==='runCover'"));
+ assert.ok(run("requestAction('finishCardInformation','Dark',['pass'])&&requestAction('finishCardInformation','Light',['pass'])&&requestAction('finishCardInformation','Light',[1])&&!state.attackRun&&state.light[0].includes(fighter)&&!state.light[3].includes(fighter)"));
+});
+
+test('ANH Primary Ignition pays site cost and lets the opponent choose Z',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Dark:654');const laser=anh('Dark:2378');state.locationWeapons={0:[laser]};state.mobileSystems={'Dark:654':{parsec:1,orbit:6}};state.locations[3]=card('Dark:673');state.locations[4]=card('Dark:669');state.phase=1;state.activeSide='Dark';state.botHand=[anh('Dark:508')];state.botDeck=[{destiny:6}];");
+ assert.ok(run("const ignition=epicActions('Dark').find(action=>action.args[0]==='primaryIgnition');ignition.cost===1&&requestAction('anhCharacter','Dark',ignition.args)&&state.pendingCardView.mode==='ignitionZ'&&requestAction('finishCardInformation','Light',[1])&&state.botUsed.some(card=>card.id==='Dark:508')&&!state.locations[6].blownAway"));
+});
+
+test('ANH recharging conceals eight Force cards and returns them on cancellation',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Dark:654');const laser=anh('Dark:2378'),effect=anh('Light:509');state.locationWeapons={0:[laser]};state.hand=[effect];");
+ assert.ok(run("const offer=tableEffectOptions('Light')[0];requestAction('deployTableEffect','Light',offer.args)&&state.tableEffects[0].support.length===0&&requestAction('anhCharacter','Dark',['chargeSuperlaser'])&&state.tableEffects[0].support.length===1"));
+ assert.ok(run("const recharge=state.tableEffects[0],stored=recharge.support[0];cancelTableEffect(recharge);state.botUsed.includes(stored)&&state.lost.includes(effect)"));
+});
+
+test('ANH Superlaser deploys only at parsec zero and targets capitals',async()=>{
+ const {run}=await anhHarness();
+ run("state.activeSide='Dark';state.locations[0]=anh('Dark:654');state.botHand=[anh('Dark:2378')];");
+ assert.ok(run("weaponDeployOptions('Dark',0).length===1&&requestAction('equip','Dark',[0,0,-1])&&state.locationWeapons[0][0].id==='Dark:2378'"));
+ assert.equal(run("weaponShot(state.locationWeapons[0][0],state.locations[0],card('Light:530'),5).cost"),4);
+ assert.equal(run("weaponShot(state.locationWeapons[0][0],state.locations[0],tie,3)"),null);
+});
+
+test('ANH Trench restricts deployment and changes maneuver and weapon cost',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Dark:654');state.locations[3]=anh('Light:681');");
+ assert.equal(run("boardDeployCost(card('Light:2052'),state.locations[3],'Light')"),null);
+ assert.equal(run("craftStats(card('Light:2838'),3,true).maneuver"),run("card('Light:2838').maneuver-2"));
+});
+
+test('ANH Tractor Beam holds crewed ships and releases them when its holder loses the device',async()=>{
+ const {run}=await anhHarness();
+ run("const holder=card('Dark:723'),beam=anh('Dark:2620'),target=card('Light:530'),crew=card('Light:1098');holder.attachments=[beam];PremiereUnits.add(target,crew,'pilot','Light');state.dark[0]=[holder];state.light[0]=[target];state.botDeck=[{destiny:6}];settleTractorBeam({side:'Dark',card:beam,holder,target,bay:0,site:0});");
+ assert.ok(run("state.capturedShips[0].holder===holder&&target.inactive&&state.botDeck.length===0"));
+ assert.ok(run("loseTableCard('Dark',0,beam);updateCapturedStarships();state.pendingCardView.mode==='tractorRelease'&&releaseCapturedStarship(state.capturedShips[0],true)&&!target.inactive"));
+});
+
+test('ANH Besieged isolates trapped crew and selected attacking characters',async()=>{
+ const {run}=await anhHarness();
+ run("const holder=card('Dark:723'),beam=anh('Dark:2620'),target=card('Light:530'),crew=card('Light:1098'),attacker=card('Dark:634'),stay=card('Dark:1279');holder.attachments=[beam];PremiereUnits.add(holder,attacker,'pilot','Dark');PremiereUnits.add(holder,stay,'passenger','Dark');PremiereUnits.add(target,crew,'pilot','Light');target.inactive=true;target.attachments=[anh('Dark:223')];state.dark[0]=[holder];state.light[0]=[target];state.capturedShips=[{holder,ship:target,beam,bay:0,site:0,side:'Light'}];state.activeSide='Dark';state.phase=3;");
+ assert.ok(run("requestAction('anhCharacter','Dark',['besieged',0])&&requestAction('finishCardInformation','Dark',['toggle',0])&&requestAction('finishCardInformation','Dark',['fight'])&&battleSession.participants.Dark.length===1&&battleSession.participants.Dark[0]===attacker&&battleSession.participants.Light[0]===crew&&!battleSession.participants.Dark.includes(holder)"));
+});
+
+test('ANH We Have A Prisoner replaces a paid battle forfeit with capture',async()=>{
+ const {run}=await anhHarness();
+ run("const target=card('Light:2052');state.light[3]=[target];state.botHand=[anh('Dark:2754')];state.phase=3;presentGame=()=>{};battleSession={site:3,segmented:true,segment:'damage',participants:{Light:[target],Dark:[]},weaponHits:{Light:[],Dark:[]},damage:{priority:'Light',passes:0,result:{lightTotal:0,darkTotal:4},debt:{Light:{damage:4,attrition:2,hits:[],immunity:[]}}}};const originalForfeit=target.forfeit;requestAction('battleForfeit','Light',[0]);");
+ assert.ok(run("requestAction('interruptResponse','Dark',[0,'anhResponse','captureBattle'])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')&&target.captured&&!state.lost.includes(target)&&state.pendingCustody[0].card===target&&battleSession.damage.debt.Light.damage===Math.max(0,4-originalForfeit)"));
+});
+
+test('ANH Cell 2187 releases chosen captives after its target arrives',async()=>{
+ const {run}=await anhHarness();
+ run("const spy=card('Light:1495'),hostage={...card('Light:2052'),captured:true,imprisoned:true};state.locations[3]=card('Dark:673');state.light[4]=[spy];state.dark[3]=[hostage];state.hand=[anh('Light:385')];state.deck=[{destiny:1}];");
+ assert.ok(run("requestAction('deployLocationEffect','Light',[0,3,0]);state.light[4]=[];state.light[3]=[spy];progressLocationMissions();state.pendingCardView.mode==='cellRescue'&&requestAction('finishCardInformation','Light',[0])&&requestAction('custody','Light',['rally'])&&!hostage.captured&&state.light[3].includes(hostage)"));
+});
+
+test('ANH Spice Mines completes only with its designated captive and escort',async()=>{
+ const {run}=await anhHarness();
+ run("const escort=card('Dark:2355'),hostage={...card('Light:2052'),captured:true};escort.escortedCaptive=hostage;state.dark[3]=[escort];state.activeSide='Dark';state.botHand=[anh('Dark:2330')];state.botLost=[{name:'One'},{name:'Two'}];");
+ assert.ok(run("const mission=prisonerMissionActions('Dark')[0];requestAction('anhCharacter','Dark',mission.args);state.dark[3]=[];PremiereUnits.add(ship,escort,'passenger','Dark');state.dark[1]=[ship];progressLocationMissions();state.lost.includes(hostage)&&!escort.escortedCaptive&&!state.botLost.some(card=>card.name==='One')"));
+});
+
+test('ANH holosites use destiny values and suspend ordinary text',async()=>{
+ for(const id of ['Light:694','Dark:1274']){
+  const {run}=await anhHarness();
+  run(`state.locations[3]=anh('${id}');const molator=card('Dark:1688');state.dark[3]=[molator];`);
+  assert.ok(run("isHoloUnit(molator)&&cardAbility(molator)===molator.destiny&&cardForfeitValueAt(molator,'Dark',3)===molator.destiny&&battleTotals(3).darkPower===molator.destiny&&!activeCardRules(molator,'tableEffect').length"));
+  assert.equal(run("boardDeployCost(card('Light:2052'),state.locations[3],'Light')"),null);
+  assert.ok(run("const back=holoAndBluffActions('Dark').find(action=>action.card===molator);requestAction('anhCharacter','Dark',back.args)&&state.botHand.includes(molator)"));
+ }
+});
+
+test('ANH Bluffs conceal cards and distinguish legal free deployment from loss',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[3]=anh('Dark:2438');state.phase=2;state.activeSide='Dark';state.dark[3]=[card('Dark:1279')];state.botHand=[card('Dark:2355')];");
+ assert.ok(run("requestAction('anhCharacter','Dark',['placeBluff',3,0])&&PremiereGame.playerView(state,'Light').locations[3].bluffs[0].faceDown&&!holoAndBluffActions('Dark').some(action=>action.args[0]==='placeBluff')"));
+ assert.ok(run("requestAction('anhCharacter','Light',['challengeBluff',3,0])&&requestAction('finishCardInformation','Dark',['deploy'])&&state.dark[3].some(card=>card.id==='Dark:2355')"));
+});
+
+test('ANH Laser Gate blocks passage and is a weapon target from either side',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[2]=card('Dark:669');state.locations[3]=card('Dark:673');state.locationOrder=[2,3,0,1,4,5,6];const gate=anh('Dark:1478'),weak=card('Light:2052'),strong=card('Light:1593');state.locationEffects={2:[{card:gate,gateTo:3}]};");
+ assert.ok(run("laserGateBlocks(weak,'Light',2,3)&&!laserGateBlocks(strong,'Light',2,3)&&weaponTargets('Dark',2,true).some(target=>target.card===gate)&&weaponTargets('Dark',3,true).some(target=>target.card===gate)"));
+ assert.equal(run("weaponShot(card('Light:259'),strong,gate,3).defense"),3);
+});
+
+test('ANH Hypo asks a truthful question or grants a drain bonus',async()=>{
+ const {run}=await anhHarness();
+ run("const it0=anh('Dark:1340'),hypo=anh('Dark:1200'),hostage={...card('Light:2052'),captured:true};it0.attachments=[hypo];it0.escortedCaptive=hostage;state.dark[3]=[it0];state.activeSide='Dark';state.phase=1;state.hand=[card('Light:1593')];");
+ assert.ok(run("const ask=advancedDeviceActions('Dark').find(option=>option.args[3]==='question');requestAction('anhCharacter','Dark',ask.args)&&requestAction('finishCardInformation','Dark',['Light:1593'])&&cardInformationChoices(state.pendingCardView)[0].args[0]==='yes'&&!cardInformationChoices(state.pendingCardView).some(option=>option.args[0]==='no')&&requestAction('finishCardInformation','Light',['yes'])"));
+});
+
+test('ANH crawler sites follow their host and lose their contents with it',async()=>{
+ for(const [owner,id,crawlerId] of [['Light','Light:2165','Light:2161'],['Dark','Dark:2164','Dark:2160']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',crawler=card('${crawlerId}'),interior=anh('${id}');state.activeSide=owner;PremiereGame.zones(state,owner).board[3]=[crawler];PremiereGame.zones(state,owner).hand.push(interior);`);
+  assert.ok(run("const offer=vehicleSiteActions(owner)[0];requestAction('anhCharacter',owner,offer.args)&&interior.hostInstanceId===crawler.instanceId"));
+  assert.ok(run("const inside=state.locations.indexOf(interior);PremiereLocations.conditions(state,inside,owner).night&&adjacentSites(inside,3)&&!sitePlanet(interior)"));
+  run("const jawa=card(owner==='Light'?'Light:1373':'Dark:1372');PremiereGame.zones(state,owner).board[inside]=[jawa];");
+  assert.equal(run('cardForfeitValueAt(jawa,owner,inside)'),run('jawa.forfeit+2'));
+  assert.ok(run("loseTableCard(owner,3,crawler)&&!state.locations[inside]&&PremiereGame.zones(state,owner).lost.includes(interior)&&PremiereGame.zones(state,owner).lost.includes(jawa)"));
+ }
+});
+
+test('ANH Rogue Bantha tramples before optional battle responses',async()=>{
+ const {run}=await anhHarness();
+ run("const rogue=anh('Light:2125'),trampledRaider=card('Dark:2648');state.phase=3;state.light[3]=[rogue,card('Light:2052')];state.dark[3]=[trampledRaider,card('Dark:2355')];");
+ assert.equal(run('cardAbility(rogue)'),0.5);
+ assert.ok(run("requestAction('battle','Light',[3])&&state.pendingCardView.mode==='rogueTrample'&&requestAction('finishCardInformation','Light',[0])&&state.botLost.includes(trampledRaider)"));
+});
+
+test('ANH squadrons transfer optional crew and send replaced cards to Used',async()=>{
+ for(const [owner,id,fighterId,pilotId] of [['Light','Light:2908','Light:2907','Light:1098'],['Dark','Dark:2596','Dark:2600','Dark:1279']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',squadron=anh('${id}'),originals=Array.from({length:3},()=>card('${fighterId}')),pilot=card('${pilotId}');
+   state.activeSide=owner;PremiereGame.zones(state,owner).hand.push(squadron);PremiereGame.zones(state,owner).board[0]=originals.slice();
+   PremiereUnits.add(originals[0],pilot,'pilot',owner);`);
+  assert.ok(run("const formation=formationActions(owner)[0];formation&&requestAction('anhCharacter',owner,formation.args)&&state.pendingCardView.mode==='squadronTransfer'"));
+  if(owner==='Light')assert.ok(run("const transfer=squadronTransferChoices(state.pendingCardView).find(choice=>choice.entry?.card===pilot);requestAction('finishCardInformation',owner,transfer.args)"));
+  assert.ok(run("requestAction('finishCardInformation',owner,['done'])&&originals.every(ship=>PremiereGame.zones(state,owner).used.includes(ship))&&craftStats(squadron,0).powered&&cardAbility(squadron)===3&&!PremiereUnits.fighter(squadron)"));
+  assert.ok(run(owner==='Light'?"squadron.occupants[0].card===pilot":"PremiereGame.zones(state,owner).used.includes(pilot)"));
+ }
+});
+
+test('ANH suction devices compare ability and let the owner choose destination',async()=>{
+ for(const [owner,id,crawlerId,targetId] of [['Light','Light:1619','Light:2161','Dark:2355'],['Dark','Dark:1618','Dark:2160','Light:2052']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',foe=PremiereGame.otherSide(owner),crawler=card('${crawlerId}'),tube=anh('${id}'),target=card('${targetId}');
+   crawler.attachments=[tube];PremiereGame.zones(state,owner).board[3]=[crawler];PremiereGame.zones(state,foe).board[3]=[target];state.activeSide=owner;state.phase=1;PremiereGame.zones(state,owner).deck.push({destiny:6});`);
+  assert.ok(run("const action=advancedDeviceActions(owner).find(option=>option.target===target);requestAction('anhCharacter',owner,action.args)&&requestAction('finishCardInformation',owner,['used'])&&PremiereGame.zones(state,foe).used.includes(target)&&!advancedDeviceActions(owner).length"));
+ }
+});
+
+test('ANH Remote grants one temporary bonus or cancels a seeker',async()=>{
+ const {run}=await anhHarness();
+ run("const remote=anh('Light:2082'),rebel=card('Light:2052');state.light[3]=[remote,rebel];state.phase=1;const before=cardForfeitValueAt(rebel,'Light',3);");
+ assert.ok(run("const action=advancedDeviceActions('Light').find(option=>option.args[3]==='forfeit');requestAction('anhCharacter','Light',action.args)&&cardForfeitValueAt(rebel,'Light',3)===before+1&&!advancedDeviceActions('Light').length"));
+ assert.equal(run("state.game.timing.turn++;cardForfeitValueAt(rebel,'Light',3)"),run('before'));
+});
+
+test('ANH Program Trap counts the whole site but explodes only among present characters',async()=>{
+ const {run}=await anhHarness();
+ run("const crawler=card('Light:2161'),droid=card('Light:1995'),passenger=card('Light:2052'),outside=card('Dark:2355'),trap=anh('Dark:1955');droid.attachments=[trap];PremiereUnits.add(crawler,droid,'passenger','Light');PremiereUnits.add(crawler,passenger,'passenger','Light');state.light[3]=[crawler];state.dark[3]=[outside];state.deck=[{destiny:3}];drawDestinySeries('Light','test',1,0,()=>{});");
+ assert.ok(run("state.lost.includes(droid)&&state.lost.includes(passenger)&&state.botLost.includes(trap)&&state.dark[3].includes(outside)&&state.light[3].includes(crawler)"));
+});
+
+test('ANH extinguisher prevents explosions and protects its ship',async()=>{
+ const {run}=await anhHarness();
+ run("const droid=card('Light:1995'),trap=anh('Dark:1955'),extinguisher=anh('Light:943');droid.attachments=[trap,extinguisher];state.light[3]=[droid];state.deck=[{destiny:1}];drawDestinySeries('Light','test',1,0,()=>{});");
+ assert.ok(run("state.light[3].includes(droid)&&state.botLost.includes(trap)&&droid.attachments.includes(extinguisher)"));
+ assert.ok(run("PremiereUnits.add(ship,droid,'passenger','Light');state.light[0]=[ship];state.light[3]=[];fireExtinguisherProtects(ship)&&weaponShot(anh('Light:2389'),tie,ship,5)===null"));
+});
+
+test('ANH Chewbacca repairs hits and receives Han and Falcon bonuses',async()=>{
+ const {run}=await anhHarness();
+ run("const chewie=anh('Light:394'),han=card('Light:1098'),droid=card('Light:1995'),falcon=card('Light:1677');state.light[3]=[chewie,han,droid];");
+ assert.equal(run("cardPowerModifier(chewie,'Light',3)"),1);
+ assert.ok(run("PremiereUnits.add(falcon,chewie,'pilot','Light');craftStats(falcon,0).maneuver===falcon.maneuver+1"));
+ assert.ok(run("battleSession={site:3,hitUnits:{Light:[droid],Dark:[]}};loseTableCard('Light',3,droid)&&state.used.includes(droid)&&!state.lost.includes(droid)"));
+});
+
+test('ANH Felth changes interrupt destination and accident chooser',async()=>{
+ const {run}=await anhHarness();
+ run("const felth=anh('Dark:2635'),look=card('Dark:1576');state.dark[3]=[felth];");
+ assert.ok(run("felthMakesUsed({name:'Look Sir, Droids'})"));
+ assert.equal(run("state.dark[3]=[];felthMakesUsed({name:'Look Sir, Droids'})"),false);
+});
+
+test('ANH Evader cancels revolutions and rescues eligible recent losses',async()=>{
+ const {run}=await anhHarness();
+ run("state.botHand=[anh('Dark:891')];state.locationEffects={3:[{card:card('Light:2110'),target:state.locations[3]}]};");
+ assert.ok(run("requestAction('pileInterrupt','Dark',[0,'evaderRevolutions'],false)&&!state.locationEffects[3].length&&state.pendingForceLoss.payer==='Light'&&state.botUsed[0].id==='Dark:891'"));
+ run("state.pendingForceLoss=null;state.botHand=[anh('Dark:891')];const vader=card('Dark:634');state.botLost.push(vader);PremiereGame.openResponse(state.game,{kind:'characterLost',side:'Dark',fallen:vader,site:3});");
+ assert.ok(run("requestAction('passResponse','Light')&&requestAction('interruptResponse','Dark',[0,'anhResponse','evaderRecovery'])&&requestAction('passResponse','Light')&&requestAction('passResponse','Dark')&&state.botUsed.includes(vader)"));
+});
+
+test('ANH Wookiee Roar supports defense, search and mouse droids',async()=>{
+ const {run}=await anhHarness();
+ run("state.hand=[anh('Light:2824')];state.dark[3]=[card('Dark:1709')];");
+ assert.ok(run("const roar=pileInterruptOptions('Light').find(option=>option.rule.mode==='roarMouse');requestAction('pileInterrupt','Light',roar.args)&&state.botLost.some(card=>card.id==='Dark:1709')"));
+ run("state.hand=[anh('Light:2824')];state.deck=[anh('Light:394')];");
+ assert.ok(run("requestAction('pileInterrupt','Light',[0,'roarSearch'])&&requestAction('takeFromReserve','Light',[0])&&state.hand[0].id==='Light:394'"));
+});
+
+test('ANH Let The Wookiee Win disarms after an eligible lost battle',async()=>{
+ const {run}=await anhHarness();
+ run("const chewie=anh('Light:394'),target=card('Dark:2355'),gun=card('Dark:1264');target.weapons=[gun];state.light[3]=[chewie];state.dark[3]=[target];state.hand=[anh('Light:1507')];PremiereGame.openResponse(state.game,{kind:'finishedBattle',winner:'Dark',side:'Dark',site:3,participants:{Light:[chewie],Dark:[target]}});");
+ assert.ok(run("requestAction('interruptResponse','Light',[0,'anhResponse','wookieDisarm',0])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')&&PremiereWeapons.disarmed(target)&&state.botLost.includes(gun)"));
+});
+
+test('ANH Brainiac keeps irrational destiny and dynamic values',async()=>{
+ const {run}=await anhHarness();
+ run("const brainiac=anh('Light:319');state.hand=[brainiac];state.botHand=[{},{}];state.locations=state.locations.map(loc=>({...loc,icons:{light:0,dark:0}}));state.light[3]=[brainiac];");
+ assert.equal(run('printedBattleDestiny(brainiac)'),Math.PI);
+ assert.equal(run('brainiacPower()'),Math.sqrt(3+Math.PI));
+ assert.equal(run("crewDeployCost(brainiac,'Light',state.locations[3])"),1);
+ assert.equal(run("cardForfeitValueAt(brainiac,'Light',3)"),2);
+});
+
+test('ANH R2D2 chooses destiny and offers Scomp reactions',async()=>{
+ const {run}=await anhHarness();
+ run("state.deck=[anh('Light:1992')];let chosen;drawDestinySeries('Light','test',1,1,draws=>chosen=draws[0].value);");
+ assert.ok(run("chosen===undefined&&state.pendingCardView.mode==='destinyValue'&&requestAction('finishCardInformation','Light',[5])&&chosen===6"));
+ run("const artoo=anh('Light:1992');state.locations[3]=card('Light:676');state.light[3]=[artoo];state.botDeck=[{destiny:2}];const before=state.force.length;drawDestinySeries('Dark','test',1,0,()=>{});");
+ assert.ok(run("state.pendingCardView.mode==='anhDestinyTrigger'&&requestAction('finishCardInformation','Light',['accept'])&&state.force.length===before"));
+});
+
+test('ANH Clakdor and Kiffex modify only qualifying states',async()=>{
+ const {run}=await anhHarness();
+ run("state.locations[0]=anh('Light:416');state.light[0]=[ship];const bith=card('Light:942');");
+ assert.equal(run('clakdorDestinyModifier(bith)'),2);
+ run("state.locations[0]=anh('Dark:1434');state.dark[0]=[tie,{...tie}];");
+ assert.equal(run("kiffexPower('Dark',0)"),2);
+ assert.equal(run("tonnikaFactor(card('Dark:2613'))"),run("locationTitle(card('Dark:2613'))==='tonnika sisters'?2:1"));
+ assert.equal(run("state.dark[0].push({...tie});kiffexPower('Dark',0)"),0);
+});
+
+test('ANH Krayt bones resolves every numbered destiny consequence',async()=>{
+ for(const n of [0,1,2,3,4,5,6]){
+  const {run}=await anhHarness();
+  run(`const bones=anh('Dark:1453');state.tableEffects=[{card:bones,target:'Dark'}];state.deck=[{name:'Draw',destiny:${n}}];
+   state.botUsed=[{name:'Used'}];state.botLost=[{name:'Lost'}];state.botHand=[];let finished=false;const before=state.botForce.length;
+   state.game.executing=true;drawDestinySeries('Light','test',1,0,()=>finished=true);state.game.executing=false;`);
+  if(n===0)assert.ok(run("finished&&state.botHand[0].name==='Used'"));
+  if(n===1)assert.ok(run("!finished&&requestAction('loseForce','Dark',['force'],false)&&finished&&state.botLost.length===2"));
+  if(n===2)assert.ok(run('finished&&state.botForce.length===before+1'));
+  if(n===3)assert.ok(run('finished&&!state.tableEffects.length&&state.botLost.includes(bones)'));
+  if(n===4)assert.ok(run("finished&&!state.botLost.length&&state.botUsed.at(-1).name==='Lost'"));
+  if(n>=5)assert.ok(run('finished'));
+ }
+});
+
+test('ANH Bad Feeling and Ngok answer completed actions',async()=>{
+ for(const [owner,id,enemy] of [['Light','Light:1214','Dark:2355'],['Dark','Dark:1770','Light:2052']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',foe=PremiereGame.otherSide(owner),own=PremiereGame.zones(state,owner),rival=PremiereGame.zones(state,foe);
+   state.activeSide=foe;own.hand.push(anh('${id}'));const group=Array.from({length:4},()=>card('${enemy}'));rival.board[3]=group;
+   state.deploymentLocations=group.map(card=>({card,site:3,side:foe,turn:state.game.timing.turn}));
+   openDeploymentReaction(foe,[group[3]]);`);
+  assert.ok(run("requestAction('interruptResponse',owner,[0,'anhResponse','prohibitBattle'])&&requestAction('passResponse',foe)&&requestAction('passResponse',owner)&&!battleCandidates(foe,3).length"),id);
+ }
+});
+
+test('ANH transport retaliation and smuggler stop respect response timing',async()=>{
+ for(const [owner,id,transport,targetId] of [['Light','Light:1987','Dark:824','Dark:2355'],['Dark','Dark:1844','Light:1749','Light:2052']]){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',foe=PremiereGame.otherSide(owner),own=PremiereGame.zones(state,owner),rival=PremiereGame.zones(state,foe);
+   const mover=card('${transport}'),target=card('${targetId}');own.hand.push(anh('${id}'));rival.board[3]=[target];rival.used.push(mover);
+   PremiereGame.openResponse(state.game,{kind:'transportCompleted',side:foe,site:3,card:mover,targets:[target]});`);
+  assert.ok(run("requestAction('interruptResponse',owner,[0,'anhResponse','transportRetaliation'])&&requestAction('passResponse',foe)&&requestAction('passResponse',owner)&&rival.lost.includes(mover)"),id);
+  assert.ok(run(owner==='Light'?'rival.lost.includes(target)':'target.captured'),id);
+ }
+});
+
+test('ANH Alternatives cancels space battles and frees captured crews',async()=>{
+ const {run}=await anhHarness();
+ run("state.phase=3;state.light[0]=[ship];state.dark[0]=[tie];state.hand=[anh('Light:100')];");
+ assert.ok(run("requestAction('battle','Light',[0])&&requestAction('passResponse','Dark')&&requestAction('interruptResponse','Light',[0,'anhResponse','cancelBattle'])&&requestAction('passResponse','Dark')&&requestAction('passResponse','Light')&&state.force.length===1&&!battleSession"));
+ run("state.phase=2;state.hand=[anh('Light:100')];const trapped=card('Light:2052');ship.inactive=true;PremiereUnits.add(ship,trapped,'passenger','Light');state.capturedShips=[{ship,side:'Light',bay:0,site:0,beam:anh('Dark:667')}];");
+ assert.ok(run("const escape=pileInterruptOptions('Light').find(option=>option.rule.mode==='escapeCapturedShip');requestAction('pileInterrupt','Light',escape.args)&&state.light[escape.site].includes(trapped)&&!ship.occupants.length"));
+});
+
+test('ANH squad leaders share movement cost and free guards',async()=>{
+ for(const owner of ['Light','Dark']){
+  const {run}=await anhHarness();
+  run(`const owner='${owner}',leader=anh(owner==='Light'?'Light:2048':'Dark:1284'),troops=Array.from({length:3},()=>card(owner==='Light'?'Light:2052':'Dark:2355'));
+   state.activeSide=owner;state.phase=4;state.locationOrder=[0,1,2,3,4,5,6];PremiereGame.zones(state,owner).board[3]=[leader,...troops];`);
+  assert.equal(run('cardForfeitValueAt(troops[0],owner,3)'),run('troops[0].forfeit+1'));
+  assert.ok(run("const squad=squadMovementActions(owner).find(option=>option.to===4);requestAction('anhCharacter',owner,squad.args)&&PremiereGame.zones(state,owner).force.length===4&&PremiereGame.zones(state,owner).board[4].length===4"));
+ }
+});
+
+test('ANH Advosze receives equipment kickbacks and rejects voluntary collisions',async()=>{
+ const {run}=await anhHarness();
+ run("state.activeSide='Dark';const advosze=anh('Dark:67'),warrior=card('Dark:2355');state.dark[3]=[advosze,warrior];state.botHand=[card('Dark:1264'),anh('Dark:67')];const initial=state.botDeck.length;");
+ assert.ok(run("const equip=legalActions(state,'Dark').find(action=>action.kind==='equip');requestAction('equip','Dark',equip.args)&&state.botDeck.length===initial-1"));
+ assert.ok(run("!legalActions(state,'Dark').some(action=>action.kind==='deploy'&&action.args[1]===3)"));
+});
+
+test('ANH Lirin cover charge counts present musicians and preserves free movement',async()=>{
+ const {run}=await anhHarness();
+ run("const lirin=anh('Dark:1558'),musician=card('Light:942'),rebel=card('Light:2052');state.dark[3]=[lirin];state.light[3]=[musician];state.light[2]=[rebel];state.locationOrder=[0,1,2,3,4,5,6];");
+ assert.equal(run('crewDeployCost(rebel,\'Light\',state.locations[3])'),run('rebel.deploy+1'));
+ assert.equal(run("travelOptions(rebel,'Light',2,3)[0].cost"),2);
+});
+
+test('ANH Septoid absorbs damage without leaving until exhausted or hit',async()=>{
+ const {run}=await anhHarness();
+ run(`const droid=anh('Dark:2784');state.phase=3;state.dark[3]=[droid];
+  battleSession={site:3,segmented:true,segment:'damage',participants:{Dark:[droid],Light:[]},weaponHits:{Light:[],Dark:[]},
+   damage:{priority:'Dark',passes:0,result:{lightTotal:3,darkTotal:0},debt:{Dark:{damage:3,attrition:2,hits:[],immunity:[]}}}};`);
+ assert.ok(run("battleDamageAction('Dark','battleForfeit',[0])&&state.dark[3].includes(droid)&&cardForfeitValueAt(droid,'Dark',3)===4&&battleSession.damage.debt.Dark.damage===0"));
+ run("battleSession.damage.priority='Dark';battleSession.damage.debt.Dark.damage=5;");
+ assert.ok(run("battleDamageAction('Dark','battleForfeit',[0])&&state.botLost.includes(droid)"));
+});
+
+test('ANH grabbers enforce uniqueness and escalating costs after resolution',async()=>{
+ for(const [id,tax] of [['Light:1062',false],['Light:2802',true],['Dark:2505',false],['Dark:2555',true]]){
+  const {run}=await anhHarness();
+  run(`const grabber=anh('${id}'),owner=grabber.side,opponent=PremiereGame.otherSide(owner);
+   const own=PremiereGame.zones(state,owner),foe=PremiereGame.zones(state,opponent),played=card(opponent==='Dark'?'Dark:1831':'Light:2514');
+   own.hand.push(grabber);foe.hand.push(played);foe.used.push({name:'Shuffle me'});
+   state.activeSide=opponent;`);
+  assert.ok(run("requestAction('shufflePile',opponent,[0,opponent,'used'])&&requestAction('interruptResponse',owner,[0,'grabInterrupt'])"),id);
+  assert.ok(run("requestAction('passResponse',opponent)&&requestAction('passResponse',owner)&&state.tableEffects[0].support.includes(played)&&!foe.used.includes(played)"),id);
+  run("foe.hand.push({...played});");
+  if(tax)assert.ok(run("const next=legalActions(state,opponent).find(action=>action.kind==='shufflePile');next.interruptSurcharge===2"),id);
+  else assert.ok(run("!legalActions(state,opponent).some(action=>action.kind==='shufflePile')"),id);
+ }
+});
+
+test('ANH Advance Preparation pays the selected cost before retrieval',async()=>{
+ const {run}=await anhHarness();
+ run("state.hand=[anh('Light:64'),anh('Light:169')];const recovery={name:'Recover me'};state.lost=[recovery];");
+ assert.ok(run("requestAction('pileInterrupt','Light',[0,'advancePrepare',1])&&state.outOfPlay[0].id==='Light:169'&&state.used.includes(recovery)"));
+ run("state.hand=[anh('Light:64')];const attack=anh('Light:169');state.lost=[attack];");
+ assert.ok(run("requestAction('pileInterrupt','Light',[0,'advanceRecover'])&&state.force.length===2&&state.used.includes(attack)&&state.lost[0].id==='Light:64'"));
+});
+
+test('ANH shuttle vehicles expose range and free orbit transfers',async()=>{
+ for(const id of ['Light:1298','Dark:227']){
+  const {run}=await anhHarness();
+  run(`const shuttle=anh('${id}'),owner=shuttle.side,crew=card(owner==='Light'?'Light:2052':'Dark:2355'),capital=card(owner==='Light'?'Light:530':'Dark:723');
+   state.activeSide=owner;state.phase=4;state.locations[0]=tatooine;PremiereGame.zones(state,owner).board[0]=[capital];PremiereGame.zones(state,owner).board[3]=[shuttle,crew];`);
+  assert.equal(run('craftStats(shuttle,3).powered'),true);
+  assert.equal(run('cardAbility(shuttle)'),1);
+  assert.ok(run("const action=shuttleVehicleActions(owner).find(action=>action.target===crew);requestAction('anhCharacter',owner,action.args)&&capital.occupants[0].card===crew"));
+ }
+});
+test('ANH RA7 transfers character weapons without paying deploy costs',async()=>{
+ const {run}=await anhHarness();
+ run("const droid=anh('Light:2006'),soldier=card('Light:2052'),weapon=card('Light:265');soldier.weapons=[weapon];state.light[3]=[droid,soldier];");
+ assert.ok(run("const action=weaponEffectOptions('Light').find(action=>action.args[0]==='transfer'&&action.target.host===droid);action.cost===0&&requestAction('weaponEffect','Light',action.args)&&droid.weapons.includes(weapon)"));
+});
+test('ANH Solomahal grants scout skill to a warrior and exposes legal reacts',async()=>{
+ const {run}=await anhHarness();
+ run("const soldier=card('Light:2052');state.light[2]=[soldier];state.hand=[anh('Light:2298')];");
+ assert.ok(run("requestAction('deployTableEffect','Light',[0,0])&&PremiereUnits.hasSkill(soldier,'scout')"));
+ assert.ok(run("state.locationOrder=[0,1,2,3,4,5,6];reactOptions('Light',{kind:'battle',side:'Dark',site:3}).some(option=>option.card===soldier)"));
+});
+test('ANH Floater requires an eligible participant for its free react',async()=>{
+ const {run}=await anhHarness();
+ run("const floater=anh('Dark:1685'),driver=card('Dark:2355');PremiereUnits.add(floater,driver,'driver','Dark');state.dark[2]=[floater];state.dark[3]=[card('Dark:1061')];state.locationOrder=[0,1,2,3,4,5,6];");
+ assert.ok(run("!reactOptions('Dark',{kind:'battle',side:'Light',site:3}).length"));
+ assert.ok(run("state.dark[3]=[card('Dark:2613')];reactOptions('Dark',{kind:'battle',side:'Light',site:3})[0].cost===0"));
+});
+
+test('ANH Binary droid can be switched by either player',async()=>{
+ const {run}=await anhHarness();
+ run("const binary=anh('Light:1674'),trooper=card('Light:2052');state.light[3]=[binary,trooper];state.locationOrder=[0,1,2,3,4,5,6];");
+ assert.equal(run("cardForfeitValueAt(trooper,'Light',3)"),run('trooper.forfeit+2'));
+ assert.ok(run("requestAction('anhCharacter','Dark',['binary',0])&&binary.switchedOff&&state.botForce.length===4"));
+ assert.equal(run("cardForfeitValueAt(trooper,'Light',3)"),run('trooper.forfeit'));
+ assert.ok(run("requestAction('anhCharacter','Light',['binary',0])&&!binary.switchedOff"));
+});
+test('ANH Hem Dazon keeps salt concealed and loses it with his card',async()=>{
+ const {run}=await anhHarness();
+ run("const hem=anh('Dark:1126'),salt=card('Dark:634');state.dark[3]=[hem];state.botHand=[salt];state.activeSide='Dark';");
+ assert.ok(run("requestAction('anhCharacter','Dark',['salt',0,'hand',0])&&hem.salt[0]===salt&&!anhCharacterActions('Dark').length"));
+ assert.equal(run("PremiereGame.playerView(state,'Light').players.Dark.board[3][0].salt[0].name"),undefined);
+ assert.equal(run("battleTotals(3).darkPower"),2);
+ assert.ok(run("loseTableCard('Dark',3,hem)&&state.botLost.includes(salt)&&!hem.salt"));
+});
+test('ANH Defel hides only at night and causes loss at a revolved site',async()=>{
+ const {run}=await anhHarness();
+ run("const defel=anh('Dark:687');defel.weapons=[card('Dark:1264')];state.dark[3]=[defel,card('Dark:2355')];state.light[3]=[card('Light:1495')];state.phase=3;state.activeSide='Dark';state.botTurn={steps:[],index:0};requestAction('battle','Dark',[3]);");
+ assert.equal(run("anhCharacterActions('Dark').length"),0);
+ assert.ok(run("state.nightSites=[3];requestAction('anhCharacter','Dark',['hide',1])&&battleSession.excludedUnits.has(defel)"));
+});
+test('ANH Greedo offers a genuine threat payment choice',async()=>{
+ const {run}=await anhHarness();
+ run("const greedo=anh('Dark:1073'),han=card('Light:1098');state.dark[3]=[greedo];state.light[3]=[han];state.phase=1;state.botDeck=[{destiny:6}];");
+ assert.ok(run("requestAction('anhCharacter','Dark',['threat',1,0])&&state.pendingCardView.side==='Light'"));
+ assert.ok(run("requestAction('finishCardInformation','Light',['risk'])&&state.lost.includes(han)"));
+});
+test('ANH Dannik consumes only a just lost opposing non-droid once per battle',async()=>{
+ const {run}=await anhHarness();
+ run("const dannik=anh('Dark:605'),victim=card('Light:1495');state.dark[3]=[dannik,card('Dark:634')];state.light[3]=[victim,card('Light:1593')];state.phase=3;requestAction('battle','Light',[3]);loseTableCard('Light',3,victim);openQueuedRuleResponse();");
+ assert.ok(run("requestAction('interruptResponse','Dark',[-1,'eatSoup',0])&&state.outOfPlay.includes(victim)&&state.soupAbility[dannik.id]===3"));
+ assert.equal(run("anhLostResponses('Dark',PremiereGame.responseWindow(state.game)).length"),0);
 });

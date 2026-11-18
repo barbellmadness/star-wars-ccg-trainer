@@ -88,7 +88,8 @@ test('explicit deck formats allow only the declared sets and cards cleared for p
   assert.equal(readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}).dark.cards.length, 60);
   assert.throws(() => readStarterDecks(mixed, catalog, {format: 'mixed'}), /Unbekanntes Spielformat/);
   card.id = 'Dark:729';
-  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}), /noch nicht für das Spiel freigegeben/);
+  assert.equal(readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope',cardRulesVersion:29}).dark.cards.length,60);
+  assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope',cardRulesVersion:28}), /noch nicht für das Spiel freigegeben/);
   card.id = rifle.id;
   assert.throws(() => readStarterDecks(mixed, catalog, {format: 'premiere-a-new-hope'}), /anderen Edition/);
   const themes = json('premiere-themed-decks.json');
@@ -154,7 +155,7 @@ test('both formats have legal decks for either side and offer every released exp
   }
   const available = new Set([...mixed.light, ...mixed.dark].flatMap(({deck}) => deck.cards.map(card => card.id)));
   assert.ok(expansion.every(card => available.has(card.id) === isReleasedExpansionCard(card)));
-  const decks = {schema: 1, decks: {Light: mixed.light.at(-1).definition, Dark: mixed.dark[1].definition}};
+  const decks = {schema: 1, decks: {Light: mixed.light.find(({deck})=>deck.theme?.id==='tatooine-verbuendete').definition, Dark: mixed.dark[1].definition}};
   assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:25}), /noch nicht für das Spiel freigegeben/);
   assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:26}), /noch nicht für das Spiel freigegeben/);
   assert.throws(() => readStarterDecks(decks, [...base, ...expansion], {format:mixedFormat, cardRulesVersion:27}), /noch nicht für das Spiel freigegeben/);

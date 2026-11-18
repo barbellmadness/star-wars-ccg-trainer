@@ -558,9 +558,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.33"></script><script src="engine/premiere-game.js"></script><script src="engine/premiere-battle.js"></script><script src="engine/premiere-units.js?v=2.15.33"></script><script src="engine/premiere-locations.js?v=2.15.33"></script><script src="engine/premiere-weapons.js?v=2.15.33"></script><script src="engine/premiere-card-rules.js?v=2.15.33"></script><script src="engine/premiere-bot.js?v=2.15.33"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.33"></script><script>
+<script src="engine/premiere-data.js?v=2.15.34"></script><script src="engine/premiere-game.js?v=2.15.34"></script><script src="engine/premiere-battle.js?v=2.15.34"></script><script src="engine/premiere-units.js?v=2.15.34"></script><script src="engine/premiere-locations.js?v=2.15.34"></script><script src="engine/premiere-weapons.js?v=2.15.34"></script><script src="engine/premiere-card-rules.js?v=2.15.34"></script><script src="engine/premiere-bot.js?v=2.15.34"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.34"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.33';
+const trainerVersion='2.15.34';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -690,7 +690,7 @@ function renderControlPanel(available=legalActions(state,playerSide()),box=el('c
  if(state.pendingReserveSearch){
   const frame=state.pendingReserveSearch,own=frame.side===playerSide();
   const options=own?available:[botPromptAction()].filter(Boolean);
-  box.innerHTML='<b>'+escapeHTML(frame.card.name)+' · Reserve Deck</b><p>'
+  box.innerHTML='<b>'+escapeHTML(frame.card?.name??'Regelentscheidung')+' · Reserve Deck</b><p>'
    +(own?'Wähle eine passende Karte. Danach wird das Deck gemischt.':'Der Bot durchsucht sein Reserve Deck.')+'</p>'
    +options.map(option=>own?ruleButton(option,option.label):botRuleButton(option,'Suche des Bots abschließen')).join(' ');
   box.style.display='block';return;
@@ -734,11 +734,16 @@ function cardInformationMarkup(available){
  const frame=state.pendingCardView,own=frame.side===playerSide();
  const isPeek=frame.mode==='scompPeek';
  const shown=isPeek&&Date.now()>=frame.expiresAt?[]:own||frame.mode==='labria'||frame.publicView?frame.shown:[];
- let markup='<b>'+escapeHTML(frame.card.name)+'</b>';
- if(shown.length)markup+='<ol'+(isPeek?' data-scomp-peek':'')+'>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
+ let markup='<b>'+escapeHTML(frame.card?.name??'Regelentscheidung')+'</b>';
+ if(shown?.length)markup+='<ol'+(isPeek?' data-scomp-peek':'')+'>'+shown.map(card=>'<li>'+escapeHTML(card.name)+'</li>').join('')+'</ol>';
  if(!own){
   const choice=botPromptAction();
   return markup+botRuleButton(choice,'Entscheidung des Bots zeigen');
+ }
+ if(frame.mode==='hypoQuestion'){
+  const {gameId,revision}=available[0];
+  return markup+'<label>Kartenname <select id="hypoCard">'+available.map(option=>'<option value="'+escapeHTML(option.args[0])+'">'+escapeHTML(option.label)+'</option>').join('')+'</select></label>'
+   +'<button onclick="submitHypoQuestion('+gameId+','+revision+')">Frage stellen</button>';
  }
  if(frame.mode==='leesub'){
   const {gameId,revision}=available[0];
@@ -749,6 +754,10 @@ function cardInformationMarkup(available){
    +'</select></label><button onclick="submitLeesubGuess('+gameId+','+revision+')">Tipp abgeben</button></div>';
  }
  return markup+'<div class="pile-action">'+available.map(option=>ruleButton(option,option.label)).join(' ')+'</div>';
+}
+
+function submitHypoQuestion(gameId,revision){
+ return dispatchUI({kind:'finishCardInformation',side:playerSide(),gameId,revision,args:[el('hypoCard').value]});
 }
 
 function submitLeesubGuess(gameId,revision){
@@ -1090,6 +1099,8 @@ function groupMovePlans(slot,indices){
  return [...destinations].flatMap(to=>{
   const plan=indices.map(index=>moves.filter(move=>move.to===to&&move.index===index).sort((a,b)=>a.cost-b.cost)[0]);
   if(plan.some(move=>!move))return [];
+  const squad=squadMovementActions(playerSide()).find(action=>action.site===slot&&action.to===to&&action.members.length===indices.length&&action.members.every(card=>indices.includes(PremiereGame.zones(state,playerSide()).board[slot].indexOf(card))));
+  if(squad)return [{to,cost:squad.cost,moves:plan,squad}];
   const cost=plan.reduce((sum,move)=>sum+move.cost,0);
   return cost<=PremiereGame.zones(state,playerSide()).force.length?[{to,cost,moves:plan}]:[];
  });
@@ -1111,6 +1122,7 @@ function submitGroupMove(form,button){
  const slot=Number(form.dataset.slot),to=Number(button?.value);
  const plan=groupMovePlans(slot,selectedMovementUnits(form)).find(plan=>plan.to===to);
  if(!plan){updateGroupMoveTargets(form);return false;}
+ if(plan.squad){requestAction('anhCharacter',playerSide(),plan.squad.args);closeMovement();return false;}
  let moved=0;
  for(const move of plan.moves){
   const offer=groupMoveOptions(slot,legalActions(state,playerSide())).find(option=>option.card===move.card&&option.to===to&&
@@ -1730,7 +1742,8 @@ function inspectStackLayer(side,site,host,index){
 }
 
 function smallCardArt(card,placeholder='Bild fehlt',hit=false){
- const image=card.image?'<img loading="lazy" src="'+escapeHTML(card.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
+ const artCard=card.switchedOff?{image:cardBackUrls[card.side??'Light']}:card;
+ const image=artCard.image?'<img loading="lazy" src="'+escapeHTML(artCard.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
  return image+'<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">'+escapeHTML(placeholder)+'</span>'
   +(hit?'<span class="card-hit-label" aria-hidden="true">Treffer</span>':'');
 }
@@ -1759,7 +1772,8 @@ function mini(c,idx,side,zone,site=0,{equipAction,hits}={}){
    +' ansehen'+hitLabel(layerHit)+'" onclick="inspectStackLayer(\''+side+'\','+site+','+idx+','+index+')">'+smallCardArt(card,role,layerHit)+'</button>';
  }).join('');
  const art=layers?'<div class="playmat-stack" style="--stack-layers:'+loadout.length+'">'+layers+face+'</div>':face;
- const custody=c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:c.undercover&&c.type==='Character'?'Undercover':'';
+ const held=(state.capturedShips??[]).find(record=>c.instanceId&&record.ship?.instanceId===c.instanceId);
+ const custody=c.switchedOff?'Ausgeschaltet':held?'Im Traktorstrahl':c.imprisoned?'Inhaftiert':c.escortedCaptive?'Eskorte · '+c.escortedCaptive.name:c.undercover&&c.type==='Character'?'Undercover':'';
  const source=zone==='field'?tableActionCard('unit',idx,site,side):null;
  return '<div class="card'+(source&&source===selectedTableCard?' chosen':'')+'">'+art
   +(source?tableActionButton(source,'unit',idx,site,side):'')+(custody?'<span class="custody-label">'+escapeHTML(custody)+'</span>':'')+equip+'</div>';
@@ -1948,7 +1962,7 @@ function renderPlaymatColumn(loc,i,startsGroup,available=legalActions(state,play
   .map(option=>ruleButton(option,'Mit '+option.pilot.name+' ausspielen ('+option.cost+' Force)')).join('');
  const automated=findOffer(available,'deployAutomated',selected,i);
  const bury=findOffer(available,'buryMineCard',selected,i),buried=view.buriedCounts[i];
- const deviceActions=available.filter(option=>['spyAction','deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark','unitReserveSearch','unitTableCancel'].includes(option.kind)?option.site===i:
+ const deviceActions=available.filter(option=>['anhCharacter','spyAction','deviceAction','controlTheft','mouseUtinni','wager','apprehendMig','beggarPayment','moveMobileSystem','tractorDisembark','unitReserveSearch','unitTableCancel'].includes(option.kind)?option.site===i:
   option.kind==='navSabotage'?option.site===i&&option.args[0]===selected:
   ['deployDevice','deployBolt'].includes(option.kind)&&option.args[0]===selected&&option.args[1]===i)
   .map(option=>ruleButton(option,option.label??(option.host.name+' ausrüsten ('+option.cost+' Force)'))).join('');

@@ -16,6 +16,7 @@ const PremiereLocations = (() => {
     const result = [];
     function visit(card, slot, carriers = [], blocked = false, captive = false) {
       if (!card) return;
+      if(state.besiegedBattle?.cards.includes(card)){carriers=[];blocked=false;}
       const unavailable = blocked || inactive(card);
       const held = captive || !!card.captured;
       result.push({card, side, slot, carriers, unavailable, captive:held});
@@ -76,7 +77,7 @@ const PremiereLocations = (() => {
     for (const {card} of entries(state, side).filter(entry => entry.slot === slot && !entry.unavailable)) {
       if (card.undercover) continue;
       if (card.presence === true) return true;
-      if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)) continue;
+      if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)&&!['Light:694','Dark:1274'].includes(state.locations[slot]?.id)) continue;
       const value = ability(card);
       if (Number.isFinite(value)) known += value;
       else uncertain = true;
@@ -145,7 +146,7 @@ const PremiereLocations = (() => {
     const transit = ruleAt(state, slot, side, 'dockingTransit');
     return {interior: tags.includes('Interior'), exterior: tags.includes('Exterior'),
       scompLink: tags.includes('Scomp Link'), dockingBay: !!transit, transitCost: transit?.cost ?? null,
-      night: !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
+      night: !!ruleAt(state,slot,side,'alwaysNight') || !!nightEffectsAt(state, slot).length || (state.nightSites?.includes(slot) ?? (!!state.nightConditions && !system(card)))};
   }
 
   function forceGeneration(state, side) {
