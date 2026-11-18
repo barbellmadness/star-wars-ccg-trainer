@@ -1,0 +1,641 @@
+[
+  {
+    "edition": "premiere",
+    "artwork": "assets/edition-banners/premiere.svg",
+    "palette": [
+      "#211d2c",
+      "#76617d",
+      "#dfc376"
+    ],
+    "year": "1995",
+    "category": "Grundset",
+    "colorReference": "Schwarz · gedämpftes Violett · Gold",
+    "cards": [
+      {
+        "name": "Luke Skywalker",
+        "source": "https://res.starwarsccg.org/cards/Premiere-Light/large/lukeskywalker.gif"
+      },
+      {
+        "name": "Darth Vader",
+        "source": "https://res.starwarsccg.org/cards/Premiere-Dark/large/darthvader.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_0997.WEBP",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "premiere-2-player",
+    "artwork": "assets/edition-banners/premiere-2-player.svg",
+    "palette": [
+      "#232327",
+      "#92949b",
+      "#dfc376"
+    ],
+    "year": "1996",
+    "category": "Premium",
+    "colorReference": "Schwarz · Silbergrau · Gold",
+    "cards": [
+      {
+        "name": "Luke",
+        "source": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Light/large/luke.gif"
+      },
+      {
+        "name": "Vader",
+        "source": "https://res.starwarsccg.org/cards/PremiereIntroductoryTwoPlayerGame-Dark/large/vader.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "jedi-pack",
+    "artwork": "assets/edition-banners/jedi-pack.svg",
+    "palette": [
+      "#282b2f",
+      "#89958a",
+      "#d7c99c"
+    ],
+    "year": "1996",
+    "category": "Premium",
+    "colorReference": "Freie Farbableitung aus den Kartenmotiven",
+    "cards": [
+      {
+        "name": "Han",
+        "source": "https://res.starwarsccg.org/cards/JediPack-Light/large/han.gif"
+      },
+      {
+        "name": "Leia",
+        "source": "https://res.starwarsccg.org/cards/JediPack-Light/large/leia.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "rebel-leader",
+    "artwork": "assets/edition-banners/rebel-leader.svg",
+    "palette": [
+      "#332128",
+      "#9d5351",
+      "#d9b660"
+    ],
+    "year": "1996",
+    "category": "Premium",
+    "colorReference": "Freie Farbableitung: Rot · Gold",
+    "cards": [
+      {
+        "name": "Gold Leader In Gold 1",
+        "source": "https://res.starwarsccg.org/cards/RebelLeader-Light/large/goldleaderingold1.gif"
+      },
+      {
+        "name": "Red Leader In Red 1",
+        "source": "https://res.starwarsccg.org/cards/RebelLeader-Light/large/redleaderinred1.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "a-new-hope",
+    "artwork": "assets/edition-banners/a-new-hope.svg",
+    "palette": [
+      "#231446",
+      "#57439c",
+      "#d0c88a"
+    ],
+    "year": "1996",
+    "category": "Erweiterung",
+    "colorReference": "Violett des Limited-Boosters · Goldgrün",
+    "cards": [
+      {
+        "name": "Chewbacca",
+        "source": "https://res.starwarsccg.org/cards/ANewHope-Light/large/chewbacca.gif"
+      },
+      {
+        "name": "R2-D2 (Artoo-Detoo)",
+        "source": "https://res.starwarsccg.org/cards/ANewHope-Light/large/r2d2.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_0998.jpg",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "hoth",
+    "artwork": "assets/edition-banners/hoth.svg",
+    "palette": [
+      "#23323b",
+      "#a7b8bc",
+      "#e2e0c8"
+    ],
+    "year": "1996",
+    "category": "Erweiterung",
+    "colorReference": "Silbergrau · kühles Blaugrau · Gold",
+    "cards": [
+      {
+        "name": "Commander Luke Skywalker",
+        "source": "https://res.starwarsccg.org/cards/Hoth-Light/large/commanderlukeskywalker.gif"
+      },
+      {
+        "name": "General Veers",
+        "source": "https://res.starwarsccg.org/cards/Hoth-Dark/large/generalveers.gif"
+      }
+    ],
+    "packagingReference": "user-hoth-booster.png",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "esb-2-player",
+    "artwork": "assets/edition-banners/esb-2-player.svg",
+    "palette": [
+      "#2c343a",
+      "#a3adb0",
+      "#e0cf97"
+    ],
+    "year": "1997",
+    "category": "Premium",
+    "colorReference": "Silberne Zweispieler-Box · Gold",
+    "cards": [
+      {
+        "name": "Chewie",
+        "source": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Light/large/chewie.gif"
+      },
+      {
+        "name": "Veers",
+        "source": "https://res.starwarsccg.org/cards/EmpireStrikesBackIntroductoryTwoPlayerGame-Dark/large/veers.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "dagobah",
+    "artwork": "assets/edition-banners/dagobah.svg",
+    "palette": [
+      "#182d2c",
+      "#617a65",
+      "#d5c795"
+    ],
+    "year": "1997",
+    "category": "Erweiterung",
+    "colorReference": "Dein Revised-Booster: Dunkelgrün · Gold; Poster petrol",
+    "cards": [
+      {
+        "name": "Yoda",
+        "source": "https://res.starwarsccg.org/cards/Dagobah-Light/large/yoda.gif"
+      },
+      {
+        "name": "Son Of Skywalker",
+        "source": "https://res.starwarsccg.org/cards/Dagobah-Light/large/sonofskywalker.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_1002.JPG",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "first-anthology",
+    "artwork": "assets/edition-banners/first-anthology.svg",
+    "palette": [
+      "#1b232c",
+      "#4d5964",
+      "#d5bf7b"
+    ],
+    "year": "1997",
+    "category": "Vorschau",
+    "colorReference": "Schwarz · Graphit · Gold",
+    "cards": [
+      {
+        "name": "Commander Wedge Antilles",
+        "source": "https://res.starwarsccg.org/cards/SpecialEdition-Light/large/commanderwedgeantilles.gif"
+      },
+      {
+        "name": "Boba Fett",
+        "source": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/bobafett.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "cloud-city",
+    "artwork": "assets/edition-banners/cloud-city.svg",
+    "palette": [
+      "#461b25",
+      "#b15354",
+      "#e1c588"
+    ],
+    "year": "1997",
+    "category": "Erweiterung",
+    "colorReference": "Ziegelrot · Weinrot · Gold",
+    "cards": [
+      {
+        "name": "Lando Calrissian",
+        "source": "https://res.starwarsccg.org/cards/CloudCity-Light/large/landocalrissian.gif"
+      },
+      {
+        "name": "Boba Fett",
+        "source": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/bobafett.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_0996.JPG",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "jabbas-palace",
+    "artwork": "assets/edition-banners/jabbas-palace.svg",
+    "palette": [
+      "#3e301d",
+      "#aa8240",
+      "#e1c37b"
+    ],
+    "year": "1998",
+    "category": "Erweiterung",
+    "colorReference": "Ocker · Bronze · Sandgold",
+    "cards": [
+      {
+        "name": "Jabba The Hutt",
+        "source": "https://res.starwarsccg.org/cards/JabbasPalace-Dark/large/jabbathehutt.gif"
+      },
+      {
+        "name": "Bib Fortuna",
+        "source": "https://res.starwarsccg.org/cards/JabbasPalace-Dark/large/bibfortuna.gif"
+      }
+    ],
+    "packagingReference": "10980-2.jpg",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "official-tournament-sealed-deck",
+    "artwork": "assets/edition-banners/official-tournament-sealed-deck.svg",
+    "palette": [
+      "#342b24",
+      "#87715d",
+      "#d9c28f"
+    ],
+    "year": "1998",
+    "category": "Premium",
+    "colorReference": "Braun · Bronze · Gold",
+    "cards": [
+      {
+        "name": "Arleil Schous",
+        "source": "https://res.starwarsccg.org/cards/OfficialTournamentSealedDeck-Light/large/arleilschous.gif"
+      },
+      {
+        "name": "Chall Bekan",
+        "source": "https://res.starwarsccg.org/cards/OfficialTournamentSealedDeck-Dark/large/challbekan.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "second-anthology",
+    "artwork": "assets/edition-banners/second-anthology.svg",
+    "palette": [
+      "#44351c",
+      "#b5914f",
+      "#e0c885"
+    ],
+    "year": "1998",
+    "category": "Vorschau",
+    "colorReference": "Bronze · Gold der Anthology-Box",
+    "cards": [
+      {
+        "name": "Mon Mothma",
+        "source": "https://res.starwarsccg.org/cards/Endor-Light/large/monmothma.gif"
+      },
+      {
+        "name": "Mon Calamari Star Cruiser",
+        "source": "https://res.starwarsccg.org/cards/DeathStarII-Light/large/moncalamaristarcruiser.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "special-edition",
+    "artwork": "assets/edition-banners/special-edition.svg",
+    "palette": [
+      "#143448",
+      "#438da9",
+      "#d4c99b"
+    ],
+    "year": "1998",
+    "category": "Erweiterung",
+    "colorReference": "Dein Booster und Poster: Petrol · Blau · Gold",
+    "cards": [
+      {
+        "name": "Ben Kenobi",
+        "source": "https://res.starwarsccg.org/cards/SpecialEdition-Light/large/benkenobi.gif"
+      },
+      {
+        "name": "Darth Vader, Dark Lord Of The Sith",
+        "source": "https://res.starwarsccg.org/cards/SpecialEdition-Dark/large/darthvaderdarklordofthesith.gif"
+      }
+    ],
+    "packagingReference": "CCGSealedPack6-2.png",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "enhanced-premiere",
+    "artwork": "assets/edition-banners/enhanced-premiere.svg",
+    "palette": [
+      "#26293e",
+      "#686393",
+      "#dbc484"
+    ],
+    "year": "1998",
+    "category": "Premium",
+    "colorReference": "Dunkelblau · Violett · Gold",
+    "cards": [
+      {
+        "name": "Han With Heavy Blaster Pistol",
+        "source": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/hanwithheavyblasterpistol.gif"
+      },
+      {
+        "name": "Leia With Blaster Rifle",
+        "source": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/leiawithblasterrifle.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "endor",
+    "artwork": "assets/edition-banners/endor.svg",
+    "palette": [
+      "#133133",
+      "#45756b",
+      "#d4c899"
+    ],
+    "year": "1999",
+    "category": "Erweiterung",
+    "colorReference": "Dein Booster: Waldgrün · Petrol · Gold",
+    "cards": [
+      {
+        "name": "General Solo",
+        "source": "https://res.starwarsccg.org/cards/Endor-Light/large/generalsolo.gif"
+      },
+      {
+        "name": "Chief Chirpa",
+        "source": "https://res.starwarsccg.org/cards/Endor-Light/large/chiefchirpa.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_1001.WEBP",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "enhanced-cloud-city",
+    "artwork": "assets/edition-banners/enhanced-cloud-city.svg",
+    "palette": [
+      "#4a2427",
+      "#a84b49",
+      "#e0be72"
+    ],
+    "year": "1999",
+    "category": "Premium",
+    "colorReference": "Rot · Kupfer · Gold",
+    "cards": [
+      {
+        "name": "Chewie With Blaster Rifle",
+        "source": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/chewiewithblasterrifle.gif"
+      },
+      {
+        "name": "Lando With Blaster Pistol",
+        "source": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/landowithblasterpistol.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "enhanced-jabbas-palace",
+    "artwork": "assets/edition-banners/enhanced-jabbas-palace.svg",
+    "palette": [
+      "#44321b",
+      "#ac7a37",
+      "#e7c980"
+    ],
+    "year": "2000",
+    "category": "Premium",
+    "colorReference": "Braun · Bronze · Gold",
+    "cards": [
+      {
+        "name": "Boushh",
+        "source": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/boushh.gif"
+      },
+      {
+        "name": "Master Luke",
+        "source": "https://res.starwarsccg.org/cards/EnhancedJabbasPalace-Light/large/masterluke.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "reflections",
+    "artwork": "assets/edition-banners/reflections.svg",
+    "palette": [
+      "#28243e",
+      "#6d8f9b",
+      "#e1d2a0"
+    ],
+    "year": "2000",
+    "category": "Foil-Set",
+    "colorReference": "Violett · Cyan · Gold; mehrfarbige Verpackung",
+    "cards": [],
+    "packagingReference": "SEALEDREF-2.jpg",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "third-anthology",
+    "artwork": "assets/edition-banners/third-anthology.svg",
+    "palette": [
+      "#1b2531",
+      "#6b7685",
+      "#d6c493"
+    ],
+    "year": "2000",
+    "category": "Premium",
+    "colorReference": "Schwarz · Silber · Gold",
+    "cards": [
+      {
+        "name": "Prisoner 2187",
+        "source": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/prisoner2187.gif"
+      },
+      {
+        "name": "A New Secret Base",
+        "source": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/anewsecretbase.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "death-star-ii",
+    "artwork": "assets/edition-banners/death-star-ii.svg",
+    "palette": [
+      "#461c20",
+      "#af4142",
+      "#dec794"
+    ],
+    "year": "2000",
+    "category": "Erweiterung",
+    "colorReference": "Kräftiges Rot des Boosters · Gold",
+    "cards": [
+      {
+        "name": "Luke Skywalker, Jedi Knight",
+        "source": "https://res.starwarsccg.org/cards/DeathStarII-Light/large/lukeskywalkerjediknight.gif"
+      },
+      {
+        "name": "Emperor Palpatine",
+        "source": "https://res.starwarsccg.org/cards/DeathStarII-Dark/large/emperorpalpatine.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_1005.WEBP",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "jabbas-palace-sealed-deck",
+    "artwork": "assets/edition-banners/jabbas-palace-sealed-deck.svg",
+    "palette": [
+      "#402d21",
+      "#9e784c",
+      "#ddc69a"
+    ],
+    "year": "2000",
+    "category": "Premium",
+    "colorReference": "Erdbraun · Ocker · Gold",
+    "cards": [
+      {
+        "name": "Lando With Vibro-Ax",
+        "source": "https://res.starwarsccg.org/cards/JabbasPalaceSealedDeck-Light/large/landowithvibroax.gif"
+      },
+      {
+        "name": "Mighty Jabba",
+        "source": "https://res.starwarsccg.org/cards/JabbasPalaceSealedDeck-Dark/large/mightyjabba.gif"
+      }
+    ],
+    "packagingReference": null,
+    "backgroundRemoval": null
+  },
+  {
+    "edition": "reflections-ii",
+    "artwork": "assets/edition-banners/reflections-ii.svg",
+    "palette": [
+      "#192341",
+      "#4e5b97",
+      "#dec779"
+    ],
+    "year": "2001",
+    "category": "Premium & Foils",
+    "colorReference": "Dunkelblau · Indigo · Gold",
+    "cards": [
+      {
+        "name": "Grand Admiral Thrawn",
+        "source": "https://res.starwarsccg.org/cards/ReflectionsII-Dark/large/grandadmiralthrawn.gif"
+      },
+      {
+        "name": "Luke Skywalker, Rebel Scout",
+        "source": "https://res.starwarsccg.org/cards/ReflectionsII-Light/large/lukeskywalkerrebelscout.gif"
+      }
+    ],
+    "packagingReference": "SEALEDREF2-2.jpg",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "tatooine",
+    "artwork": "assets/edition-banners/tatooine.svg",
+    "palette": [
+      "#37204a",
+      "#8c61a8",
+      "#ddc888"
+    ],
+    "year": "2001",
+    "category": "Erweiterung",
+    "colorReference": "Violett · Flieder · Gold",
+    "cards": [
+      {
+        "name": "Qui-Gon Jinn",
+        "source": "https://res.starwarsccg.org/cards/Tatooine-Light/large/quigonjinn.gif"
+      },
+      {
+        "name": "Darth Maul",
+        "source": "https://res.starwarsccg.org/cards/Tatooine-Dark/large/darthmaul.gif"
+      }
+    ],
+    "packagingReference": "user-IMG_1004.WEBP",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "coruscant",
+    "artwork": "assets/edition-banners/coruscant.svg",
+    "palette": [
+      "#182f4d",
+      "#4d79a8",
+      "#e0d097"
+    ],
+    "year": "2001",
+    "category": "Erweiterung",
+    "colorReference": "Kobaltblau · Nachtblau · Gold",
+    "cards": [
+      {
+        "name": "Queen Amidala, Ruler Of Naboo",
+        "source": "https://res.starwarsccg.org/cards/Coruscant-Light/large/queenamidalarulerofnaboo.gif"
+      },
+      {
+        "name": "Darth Maul, Young Apprentice",
+        "source": "https://res.starwarsccg.org/cards/Coruscant-Dark/large/darthmaulyoungapprentice.gif"
+      }
+    ],
+    "packagingReference": "CCGSealedPack10-2.png",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "reflections-iii",
+    "artwork": "assets/edition-banners/reflections-iii.svg",
+    "palette": [
+      "#141b20",
+      "#724343",
+      "#cfb36e"
+    ],
+    "year": "2001",
+    "category": "Premium & Foils",
+    "colorReference": "Dein Booster: Schwarz · Gold · rote/grüne Lichtakzente",
+    "cards": [
+      {
+        "name": "Yoda, Master Of The Force",
+        "source": "https://res.starwarsccg.org/cards/ReflectionsIII-Light/large/yodamasteroftheforce.gif"
+      },
+      {
+        "name": "Lord Maul",
+        "source": "https://res.starwarsccg.org/cards/ReflectionsIII-Dark/large/lordmaul.gif"
+      }
+    ],
+    "packagingReference": "user-reflections-iii-booster.png",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  },
+  {
+    "edition": "theed-palace",
+    "artwork": "assets/edition-banners/theed-palace.svg",
+    "palette": [
+      "#442b24",
+      "#b68b50",
+      "#e0c998"
+    ],
+    "year": "2001",
+    "category": "Erweiterung",
+    "colorReference": "Rot · Palastgold · blauer Gegenakzent",
+    "cards": [
+      {
+        "name": "Mace Windu, Jedi Master",
+        "source": "https://res.starwarsccg.org/cards/TheedPalace-Light/large/macewindujedimaster.gif"
+      },
+      {
+        "name": "Darth Sidious",
+        "source": "https://res.starwarsccg.org/cards/TheedPalace-Dark/large/darthsidious.gif"
+      }
+    ],
+    "packagingReference": "CCGSealedPack11-2.png",
+    "backgroundRemoval": "SVG silhouette clip; no generative redraw"
+  }
+]

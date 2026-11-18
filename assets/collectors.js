@@ -23,6 +23,7 @@
     byId('editionCount').textContent = shown.length + ' von ' + editions.length + ' Veröffentlichungen · chronologisch nach Erscheinen';
     byId('editionGrid').innerHTML = shown.map(e => '<button type="button" class="edition-tile" data-edition="'+escape(e.id)+'" aria-pressed="'+(e.id===selected?.id)+'"><strong>'+escape(e.name)+'</strong><time datetime="'+e.releaseDate+'">'+escape(releaseLabel(e.releaseDate))+'</time><small>'+e.cardCount+' Standardkarten'+(e.variantCount?' · '+e.variantCount+' AI':'')+(e.foilCount?' · '+e.foilCount+' Foils':'')+'</small><small class="'+(e.playable?'playable-mark':'')+'">'+(e.playable?'Im Trainer spielbar':escape(e.category))+'</small></button>').join('');
     if (!shown.length) byId('editionGrid').innerHTML = '<p>Keine Veröffentlichung passt zu diesen Filtern.</p>';
+    for (const tile of byId('editionGrid').querySelectorAll('[data-edition]')) window.PremiereEditionBanners.apply(tile, tile.dataset.edition);
   }
   function resetCardFilters() {
     for (const id of ['cardSearch','cardSide','cardType','cardRarity','cardVariant']) byId(id).value = '';
@@ -37,6 +38,8 @@
     if (updateUrl) {const url = new URL(location.href); url.searchParams.set('edition', id); history.replaceState(null, '', url);}
     byId('selectedEdition').hidden = false;
     byId('editionTitle').textContent = edition.name;
+    const banner = window.PremiereEditionBanners.apply(byId('selectedEditionBanner'), edition.id);
+    if (banner) byId('editionBannerArt').src = banner.artwork;
     byId('editionCategoryLabel').textContent = edition.category + ' · ' + (edition.playable?'Im Trainer spielbar':'Sammlerübersicht');
     byId('editionFacts').innerHTML = [['Erstveröffentlichung',releaseLabel(edition.releaseDate)],['Standardkarten',edition.cardCount],['Alternative Bilder',edition.variantCount],['Zusätzliche Foils',edition.foilCount],...(edition.boxTopperCount?[['Zusätzliche Box-Topper-Foils',edition.boxTopperCount]]:[])].map(([label,value])=>'<div><dt>'+escape(label)+'</dt><dd>'+escape(value)+'</dd></div>').join('');
     byId('editionNote').textContent = edition.note || (edition.releaseDate.length===7?'Die Quelle nennt Monat und Jahr, keinen genauen Erscheinungstag.':'');

@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><style>
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWCCG Trainer V2 · Starter</title><link rel="stylesheet" href="assets/edition-banners.css"><style>
 :root{color-scheme:dark;--gold:#f3cf7a;--frame:#50617a;--ink:#e7edf9}
 *{box-sizing:border-box}
 body{
@@ -564,9 +564,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
+<script src="assets/edition-banners.js"></script><script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.41';
+const trainerVersion='2.15.42';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -893,7 +893,7 @@ function renderLaunch(){
    if(!choices?.length)return [];
    const heading='launchDecks-'+format;
    return ['<section class="launch-deck-section" aria-labelledby="'+heading+'" data-deck-format="'+format+'">'
-    +'<div class="launch-deck-heading"><h2 id="'+heading+'">'+(format===premiereFormat?'Premiere: Decks':'A New Hope: Deckauswahl')+'</h2><small>'+choices.length+' Decks'+(format===mixedFormat?' · Premiere + A New Hope':'')+'</small></div>'
+    +PremiereEditionBanners.heading(format===premiereFormat?'premiere':'a-new-hope',{headingId:heading,title:format===premiereFormat?'Premiere: Decks':'A New Hope: Deckauswahl',description:choices.length+' Decks'+(format===mixedFormat?' · Premiere + A New Hope':'')})
     +'<div class="launch-deck-grid">'+choices.map(({deck})=>{
      const id=deckId(deck),name=deckName(deck),cover=launchCover(side,deck);
      const pick='chooseLaunchDeck('+JSON.stringify(id)+','+JSON.stringify(format)+')';

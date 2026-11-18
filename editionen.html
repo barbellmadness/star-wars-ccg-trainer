@@ -7,6 +7,8 @@
   <meta name="description" content="Die klassischen Star Wars CCG Veröffentlichungen von 1995 bis 2001: Erscheinungsdaten, Kartenanzahl, Varianten und durchsuchbare Kartenlisten.">
   <link rel="stylesheet" href="assets/site.css">
   <link rel="stylesheet" href="assets/collectors.css">
+  <link rel="stylesheet" href="assets/edition-banners.css">
+  <script src="assets/edition-banners.js" defer></script>
   <script src="assets/collectors.js" defer></script>
 </head>
 <body>
@@ -30,7 +32,8 @@
     <div id="editionGrid" class="edition-grid" aria-label="Chronologische Editionsauswahl"></div>
     <p id="registryError" class="callout" role="alert" hidden></p>
     <section id="selectedEdition" class="selected-edition" aria-labelledby="editionTitle" hidden>
-      <div class="section-heading"><div><p id="editionCategoryLabel" class="eyebrow"></p><h2 id="editionTitle"></h2></div><div><a href="#editionGrid">Edition wechseln ↑</a> <a id="playEdition" class="button primary" href="v2.html" hidden>Im Trainer spielen →</a></div></div>
+      <div id="selectedEditionBanner" class="edition-banner"><div class="edition-banner-copy"><p id="editionCategoryLabel" class="eyebrow"></p><h2 id="editionTitle"></h2></div><img id="editionBannerArt" class="edition-banner-art" alt="" aria-hidden="true" loading="lazy" decoding="async" width="440" height="180"></div>
+      <div class="edition-banner-links"><a href="#editionGrid">Edition wechseln ↑</a><a id="playEdition" class="button primary" href="v2.html" hidden>Im Trainer spielen →</a></div>
       <dl id="editionFacts" class="edition-facts"></dl>
       <p id="editionNote" class="small"></p>
       <p class="source-list"><a id="editionSource" href="https://www.starwarsccg.org/collecting/">Quelle: Veröffentlichungsdaten</a> · <a id="originalList" href="https://res.starwarsccg.org/cardlists/PremiereType.html">Original-Kartenliste</a> · <a id="foilList" href="https://res.starwarsccg.org/Resources/swccgcardlist4.0.pdf">Originalcheckliste inkl. Foils (PDF)</a></p>
