@@ -536,7 +536,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   </section>
   <div id="catalogEditionBox" class="catalog-search" hidden>
     <label for="catalogEdition">Edition</label> <select id="catalogEdition">
-      <option value="1">Premiere</option><option value="2">A New Hope</option>
+      <option value="1">Premiere</option><option value="2">A New Hope</option><option value="3">Hoth · Vorbereitung</option>
     </select>
   </div>
   <label id="catalogSearchBox" class="catalog-search" hidden>Karte suchen <input id="catalogSearch" type="search"></label>
@@ -560,9 +560,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.39"></script><script src="engine/premiere-game.js?v=2.15.39"></script><script src="engine/premiere-battle.js?v=2.15.39"></script><script src="engine/premiere-units.js?v=2.15.39"></script><script src="engine/premiere-locations.js?v=2.15.39"></script><script src="engine/premiere-weapons.js?v=2.15.39"></script><script src="engine/premiere-card-rules.js?v=2.15.39"></script><script src="engine/premiere-bot.js?v=2.15.39"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.39"></script><script>
+<script src="engine/premiere-data.js?v=2.15.40"></script><script src="engine/premiere-game.js?v=2.15.40"></script><script src="engine/premiere-battle.js?v=2.15.40"></script><script src="engine/premiere-units.js?v=2.15.40"></script><script src="engine/premiere-locations.js?v=2.15.40"></script><script src="engine/premiere-weapons.js?v=2.15.40"></script><script src="engine/premiere-card-rules.js?v=2.15.40"></script><script src="engine/premiere-bot.js?v=2.15.40"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.40"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.39';
+const trainerVersion='2.15.40';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -575,6 +575,7 @@ const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&
 let selected=-1, selectedTableCard=null, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
 let localPrintTexts=new Map();
 let aNewHopeCatalog=null,aNewHopeLoad=null,aNewHopeLoadFailed=false;
+let hothCatalog=null,hothLoad=null,hothLoadFailed=false;
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action,handler='dispatchUI'){
@@ -958,19 +959,20 @@ function showStarterDeck(side,id,format=launchFormat()){
 }
 
 const aNewHopeSelected=()=>el('catalogEdition').value===PremiereData.A_NEW_HOPE;
-const visibleCatalog=()=>aNewHopeSelected()?aNewHopeCatalog:catalog;
-const expansionCardStatus=card=>PremiereData.isReleasedExpansionCard(card)?'Für Premiere + A New Hope freigegeben':'Regelprüfung offen';
+const hothSelected=()=>el('catalogEdition').value===PremiereData.HOTH;
+const visibleCatalog=()=>hothSelected()?hothCatalog:aNewHopeSelected()?aNewHopeCatalog:catalog;
+const expansionCardStatus=card=>card.set===PremiereData.HOTH?'Hoth in Vorbereitung · noch nicht spielbar':PremiereData.isReleasedExpansionCard(card)?'Für Premiere + A New Hope freigegeben':'Regelprüfung offen';
 
 function renderCatalog(){
- const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected();
- const name=PremiereData.EDITIONS[expansion?PremiereData.A_NEW_HOPE:PremiereData.EDITION].name;
+ const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected()||hothSelected();
+ const name=PremiereData.EDITIONS[hothSelected()?PremiereData.HOTH:expansion?PremiereData.A_NEW_HOPE:PremiereData.EDITION].name;
  const description=el('starterDeckDescription');
  el('starterDeckTitle').textContent=name+'-Kartenkatalog'+(cards?' · '+cards.length+' Karten':'');
  description.hidden=!expansion;
- if(expansion)description.textContent='Vorschau auf das Set. Die Liste zeigt den Stand der Regelfreigabe je Karte.';
+ if(expansion)description.textContent=hothSelected()?'Hoth wird vorbereitet. Die 162 Karten sind einsehbar, aber noch nicht für Decks oder Partien freigegeben.':'Vorschau auf das Set. Die Liste zeigt den Stand der Regelfreigabe je Karte.';
  if(!cards){
-  list.innerHTML=aNewHopeLoadFailed?'<li>A New Hope konnte nicht geladen werden. Wechsle die Edition, um es erneut zu versuchen.</li>':
-   '<li>A New Hope wird geladen …</li>';
+  list.innerHTML=(hothSelected()?hothLoadFailed:aNewHopeLoadFailed)?'<li>'+name+' konnte nicht geladen werden. Wechsle die Edition, um es erneut zu versuchen.</li>':
+   '<li>'+name+' wird geladen …</li>';
   return;
  }
  const query=el('catalogSearch').value.trim().toLocaleLowerCase('de-DE');
@@ -981,6 +983,15 @@ function renderCatalog(){
 }
 
 function selectCatalogEdition(){
+ if(hothSelected()&&!hothCatalog&&!hothLoad){
+  hothLoadFailed=false;
+  hothLoad=readLocalJson('data/hoth.json').then(payload=>{
+   hothCatalog=readCatalog(payload,PremiereData.HOTH);
+  }).catch(()=>{hothLoadFailed=true;}).finally(()=>{
+   hothLoad=null;
+   if(hothSelected()&&!el('catalogEditionBox').hidden&&el('starterDeckDialog').open)renderCatalog();
+  });
+ }
  if(aNewHopeSelected()&&!aNewHopeCatalog&&!aNewHopeLoad){
   aNewHopeLoadFailed=false;
   aNewHopeLoad=readLocalJson('data/a-new-hope.json').then(payload=>{
@@ -1509,7 +1520,7 @@ function combinedAttackMarkup({card,target,choices,kind,side,args,gameId,revisio
 function cardTextDetails(card){
  const texts=card.texts??{};
  const block=(label,value)=>'<h3>'+label+'</h3><p style="white-space:pre-wrap">'+escapeHTML(value)+'</p>';
- const slip=card.errataSymbol?'<p><a href="'+escapeHTML(card.images.slip)+'" target="_blank" rel="noopener">Korrekturslip · '+escapeHTML(card.errataSymbol)+'</a></p>':'';
+ const slip=card.errataSymbol?(card.images?.slip?'<p><a href="'+escapeHTML(card.images.slip)+'" target="_blank" rel="noopener">Korrekturslip · '+escapeHTML(card.errataSymbol)+'</a></p>':'<p class="hint">Errata · '+escapeHTML(card.errataSymbol)+' · In der fixierten Datenquelle dokumentiert; kein Korrekturslip hinterlegt.</p>'):'';
  const printText=texts.print??localPrintTexts.get(card.id);
  const print=typeof printText==='string'?block('Drucktext',printText)
   :printText?'<h3>Drucktext</h3>'+['Light','Dark'].map(side=>'<p style="white-space:pre-wrap"><b>'+side

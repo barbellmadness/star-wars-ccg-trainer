@@ -26,6 +26,10 @@ export function startLocalV2Server({port = 8000, reportPath = defaultReport, sit
     }
     const route = request.url.split('?')[0];
     const privateReport = siteRoot === root && route === '/local-print-texts.json';
+    if (privateReport && reportPath === null) {
+      response.writeHead(404).end();
+      return;
+    }
     if (privateReport && request.headers['sec-fetch-site'] &&
         request.headers['sec-fetch-site'] !== 'same-origin') {
       response.writeHead(403).end();

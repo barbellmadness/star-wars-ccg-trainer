@@ -116,6 +116,22 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     assert.equal(await page.locator('[data-deck-format="premiere-a-new-hope"] [data-deck]').count(), 8);
     assert.ok(requests.some(url => /engine\/premiere-session\.[a-f0-9]{12}\.js$/.test(url)));
     assert.ok(requests.some(url => /data\/a-new-hope\.[a-f0-9]{12}\.json$/.test(url)));
+    assert.equal(requests.filter(url=>/data\/hoth\./.test(url)).length,0,'Hoth preparation must not add game-start downloads');
+    await page.getByText('Trainer-Optionen und Kartenprüfung',{exact:true}).click();
+    await page.getByRole('button',{name:'Kartenkatalog öffnen'}).click();
+    await page.locator('#catalogEdition').selectOption('3');
+    const hothCatalog=page.getByRole('dialog',{name:'Hoth-Kartenkatalog · 162 Karten',exact:true});
+    await hothCatalog.waitFor({state:'visible'});
+    assert.equal(await hothCatalog.locator('#starterDeckCards button').count(),162);
+    assert.match(await hothCatalog.locator('#starterDeckDescription').textContent(),/noch nicht.*freigegeben/);
+    assert.equal(requests.filter(url=>/data\/hoth\.[a-f0-9]{12}\.json$/.test(url)).length,1);
+    await page.locator('#catalogSearch').fill('Artillery Remote');
+    await hothCatalog.locator('#starterDeckCards button').click();
+    const artillery=page.getByRole('dialog',{name:'Artillery Remote',exact:true});
+    assert.ok(await artillery.isVisible());
+    assert.match(await artillery.textContent(),/kein Korrekturslip hinterlegt/);
+    assert.equal(await artillery.getByRole('link',{name:/Korrekturslip/}).count(),0);
+    await page.keyboard.press('Escape');await page.keyboard.press('Escape');
     assert.deepEqual(errors, []);
   } finally {
     try { await browser?.close(); }

@@ -11,7 +11,7 @@ export const webPages = ['index.html', 'v2.html', 'editionen.html', 'anleitungen
 // Deliberate allowlist: never collect arbitrary JSON, local reports, credentials or the checkout.
 const sourceAssets = ['assets/site.css', ...['data', 'game', 'battle', 'units', 'locations',
   'weapons', 'card-rules', 'bot', 'learning', 'session'].map(name => `engine/premiere-${name}.js`),
-  ...['premiere', 'a-new-hope', 'premiere-starter-decks', 'premiere-themed-decks',
+  ...['premiere', 'a-new-hope', 'hoth', 'premiere-starter-decks', 'premiere-themed-decks',
     'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks'].map(name => `data/${name}.json`)];
 const digest = body => createHash('sha256').update(body).digest('hex');
 

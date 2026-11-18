@@ -5,11 +5,13 @@ const PremiereData = (() => {
   const REVISION = '65cd150d20634447a5499d763ac324436158c7a8';
   const EDITION = '1';
   const A_NEW_HOPE = '2';
+  const HOTH = '3';
   const SIDES = ['Light', 'Dark'];
   const CARD_TYPES = new Set(['Character', 'Device', 'Effect', 'Interrupt', 'Location', 'Starship', 'Vehicle', 'Weapon']);
   const EDITIONS = Object.freeze({
     [EDITION]: {name: 'Premiere', cardsPerSide: 162},
-    [A_NEW_HOPE]: {name: 'A New Hope', cardsPerSide: 81}
+    [A_NEW_HOPE]: {name: 'A New Hope', cardsPerSide: 81},
+    [HOTH]: {name: 'Hoth', cardsPerSide: 81}
   });
   const EXPANSION_TYPES = new Set(['Creature', 'Epic Event']);
   const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE]});
@@ -71,7 +73,7 @@ const PremiereData = (() => {
   function permanentPilotAbility(card) {
     if (!['Starship','Vehicle'].includes(card?.type) || card.pilotsEjected) return null;
     if(['Light:2908','Dark:2596'].includes(card.id))return 3;
-    const wording = card.set === A_NEW_HOPE ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
+    const wording = [A_NEW_HOPE,HOTH].includes(card.set) ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
       /\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i;
     const ability = String(card.gametext || '').match(wording);
     return ability ? Number(ability[1]) : null;
@@ -103,7 +105,7 @@ const PremiereData = (() => {
         !new RegExp('^' + edition + '_\\d+$').test(gempId ?? '')) {
       throw new Error('Ungültige Edition, Kartenseite oder Karten-ID: ' + (id ?? 'fehlt'));
     }
-    const supportedType = CARD_TYPES.has(front?.type) || edition === A_NEW_HOPE && EXPANSION_TYPES.has(front?.type);
+    const supportedType = CARD_TYPES.has(front?.type) || [A_NEW_HOPE,HOTH].includes(edition) && EXPANSION_TYPES.has(front?.type);
     if (!front || typeof front.title !== 'string' || !front.title.trim() || !supportedType) {
       throw new Error(id + ' hat keinen gültigen Namen oder Kartentyp.');
     }
@@ -119,7 +121,12 @@ const PremiereData = (() => {
     // The pinned entry for Besieged marks its E1 slip as VIRTUAL despite the linked errata asset.
     const besiegedSlip = edition === A_NEW_HOPE && id === 'Dark:223' && errataSymbol === 'E1' &&
       front.printableSlipType === 'VIRTUAL' && errataImage?.endsWith('/Beseiged (Errata)/image.png');
-    if (errataSymbol && (!validErrataSymbol || !errataImage || (front.printableSlipType !== 'ERRATA' && !besiegedSlip))) {
+    // This exact pinned Hoth entry documents a text erratum but supplies no slip asset.
+    const textOnlyArtillery = edition === HOTH && id === 'Light:135' && errataSymbol === 'E1' &&
+      front.errataDate === '2023-10-07' && record.preErrata?.sourceId === 40034 &&
+      front.errataNotes === 'Clarifies that the Warrior with the remote is firing the weapons remotely.' &&
+      !errataImage && front.printableSlipType == null;
+    if (errataSymbol && !textOnlyArtillery && (!validErrataSymbol || !errataImage || (front.printableSlipType !== 'ERRATA' && !besiegedSlip))) {
       throw new Error(id + ' hat ein Erratum ohne zugehörigen Korrekturslip oder einen unbekannten Marker.');
     }
     if (front.uniqueness != null && !/^\*+$/.test(front.uniqueness)) throw new Error(id + ' hat ein unbekanntes Einzigartigkeitszeichen.');
@@ -193,6 +200,7 @@ const PremiereData = (() => {
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
 
   function isPlayableStarterCard(card) {
+    if(card.set===HOTH)return false;
     if(card.set===A_NEW_HOPE&&isReleasedExpansionCard(card))return true;
     if (card.type === 'Location') return Number.isInteger(card.icons.light) && Number.isInteger(card.icons.dark);
     if (card.type === 'Weapon' || isLostPileEffect(card) ||
@@ -355,7 +363,7 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,
+  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,
     readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, readFormatDeckChoices,
     readCardValue, locationTitle, isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility,
     isGarrisonExpansionCard, isReleasedExpansionCard, buildAudit};

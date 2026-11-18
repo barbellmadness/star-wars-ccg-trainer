@@ -608,6 +608,9 @@ function locationPlacementRank(card){
  // Inside, Cantina, indoor/outdoor docking bay, Mos Eisley, outside, system.
  // The three named Tatooine sites form an uninterrupted block when in play.
  if(isSystem(card))return 5;
+ const marker=PremiereLocations.hothMarker(card);
+ if(marker!==null)return 4+marker/10;
+ if(sitePlanet(card)==='hoth'&&card.locationTags?.includes('Exterior')&&!card.locationTags.includes('Interior'))return 4.65;
  const title=locationTitle(card);
  if(title==='tatooine: cantina')return 1;
  if(title==='tatooine: mos eisley')return 3;
