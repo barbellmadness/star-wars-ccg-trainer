@@ -21,12 +21,23 @@ jobs:
           node scripts/import_premiere.mjs --edition a-new-hope --check
       - name: Run all tests
         run: node --test
-      - name: Stage the static site from the tested commit
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/')
-        shell: bash
-        run: |
-          mkdir "$RUNNER_TEMP/pages"
-          git archive HEAD index.html v2.html data/ engine/ | tar -x -C "$RUNNER_TEMP/pages"
+      - name: Install the pinned browser test dependency
+        run: npm ci
+      - name: Install Chromium for browser checks
+        run: npx playwright-core install --with-deps chromium
+      - name: Test the trainer and the production package in Chromium
+        env:
+          SWCCG_CHROMIUM_CHANNEL: chromium
+        run: npm run test:browser
+      - name: Build the static ALL-INKL and preview release
+        run: node scripts/build-web.mjs --output "${{ runner.temp }}/pages"
+      - name: Keep the tested release for SFTP deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-inkl-web-release
+          path: ${{ runner.temp }}/pages
+          include-hidden-files: true
+          retention-days: 14
       - name: Upload the GitHub Pages artifact
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/codex/')
         uses: actions/upload-pages-artifact@v4

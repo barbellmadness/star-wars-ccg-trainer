@@ -333,7 +333,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 }
 </style>
 <main>
-  <header class="brand-header"><img src="https://gemp.starwarsccg.org/gemp-swccg/epic-duel/logo.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"></header>
+  <header class="brand-header"><img src="https://gemp.starwarsccg.org/gemp-swccg/epic-duel/logo.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"><a href="./" style="font-size:12px;color:#f3cf7a">← Fanprojekt-Startseite</a></header>
   <div class="panel game-toolbar" id="gameToolbar">
     <div class="game-options">
       <select id="playerSideChoice" hidden>
@@ -560,9 +560,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.37"></script><script src="engine/premiere-game.js?v=2.15.37"></script><script src="engine/premiere-battle.js?v=2.15.37"></script><script src="engine/premiere-units.js?v=2.15.37"></script><script src="engine/premiere-locations.js?v=2.15.37"></script><script src="engine/premiere-weapons.js?v=2.15.37"></script><script src="engine/premiere-card-rules.js?v=2.15.37"></script><script src="engine/premiere-bot.js?v=2.15.37"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.37"></script><script>
+<script src="engine/premiere-data.js?v=2.15.38"></script><script src="engine/premiere-game.js?v=2.15.38"></script><script src="engine/premiere-battle.js?v=2.15.38"></script><script src="engine/premiere-units.js?v=2.15.38"></script><script src="engine/premiere-locations.js?v=2.15.38"></script><script src="engine/premiere-weapons.js?v=2.15.38"></script><script src="engine/premiere-card-rules.js?v=2.15.38"></script><script src="engine/premiere-bot.js?v=2.15.38"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.38"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.37';
+const trainerVersion='2.15.38';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -820,7 +820,7 @@ function selectPlayFormat(format){
 }
 
 function launchArt(url,fallback){
- const image=url?'<img src="'+escapeHTML(url)+'" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
+ const image=url?'<img loading="lazy" decoding="async" src="'+escapeHTML(url)+'" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
  return '<span class="launch-art">'+image+'<span class="launch-art-fallback"'+(image?' hidden':'')+'>'+escapeHTML(fallback)+'</span></span>';
 }
 
@@ -2630,7 +2630,7 @@ function endGameFromUI(){
 }
 
 async function readLocalJson(path){
- const response=await fetch(path,{cache:'no-cache'});
+ const response=await fetch(path,{cache:/\.[a-f0-9]{12}\.json$/.test(path)?'default':'no-cache'});
  if(!response.ok)throw new Error('Lokale Datei '+path+' fehlt (HTTP '+response.status+'). Starte V2 über einen lokalen HTTP-Server.');
  return response.json();
 }
