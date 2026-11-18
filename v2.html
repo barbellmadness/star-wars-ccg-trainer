@@ -560,9 +560,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.35"></script><script src="engine/premiere-game.js?v=2.15.35"></script><script src="engine/premiere-battle.js?v=2.15.35"></script><script src="engine/premiere-units.js?v=2.15.35"></script><script src="engine/premiere-locations.js?v=2.15.35"></script><script src="engine/premiere-weapons.js?v=2.15.35"></script><script src="engine/premiere-card-rules.js?v=2.15.35"></script><script src="engine/premiere-bot.js?v=2.15.35"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.35"></script><script>
+<script src="engine/premiere-data.js?v=2.15.36"></script><script src="engine/premiere-game.js?v=2.15.36"></script><script src="engine/premiere-battle.js?v=2.15.36"></script><script src="engine/premiere-units.js?v=2.15.36"></script><script src="engine/premiere-locations.js?v=2.15.36"></script><script src="engine/premiere-weapons.js?v=2.15.36"></script><script src="engine/premiere-card-rules.js?v=2.15.36"></script><script src="engine/premiere-bot.js?v=2.15.36"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.36"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.35';
+const trainerVersion='2.15.36';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -794,10 +794,10 @@ const formatName=format=>format===mixedFormat?'Premiere + A New Hope':'Premiere'
 const launchFactions={
  light:{caption:'Rebellion',hero:'Light:1593',covers:{'massassi-widerstand':'Light:1021','rote-staffel':'Light:2060',
   'tatooine-verbuendete':'Light:305','falcon-kessel':'Light:1677','rebellen-spezialeinsatz':'Light:343',
-  'jedi-auf-tatooine':'Light:1803','droidenstuetzpunkt':'Light:343','korvette-und-jaeger':'Light:2418'}},
+  'jedi-auf-tatooine':'Light:1803','droidenstuetzpunkt':'Light:343','korvette-und-jaeger':'Light:2418','rettungsteam':'Light:1495','corellianische-eskorte':'Light:394','bith-ensemble':'Light:942'}},
  dark:{caption:'Galaktisches Imperium',hero:'Dark:634',covers:{'imperiale-garnison':'Dark:1061','schwarze-staffel':'Dark:2700',
   'tusken-ueberfall':'Dark:2648','blockade-von-kessel':'Dark:723','imperiale-sondereinheit':'Dark:478',
-  'vaders-jagd':'Dark:634','sturmtruppen-offensive':'Dark:2355'}},
+  'vaders-jagd':'Dark:634','sturmtruppen-offensive':'Dark:2355','imperiales-spionagenetz':'Dark:2659','schwarze-eskorte':'Dark:250','jawa-schrottmarkt':'Dark:2075'}},
 };
 let launchOpen=false,launchFaction=null;
 

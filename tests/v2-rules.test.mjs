@@ -3033,9 +3033,9 @@ test('selectable Premiere decks complete matches with legal decisions and conser
    dark:choices.dark.find(({deck})=>deck.theme?.id==='tusken-ueberfall').deck};
   JSON.stringify([playMatch(19,latestCardRulesVersion,3,decks,'Light'),playMatch(21,latestCardRulesVersion,3,decks,'Dark'),
    playMatch(22,latestCardRulesVersion,3,tatooine,'Light')])`));
- const expanded=JSON.parse(run(`JSON.stringify(['rote-staffel','droidenstuetzpunkt','jedi-auf-tatooine'].flatMap((id,index)=>{
+ const expanded=JSON.parse(run(`JSON.stringify(['rote-staffel','droidenstuetzpunkt','jedi-auf-tatooine','rettungsteam','corellianische-eskorte','bith-ensemble'].flatMap((id,index)=>{
   const choices=formatDeckChoices[mixedFormat],decks={light:choices.light.find(({deck})=>deck.theme?.id===id).deck,
-   dark:choices.dark.find(({deck})=>deck.theme?.id===['schwarze-staffel','blockade-von-kessel','imperiale-sondereinheit'][index]).deck};
+   dark:choices.dark.find(({deck})=>deck.theme?.id===['schwarze-staffel','blockade-von-kessel','imperiale-sondereinheit','imperiales-spionagenetz','schwarze-eskorte','jawa-schrottmarkt'][index]).deck};
   return ['Light','Dark'].map((side,n)=>playMatch(31+index*2+n,latestCardRulesVersion,3,decks,side));
  }))`));
  assert.ok(expanded.every(match=>match.winner&&match.validated>0),JSON.stringify(expanded.map(({trace,...summary})=>summary)));
