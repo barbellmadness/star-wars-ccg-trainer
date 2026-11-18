@@ -8,7 +8,7 @@ import {chromium} from 'playwright-core';
 import {buildWeb} from './build-web.mjs';
 import {startLocalV2Server} from './serve-v2-local.mjs';
 
-test('built fan homepage, guides and hashed game run without remote images', {timeout: 90000}, async () => {
+test('built fan homepage, guides and hashed game run without remote images', {timeout: 180000}, async () => {
   const output = await mkdtemp(join(tmpdir(), 'swccg-web-browser-'));
   let browser, server;
   try {
@@ -46,6 +46,9 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.goto(origin + '/editionen.html');
     await page.waitForFunction(() => document.querySelector('#cardRows').children.length === 40);
     assert.equal(await page.locator('[data-edition]').count(), 27);
+    assert.equal(await page.locator('[data-banner-edition]').count(),28);
+    await page.locator('#selectedEditionBanner').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector('#editionBannerArt').complete&&document.querySelector('#editionBannerArt').naturalWidth===440);
     assert.equal(await page.locator('#cardRows .card-name').count(), 40);
     const firstName=await page.locator('#cardRows .card-name').first().textContent();
     await page.locator('#nextCards').click();
@@ -76,10 +79,10 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.waitForFunction(()=>document.querySelector('#cardLoadStatus').textContent.includes('162 Standardkarten'));
     assert.equal(await page.locator('#playEdition').isVisible(),false);
     assert.equal(await page.locator('#cardSearch').inputValue(),'');
-    const cachedRequests=requests.length;
+    const cachedRequests=requests.filter(url=>url.includes('/data/')).length;
     await page.locator('[data-edition="premiere"]').click();
     await page.waitForFunction(()=>document.querySelector('#cardLoadStatus').textContent.includes('324 Standardkarten'));
-    assert.equal(requests.length,cachedRequests,'Previously opened catalog should be reused');
+    assert.equal(requests.filter(url=>url.includes('/data/')).length,cachedRequests,'Previously opened catalog should be reused');
     await page.locator('#editionSearch').fill('2001');
     assert.equal(await page.locator('[data-edition]').count(),5);
     await page.locator('#editionCategory').selectOption('Erweiterung');
@@ -109,6 +112,14 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.waitForFunction(()=>document.querySelector('#cardLoadStatus').textContent.includes('120 Standardkarten'));
     assert.equal(await page.locator('#editionTitle').textContent(),'Theed Palace');
     assert.match(await page.locator('#editionFacts').textContent(),/12. Dezember 2001/);
+    const editionIds=await page.locator('[data-edition]').evaluateAll(tiles=>tiles.map(tile=>tile.dataset.edition));
+    for(const id of editionIds){
+      await page.locator('[data-edition="'+id+'"]').click();
+      await page.waitForFunction(id=>{const image=document.querySelector('#editionBannerArt');return image.complete&&image.naturalWidth===440&&image.getAttribute('src').includes('/'+id+'.');},id);
+    }
+    await page.locator('[data-edition="hoth"]').click();
+    await page.waitForFunction(()=>document.querySelector('#editionBannerArt').complete&&document.querySelector('#editionBannerArt').naturalWidth===440);
+    await page.locator('#selectedEditionBanner').screenshot({path:'.hosting-qa-banner-hoth.png'});
     await page.goto(origin + '/v2.html');
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
     await page.evaluate(()=>{

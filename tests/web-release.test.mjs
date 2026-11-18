@@ -42,7 +42,10 @@ test('public release is self-contained, versioned, small and excludes private ma
     const home = await readFile(join(output, 'index.html'), 'utf8');
     assert.doesNotMatch(home, /<script|<img|fetch\(/);
     assert.ok(gzipSync(home).length < 12000, 'Homepage gzip budget: 12 KB');
-    assert.ok(release.files.reduce((n, f) => n + f.gzipBytes, 0) < 600 * 1024, 'Whole first-party release gzip budget: 600 KiB');
+    const bannerArt = release.files.filter(file => file.path.startsWith('assets/edition-banners/'));
+    assert.equal(bannerArt.length, 27, 'One prepared banner for every registered edition');
+    assert.ok(bannerArt.reduce((n, f) => n + f.gzipBytes, 0) < 800 * 1024, 'All lazily loaded banner art: 800 KiB');
+    assert.ok(release.files.filter(file => !bannerArt.includes(file)).reduce((n, f) => n + f.gzipBytes, 0) < 600 * 1024, 'Code and data gzip budget remains 600 KiB');
     const premierePath = release.files.find(file => /^data\/premiere\.[a-f0-9]+\.json$/.test(file.path)).path;
     const data = JSON.parse(await readFile(join(output, premierePath), 'utf8'));
     assert.equal(data.cards.filter(card => card.printText != null).length, 16);

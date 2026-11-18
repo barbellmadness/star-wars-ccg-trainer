@@ -9,7 +9,7 @@ export const webPages = ['index.html', 'v2.html', 'editionen.html', 'anleitungen
   'anleitungen/schnellstart.html', 'anleitungen/spielzug.html', 'anleitungen/kampf.html',
   'anleitungen/a-new-hope.html'];
 // Deliberate allowlist: never collect arbitrary JSON, local reports, credentials or the checkout.
-const sourceAssets = ['assets/site.css', ...['data', 'game', 'battle', 'units', 'locations',
+const sourceAssets = ['assets/site.css', 'assets/edition-banners.css', ...['data', 'game', 'battle', 'units', 'locations',
   'weapons', 'card-rules', 'bot', 'learning', 'session'].map(name => `engine/premiere-${name}.js`),
   ...['premiere', 'a-new-hope', 'hoth', 'premiere-starter-decks', 'premiere-themed-decks',
     'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks'].map(name => `data/${name}.json`)];
@@ -36,11 +36,15 @@ export async function buildWeb(output) {
     await writeFile(target, body);
     files.push({path, kind, bytes: Buffer.byteLength(body), gzipBytes: gzipSync(body).length, sha256: digest(body)});
   }
-  for (const source of [...sourceAssets, ...collectorFiles, 'data/editions.json', 'assets/collectors.css', 'assets/collectors.js']) {
+  const bannerFiles = editions.editions.map(e => {
+    if (!/^[a-z0-9-]+$/.test(e.id)) throw new Error('Ungültige Banner-Edition.');
+    return `assets/edition-banners/${e.id}.svg`;
+  });
+  for (const source of [...bannerFiles, 'assets/edition-banners.js', ...sourceAssets, ...collectorFiles, 'data/editions.json', 'assets/collectors.css', 'assets/collectors.js']) {
     let body = (await readFile(resolve(root, source), 'utf8')).replaceAll('\r\n', '\n');
     if (source.endsWith('.json')) body = JSON.stringify(JSON.parse(body));
-    if (source === 'data/editions.json') for (const [original, hashed] of mapping) body = body.replaceAll(original, hashed);
-    const path = source.replace(/\.(js|json|css)$/, `.${digest(body).slice(0, 12)}.$1`);
+    if (source === 'data/editions.json' || source === 'assets/edition-banners.js') for (const [original, hashed] of mapping) body = body.replaceAll(original, hashed);
+    const path = source.replace(/\.(js|json|css|svg)$/, `.${digest(body).slice(0, 12)}.$1`);
     mapping.set(source, path);
     await emit(path, body, 'asset');
   }
