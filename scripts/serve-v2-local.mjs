@@ -32,7 +32,7 @@ export function startLocalV2Server({port = 8000, reportPath = defaultReport, sit
       return;
     }
     const asset = route === '/' ? '/index.html' : route === '/anleitungen/' ? '/anleitungen/index.html' : route;
-    if (!privateReport && !/^\/(?:v2\.html|index\.html|release\.json|anleitungen\/(?:index|schnellstart|spielzug|kampf|a-new-hope)\.html|assets\/site(?:\.[a-f0-9]{12})?\.css|engine\/[\w-]+(?:\.[a-f0-9]{12})?\.js|data\/[\w-]+(?:\.[a-f0-9]{12})?\.json|data\/SWCCGPC-LICENSE\.txt)$/.test(asset)) {
+    if (!privateReport && !/^\/(?:v2\.html|index\.html|editionen\.html|release\.json|anleitungen\/(?:index|schnellstart|spielzug|kampf|a-new-hope)\.html|assets\/(?:site|collectors)(?:\.[a-f0-9]{12})?\.(?:css|js)|engine\/[\w-]+(?:\.[a-f0-9]{12})?\.js|data\/[\w-]+(?:\.[a-f0-9]{12})?\.json|data\/SWCCGPC-LICENSE\.txt)$/.test(asset)) {
       response.writeHead(404).end();
       return;
     }

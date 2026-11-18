@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "edition": "enhanced-premiere",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:1100",
+      "name": "•Han With Heavy Blaster Pistol",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "108_1",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/hanwithheavyblasterpistol.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1498",
+      "name": "•Leia With Blaster Rifle",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "108_2",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/leiawithblasterrifle.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1598",
+      "name": "•Luke With Lightsaber",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "108_3",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/lukewithlightsaber.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1807",
+      "name": "•Obi-Wan With Lightsaber",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "108_4",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Light/large/obiwanwithlightsaber.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:291",
+      "name": "•Boba Fett With Blaster Rifle",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "108_5",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Dark/large/bobafettwithblasterrifle.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:636",
+      "name": "•Darth Vader With Lightsaber",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Imperial",
+      "rarity": "PM",
+      "catalogId": "108_6",
+      "image": "https://res.starwarsccg.org/cards/EnhancedPremiere-Dark/large/darthvaderwithlightsaber.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

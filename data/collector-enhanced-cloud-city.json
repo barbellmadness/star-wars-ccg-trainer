@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "edition": "enhanced-cloud-city",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:402",
+      "name": "•Chewie With Blaster Rifle",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "109_1",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/chewiewithblasterrifle.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1469",
+      "name": "•Lando In Millennium Falcon",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Starfighter: Modified Light Freighter",
+      "rarity": "PM",
+      "catalogId": "109_2",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/landoinmillenniumfalcon.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1472",
+      "name": "•Lando With Blaster Pistol",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "109_3",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/landowithblasterpistol.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:5817",
+      "name": "Quiet Mining Colony / Independent Operation",
+      "side": "Light",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "109_4",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/quietminingcolony.gif",
+      "backImage": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/independentoperation.gif",
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2909",
+      "name": "•••Z-95 Bespin Defense Fighter",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Starfighter: Modified Z-95 Headhunter",
+      "rarity": "PM",
+      "catalogId": "109_5",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Light/large/z95bespindefensefighter.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:10",
+      "name": "•4-LOM With Concussion Rifle",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Droid",
+      "rarity": "PM",
+      "catalogId": "109_6",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/4lomwithconcussionrifle.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:120",
+      "name": "•Any Methods Necessary",
+      "side": "Dark",
+      "type": "Interrupt",
+      "subType": "Used Or Starting",
+      "rarity": "PM",
+      "catalogId": "109_7",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/anymethodsnecessary.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:290",
+      "name": "•Boba Fett In Slave I",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Starfighter: Firespray-Class Attack Ship",
+      "rarity": "PM",
+      "catalogId": "109_8",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/bobafettinslavei.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:591",
+      "name": "•Crush The Rebellion",
+      "side": "Dark",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "109_9",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/crushtherebellion.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:702",
+      "name": "•Dengar In Punishing One",
+      "side": "Dark",
+      "type": "Starship",
+      "subType": "Starfighter: Corellian JM 5000",
+      "rarity": "PM",
+      "catalogId": "109_10",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/dengarinpunishingone.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1248",
+      "name": "•IG-88 With Riot Gun",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Droid",
+      "rarity": "PM",
+      "catalogId": "109_11",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/ig88withriotgun.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6699",
+      "name": "This Deal Is Getting Worse All The Time / Pray I Don't Alter It Any Further",
+      "side": "Dark",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "109_12",
+      "image": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/thisdealisgettingworseallthetime.gif",
+      "backImage": "https://res.starwarsccg.org/cards/EnhancedCloudCity-Dark/large/prayidontalteritanyfurther.gif",
+      "variant": "Standard"
+    }
+  ]
+}

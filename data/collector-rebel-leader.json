@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "edition": "rebel-leader",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:5552",
+      "name": "•Gold Leader In Gold 1",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Starfighter: Y-Wing",
+      "rarity": "PM",
+      "catalogId": "103_1",
+      "image": "https://res.starwarsccg.org/cards/RebelLeader-Light/large/goldleaderingold1.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:5849",
+      "name": "•Red Leader In Red 1",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Starfighter: X-Wing",
+      "rarity": "PM",
+      "catalogId": "103_2",
+      "image": "https://res.starwarsccg.org/cards/RebelLeader-Light/large/redleaderinred1.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}

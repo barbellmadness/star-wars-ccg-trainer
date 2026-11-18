@@ -19,6 +19,7 @@ jobs:
         run: |
           node scripts/import_premiere.mjs --check
           node scripts/import_premiere.mjs --edition a-new-hope --check
+          node scripts/import-collectors.mjs --check
       - name: Run all tests
         run: node --test
       - name: Install the pinned browser test dependency

@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "edition": "third-anthology",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:32",
+      "name": "•A New Secret Base",
+      "side": "Light",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "111_1",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/anewsecretbase.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:141",
+      "name": "•Artoo-Detoo In Red 5",
+      "side": "Light",
+      "type": "Starship",
+      "subType": "Starfighter: X-Wing",
+      "rarity": "PM",
+      "catalogId": "111_2",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/artoodetooinred5.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:804",
+      "name": "•Echo Base Garrison",
+      "side": "Light",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "111_3",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/echobasegarrison.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:5725",
+      "name": "Massassi Base Operations / One In A Million",
+      "side": "Light",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "111_4",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/massassibaseoperations.gif",
+      "backImage": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/oneinamillion.gif",
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1948",
+      "name": "•Prisoner 2187",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "111_5",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Light/large/prisoner2187.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6635",
+      "name": "Set Your Course For Alderaan / The Ultimate Power In The Universe",
+      "side": "Dark",
+      "type": "Objective",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "111_6",
+      "image": "https://res.starwarsccg.org/cards/ThirdAnthology-Dark/large/setyourcourseforalderaan.gif",
+      "backImage": "https://res.starwarsccg.org/cards/ThirdAnthology-Dark/large/theultimatepowerintheuniverse.gif",
+      "variant": "Standard"
+    }
+  ]
+}

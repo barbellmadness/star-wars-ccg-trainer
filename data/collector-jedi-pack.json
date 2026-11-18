@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "edition": "jedi-pack",
+  "source": "swccgpc/swccg-card-json",
+  "revision": "65cd150d20634447a5499d763ac324436158c7a8",
+  "cards": [
+    {
+      "id": "Light:966",
+      "name": "•For Luck",
+      "side": "Light",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "102_1",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Light/large/forluck.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1094",
+      "name": "•Han",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "102_2",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Light/large/han.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1491",
+      "name": "•Leia",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Rebel",
+      "rarity": "PM",
+      "catalogId": "102_3",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Light/large/leia.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:1608",
+      "name": "•Luke's T-16 Skyhopper",
+      "side": "Light",
+      "type": "Vehicle",
+      "subType": "Shuttle",
+      "rarity": "PM",
+      "catalogId": "102_4",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Light/large/lukest16skyhopper.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Light:2491",
+      "name": "•Tedn Dahai",
+      "side": "Light",
+      "type": "Character",
+      "subType": "Alien",
+      "rarity": "PM",
+      "catalogId": "102_5",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Light/large/tedndahai.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:617",
+      "name": "•Dark Forces",
+      "side": "Dark",
+      "type": "Effect",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "102_6",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/darkforces.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:880",
+      "name": "•Eriadu",
+      "side": "Dark",
+      "type": "Location",
+      "subType": "System",
+      "rarity": "PM",
+      "catalogId": "102_7",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/eriadu.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1065",
+      "name": "•Gravity Shadow",
+      "side": "Dark",
+      "type": "Interrupt",
+      "subType": "Lost",
+      "rarity": "PM",
+      "catalogId": "102_8",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/gravityshadow.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:6365",
+      "name": "Hyperoute Navigation Chart",
+      "side": "Dark",
+      "type": "Game Aid",
+      "subType": null,
+      "rarity": "PM",
+      "catalogId": "102_9",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/hyperoutenavigationchart.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:1703",
+      "name": "•Motti",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Imperial",
+      "rarity": "PM",
+      "catalogId": "102_10",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/motti.gif",
+      "backImage": null,
+      "variant": "Standard"
+    },
+    {
+      "id": "Dark:2424",
+      "name": "•Tarkin",
+      "side": "Dark",
+      "type": "Character",
+      "subType": "Imperial",
+      "rarity": "PM",
+      "catalogId": "102_11",
+      "image": "https://res.starwarsccg.org/cards/JediPack-Dark/large/tarkin.gif",
+      "backImage": null,
+      "variant": "Standard"
+    }
+  ]
+}
