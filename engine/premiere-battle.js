@@ -3,6 +3,10 @@ const PremiereBattle = (() => {
     if (!card) return null;
     if (card.type === 'Location') return 0;
     if (card.id === 'Dark:816' && /destiny equals zero/i.test(card.gametext ?? '')) return 0;
+    // A New Hope / Brainiac: pi is an exact, non-rounded destiny value.
+    // Keep unidentified special destinies unknown instead of inventing a number.
+    if (card.id === 'Light:319' && card.set === '2' &&
+        (card.values?.destiny?.raw === 'π' || card.destinyValues?.includes(Math.PI))) return Math.PI;
     return Number.isFinite(card.destiny) ? card.destiny : null;
   }
 
