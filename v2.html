@@ -331,6 +331,8 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
  .launch-deck-copy strong{font-size:13px}
  .launch-deck-copy small{display:none}
 }
+
+.ongoing-effect{border-top:1px solid #46566b;padding:8px 0}.ongoing-effect:first-child{border-top:0}.ongoing-effect button{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:5px;font-size:12px}.ongoing-effect img{width:42px;aspect-ratio:5/7;object-fit:contain}.ongoing-effect p{font-size:11px;line-height:1.45;margin:6px 0;color:#c0cddd}.ongoing-effects>div{max-height:320px;overflow:auto}
 </style>
 <main>
   <header class="brand-header"><img src="https://gemp.starwarsccg.org/gemp-swccg/epic-duel/logo.png" alt="Star Wars Customizable Card Game Logo" referrerpolicy="no-referrer"><a href="./" style="font-size:12px;color:#f3cf7a">← Fanprojekt-Startseite</a></header>
@@ -490,6 +492,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
         <h2 id="botHistoryTitle">Aktivitäten im Bot-Zug</h2>
         <div id="botHistory" class="log" role="region" aria-labelledby="botHistoryTitle" tabindex="0"></div>
       </section>
+      <section class="panel ongoing-effects" aria-labelledby="botEffectsTitle"><h2 id="botEffectsTitle">Aktive Effekte · Gegner</h2><div id="botEffects"></div></section>
     </aside>
     <aside class="table-sidebar table-info" aria-label="Phasenhilfe und Spielprotokoll">
       <section class="panel" id="phaseHelp" hidden>
@@ -500,6 +503,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
         <h2 id="gameLogTitle">Spielprotokoll · aktueller Zug</h2>
         <div id="log" class="log" role="region" aria-labelledby="gameLogTitle" tabindex="0"></div>
       </section>
+      <section class="panel ongoing-effects" aria-labelledby="playerEffectsTitle"><h2 id="playerEffectsTitle">Deine aktiven Effekte</h2><div id="playerEffects"></div></section>
     </aside>
   </section>
   </div>
@@ -560,9 +564,9 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   <div id="movementOptions"></div>
   <p id="movementStatus" class="hint movement-status" role="status" hidden></p>
 </dialog>
-<script src="engine/premiere-data.js?v=2.15.40"></script><script src="engine/premiere-game.js?v=2.15.40"></script><script src="engine/premiere-battle.js?v=2.15.40"></script><script src="engine/premiere-units.js?v=2.15.40"></script><script src="engine/premiere-locations.js?v=2.15.40"></script><script src="engine/premiere-weapons.js?v=2.15.40"></script><script src="engine/premiere-card-rules.js?v=2.15.40"></script><script src="engine/premiere-bot.js?v=2.15.40"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.40"></script><script>
+<script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.15.40';
+const trainerVersion='2.15.41';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -2082,12 +2086,54 @@ function renderDeckPiles(side,player){
  piles.setAttribute?.('aria-label','Kartenstapel der '+side+' Side');
  piles.innerHTML='<figcaption class="deck-pile-summary"><span class="life-force">Life Force <strong>'+lifeForce
   +'</strong></span><span>Lost Pile <strong>'+player.lostCount+'</strong></span></figcaption>'
-  +(player.tableEffects?.length?'<div class="hint">Effects · '+effectButtons(state.tableEffects,'effect')+'</div>':'')
   +(own?lost:'')
   +'<div class="pile-flow"><div class="pile-return"><span>Am Zugende unter das Reserve Deck</span></div>'
   +slot('Reserve Deck',player.reserveCount)+'<div class="pile-forward">Aktivieren <span aria-hidden="true">→</span></div>'
   +slot('Force Pile',player.forceCount)+'<div class="pile-forward">Ausgeben <span aria-hidden="true">→</span></div>'
   +slot('Used Pile',player.usedCount)+'<div class="pile-draw"><span aria-hidden="true">↓</span> Auf die Hand ziehen</div></div>'+(own?'':lost);
+}
+
+function ongoingEffects(side){
+ const result=[],seen=new Set();
+ const add=(card,details)=>{
+  if(!card||seen.has(card)||card.hidden||card.faceDown||card.concealed||(card.tableSide??card.owner??card.side)!==side)return;
+  seen.add(card);result.push({card,details});
+ };
+ const describe=record=>[
+  record.target&&typeof record.target==='string'&&['Light','Dark'].includes(record.target)?'Betrifft '+record.target+' Side':'',
+  record.host?.name?'An '+record.host.name:'',
+  PremiereUnits.textSuppressed(record.card)?'Spieltext derzeit aufgehoben':PremiereCardRules.entry(record.card).effects.map(rule=>rule.summary).join(' ')
+ ].filter(Boolean).join(' · ');
+ for(const record of [...(state.tableEffects??[]),...(state.lostPileEffects??[])])if(!record.hidden)add(record.card,describe(record));
+ for(const [slot,records] of Object.entries(state.locationEffects??{}))for(const record of records){
+  if(record.hidden||record.card?.type!=='Effect')continue;
+  add(record.card,[state.locations[slot]?.name,describe(record)].filter(Boolean).join(' · '));
+ }
+ for(const owner of PremiereGame.sides)for(const entry of PremiereLocations.entries(state,owner)){
+  if(entry.card.type!=='Effect'||isHoloSite(state.locations[entry.slot]))continue;
+  add(entry.card,[entry.carriers[0]?.name,state.locations[entry.slot]?.name,PremiereUnits.textSuppressed(entry.card)?'Spieltext derzeit aufgehoben':PremiereCardRules.entry(entry.card).effects.map(rule=>rule.summary).join(' ')].filter(Boolean).join(' · '));
+ }
+ const barrier=catalog.find(card=>card.id==='Dark:1263');
+ if(barrier?.side===side){
+  const targets=[...(state.barredCards??[])].filter(([card,turn])=>turn===state.game?.timing.turn&&PremiereLocations.findEntry(state,card)).map(([card])=>card.name);
+  if(targets.length)result.push({card:barrier,details:'Vorübergehende Wirkung bis zum Ende dieses Zuges: '+targets.join(', ')+' darf weder kämpfen noch sich bewegen. Imperial Barrier ist ein Interrupt; die Karte selbst bleibt nicht auf dem Tisch.'});
+ }
+ return result;
+}
+
+function inspectOngoingEffect(side,index,gameId,revision){
+ if(gameId!==currentGame()?.id||revision!==currentGame()?.revision)return false;
+ const entry=ongoingEffects(side)[index];if(!entry)return false;
+ showCardWithStats(entry.card,'<h3>Aktuelle Wirkung</h3><p>'+escapeHTML(entry.details||'Ausgelegter Effect; Einzelheiten siehe Spieltext.')+'</p>');return true;
+}
+
+function renderOngoingEffects(){
+ const game=currentGame();
+ for(const [side,id,title] of [[playerSide(),'playerEffects','playerEffectsTitle'],[botSide(),'botEffects','botEffectsTitle']]){
+  const entries=ongoingEffects(side);
+  el(title).textContent=(side===playerSide()?'Deine Effekte':'Effekte des Gegners')+' · '+side+' Side';
+  el(id).innerHTML=entries.length?entries.map(({card,details},index)=>'<article class="ongoing-effect"><button type="button" aria-haspopup="dialog" aria-label="'+escapeHTML(card.name+' ansehen')+'" onclick="'+escapeHTML('inspectOngoingEffect('+JSON.stringify([side,index,game?.id,game?.revision]).slice(1,-1)+')')+'">'+(card.image?'<img src="'+escapeHTML(card.image)+'" alt="" loading="lazy" decoding="async">':'')+'<strong>'+escapeHTML(card.name)+'</strong></button><p>'+escapeHTML(details||'Ausgelegter Effect · Karte anklicken für Einzelheiten.')+'</p></article>').join(''):'<p class="hint">Keine aktiven Effekte.</p>';
+ }
 }
 
 function render(){
@@ -2160,6 +2206,7 @@ function render(){
  el('botHistoryTitle').textContent=(state.botTurn?'Aktivitäten im Bot-Zug':'Letzte Bot-Aktivitäten')+(style?' · '+style.label:'');
  el('botHistory').textContent=state.botHistory?.length?state.botHistory.join('\n'):state.botReason??'Bot wartet.';
  el('log').textContent=state.log.join('\n');
+ renderOngoingEffects();
  renderLearning();
 }
 

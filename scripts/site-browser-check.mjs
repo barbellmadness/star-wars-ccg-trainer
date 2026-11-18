@@ -111,6 +111,19 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     assert.match(await page.locator('#editionFacts').textContent(),/12. Dezember 2001/);
     await page.goto(origin + '/v2.html');
     await page.waitForFunction(() => !document.querySelector('#start').disabled);
+    await page.evaluate(()=>{
+      window.qaEffectsState=state;
+      state={game:{id:-1,revision:0,playerSide:'Light',timing:{turn:0}},locations:[],light:[],dark:[],tableEffects:[{card:catalog.find(c=>c.id==='Dark:2897'),target:'Light'},{card:catalog.find(c=>c.id==='Light:1778'),target:'Light'}]};
+      renderOngoingEffects();
+      document.querySelector('#gameTable').hidden=false;
+      document.querySelector('#matchArea').hidden=false;
+    });
+    assert.match(await page.locator('#botEffects').textContent(),/Your Eyes Can Deceive You/);
+    assert.match(await page.locator('#playerEffects').textContent(),/Nightfall/);
+    await page.locator('#botEffects button').click();
+    await page.getByRole('dialog',{name:'Your Eyes Can Deceive You',exact:true}).waitFor({state:'visible'});
+    await page.keyboard.press('Escape');
+    await page.evaluate(()=>{state=window.qaEffectsState;delete window.qaEffectsState;document.querySelector('#gameTable').hidden=true;document.querySelector('#matchArea').hidden=true;});
     await page.locator('#launchSides [data-side="light"]').click();
     assert.equal(await page.locator('[data-deck-format="premiere"] [data-deck]').count(), 8);
     assert.equal(await page.locator('[data-deck-format="premiere-a-new-hope"] [data-deck]').count(), 8);
