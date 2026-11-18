@@ -69,6 +69,23 @@ test('site neighborhoods follow related table rows instead of storage slots',()=
  assert.equal(run('adjacentSites(0,3)'),false);
  assert.equal(run('adjacentSites(3,4)'),false);
 });
+test('Hoth topology orders numbered markers and keeps Wampa Cave outside Echo Base interiors',()=>{
+ const {run}=harness();const snapshot=JSON.parse(readFileSync(new URL('../data/hoth.json',import.meta.url),'utf8'));
+ run(`const qaHoth=PremiereData.readCatalog(${JSON.stringify(snapshot)},PremiereData.HOTH);
+ state={locations:['Dark:6359','Dark:6354','Light:5586','Light:1171','Light:1173','Light:1163','Light:5590','Light:5591','Light:5582'].map(id=>qaHoth.find(c=>c.id===id))};
+ state.locationOrder=initialLocationOrder(state.locations);`);
+ assert.deepEqual(Array.from(run('state.locationOrder')),[3,4,2,7,8,6,1,0,5]);
+ assert.equal(run('adjacentSites(0,1)'),true);assert.equal(run('adjacentSites(0,3)'),false);
+ run("state.locations.push({name:'Hoth: Generic exterior',type:'Location',subType:'Site',locationTags:['Exterior']})");
+ assert.deepEqual(Array.from(run('initialLocationOrder(state.locations)')),[3,4,2,7,8,6,1,9,0,5]);
+});
+test('Hoth marker deployment offers only numerically valid insertion points despite absent markers',()=>{
+ const {run}=harness();const snapshot=JSON.parse(readFileSync(new URL('../data/hoth.json',import.meta.url),'utf8'));
+ run(`const qaHoth=PremiereData.readCatalog(${JSON.stringify(snapshot)},PremiereData.HOTH);
+ state={phase:2,activeSide:'Light',hand:[qaHoth.find(c=>c.id==='Light:5590')],locations:['Dark:6359','Light:5586','Light:5582'].map(id=>qaHoth.find(c=>c.id===id))};
+ state.locationOrder=initialLocationOrder(state.locations);`);
+ assert.deepEqual(Array.from(run("locationDeployPositions('Light',0)")),[2]);
+});
 test('regular site movement allows a deployed character but blocks a second regular move',()=>{
  const {run}=harness();
  run("const character={name:'Rebel',type:'Character',deploy:1};state={phase:4,botTurn:null,locations:[{name:'Hoth: A',type:'Location',subType:'Site'},{name:'Hoth: B',type:'Location',subType:'Site'}],light:[[character],[]],force:[{}],movedThisTurn:[],deployedThisTurn:[character]};");

@@ -5,7 +5,7 @@ import {chromium} from 'playwright-core';
 import {startLocalV2Server} from './serve-v2-local.mjs';
 
 test('V2 starts, handles unavailable images and stays playable at desktop and narrow widths', {timeout: 120000}, async () => {
-  const server = startLocalV2Server({port: 0});
+  const server = startLocalV2Server({port: 0, reportPath: null});
   let browser;
   try {
     await once(server, 'listening');

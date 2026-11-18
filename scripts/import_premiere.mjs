@@ -3,11 +3,12 @@ import {readFile, rename, rm, writeFile} from 'node:fs/promises';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import premiere from '../engine/premiere-data.js';
 
-const {SOURCE, REVISION, EDITION, A_NEW_HOPE, EDITIONS, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks,
+const {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, EDITIONS, SIDES, readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks,
   isGarrisonExpansionCard, isReleasedExpansionCard, readFormatDeckChoices, buildAudit} = premiere;
 const snapshotPaths = {
   [EDITION]: new URL('../data/premiere.json', import.meta.url),
-  [A_NEW_HOPE]: new URL('../data/a-new-hope.json', import.meta.url)
+  [A_NEW_HOPE]: new URL('../data/a-new-hope.json', import.meta.url),
+  [HOTH]: new URL('../data/hoth.json', import.meta.url)
 };
 const deckPath = new URL('../data/premiere-starter-decks.json', import.meta.url);
 const themesPath = new URL('../data/premiere-themed-decks.json', import.meta.url);
@@ -119,9 +120,9 @@ async function writeScanReport(catalog) {
   if (report.failures.length) process.exitCode = 1;
 }
 
-function expansionReport(catalog) {
+function expansionReport(catalog, edition = A_NEW_HOPE) {
   return {
-    source: SOURCE, revision: REVISION, edition: A_NEW_HOPE, inputsSha256: SHA256,
+    source: SOURCE, revision: REVISION, edition, inputsSha256: SHA256,
     cards: Object.fromEntries(SIDES.map(side => [side, catalog.filter(card => card.side === side).length])),
     cardsWithPrintScan: catalog.filter(card => card.images.print).length,
     cardsWithErrata: catalog.filter(card => card.errataSymbol).length,
@@ -136,12 +137,12 @@ function expansionReport(catalog) {
 
 async function main(args) {
   let edition = EDITION;
-  if (args[0] === '--edition' && args[1] === 'a-new-hope') {
-    edition = A_NEW_HOPE;
+  if (args[0] === '--edition' && ['a-new-hope','hoth'].includes(args[1])) {
+    edition = args[1] === 'hoth' ? HOTH : A_NEW_HOPE;
     args = args.slice(2);
   }
   if (args.length > 1 || (args.length && !['--check', '--report', '--verify-source', '--verify-scans'].includes(args[0]))) {
-    throw new Error('Aufruf: node scripts/import_premiere.mjs [--edition a-new-hope] [--check | --report | --verify-source | --verify-scans]');
+    throw new Error('Aufruf: node scripts/import_premiere.mjs [--edition a-new-hope|hoth] [--check | --report | --verify-source | --verify-scans]');
   }
   const [mode] = args;
   const downloads = mode === undefined || mode === '--verify-source';
@@ -151,6 +152,15 @@ async function main(args) {
   const catalog = readCatalog(snapshot, edition);
   if (mode === '--verify-source' && serialize(snapshot) !== serialize(await readJson(snapshotPath))) {
     throw new Error('Der versionierte Snapshot weicht vom reproduzierten Quelldatensatz ab.');
+  }
+  if (edition === HOTH) {
+    if (mode === '--verify-scans') return writeScanReport(catalog);
+    const report = expansionReport(catalog, HOTH);
+    if (report.cardsReleased !== 0) throw new Error('Hoth benötigt eine explizite Regelfreigabe.');
+    if (mode === '--report') return process.stdout.write(serialize(report));
+    if (mode === undefined) await replaceSnapshot(snapshot, snapshotPath);
+    console.log(`Hoth ${REVISION}: ${report.cards.Light} Light + ${report.cards.Dark} Dark, 0 freigegeben, ${report.cardsOpenForRuleReview.length} zur Regelprüfung.`);
+    return;
   }
   if (edition === A_NEW_HOPE) {
     if (mode === '--verify-scans') return writeScanReport(catalog);
