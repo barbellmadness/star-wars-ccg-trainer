@@ -142,6 +142,8 @@ const PremiereGame = (() => {
       const reserveCount = (piles.deck ?? []).some(isReserveInsert) ? null : piles.deck?.length ?? 0;
       return [player, {handCount: piles.hand?.length ?? 0, reserveCount,
         forceCount: piles.force?.length ?? 0, usedCount: piles.used?.length ?? 0,
+        ...(piles.used?.at(-1)?.dagobahFaceUp?{usedTop:clone(piles.used.at(-1))}:{}),
+        ...(piles.deck?.at(-1)?.dagobahFaceUp&&!isReserveInsert(piles.deck.at(-1))?{reserveTop:clone(piles.deck.at(-1))}:{}),
         lostCount: piles.lost?.length ?? 0, lostFaceDown: faceDown,
         lostTop: faceDown ? null : clone(piles.lost?.at(-1)) ?? null,
         lostEffects: (state.lostPileEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),

@@ -59,6 +59,7 @@ function revealReserveInserts(side){
  if(!state.game)return;
  const {deck}=PremiereGame.zones(state,side);
  while(PremiereGame.isReserveInsert(deck?.at(-1))){
+  if(typeof dagobahEnabled==='function'&&dagobahEnabled()&&deck.at(-1).set==='4')return;
   const card=deck.pop(),owner=card.insertedIntoReserveBy;
   delete card.insertedIntoReserveBy;
   (state.activationLocks??={})[side]=state.game.timing.turn;
@@ -511,9 +512,9 @@ function startingLocationChoices(deck){
  });
 }
 
-const latestCardRulesVersion=31;
+const latestCardRulesVersion=32;
 const hothEnabled=()=>typeof HothRules!=='undefined'&&(currentGame()?.cardRulesVersion??latestCardRulesVersion)>=HothRules.VERSION&&
- (!currentGame()?.playFormat||currentGame().playFormat==='premiere-a-new-hope-hoth');
+ (!currentGame()?.playFormat||['premiere-a-new-hope-hoth','premiere-a-new-hope-hoth-dagobah'].includes(currentGame().playFormat));
 const latestBotStrategyVersion=3;
 const usesBotPlanner=version=>version===2||version===latestBotStrategyVersion;
 const playerSide=()=>currentGame()?.playerSide??'Light';
@@ -851,7 +852,7 @@ function baseTravelOptions(card,side,from,to,react=false){
   const free=[from,to].some(slot=>registeredLocationModifier('shipTravelFree',card,side,slot)>0);
   if(isSpaceSystem(origin)&&isSpaceSystem(destination)&&stats.navComputer&&stats.hyperspeed>0&&
      Math.abs(spaceParsec(origin)-spaceParsec(destination))<=range)options.push({kind:'Hyperspeed',cost:free?0:1});
-  if(PremiereUnits.fighter(card)||hothEnabled()&&card.id==='Light:1665'){
+  if(PremiereUnits.fighter(card)||hothEnabled()&&card.id==='Light:1665'||typeof dagobahEnabled==='function'&&dagobahEnabled()&&card.id==='Dark:1185'){
    const landing=isPlanetSystem(origin)&&isExteriorPlanetSite(destination)&&locationGroup(origin)===sitePlanet(destination);
    const takeoff=isExteriorPlanetSite(origin)&&isPlanetSystem(destination)&&sitePlanet(origin)===locationGroup(destination);
    const bay=PremiereLocations.conditions(state,landing?to:from,side).dockingBay;
@@ -1834,7 +1835,7 @@ function baseCraftDeployCost(card,loc,side,pilot=null){
  }
  if(card.type!=='Starship')return null;
  const slot=state.locations.indexOf(loc);
- const bay=(PremiereUnits.fighter(card)||hothEnabled()&&card.id==='Light:1665')&&PremiereLocations.conditions(state,slot,side).dockingBay;
+ const bay=(PremiereUnits.fighter(card)||hothEnabled()&&card.id==='Light:1665'||typeof dagobahEnabled==='function'&&dagobahEnabled()&&card.id==='Dark:1185')&&PremiereLocations.conditions(state,slot,side).dockingBay;
  if(!bay&&(!isSpaceSystem(loc)||(permanentPilotAbility(card)===null&&!pilot)))return null;
  if(pilot&&!PremiereUnits.accepts(card,pilot,'pilot'))return null;
  const deployRule=PremiereLocations.ruleAt(state,slot,side,'shipDeploy');
@@ -6266,7 +6267,7 @@ function battlePresence(side,slot){
  const candidates=battleCandidates(side,slot).filter(card=>!state.battledCardsThisTurn?.includes(card)||
   (x?.site===slot&&x.participants?.[side].includes(card)));
  if(x?.restrictedFighters&&x.site===slot)return candidates.some(card=>x.restrictedFighters[side].includes(card));
- return candidates.some(card=>card.presence===true||hothEnabled()&&['Light:1404','Dark:1950'].includes(card.id)&&!PremiereUnits.textSuppressed(card))||candidates.reduce((sum,card)=>sum+(cardAbility(card)??0),0)>=1;
+ return candidates.some(card=>card.presence===true||typeof dagobahEnabled==='function'&&dagobahEnabled()&&['Dark:9','Dark:1245'].includes(card.id)&&!PremiereUnits.textSuppressed(card)||hothEnabled()&&['Light:1404','Dark:1950'].includes(card.id)&&!PremiereUnits.textSuppressed(card))||candidates.reduce((sum,card)=>sum+(cardAbility(card)??0),0)>=1;
 }
 
 function battleParticipantsAt(side,site,previous=[],restricted=null){
@@ -6473,8 +6474,9 @@ function settleTractorBeam(frame){
   const {card,target,bay,site}=frame,entry=PremiereLocations.findEntry(state,target);
   const defense=PremiereWeapons.defense(target,cardAbility(target),craftStats(target,site)),total=PremiereBattle.total(draws);
   if(entry?.slot!==site||entry.unavailable||!Number.isFinite(defense)||!Number.isFinite(total)||total<=defense||!(frame.holder?frame.holder.attachments?.includes(card):deathStarTractorBeams(bay).length))return;
-  if(!tractorShipCrew(target).length){takeStolenTableCard('Dark',card,entry);return;}
+  if(!tractorShipCrew(target).length){if(typeof dagobahEnabled==='function'&&dagobahEnabled())dagoShipCaptured(target,entry.side);takeStolenTableCard('Dark',card,entry);return;}
   if(!detachTableCard(entry.side,site,target))return;
+  if(typeof dagobahEnabled==='function'&&dagobahEnabled())dagoShipCaptured(target,entry.side);
   target.inactive=true;
   target.tractorCaptured=true;
   PremiereGame.zones(state,entry.side).board[bay].push(target);
@@ -6837,10 +6839,12 @@ function battleDestinyDrawCount(side,siteIndex,ability,initiator=battleSession?.
 function drawDestinySeries(side,kind,count,modifier,complete){
  const piles=PremiereGame.zones(state,side),game=state.game,draws=[];
  function next(replacement=false){
+  if(typeof dagobahEnabled==='function'&&dagobahEnabled()&&PremiereGame.isReserveInsert(piles.deck.at(-1))&&piles.deck.at(-1).set==='4'){dagoResolveTop(side,()=>next(replacement));return;}
   if(!replacement&&count--<=0){complete(draws);return;}
   revealReserveInserts(side);
   const draw=PremiereBattle.draw(piles,modifier);
   if(!draw){complete(draws);return;}
+  if(typeof dagobahEnabled==='function'&&dagobahEnabled())delete draw.card.dagobahFaceUp;
   if(hothEnabled()&&Number.isFinite(draw.value))draw.value+=hothDrawModifier(side,draw.card);
   revealReserveInserts(side);
   const finish=frame=>{
@@ -6851,11 +6855,11 @@ function drawDestinySeries(side,kind,count,modifier,complete){
   const frame={kind:'destiny',purpose:kind,side,draw,site:battleSession?.site,finish};
   const resume=()=>{
    if((game?.cardRulesVersion??0)>=29&&Number.isFinite(draw.value))draw.value=Math.max(0,draw.value+clakdorDestinyModifier(draw.card)+(tonnikaFactor(draw.card)-1)*(draw.card.destiny??0));
-   if(game&&battleSession?.segmented&&PremiereGame.sides.some(actor=>destinyResponses(actor,frame).length))PremiereGame.openResponse(game,frame);
+   if(game&&(battleSession?.segmented||typeof dagobahEnabled==='function'&&dagobahEnabled())&&(PremiereGame.sides.some(actor=>destinyResponses(actor,frame).length)||typeof dagobahEnabled==='function'&&dagobahEnabled()&&hasInterruptResponse(frame)))PremiereGame.openResponse(game,frame);
    else finish(frame);
   };
-  if((game?.cardRulesVersion??0)>=29&&draw.card.id==='Light:1992')state.pendingCardView={mode:'destinyValue',side,draw,values:[2,5],modifier,shown:[draw.card],publicView:true,resume};
-  else resume();
+  const startDraw=()=>{if((game?.cardRulesVersion??0)>=29&&draw.card.id==='Light:1992')state.pendingCardView={mode:'destinyValue',side,draw,values:[2,5],modifier,shown:[draw.card],publicView:true,resume};else resume();};
+  if(typeof dagobahEnabled==='function'&&dagobahEnabled())dagoResolveTop(side,startDraw);else startDraw();
  }
  next();
 }
@@ -7230,7 +7234,7 @@ function shootWeapon(side,shot,complete){
   drawDestinySeries(side,'weapon',shot.draws,sourceBonus,draws=>{
    const valid=draws.filter(draw=>!draw.cancelled);
    const automated=PremiereWeapons.projector(shot.weapon)||PremiereWeapons.seeker(shot.weapon);
-   const sum=PremiereBattle.total(draws),total=valid.length&&sum!==null?Math.max(0,sum+shot.bonus+(automated?holocamDestiny(side,shot.from):0)):null;
+   const sum=PremiereBattle.total(draws);let total=valid.length&&sum!==null?Math.max(0,sum+shot.bonus+(automated?holocamDestiny(side,shot.from):0)):null;
    const afterShot=()=>afterCharacterFires(side,shot.host,shot.from,complete);
    const finish=()=>{
     if(hothEnabled()&&hothResolveShot(side,shot,total,draws,afterShot))return;
@@ -7255,10 +7259,11 @@ function shootWeapon(side,shot,complete){
     }
     afterShot();
    };
-   if(total!==null&&PremiereUnits.fighter(shot.target)&&Number.isFinite(shot.target.maneuver)&&
+   const finishTotal=()=>{if(total!==null&&PremiereUnits.fighter(shot.target)&&Number.isFinite(shot.target.maneuver)&&
       !Number.isFinite(shot.target.armor)&&!Number.isFinite(PremiereWeapons.definition(shot.weapon)?.threshold)){
     withShipWeaponResponse({kind:'weaponDefense',side,shot,site:slot},finish);
-   }else finish();
+   }else finish();};
+   if(typeof dagobahEnabled==='function'&&dagobahEnabled()&&shot.target.type==='Starship'&&!Number.isFinite(PremiereWeapons.definition(shot.weapon)?.threshold))dagoTargetTotal(side,shot.target,total,value=>{total=value;finishTotal();});else finishTotal();
   });
  });
 }
@@ -8287,6 +8292,7 @@ function resolveResponsePass(side){
  if(hothEnabled()&&frame.interrupt==='hoth'){settleHothInterrupt(frame,PremiereGame.responseWindow(game));return true;}
  if(hothEnabled()&&frame.hothEffect){settleHothEffect(frame);return true;}
  if(frame.kind==='extinguishAbility'){resolveAnhResponse(frame,PremiereGame.responseWindow(game));return true;}
+ if(typeof dagobahEnabled==='function'&&dagobahEnabled()&&frame.kind.startsWith('dagobah')){frame.finish?.(frame);return true;}
  if(frame.kind==='beforeBattleDestiny'){battleDestiny(frame.side,false);return true;}
  if(frame.kind==='justFired'){frame.finish();return true;}
  if(frame.kind==='poisonStinger'){settlePoisonStinger(frame);return true;}
@@ -8441,7 +8447,9 @@ function resolveResponsePass(side){
    const complete=cancelled=>{
     const mixedUsed=hothEnabled()&&frame.card.set==='3'&&frame.card.subType==='Used Or Lost'&&
      !(frame.card.id==='Dark:2645'&&locationTitle(frame.tableEffect?.card??frame.targetEffect?.card??frame.weaponTarget?.card??parent?.card)==='crash site memorial');
-    (frame.interrupt==='namedCounter'&&frame.card.subType!=='Used'&&!mixedUsed?lost:used).push(frame.card);
+    const dagobahLost=typeof dagobahEnabled==='function'&&dagobahEnabled()&&['sense','alter'].includes(frame.interrupt)&&(dagoEffects('Light:745').length||dagoEffects('Dark:2551').length);
+    (dagobahLost||frame.interrupt==='namedCounter'&&frame.card.subType!=='Used'&&!mixedUsed?lost:used).push(frame.card);
+    if(dagobahLost&&cancelled&&frame.counterMode!=='direct')(state.hothDeferred??=[]).push(()=>dagoLoss(frame.side,2,'Do, Or Do Not / There Is No Try'));
     if(cancelled){
      if(frame.tableEffect)cancelTableEffect(frame.tableEffect);
      else if(frame.weaponTarget)loseTableCard(frame.weaponTarget.side,frame.weaponTarget.slot,frame.weaponTarget.card);
@@ -9580,7 +9588,8 @@ function baseLegalActions(position,side,request){
   if(x.resolved||position.phase!==3)return [];
   if(x.segment==='damage')return battleDamageOptions(side).map(option=>offer(option.kind,option.args,option)).concat(
    x.damage.priority===side&&x.damage.debt[side].attrition>0?pileInterruptOptions(side).filter(option=>option.rule.mode==='droidAttrition')
-    .map(option=>offer('pileInterrupt',option.args,option)):[]);
+    .map(option=>offer('pileInterrupt',option.args,option)):[],
+   typeof dagobahEnabled==='function'&&dagobahEnabled()&&x.damage.priority===side?hothActionOptions(side).map(option=>offer('hothAction',option.args,option)):[]);
   if(x.segment==='initiation')return side==='Dark'&&x.prediction&&!x.prediction.winner?
    PremiereGame.sides.map(winner=>offer('battlePrediction',[winner])):[];
   const training=[];
@@ -10758,7 +10767,7 @@ function fireImmediateWeapon(side,shot,complete){
  withShipWeaponResponse({kind:'weaponTarget',side,shot,site:shot.targetSlot},frame=>{
   if(frame?.cancelled){complete();return;}
   drawDestinySeries(side,'weapon',shot.draws,weaponDestinyModifier(side,shot)+(shot.extraDestiny??0),draws=>{
-   const value=PremiereBattle.total(draws),hit=value!==null&&(shot.effect==='exclude'?value+shot.bonus===shot.defense:value+shot.bonus>shot.defense);
+   const resolve=value=>{const hit=value!==null&&(shot.effect==='exclude'?value+shot.bonus===shot.defense:value+shot.bonus>shot.defense);
    if(hit){const entry=PremiereLocations.findEntry(state,shot.target),gate=laserGateRecord(shot.target);
     if(gate)cancelLocationEffect(gate.site,gate.effect);
     else if(entry){if(['hit','zero','destroy'].includes(shot.effect)){
@@ -10767,7 +10776,8 @@ function fireImmediateWeapon(side,shot,complete){
      shot.target.hitForLoss=true;loseTableCard(entry.side,entry.slot,entry.card);}else applyWeaponResult(shot,entry.side,entry.slot);}
    }
    log(shot.weapon.name+' → '+shot.target.name+': '+(value===null?'kein Destiny':value+shot.bonus)+' / '+shot.defense+(hit?' · Treffer.':' · verfehlt.'));
-   complete();
+   complete();};
+   const value=PremiereBattle.total(draws);if(typeof dagobahEnabled==='function'&&dagobahEnabled()&&shot.target.type==='Starship'&&!Number.isFinite(PremiereWeapons.definition(shot.weapon)?.threshold))dagoTargetTotal(side,shot.target,value,resolve);else resolve(value);
   });
  });
 }

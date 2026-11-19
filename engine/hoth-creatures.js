@@ -32,7 +32,7 @@ function hothResolveCreaturePower(drawAttackDestiny) {
   };
   if(attack.attacking&&won&&PremiereLocations.findEntry(state,attack.prey.card)) {
    if(attack.creature.id==='Dark:2737'&&hothWampaDestination(attack)>=0) {
-    state.pendingCardView={mode:'hothWampaVictim',side:PremiereGame.otherSide(attack.entry.side),card:attack.creature,shown:[attack.prey.card],publicView:true,finish};return;
+    state.pendingCardView={mode:'hothWampaVictim',side:PremiereGame.otherSide((state.game?.cardRulesVersion??0)>=32?attack.prey.side:attack.entry.side),card:attack.creature,shown:[attack.prey.card],publicView:true,finish};return;
    }
    hothEatCreaturePrey(attack,attack.prey.card);
   }

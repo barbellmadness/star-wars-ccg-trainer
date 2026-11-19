@@ -19,6 +19,19 @@ Ziel: Premiere und Premiere + A New Hope weiter spielbar halten; Hoth ist seit V
 - [x] Spielformat Premiere + A New Hope + Hoth mit legalen Decks für beide Seiten ergänzen.
 - [x] Bot, Hilfen und Anzeigen ergänzen; Autosave/Replays sowie vollständige Partien testen und veröffentlichen.
 
+## 16. Dagobah integrieren
+
+V2.17.0 ergänzt das Format **Premiere + A New Hope + Hoth + Dagobah**. Die [Regeldokumentation](DAGOBAH_REGELSTAND.md) beschreibt die verwendete Fassung und die Prüfmatrix.
+
+- [x] 180 öffentliche Karten aus der festgeschriebenen Datenrevision übernehmen und mit Regelversion 32 anbinden.
+- [x] Jedi-Tests, Asteroiden, Creatures, neue Charaktere, Schiffe, Devices, Waffen, Effects und Interrupts an die gemeinsame Aktionsfolge anbinden.
+- [x] Je acht Themendecks mit 60 Karten, Strategieeinweisung und Cover erstellen; alle Dagobah-Karten über die Deckauswahl erreichbar machen.
+- [x] Daten und Module erst bei Bedarf laden; bestehende Spielformate und gespeicherte Regelsätze erhalten.
+- [x] Dagobah-Anleitung, Karteninspektor, sichtbare Spielzustände und mehrstufige Speicher-/Replay-Prüfungen ergänzen.
+- [x] Abschließende vollständige Tests, Pull Request und Veröffentlichung auf www.starwarsccg.de abnehmen.
+
+Die 308 privaten Premiere-Drucktexte bleiben außerhalb des Repositorys auf dem Laptop.
+
 ## Aktuelle Priorität: eigener Webspace und Domain
 
 - [x] Veröffentlichung nach bestandenen Tests direkt auf www.starwarsccg.de als verbindliche Projektregel festhalten; Entwicklungsbranches und PRs ohne main-Push oder automatischen Merge beibehalten.
