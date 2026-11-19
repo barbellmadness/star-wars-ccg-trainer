@@ -57,6 +57,8 @@ a{color:#b6d8ff}
 .stack-layer .card-face-placeholder{place-items:start center;padding:1px;font-size:9px}
 .playmat-zone .card-face.is-hit{position:relative;border-color:#ff8d94;box-shadow:inset 0 0 0 1px #ff8d94}
 .card-hit-label{position:absolute;inset:1px 1px auto auto;padding:0 3px;border-radius:3px;background:#8b2037;color:#fff;font-size:9px;font-weight:700;line-height:11px;pointer-events:none}
+.card-state-label{position:absolute;inset:auto 1px 1px;padding:2px;border-radius:3px;background:#122c3eeb;color:#e8f5ff;font-size:8px;line-height:10px;pointer-events:none;text-align:center}
+.pile-face-up{border:0;background:transparent;padding:0;cursor:zoom-in;color:inherit;display:grid;justify-items:center;gap:2px;font-size:10px}
 .custody-label{display:block;margin-top:3px;color:#ffd78a;font-size:10px;line-height:1.2}
 .zone-totals{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px;padding-top:4px;border-top:1px solid #b8c9da45;color:#d8e5f4;font-size:11px;font-variant-numeric:tabular-nums}
 .location-status{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:10px;line-height:1.2}
@@ -552,7 +554,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
   </section>
   <div id="catalogEditionBox" class="catalog-search" hidden>
     <label for="catalogEdition">Edition</label> <select id="catalogEdition">
-      <option value="1">Premiere</option><option value="2">A New Hope</option><option value="3">Hoth</option>
+      <option value="1">Premiere</option><option value="2">A New Hope</option><option value="3">Hoth</option><option value="4">Dagobah</option>
     </select>
   </div>
   <label id="catalogSearchBox" class="catalog-search" hidden>Karte suchen <input id="catalogSearch" type="search"></label>
@@ -578,7 +580,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 </dialog>
 <script src="assets/playfield-views.js"></script><script src="assets/edition-banners.js"></script><script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.16.1';
+const trainerVersion='2.17.0';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -588,10 +590,11 @@ const cardBackUrls={
 const lessons=['Aktiviere freiwillig bis zu deiner Force-Generierung: Location-Icons plus 1 persönliche Force. Die Force Pile darf aus vorherigen Zügen Karten enthalten.','In der Phase „Kontrolle“ stehen verfügbare Force Drains mit ihrer Force-Menge direkt an der jeweiligen Location. Du brauchst dort eigene Presence ohne gegnerische Presence. Pro Location ist ein Drain je Zug möglich, auch für 0 Force.','Lege Locations an den angebotenen Positionen aus. Charaktere kommen an Sites, Banthas an Außen-Sites und Schiffe mit permanentem Piloten an Planeten-Systeme. Wähle für einen Blaster einen eigenen Warrior als Träger.','Der Initiator beginnt das Waffen-Segment. Danach folgen Battle Destiny und die Schadensabrechnung.','Reguläre Bewegung kostet 1 Force pro Karte und Zug. Landspeed nutzt benachbarte Sites innerhalb desselben Planeten oder mobilen Bereichs. Hyperspeed nutzt die Parsec-Distanz zwischen Systemen.','Ziehe optional Karten aus deiner Force Pile auf die Hand. Danach beide Used Piles unter ihre jeweiligen Reserve Decks zurücklegen.'];
 const el=id=>document.getElementById(id),escapeHTML=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-let selected=-1, selectedTableCard=null, shownGame, inspectedLostSide=null, battleOnPlaymat=null;
+let selected=-1, selectedTableCard=null, shownGame, inspectedLostSide=null, inspectedUsedCard=null, battleOnPlaymat=null;
 let localPrintTexts=new Map();
 let aNewHopeCatalog=null,aNewHopeLoad=null,aNewHopeLoadFailed=false;
 let hothCatalog=null,hothLoad=null,hothLoadFailed=false;
+let dagobahCatalog=null,dagobahLoad=null,dagobahLoadFailed=false,dagobahFormatLoad=null;
 const sameOffer=(option,kind,args)=>option.kind===kind&&option.args.length===args.length&&option.args.every((arg,i)=>arg===args[i]);
 const findOffer=(available,kind,...args)=>available.find(option=>sameOffer(option,kind,args));
 function ruleClick(action,handler='dispatchUI'){
@@ -806,9 +809,9 @@ const sideName={light:'Light',dark:'Dark'};
 const deckSelector=side=>el('select'+sideName[side]+'Deck');
 const deckId=deck=>deck?.theme?.id??'starter';
 const deckName=deck=>deck?.theme?.name??'Premiere-Starterdeck';
-const premiereFormat='premiere',mixedFormat='premiere-a-new-hope',hothFormat='premiere-a-new-hope-hoth';
+const premiereFormat='premiere',mixedFormat='premiere-a-new-hope',hothFormat='premiere-a-new-hope-hoth',dagobahFormat='premiere-a-new-hope-hoth-dagobah';
 const launchFormat=()=>el('playFormat').value||premiereFormat;
-const formatName=format=>format===hothFormat?'Premiere + A New Hope + Hoth':format===mixedFormat?'Premiere + A New Hope':'Premiere';
+const formatName=format=>format===dagobahFormat?'Premiere + A New Hope + Hoth + Dagobah':format===hothFormat?'Premiere + A New Hope + Hoth':format===mixedFormat?'Premiere + A New Hope':'Premiere';
 let launchDeckSources=null,hothFormatLoad=null;
 const hothDeckCovers={},hothScriptLoads=new Map();
 function ensureHothCatalog(){
@@ -820,7 +823,7 @@ function ensureHothCatalog(){
 function loadHothScript(path){
  if(!hothScriptLoads.has(path))hothScriptLoads.set(path,new Promise((resolve,reject)=>{
   const script=document.createElement('script');script.src=path;
-  script.onload=resolve;script.onerror=()=>{hothScriptLoads.delete(path);script.remove();reject(Error('Hoth-Regeln konnten nicht geladen werden.'));};
+  script.onload=resolve;script.onerror=()=>{hothScriptLoads.delete(path);script.remove();reject(Error('Erweiterungsregeln konnten nicht geladen werden.'));};
   document.head.appendChild(script);
  }));
  return hothScriptLoads.get(path);
@@ -837,6 +840,28 @@ async function ensureHothFormat(){
   return true;
  })().finally(()=>hothFormatLoad=null);
  return hothFormatLoad;
+}
+async function ensureDagobahCatalog(){
+ if(dagobahCatalog)return dagobahCatalog;
+ if(!dagobahLoad)dagobahLoad=readLocalJson('data/dagobah.json').then(payload=>dagobahCatalog=readCatalog(payload,PremiereData.DAGOBAH)).finally(()=>dagobahLoad=null);
+ return dagobahLoad;
+}
+async function ensureDagobahFormat(){
+ if(formatDeckChoices?.[dagobahFormat])return true;
+ if(dagobahFormatLoad)return dagobahFormatLoad;
+ dagobahFormatLoad=(async()=>{
+  await ensureHothFormat();
+  const [cards,decks]=await Promise.all([ensureDagobahCatalog(),readLocalJson('data/dagobah-decks.json')]);
+  for(const path of ["engine/dagobah-rules.js","engine/dagobah-card-rules.js","engine/dagobah-session.js","engine/dagobah-jedi.js","engine/dagobah-space.js","engine/dagobah-creatures.js","engine/dagobah-units.js","engine/dagobah-effects.js","engine/dagobah-weapons.js","engine/dagobah-locations.js","engine/dagobah-interrupts.js","engine/dagobah-timing.js","engine/dagobah-abilities.js","engine/dagobah-passives.js"])await loadHothScript(path);
+  formatDeckChoices[dagobahFormat]=PremiereData.readFormatDeckChoices(dagobahFormat,launchDeckSources.deckLists,launchDeckSources.themedLists,decks,[...catalog,...aNewHopeCatalog,...hothCatalog,...cards]);
+  for(const definitions of Object.values(decks.formats[dagobahFormat]))for(const definition of definitions)hothDeckCovers[definition.theme.id]=definition.theme.cover;
+  return true;
+ })().finally(()=>dagobahFormatLoad=null);
+ return dagobahFormatLoad;
+}
+async function loadDagobahDecks(){
+ const loading=ensureDagobahFormat();renderLaunch();
+ try{await loading;renderLaunch();}catch(error){renderLaunch();el('playFormatHint').hidden=false;el('playFormatHint').textContent=error.message+' Bitte erneut versuchen.';}
 }
 async function loadHothDecks(){
  const loading=ensureHothFormat();renderLaunch();
@@ -934,12 +959,12 @@ function renderLaunch(){
  }).join('');
  if(!deckGrid.hidden){
   const side=launchFaction,selected=deckId(selectedDeck(side).deck),selectedFormat=launchFormat();
-  deckGrid.innerHTML=[premiereFormat,mixedFormat,hothFormat].flatMap(format=>{
-   const choices=formatDeckChoices?.[format]?.[side]?.filter(({deck})=>format===premiereFormat||deck.cards.some(card=>card.set===(format===hothFormat?PremiereData.HOTH:PremiereData.A_NEW_HOPE)));
+  deckGrid.innerHTML=[premiereFormat,mixedFormat,hothFormat,dagobahFormat].flatMap(format=>{
+   const choices=formatDeckChoices?.[format]?.[side]?.filter(({deck})=>format===premiereFormat||deck.cards.some(card=>card.set===(format===dagobahFormat?PremiereData.DAGOBAH:format===hothFormat?PremiereData.HOTH:PremiereData.A_NEW_HOPE)));
    if(!choices?.length)return [];
    const heading='launchDecks-'+format;
    return ['<section class="launch-deck-section" aria-labelledby="'+heading+'" data-deck-format="'+format+'">'
-    +PremiereEditionBanners.heading(format===premiereFormat?'premiere':format===hothFormat?'hoth':'a-new-hope',{headingId:heading,title:format===premiereFormat?'Premiere: Decks':format===hothFormat?'Hoth: Deckauswahl':'A New Hope: Deckauswahl',description:choices.length+' Decks'+(format!==premiereFormat?' · '+formatName(format):'')})
+    +PremiereEditionBanners.heading(format===premiereFormat?'premiere':format===dagobahFormat?'dagobah':format===hothFormat?'hoth':'a-new-hope',{headingId:heading,title:format===premiereFormat?'Premiere: Decks':format===dagobahFormat?'Dagobah: Deckauswahl':format===hothFormat?'Hoth: Deckauswahl':'A New Hope: Deckauswahl',description:choices.length+' Decks'+(format!==premiereFormat?' · '+formatName(format):'')})
     +'<div class="launch-deck-grid">'+choices.map(({deck})=>{
      const id=deckId(deck),name=deckName(deck),cover=launchCover(side,deck);
      const pick='chooseLaunchDeck('+JSON.stringify(id)+','+JSON.stringify(format)+')';
@@ -950,7 +975,7 @@ function renderLaunch(){
       +'<button type="button" class="launch-deck-guide" aria-haspopup="dialog" aria-label="Strategie und Karten zu '+escapeHTML(name)
       +' ansehen" onclick="'+escapeHTML(preview)+'">Strategie &amp; Karten</button></div>';
     }).join('')+'</div></section>'];
-  }).join('')+(!formatDeckChoices?.[hothFormat]?'<section class="launch-deck-section"><h2>Hoth: Deckauswahl</h2><button onclick="loadHothDecks()" '+(hothFormatLoad?'disabled':'')+'>'+(hothFormatLoad?'Hoth wird geladen …':'Hoth-Decks laden')+'</button><p class="hint">Je acht Themendecks · weitere 162 Karten · wird erst bei Bedarf geladen.</p></section>':'');
+  }).join('')+(!formatDeckChoices?.[hothFormat]?'<section class="launch-deck-section"><h2>Hoth: Deckauswahl</h2><button onclick="loadHothDecks()" '+(hothFormatLoad?'disabled':'')+'>'+(hothFormatLoad?'Hoth wird geladen …':'Hoth-Decks laden')+'</button><p class="hint">Je acht Themendecks · weitere 162 Karten · wird erst bei Bedarf geladen.</p></section>':'')+(!formatDeckChoices?.[dagobahFormat]?'<section class="launch-deck-section"><h2>Dagobah: Deckauswahl</h2><button onclick="loadDagobahDecks()" '+(dagobahFormatLoad?'disabled':'')+'>'+(dagobahFormatLoad?'Dagobah wird geladen …':'Dagobah-Decks laden')+'</button><p class="hint">Je acht Themendecks · weitere 180 Karten · Premiere bis Dagobah · wird erst bei Bedarf geladen.</p></section>':'');
  }
  renderLaunchSummary();
 }
@@ -1010,18 +1035,19 @@ function showStarterDeck(side,id,format=launchFormat()){
 
 const aNewHopeSelected=()=>el('catalogEdition').value===PremiereData.A_NEW_HOPE;
 const hothSelected=()=>el('catalogEdition').value===PremiereData.HOTH;
-const visibleCatalog=()=>hothSelected()?hothCatalog:aNewHopeSelected()?aNewHopeCatalog:catalog;
-const expansionCardStatus=card=>card.set===PremiereData.HOTH?'Für Premiere + A New Hope + Hoth freigegeben':PremiereData.isReleasedExpansionCard(card)?'Für Premiere + A New Hope freigegeben':'Regelprüfung offen';
+const dagobahSelected=()=>el('catalogEdition').value===PremiereData.DAGOBAH;
+const visibleCatalog=()=>dagobahSelected()?dagobahCatalog:hothSelected()?hothCatalog:aNewHopeSelected()?aNewHopeCatalog:catalog;
+const expansionCardStatus=card=>card.set===PremiereData.DAGOBAH?'Für Premiere bis Dagobah freigegeben':card.set===PremiereData.HOTH?'Für Premiere + A New Hope + Hoth freigegeben':PremiereData.isReleasedExpansionCard(card)?'Für Premiere + A New Hope freigegeben':'Regelprüfung offen';
 
 function renderCatalog(){
- const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected()||hothSelected();
- const name=PremiereData.EDITIONS[hothSelected()?PremiereData.HOTH:expansion?PremiereData.A_NEW_HOPE:PremiereData.EDITION].name;
+ const cards=visibleCatalog(),list=el('starterDeckCards'),expansion=aNewHopeSelected()||hothSelected()||dagobahSelected();
+ const name=PremiereData.EDITIONS[dagobahSelected()?PremiereData.DAGOBAH:hothSelected()?PremiereData.HOTH:expansion?PremiereData.A_NEW_HOPE:PremiereData.EDITION].name;
  const description=el('starterDeckDescription');
  el('starterDeckTitle').textContent=name+'-Kartenkatalog'+(cards?' · '+cards.length+' Karten':'');
  description.hidden=!expansion;
- if(expansion)description.textContent=hothSelected()?'Alle 162 Hoth-Karten sind im Hoth-Format integriert. Manche Texte benötigen bestimmte Ziele oder Karten aus späteren Editionen.':'Die Liste zeigt den Stand der Regelfreigabe je Karte.';
+ if(expansion)description.textContent=dagobahSelected()?'180 Dagobah-Karten mit Jedi-Tests, Asteroidensektoren und neuen Kreaturen. Manche Texte benötigen bestimmte Ziele oder Karten aus späteren Editionen.':hothSelected()?'Alle 162 Hoth-Karten sind im Hoth-Format integriert. Manche Texte benötigen bestimmte Ziele oder Karten aus späteren Editionen.':'Die Liste zeigt den Stand der Regelfreigabe je Karte.';
  if(!cards){
-  list.innerHTML=(hothSelected()?hothLoadFailed:aNewHopeLoadFailed)?'<li>'+name+' konnte nicht geladen werden. Wechsle die Edition, um es erneut zu versuchen.</li>':
+  list.innerHTML=(dagobahSelected()?dagobahLoadFailed:hothSelected()?hothLoadFailed:aNewHopeLoadFailed)?'<li>'+name+' konnte nicht geladen werden. Wechsle die Edition, um es erneut zu versuchen.</li>':
    '<li>'+name+' wird geladen …</li>';
   return;
  }
@@ -1033,6 +1059,8 @@ function renderCatalog(){
 }
 
 function selectCatalogEdition(){
+ if(dagobahSelected()&&!dagobahCatalog&&!dagobahLoad){dagobahLoadFailed=false;ensureDagobahCatalog().catch(()=>{dagobahLoadFailed=true;}).finally(()=>{if(dagobahSelected()&&!el('catalogEditionBox').hidden&&el('starterDeckDialog').open)renderCatalog();});}
+
  if(hothSelected()&&!hothCatalog&&!hothLoad){
   hothLoadFailed=false;
   hothLoad=readLocalJson('data/hoth.json').then(payload=>{
@@ -1073,7 +1101,7 @@ function inspectCatalogCard(index){
 }
 
 function inspectDeckCard(id){
- const card=catalog.find(entry=>entry.id===id)??aNewHopeCatalog?.find(entry=>entry.id===id)??hothCatalog?.find(entry=>entry.id===id)??supplementalCatalog.find(entry=>entry.id===id);
+ const card=catalog.find(entry=>entry.id===id)??aNewHopeCatalog?.find(entry=>entry.id===id)??hothCatalog?.find(entry=>entry.id===id)??dagobahCatalog?.find(entry=>entry.id===id)??supplementalCatalog.find(entry=>entry.id===id);
  if(card)showCardWithStats(card);
 }
 
@@ -1596,6 +1624,7 @@ function displayCardValue(card,field){
 
 function showCardDetails(card,details){
  inspectedLostSide=null;
+ inspectedUsedCard=null;
  const dialog=el('cardInspector'),body=el('cardInspectorBody'),selectButton=el('selectInspectorCard');
  el('cardInspectorTitle').textContent=card.name;
  selectButton.hidden=true;
@@ -1755,6 +1784,15 @@ function inspectLostTop(side){
  inspectedLostSide=side;
 }
 
+function inspectUsedTop(side){inspectFaceUpPile(side,'used');}
+function inspectFaceUpPile(side,pile){
+ if(!state||!PremiereGame.sides.includes(side)||!['used','deck'].includes(pile))return;
+ const card=PremiereGame.zones(state,side)[pile]?.at(-1);
+ if(!card?.dagobahFaceUp)return;
+ showCardWithStats(card,'<p class="hint">Offenliegende oberste Karte '+(pile==='used'?'der Used Pile':'des Reserve Decks')+'.</p>');
+ inspectedUsedCard={side,pile,id:card.instanceId};
+}
+
 function inspectLocation(i){
  if(!state||!Number.isInteger(i)||i<0||i>=state.locations.length)return false;
  const c=state.locations[i];if(!c)return false;
@@ -1786,6 +1824,7 @@ function closeCard(){
  const dialog=el('cardInspector');
  if(dialog.open)dialog.close();
  inspectedLostSide=null;
+ inspectedUsedCard=null;
 }
 
 function cardLoadout(card){
@@ -1821,7 +1860,18 @@ function smallCardArt(card,placeholder='Bild fehlt',hit=false){
  const artCard=card.switchedOff?{image:cardBackUrls[card.side??'Light']}:card;
  const image=artCard.image?'<img loading="lazy" src="'+escapeHTML(artCard.image)+'" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false">':'';
  return image+'<span class="card-face-placeholder"'+(image?' hidden':'')+' aria-hidden="true">'+escapeHTML(placeholder)+'</span>'
-  +(hit?'<span class="card-hit-label" aria-hidden="true">Treffer</span>':'');
+  +(hit?'<span class="card-hit-label" aria-hidden="true">Treffer</span>':'')+dagobahCardStatus(card);
+}
+
+function dagobahCardStatus(card){
+ const labels=[];
+ if(card.dagobahMeditationUntil)labels.push('Meditiert · Power 0');
+ else if(card.dagobahApprentice)labels.push('Apprentice'+(card.attachments?.some(c=>c.dagobahJediTest)?' · Tests '+card.attachments.filter(c=>c.dagobahJediTest).map(c=>c.dagobahJediTest).join(', '):''));
+ if(card.attachedParasite)labels.push('Parasit'+(card.dagobahSqueeze?' · Power −'+card.dagobahSqueeze:''));
+ if(card.dagobahBombingRun!==undefined)labels.push('Bombing Run');
+ if(card.concealed)labels.push('Landing Claw · verborgen');
+ if(card.type==='Creature'&&/space slug/i.test(card.name))labels.push(card.dagobahMouthClosed?'Maul geschlossen':'Maul offen');
+ return labels.length?'<span class="card-state-label">'+escapeHTML(labels.join(' · '))+'</span>':'';
 }
 
 function handCardMarkup(card,index){
@@ -2019,6 +2069,8 @@ function locationConditionsMarkup(slot){
  if(location.collapsed)labels.add('Eingestürzt · Text/Icons aufgehoben · Deploy und Bewegung +1 Force');
  if(location.blownAway&&location.id==='Light:5586')labels.add('Generatoren zerstört · Energieschild inaktiv');
  if(conditions.scompLink)labels.add('Scomp Link · '+location.name);
+ if(location.dagobahBelly)labels.add('Space Slug Belly · '+(typeof dagoSlugForCave==='function'&&dagoSlugForCave(slot)?.card.dagobahMouthClosed?'Maul geschlossen · Ein- und Ausflug gesperrt':'Maul offen'));
+ if(location.dagobahSystemSlot!==undefined)labels.add('Asteroidensektor · '+(state.locations[location.dagobahSystemSlot]?.name??'verwandtes System'));
  if(state.drainedSitesThisTurn?.includes(slot))labels.add('Force Drain in diesem Zug angesagt');
  if(state.battledSitesThisTurn?.includes(slot))labels.add(battleSession?.site===slot?'Battle läuft':'Battle in diesem Zug');
  if(state.fullScaleAlert?.turn===state.game?.timing.turn&&state.fullScaleAlert&&
@@ -2121,8 +2173,10 @@ function cardBackMarkup(side){
 
 function renderDeckPiles(side,player){
  const own=side===playerSide(),piles=el(own?'pilesPlayer':'pilesBot');
- const slot=(label,count)=>'<div class="pile-slot">'+(count!==0?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
-  +label+' <strong>'+(count??'?')+'</strong></div>';
+ const inspected=inspectedUsedCard?.side===side?PremiereGame.zones(state,side)[inspectedUsedCard.pile]?.at(-1):null;
+ if(inspectedUsedCard?.side===side&&(!inspected?.dagobahFaceUp||inspected.instanceId!==inspectedUsedCard.id)){closeCard();inspectedUsedCard=null;}
+ const slot=(label,count)=>{const top=label==='Used Pile'?player.usedTop:label==='Reserve Deck'?player.reserveTop:null,pile=label==='Used Pile'?'used':'deck';return '<div class="pile-slot">'+(top?'<button class="pile-face-up" aria-haspopup="dialog" aria-label="Offene Stapelkarte ansehen" onclick="inspectFaceUpPile(\''+side+'\',\''+pile+'\')"><img class="side-card-back" src="'+escapeHTML(top.image)+'" alt="'+escapeHTML(top.name)+'" loading="lazy"><span>Offen · ansehen</span></button>':count!==0?cardBackMarkup(side):'<span class="pile-back-placeholder" aria-hidden="true"></span>')
+  +label+' <strong>'+(count??'?')+'</strong></div>';};
  const lifeForce=player.reserveCount===null?'?':PremiereGame.lifeForce(state,side);
  const top=player.lostTop;
  if(player.lostFaceDown&&inspectedLostSide===side)closeCard();
@@ -2407,8 +2461,9 @@ function parseSavedGame(value){
   if(saved?.version!==saveVersion||saved.cardRevision!==REVISION||!Array.isArray(saved.commands)||
      (saved.playFormat!==undefined&&(!Object.hasOwn(PremiereData.PLAY_FORMATS,saved.playFormat)||
       !Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<PremiereData.EXPANSION_RULES_VERSION))||
-     ([mixedFormat,hothFormat].includes(saved.playFormat)?saved.expansionRevision!==REVISION||!!lesson:saved.expansionRevision!==undefined)||
+     ([mixedFormat,hothFormat,dagobahFormat].includes(saved.playFormat)?saved.expansionRevision!==REVISION||!!lesson:saved.expansionRevision!==undefined)||
      (saved.playFormat===hothFormat&&saved.cardRulesVersion<PremiereData.HOTH_RULES_VERSION)||
+     (saved.playFormat===dagobahFormat&&saved.cardRulesVersion<PremiereData.DAGOBAH_RULES_VERSION)||
      saved.commands.length>30000||
      !Number.isInteger(saved.seed)||saved.seed<0||saved.seed>4294967295||typeof saved.trainingBattle!=='boolean'||
      (saved.cardRulesVersion!==undefined&&(!Number.isInteger(saved.cardRulesVersion)||saved.cardRulesVersion<0||saved.cardRulesVersion>latestCardRulesVersion))||
@@ -2495,7 +2550,7 @@ function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  let matchSeed=lesson?.fixedSeed?lesson.seed:seed??lesson?.seed;
  if(!fixed&&!keepLauncher&&el('autoBotDeck').checked){
   const opponent=PremiereGame.otherSide(side).toLowerCase();
-  const themes=available[opponent].filter(({deck})=>deck.theme&&(format!==hothFormat||deck.cards.some(card=>card.set===PremiereData.HOTH)));
+  const themes=available[opponent].filter(({deck})=>deck.theme&&(format!==hothFormat||deck.cards.some(card=>card.set===PremiereData.HOTH))&&(format!==dagobahFormat||deck.cards.some(card=>card.set===PremiereData.DAGOBAH)));
   if(themes.length){
    matchSeed??=Math.floor(Math.random()*4294967296);
    const roll=PremiereGame.random({randomState:matchSeed});
@@ -2512,7 +2567,7 @@ function startNewGame(seed,trainingBattle=false,key,keepLauncher=false){
  undoAvailable=false;
  activateSave({version:saveVersion,cardRevision:REVISION,cardRulesVersion:currentGame().cardRulesVersion,botStrategyVersion:currentGame().botStrategyVersion,
   seed:currentGame().seed,trainingBattle,playerSide:side,decks:definition,commands:[],playFormat:format,
-  ...([mixedFormat,hothFormat].includes(format)?{expansionRevision:REVISION}:{}),...(key?{lesson:key}:{}),
+  ...([mixedFormat,hothFormat,dagobahFormat].includes(format)?{expansionRevision:REVISION}:{}),...(key?{lesson:key}:{}),
   ...(botVersion===latestBotStrategyVersion?{botPlayStyle:style}:{})});
  activeSaveStored=false;
  launchOpen=keepLauncher;
@@ -2532,8 +2587,8 @@ function replayScenario(saved,commands=saved.commands,verify=true){
  undoAvailable=false;
  try {
   const format=saved.playFormat;
-  if([mixedFormat,hothFormat].includes(format)&&!formatDeckChoices?.[format])throw new Error('Erweiterung fehlt');
-  const scenarioCatalog=format===hothFormat?[...catalog,...aNewHopeCatalog,...hothCatalog]:format===mixedFormat?[...catalog,...aNewHopeCatalog]:format===premiereFormat?catalog:[...catalog,...supplementalCatalog];
+  if([mixedFormat,hothFormat,dagobahFormat].includes(format)&&!formatDeckChoices?.[format])throw new Error('Erweiterung fehlt');
+  const scenarioCatalog=format===dagobahFormat?[...catalog,...aNewHopeCatalog,...hothCatalog,...dagobahCatalog]:format===hothFormat?[...catalog,...aNewHopeCatalog,...hothCatalog]:format===mixedFormat?[...catalog,...aNewHopeCatalog]:format===premiereFormat?catalog:[...catalog,...supplementalCatalog];
   const decks=readStarterDecks(saved.decks,scenarioCatalog,{format,cardRulesVersion:saved.cardRulesVersion??0});
   if(!beginSavedScenario(saved.seed,saved.trainingBattle,decks,saved.cardRulesVersion??0,saved.botStrategyVersion??0,saved.lesson,
      saved.playerSide,saved.botPlayStyle,format))
@@ -2574,6 +2629,7 @@ function syncScenarioControls(saved){
 function resumeGameFromUI(){
  const saved=resumeCandidate;
  if(!saved)return false;
+ if(saved.playFormat===dagobahFormat&&!formatDeckChoices?.[dagobahFormat])return ensureDagobahFormat().then(()=>resumeGameFromUI()).catch(()=>{saveStatus('Dagobah konnte nicht geladen werden. Bitte erneut fortsetzen.');return false;});
  if(saved.playFormat===hothFormat&&!formatDeckChoices?.[hothFormat])return ensureHothFormat().then(()=>resumeGameFromUI()).catch(()=>{saveStatus('Hoth konnte nicht geladen werden. Bitte erneut fortsetzen.');return false;});
  el('showBotHand').checked=false;
  if(!replayScenario(saved)){
@@ -2657,6 +2713,7 @@ function importScenario(value){
   saveStatus('Die Datei enthält kein unterstütztes Szenario.');
   return false;
  }
+ if(saved.playFormat===dagobahFormat&&!formatDeckChoices?.[dagobahFormat])return ensureDagobahFormat().then(()=>importScenario(value)).catch(()=>{saveStatus('Dagobah konnte nicht geladen werden.');return false;});
  if(saved.playFormat===hothFormat&&!formatDeckChoices?.[hothFormat])return ensureHothFormat().then(()=>importScenario(value)).catch(()=>{saveStatus('Hoth konnte nicht geladen werden.');return false;});
  if((activeSave||lastSavedValue!==null)&&!confirm('Szenario laden und die bisherige Partie ersetzen?'))return false;
  el('showBotHand').checked=false;

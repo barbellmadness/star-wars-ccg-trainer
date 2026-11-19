@@ -35,7 +35,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.setViewportSize({width: 390, height: 844});
     await page.screenshot({path: '.hosting-qa-mobile.png', fullPage: true});
     await page.getByRole('link', {name: 'Anleitungen', exact: true}).click();
-    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope','hoth']) {
+    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope','hoth','dagobah']) {
       await page.goto(origin + '/anleitungen/' + name + '.html');
       assert.equal(await page.getByRole('heading', {level: 1}).count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Guide overflow: ' + name);
@@ -170,10 +170,18 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     }
     await page.getByRole('button',{name:'Partie beginnen',exact:true}).click();
     await page.waitForFunction(()=>!!state?.game?.playFormat&&state.game.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
-    assert.equal(await page.evaluate(()=>state.game.cardRulesVersion),31);
+    assert.equal(await page.evaluate(()=>state.game.cardRulesVersion),32);
     await page.reload();
     await page.getByRole('button',{name:'Partie fortsetzen',exact:true}).click();
     await page.waitForFunction(()=>state?.game?.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
+    await page.evaluate(()=>localStorage.clear());await page.reload();
+    await page.waitForFunction(()=>!document.querySelector('#start').disabled);
+    await page.locator('#launchSides [data-side="dark"]').click();
+    await page.getByRole('button',{name:'Dagobah-Decks laden',exact:true}).click();
+    const dagobahDecks=page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] [data-deck]');
+    await dagobahDecks.first().waitFor();assert.equal(await dagobahDecks.count(),8);
+    assert.equal(await page.evaluate(()=>dagobahCatalog.filter(card=>PremiereData.isReleasedExpansionCard(card,32)&&PremiereCardRules.entry(card).complete).length),180);
+    assert.ok(requests.some(url=>/engine\/dagobah-passives\.[a-f0-9]{12}\.js$/.test(url)),'Built Dagobah modules use hashed URLs');
     assert.deepEqual(errors, []);
   } finally {
     try { await browser?.close(); }

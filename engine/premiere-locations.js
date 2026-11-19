@@ -3,7 +3,7 @@ const PremiereLocations = (() => {
   const bothSides = ['Light', 'Dark'];
   const opposite = side => side === 'Light' ? 'Dark' : 'Light';
   const title = card => (card?.name ?? '').replace(/^•+\s*/, '').split(' (')[0];
-  const system = card => card?.subType === 'System';
+  const system = card => ['System','Sector'].includes(card?.subType);
   const region = card => system(card) ? title(card) : title(card).split(':')[0];
   function hothMarker(card) {
     if(card?.type!=='Location'||card.subType!=='Site'||region(card).toLowerCase()!=='hoth')return null;
@@ -12,7 +12,7 @@ const PremiereLocations = (() => {
   }
   const prison = card => card?.type === 'Location' && card.subType === 'Site' &&
     (/\bPrison\b/i.test(title(card)) || ['Death Star: Detention Block Corridor','Cloud City: Security Tower',"Jabba's Palace: Dungeon"].includes(title(card)));
-  const inactive = card => card.captured || card.missing || card.inactive;
+  const inactive = card => card.captured || card.missing || card.inactive || card.concealed;
   const enclosed = card => units.enclosed(card) ||
     card.subType === 'Enclosed';
 
@@ -81,6 +81,7 @@ const PremiereLocations = (() => {
     let known = 0, uncertain = false;
     for (const {card} of entries(state, side).filter(entry => entry.slot === slot && !entry.unavailable)) {
       if (card.undercover) continue;
+      if ((state.game?.cardRulesVersion??0)>=32&&state.game?.playFormat==='premiere-a-new-hope-hoth-dagobah'&&['Dark:9','Dark:1245'].includes(card.id)&&!units.textSuppressed(card))return true;
       if (card.presence === true || (state.game?.cardRulesVersion??0)>=31 && ['Light:1404','Dark:1950'].includes(card.id) && !units.textSuppressed(card)) return true;
       if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)&&!['Light:694','Dark:1274'].includes(state.locations[slot]?.id)) continue;
       const value = ability(card);
@@ -107,6 +108,7 @@ const PremiereLocations = (() => {
 
   function rulesAt(state, slot, side, event) {
     if(state.locations?.[slot]?.collapsed || state.locations?.[slot]?.blownAway)return [];
+    if(typeof dagobahLocationTextCancelled==='function'&&dagobahLocationTextCancelled(state,slot))return [];
     const registry = typeof PremiereCardRules === 'undefined' ? require('./premiere-card-rules.js') : PremiereCardRules;
     const version = state.game?.cardRulesVersion ?? Infinity;
     const card = state.locations?.[slot], printed = printedSide(state, slot, side);

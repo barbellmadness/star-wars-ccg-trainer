@@ -546,7 +546,7 @@ function hothContinuous() {
   if(state.locations.filter((loc,slot)=>HothRules.onHoth(loc)&&isSite(loc)&&PremiereLocations.occupy(state,side,slot,cardAbility)===true).length>=5+extra)hothCancelEffect(effect);
  }
  for(const id of ['Dark:650','Dark:1673','Dark:2098','Dark:2772','Light:2530'])for(const effect of hothEffects(id)) {
-  if(effect.completed)continue;
+  if(effect.completed||effect.dagobahRetrieving)continue;
   const target=PremiereLocations.findEntry(state,effect.target);
   if(!target) {hothCancelEffect(effect);continue;}
   if(target.unavailable)continue;
@@ -558,9 +558,10 @@ function hothContinuous() {
   if(id==='Light:2530') {
    const original=(state.locationEffects[effect.site]??[]).find(item=>item.card===effect.card);
    const hoth=state.locations.findIndex(loc=>isSystem(loc)&&locationGroup(loc)==='hoth');
-   PremiereGame.retrieveForce(state,effect.card.owner??effect.card.side,2*(target.card.occupants??[]).filter(entry=>entry.role==='passenger').length);
-   if(hoth>=0&&original){state.locationEffects[effect.site].splice(state.locationEffects[effect.site].indexOf(original),1);original.site=hoth;original.completed=true;(state.locationEffects[hoth]??=[]).push(original);}
-   else hothCancelEffect(effect);
+   const amount=2*(target.card.occupants??[]).filter(entry=>entry.role==='passenger').length;
+   const complete=()=>{if(hoth>=0&&original){state.locationEffects[effect.site].splice(state.locationEffects[effect.site].indexOf(original),1);original.site=hoth;original.completed=true;(state.locationEffects[hoth]??=[]).push(original);}else hothCancelEffect(effect);};
+   if(typeof dagobahEnabled==='function'&&dagobahEnabled())dagoMissionRetrieve(effect,amount,complete);else{PremiereGame.retrieveForce(state,effect.card.owner??effect.card.side,amount);complete();}
+   if(state.pendingCardView)return;
   }else hothCancelEffect(effect);
  }
  for(const entry of hothAllUnits()) {

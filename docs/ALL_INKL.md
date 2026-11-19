@@ -4,12 +4,12 @@
 
 Der Einzelspieler-Trainer bleibt zunächst eine statische Website. HTML, CSS, JavaScript und geprüfte JSON-Kataloge genügen für das Spiel gegen den Bot. Die Regeln, Zufallsfolge und Entscheidungen laufen im Browser; Autosaves liegen im Browserprofil des Spielers. Auf dem Webspace werden weder PHP noch ein laufender Node-Server für den Trainer benötigt.
 
-**Eine Datenbank ist für weitere Editionen keine Voraussetzung.** Die jetzigen Kataloge umfassen zusammen etwa 807 KB unkomprimiert. Das vollständige erste Veröffentlichungspaket einschließlich Engine und Anleitungen liegt bei etwa 403 KiB gzip (ohne externe Kartenbilder). Die genaue Größe steht im Buildbericht und in `release.json`; sie ist kein gemessener Netzwerk- oder Ladezeitwert.
+**Eine Datenbank ist für weitere Editionen keine Voraussetzung.** Das erste Veröffentlichungspaket lag bei etwa 403 KiB gzip. Mit vier spielbaren Editionen werden der erste Spielstart (höchstens 600 KiB gzip), die verzögert geladenen Dagobah-Regeln und -Decks (höchstens 180 KiB) und das gesamte Code-/Datenpaket einschließlich Sammlerlisten und Anleitungen (höchstens 800 KiB) getrennt geprüft. Editionsbanner haben ein eigenes Budget und laden bei Bedarf. Externe Kartenbilder zählen separat. Die genauen Größen stehen im Buildbericht und in `release.json`; sie sind keine gemessenen Netzwerk- oder Ladezeitwerte.
 
 Für spätere Editionen:
 
 1. Jede Edition erhält ihren eigenen Katalog, ihre Regeln, Deckdefinitionen und Prüfungen.
-2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Aktuell lädt V2 noch beide vorhandenen Kataloge beim Start.
+2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Hoth und Dagobah laden ihre Kataloge, Decks und Regelmodule bereits erst bei Bedarf; die Sammlerlisten laden keine Spieldaten nach.
 3. Große Listen virtualisieren bzw. seitenweise anzeigen; Bilder bei Bedarf laden. Die Deck-Cover werden bereits verzögert geladen.
 4. Bot- und Replay-Rechenzeit messen. Bei belegten längeren Blockierungen die Ausführung unter Beibehaltung der deterministischen Reihenfolge aufteilen oder in einen Web Worker verlagern.
 5. Neue Editionen nur mit versionierten Regeln, Legalitätsprüfung und Autosave-/Replay-Tests freigeben. Bestehende Spielstände behalten ihren Regelstand.
@@ -23,6 +23,8 @@ Aus einem sauberen Entwicklungsbranch, niemals direkt aus main:
 ```powershell
 node scripts/import_premiere.mjs --check
 node scripts/import_premiere.mjs --edition a-new-hope --check
+node scripts/import_premiere.mjs --edition hoth --check
+node scripts/import_premiere.mjs --edition dagobah --check
 node --test
 npm run test:browser
 node scripts/build-web.mjs --output dist/all-inkl-release
@@ -30,7 +32,7 @@ node scripts/build-web.mjs --output dist/all-inkl-release
 
 Das Ausgabeverzeichnis muss leer sein. Für ein weiteres Release einen neuen Verzeichnisnamen verwenden. Der Builder kopiert ausschließlich freigegebene Dateien, kompaktiert JSON, vereinheitlicht Zeilenenden und versieht CSS, Engine und Daten mit einem Inhalts-Hash. HTML verweist auf genau diese Dateien. `release.json` enthält Version, Releasekennung, Prüfsummen und Größen. Keine privaten Berichte, Schlüssel, Repository-Metadaten oder Testdateien werden übernommen.
 
-GitHub Actions prüft zusätzlich beide Browserabläufe und stellt dasselbe Paket als Artefakt **all-inkl-web-release** bereit. Die bisherige GitHub-Pages-Vorschau verwendet ebenfalls den Paket-Builder. Verbindliches Veröffentlichungsziel ist seit dem 18.11.2026 **https://www.starwarsccg.de/**: Nach bestandenen Tests jede Änderung direkt vom Laptop per SSH/SFTP veröffentlichen und öffentlich prüfen, ohne erneut nach Zustimmung zu fragen. Der eingerichtete SSH-Schlüssel bleibt auf dem Laptop; GitHub Actions erhält keinen privaten Schlüssel. Die GitHub-Pages-Veröffentlichung bleibt eine zusätzliche Vorschau. Kein direkter main-Push, Force-Push oder automatischer Merge.
+GitHub Actions prüft zusätzlich alle vier Browserabläufe und stellt dasselbe Paket als Artefakt **all-inkl-web-release** bereit. Die bisherige GitHub-Pages-Vorschau verwendet ebenfalls den Paket-Builder. Verbindliches Veröffentlichungsziel ist seit dem 18.11.2026 **https://www.starwarsccg.de/**: Nach bestandenen Tests jede Änderung direkt vom Laptop per SSH/SFTP veröffentlichen und öffentlich prüfen, ohne erneut nach Zustimmung zu fragen. Der eingerichtete SSH-Schlüssel bleibt auf dem Laptop; GitHub Actions erhält keinen privaten Schlüssel. Die GitHub-Pages-Veröffentlichung bleibt eine zusätzliche Vorschau. Kein direkter main-Push, Force-Push oder automatischer Merge.
 
 ## ALL-INKL einrichten
 

@@ -6,15 +6,19 @@ const PremiereData = (() => {
   const EDITION = '1';
   const A_NEW_HOPE = '2';
   const HOTH = '3';
+  const DAGOBAH='4';
+  const DAGOBAH_RULES_VERSION=32;
+  const DAGOBAH_RELEASED=new Map([["Light:30","4_75"],["Light:111","4_16"],["Light:113","4_80"],["Light:149","4_81"],["Light:150","4_17"],["Light:151","4_18"],["Light:155","4_8"],["Light:157","4_19"],["Light:177","4_45"],["Light:236","4_82"],["Light:238","4_83"],["Light:258","4_46"],["Light:297","4_3"],["Light:424","4_47"],["Light:521","4_48"],["Light:597","4_84"],["Light:598","4_85"],["Light:600","4_86"],["Light:601","4_87"],["Light:602","4_88"],["Light:603","4_89"],["Light:708","4_20"],["Light:745","4_21"],["Light:752","4_76"],["Light:780","4_9"],["Light:814","4_49"],["Light:817","4_50"],["Light:838","4_22"],["Light:957","4_23"],["Light:976","4_51"],["Light:1071","4_77"],["Light:1084","4_24"],["Light:1108","4_10"],["Light:1140","4_25"],["Light:1212","4_52"],["Light:1303","4_26"],["Light:1332","4_78"],["Light:1384","4_53"],["Light:1464","4_11"],["Light:1512","4_54"],["Light:1550","4_55"],["Light:1585","4_56"],["Light:1602","4_12"],["Light:1708","4_57"],["Light:1719","4_4"],["Light:1768","4_27"],["Light:1785","4_28"],["Light:1799","4_5"],["Light:1808","4_29"],["Light:1856","4_30"],["Light:1920","4_31"],["Light:1926","4_13"],["Light:1976","4_32"],["Light:2014","4_90"],["Light:2037","4_14"],["Light:2055","4_58"],["Light:2078","4_33"],["Light:2089","4_34"],["Light:2104","4_15"],["Light:2124","4_35"],["Light:2143","4_36"],["Light:2184","4_37"],["Light:2257","4_59"],["Light:2272","4_79"],["Light:2286","4_38"],["Light:2304","4_1"],["Light:2313","4_6"],["Light:2344","4_60"],["Light:2352","4_39"],["Light:2539","4_40"],["Light:2561","4_61"],["Light:2573","4_62"],["Light:2574","4_63"],["Light:2585","4_64"],["Light:2605","4_65"],["Light:2629","4_66"],["Light:2643","4_67"],["Light:2718","4_7"],["Light:2722","4_68"],["Light:2741","4_41"],["Light:2749","4_69"],["Light:2752","4_70"],["Light:2799","4_71"],["Light:2800","4_42"],["Light:2865","4_2"],["Light:2867","4_72"],["Light:2871","4_73"],["Light:2872","4_43"],["Light:2873","4_44"],["Light:2880","4_74"],["Dark:4","4_114"],["Dark:9","4_91"],["Dark:11","4_174"],["Dark:17","4_136"],["Dark:112","4_154"],["Dark:121","4_137"],["Dark:148","4_155"],["Dark:176","4_166"],["Dark:181","4_115"],["Dark:185","4_116"],["Dark:235","4_156"],["Dark:237","4_157"],["Dark:296","4_108"],["Dark:299","4_117"],["Dark:308","4_92"],["Dark:312","4_175"],["Dark:336","4_118"],["Dark:366","4_93"],["Dark:421","4_138"],["Dark:490","4_94"],["Dark:491","4_95"],["Dark:495","4_96"],["Dark:501","4_97"],["Dark:520","4_139"],["Dark:538","4_98"],["Dark:551","4_99"],["Dark:554","4_119"],["Dark:599","4_158"],["Dark:688","4_140"],["Dark:700","4_100"],["Dark:704","4_176"],["Dark:771","4_109"],["Dark:906","4_167"],["Dark:907","4_159"],["Dark:908","4_160"],["Dark:910","4_161"],["Dark:911","4_162"],["Dark:912","4_163"],["Dark:918","4_120"],["Dark:929","4_141"],["Dark:937","4_121"],["Dark:951","4_122"],["Dark:991","4_142"],["Dark:1115","4_123"],["Dark:1150","4_143"],["Dark:1185","4_168"],["Dark:1221","4_124"],["Dark:1244","4_169"],["Dark:1245","4_101"],["Dark:1249","4_177"],["Dark:1251","4_178"],["Dark:1255","4_144"],["Dark:1273","4_102"],["Dark:1450","4_125"],["Dark:1470","4_145"],["Dark:1524","4_103"],["Dark:1538","4_104"],["Dark:1542","4_105"],["Dark:1569","4_126"],["Dark:1583","4_127"],["Dark:1682","4_170"],["Dark:1710","4_128"],["Dark:1718","4_110"],["Dark:1934","4_129"],["Dark:1961","4_179"],["Dark:1967","4_171"],["Dark:2013","4_164"],["Dark:2091","4_146"],["Dark:2123","4_130"],["Dark:2261","4_131"],["Dark:2262","4_147"],["Dark:2281","4_111"],["Dark:2302","4_148"],["Dark:2312","4_112"],["Dark:2343","4_165"],["Dark:2369","4_132"],["Dark:2401","4_149"],["Dark:2518","4_133"],["Dark:2551","4_134"],["Dark:2580","4_150"],["Dark:2597","4_172"],["Dark:2598","4_173"],["Dark:2669","4_151"],["Dark:2677","4_152"],["Dark:2717","4_113"],["Dark:2721","4_135"],["Dark:2728","4_153"],["Dark:2739","4_106"],["Dark:2912","4_107"],["Dark:2915","4_180"]]);
   const SIDES = ['Light', 'Dark'];
   const CARD_TYPES = new Set(['Character', 'Device', 'Effect', 'Interrupt', 'Location', 'Starship', 'Vehicle', 'Weapon']);
   const EDITIONS = Object.freeze({
     [EDITION]: {name: 'Premiere', cardsPerSide: 162},
     [A_NEW_HOPE]: {name: 'A New Hope', cardsPerSide: 81},
-    [HOTH]: {name: 'Hoth', cardsPerSide: 81}
+    [HOTH]: {name: 'Hoth', cardsPerSide: 81},
+    [DAGOBAH]: {name:'Dagobah',cardsPerSide:90}
   });
   const EXPANSION_TYPES = new Set(['Creature', 'Epic Event']);
-  const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE], 'premiere-a-new-hope-hoth': [EDITION,A_NEW_HOPE,HOTH]});
+  const PLAY_FORMATS = Object.freeze({premiere: [EDITION], 'premiere-a-new-hope': [EDITION, A_NEW_HOPE], 'premiere-a-new-hope-hoth': [EDITION,A_NEW_HOPE,HOTH], 'premiere-a-new-hope-hoth-dagobah':[EDITION,A_NEW_HOPE,HOTH,DAGOBAH]});
   const HOTH_RULES_VERSION=31;
   const HOTH_RELEASED=new Map([["Light:5300","3_1"],["Light:109","3_71"],["Light:135","3_28"],["Light:161","3_72"],["Light:167","3_40"],["Light:184","3_32"],["Light:345","3_2"],["Light:498","3_3"],["Light:515","3_73"],["Light:595","3_4"],["Light:615","3_41"],["Light:707","3_5"],["Light:736","3_33"],["Light:793","3_74"],["Light:805","3_34"],["Light:807","3_6"],["Light:808","3_7"],["Light:811","3_29"],["Light:815","3_8"],["Light:889","3_35"],["Light:920","3_42"],["Light:987","3_36"],["Light:1001","3_9"],["Light:1018","3_10"],["Light:1044","3_75"],["Light:1163","3_55"],["Light:1165","3_30"],["Light:5582","3_56"],["Light:1169","3_57"],["Light:1171","3_58"],["Light:1173","3_59"],["Light:1174","3_60"],["Light:5586","3_61"],["Light:5590","3_62"],["Light:5591","3_63"],["Light:1220","3_43"],["Light:1241","3_37"],["Light:1307","3_76"],["Light:1330","3_44"],["Light:1391","3_11"],["Light:1404","3_12"],["Light:1589","3_45"],["Light:1621","3_13"],["Light:1664","3_77"],["Light:1665","3_65"],["Light:1773","3_46"],["Light:1836","3_47"],["Light:1854","3_64"],["Light:1902","3_48"],["Light:1910","3_78"],["Light:1929","3_79"],["Light:1997","3_14"],["Light:1990","3_31"],["Light:2004","3_15"],["Light:2045","3_16"],["Light:2119","3_66"],["Light:2120","3_67"],["Light:2121","3_68"],["Light:2126","3_17"],["Light:2128","3_18"],["Light:2137","3_49"],["Light:2249","3_19"],["Light:2294","3_69"],["Light:2383","3_80"],["Light:2413","3_20"],["Light:2480","3_70"],["Light:2481","3_38"],["Light:2483","3_21"],["Light:2530","3_39"],["Light:2606","3_22"],["Light:2618","3_23"],["Light:2671","3_50"],["Light:2710","3_81"],["Light:2734","3_51"],["Light:2782","3_24"],["Light:2796","3_25"],["Light:2805","3_52"],["Light:2836","3_26"],["Light:2881","3_53"],["Light:2888","3_54"],["Light:2911","3_27"],["Dark:18","3_116"],["Dark:62","3_82"],["Dark:158","3_158"],["Dark:160","3_83"],["Dark:267","3_154"],["Dark:269","3_155"],["Dark:272","3_156"],["Dark:274","3_157"],["Dark:327","3_98"],["Dark:363","3_84"],["Dark:368","3_85"],["Dark:465","3_117"],["Dark:466","3_118"],["Dark:513","3_119"],["Dark:584","3_120"],["Dark:650","3_99"],["Dark:651","3_100"],["Dark:684","3_121"],["Dark:692","3_94"],["Dark:733","3_122"],["Dark:894","3_159"],["Dark:823","3_95"],["Dark:913","3_123"],["Dark:916","3_124"],["Dark:986","3_101"],["Dark:990","3_102"],["Dark:995","3_125"],["Dark:1000","3_86"],["Dark:1029","3_87"],["Dark:1114","3_126"],["Dark:1142","3_103"],["Dark:1162","3_143"],["Dark:6353","3_144"],["Dark:1168","3_145"],["Dark:1170","3_146"],["Dark:1172","3_147"],["Dark:6354","3_148"],["Dark:6358","3_149"],["Dark:6359","3_150"],["Dark:1240","3_104"],["Dark:1226","3_127"],["Dark:1253","3_105"],["Dark:1270","3_106"],["Dark:1272","3_88"],["Dark:1285","3_128"],["Dark:1306","3_160"],["Dark:1521","3_89"],["Dark:1552","3_129"],["Dark:1673","3_107"],["Dark:1706","3_108"],["Dark:1826","3_130"],["Dark:1853","3_151"],["Dark:1869","3_131"],["Dark:1925","3_96"],["Dark:1949","3_97"],["Dark:1950","3_90"],["Dark:1952","3_161"],["Dark:1953","3_132"],["Dark:2098","3_109"],["Dark:2187","3_133"],["Dark:2209","3_134"],["Dark:2266","3_110"],["Dark:2295","3_91"],["Dark:2296","3_92"],["Dark:2339","3_152"],["Dark:2353","3_135"],["Dark:2399","3_136"],["Dark:2422","3_115"],["Dark:2511","3_137"],["Dark:2541","3_111"],["Dark:2572","3_112"],["Dark:2615","3_113"],["Dark:2627","3_138"],["Dark:2645","3_139"],["Dark:2657","3_153"],["Dark:2709","3_162"],["Dark:2732","3_140"],["Dark:2736","3_141"],["Dark:2737","3_93"],["Dark:2772","3_114"],["Dark:2842","3_142"]]);
   const GARRISON_A_NEW_HOPE = new Map([['Dark:654', '2_143'], ['Dark:667', '2_111'], ['Dark:2103', '2_138']]);
@@ -36,7 +40,7 @@ const PremiereData = (() => {
   const isGarrisonExpansionCard = card => card?.set === A_NEW_HOPE && GARRISON_A_NEW_HOPE.has(card.id) &&
     GARRISON_A_NEW_HOPE.get(card.id) === card.gempId;
   const isGarrisonRifle = card => card?.id === GARRISON_RIFLE.id && card.gempId === GARRISON_RIFLE.gempId && card.set === GARRISON_RIFLE.set;
-  const isReleasedExpansionCard = (card, rulesVersion = Infinity) => card?.set===HOTH&&rulesVersion>=HOTH_RULES_VERSION&&HOTH_RELEASED.get(card.id)===card.gempId || isGarrisonExpansionCard(card) ||
+  const isReleasedExpansionCard = (card, rulesVersion = Infinity) => card?.set===DAGOBAH&&rulesVersion>=DAGOBAH_RULES_VERSION&&DAGOBAH_RELEASED.get(card.id)===card.gempId || card?.set===HOTH&&rulesVersion>=HOTH_RULES_VERSION&&HOTH_RELEASED.get(card.id)===card.gempId || isGarrisonExpansionCard(card) ||
     card?.set === A_NEW_HOPE && (rulesVersion >= EXPANSION_RULES_VERSION && A_NEW_HOPE_RELEASED.has(card.id) ||
       rulesVersion >= 27 && A_NEW_HOPE_RULES_27.has(card.id) || rulesVersion >= 28 && A_NEW_HOPE_RULES_28.has(card.id) || rulesVersion >= 29 && A_NEW_HOPE_RULES_29.has(card.id));
   const VALUE_FIELDS = ['power', 'ability', 'deploy', 'forfeit', 'destiny', 'armor', 'maneuver', 'hyperspeed', 'landspeed', 'parsec', 'lightSideIcons', 'darkSideIcons'];
@@ -74,8 +78,8 @@ const PremiereData = (() => {
 
   function permanentPilotAbility(card) {
     if (!['Starship','Vehicle'].includes(card?.type) || card.pilotsEjected) return null;
-    if(['Light:2908','Dark:2596'].includes(card.id))return 3;
-    const wording = [A_NEW_HOPE,HOTH].includes(card.set) ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
+    if(['Light:2908','Dark:2596','Dark:906'].includes(card.id))return 3;
+    const wording = [A_NEW_HOPE,HOTH,DAGOBAH].includes(card.set) ? /\bPermanent pilot(?: aboard)? provides ability of ([1-9]\d*)\./i :
       /\bPermanent pilot aboard provides ability of ([1-9]\d*)\./i;
     const ability = String(card.gametext || '').match(wording);
     return ability ? Number(ability[1]) : null;
@@ -107,7 +111,7 @@ const PremiereData = (() => {
         !new RegExp('^' + edition + '_\\d+$').test(gempId ?? '')) {
       throw new Error('Ungültige Edition, Kartenseite oder Karten-ID: ' + (id ?? 'fehlt'));
     }
-    const supportedType = CARD_TYPES.has(front?.type) || [A_NEW_HOPE,HOTH].includes(edition) && EXPANSION_TYPES.has(front?.type);
+    const supportedType = CARD_TYPES.has(front?.type) || [A_NEW_HOPE,HOTH,DAGOBAH].includes(edition) && (EXPANSION_TYPES.has(front?.type)||edition===DAGOBAH&&/^Jedi Test #[1-5]$/.test(front?.type));
     if (!front || typeof front.title !== 'string' || !front.title.trim() || !supportedType) {
       throw new Error(id + ' hat keinen gültigen Namen oder Kartentyp.');
     }
@@ -131,8 +135,9 @@ const PremiereData = (() => {
     if (errataSymbol && !textOnlyArtillery && (!validErrataSymbol || !errataImage || (front.printableSlipType !== 'ERRATA' && !besiegedSlip))) {
       throw new Error(id + ' hat ein Erratum ohne zugehörigen Korrekturslip oder einen unbekannten Marker.');
     }
-    if (front.uniqueness != null && !/^\*+$/.test(front.uniqueness)) throw new Error(id + ' hat ein unbekanntes Einzigartigkeitszeichen.');
-    const uniquenessLimit = front.uniqueness?.length ?? front.title.match(/^•+/)?.[0].length ?? null;
+    if (front.uniqueness != null && !(/^\*+$/.test(front.uniqueness)||edition===DAGOBAH&&/^(?:<>){1,3}$/.test(front.uniqueness))) throw new Error(id + ' hat ein unbekanntes Einzigartigkeitszeichen.');
+    const genericLimit=front.uniqueness?.includes('<>')?front.uniqueness.length/2:null;
+    const uniquenessLimit = (genericLimit?null:front.uniqueness?.length) ?? front.title.match(/^•+/)?.[0].length ?? null;
     const destinyValues = front.destinyValues ?? [];
     const validDestiny = value => Number.isSafeInteger(value) && value >= 0 ||
       edition === A_NEW_HOPE && front.destiny === 'π' && Number.isFinite(value) && value > 0;
@@ -158,8 +163,8 @@ const PremiereData = (() => {
       personas: checkedStrings(record.personas, id + ' · Personas'),
       characteristics: checkedStrings(front.characteristics, id + ' · Merkmale'),
       extraText: checkedStrings(front.extraText, id + ' · Zusatztext'),
-      uniquenessLimit, values, ...numbers, destinyValues: destinyValues.slice(), cardIcons: flags,
-      warrior: flags.includes('Warrior'), pilot: flags.includes('Pilot'), navComputer: flags.includes('Nav Computer'),
+      uniquenessLimit, genericLimit, values, ...numbers, destinyValues: destinyValues.slice(), cardIcons: flags,
+      warrior: flags.some(flag=>/^Warrior(?: x[2-9])?$/.test(flag)), pilot: flags.includes('Pilot'), navComputer: flags.includes('Nav Computer'),
       locationTags: front.type === 'Location' ? flags : [],
       icons: {light: numbers.lightSideIcons, dark: numbers.darkSideIcons},
       texts, images, errataSymbol, errataDate: checkedText(front.errataDate, id + ' · Errata-Datum'),
@@ -202,6 +207,7 @@ const PremiereData = (() => {
   const isLostPileEffect = card => card?.id === 'Light:917' || card?.id === 'Dark:2897';
 
   function isPlayableStarterCard(card) {
+    if(card.set===DAGOBAH)return isReleasedExpansionCard(card);
     if(card.set===HOTH)return isReleasedExpansionCard(card);
     if(card.set===A_NEW_HOPE&&isReleasedExpansionCard(card))return true;
     if (card.type === 'Location') return Number.isInteger(card.icons.light) && Number.isInteger(card.icons.dark);
@@ -250,7 +256,7 @@ const PremiereData = (() => {
       if (!supportedEdition) {
         throw error(id + ' stammt aus einer anderen Edition.');
       }
-      if ([A_NEW_HOPE,HOTH].includes(card.set) && !isReleasedExpansionCard(card, cardRulesVersion)) throw error(id + ' ist noch nicht für das Spiel freigegeben (Regelstand).');
+      if ([A_NEW_HOPE,HOTH,DAGOBAH].includes(card.set) && !isReleasedExpansionCard(card, cardRulesVersion)&&!(format===undefined&&isGarrisonRifle(card))) throw error(id + ' ist noch nicht für das Spiel freigegeben (Regelstand).');
       if (ids.has(id)) throw error('Doppelter Eintrag für ' + id + '.');
       if (!Number.isInteger(count) || count < 1 || count > 60) throw error('Ungültige Kartenanzahl für ' + id + '.');
       if (!isPlayableStarterCard(card)) throw error(card.name + ' kann im aktuellen Lernmodus nicht ausgespielt werden.');
@@ -315,7 +321,7 @@ const PremiereData = (() => {
       throw new Error('Ungültige Deckvarianten für ' + format + '.');
     }
     const definitions = Object.fromEntries(SIDES.map(side => {
-      const byTheme = new Map((format==='premiere-a-new-hope-hoth'?[]:themes.decks[side]).map(definition => [definition.theme.id, definition]));
+      const byTheme = new Map((format.startsWith('premiere-a-new-hope-hoth')?[]:themes.decks[side]).map(definition => [definition.theme.id, definition]));
       for (const definition of variants.formats[format][side]) byTheme.set(definition.theme.id, definition);
       return [side, [...byTheme.values()]];
     }));
@@ -365,7 +371,7 @@ const PremiereData = (() => {
     };
   }
 
-  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,HOTH_RULES_VERSION,
+  return {SOURCE, REVISION, EDITION, A_NEW_HOPE, HOTH, DAGOBAH,DAGOBAH_RULES_VERSION, EDITIONS, SIDES, PLAY_FORMATS, EXPANSION_RULES_VERSION,HOTH_RULES_VERSION,
     readCatalog, readSupplementalCards, readStarterDecks, readThemedDecks, readFormatDeckChoices,
     readCardValue, locationTitle, isDeployableCharacter, basicWeaponRule, isBantha, isLostPileEffect, permanentPilotAbility,
     isGarrisonExpansionCard, isReleasedExpansionCard, buildAudit};

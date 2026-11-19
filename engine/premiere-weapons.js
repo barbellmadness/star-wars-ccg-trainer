@@ -131,7 +131,13 @@ const PremiereWeapons = (() => {
     return ability<rule.limit&&(rule.fallback==='alien'?card.subType==='Alien':units.hasSkill(card,rule.fallback));
   }
 
-  return {defense,definition,deployCost,disarmed,mine,miningDroid,projector,seeker,seekerTarget,shot};
+  function registerExpansion(entries) {
+    for (const [id, rule] of entries) {
+      if (attached.has(id)) throw Error('Weapon already registered: '+id);
+      attached.set(id, rule);
+    }
+  }
+  return {defense,definition,deployCost,disarmed,mine,miningDroid,projector,seeker,seekerTarget,shot,registerExpansion};
 })();
 
 if (typeof module !== 'undefined') module.exports = PremiereWeapons;

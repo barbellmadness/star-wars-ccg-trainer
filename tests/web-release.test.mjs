@@ -45,7 +45,15 @@ test('public release is self-contained, versioned, small and excludes private ma
     const bannerArt = release.files.filter(file => file.path.startsWith('assets/edition-banners/'));
     assert.equal(bannerArt.length, 27, 'One prepared banner for every registered edition');
     assert.ok(bannerArt.reduce((n, f) => n + f.gzipBytes, 0) < 800 * 1024, 'All lazily loaded banner art: 800 KiB');
-    assert.ok(release.files.filter(file => !bannerArt.includes(file)).reduce((n, f) => n + f.gzipBytes, 0) < 600 * 1024, 'Code and data gzip budget remains 600 KiB');
+    const gameStartup = new Set([...game.matchAll(/(?:src|href)="((?:engine|assets)\/[^"?]+)(?:\?[^\"]*)?"/g)].map(match => match[1]));
+    for (const name of ['premiere', 'premiere-starter-decks', 'premiere-themed-decks', 'premiere-supplemental-cards', 'play-format-decks', 'a-new-hope']) {
+      gameStartup.add(release.files.find(file => new RegExp('^data/' + name + '\\.[a-f0-9]+\\.json$').test(file.path)).path);
+    }
+    const initialFiles = release.files.filter(file => file.path === 'v2.html' || gameStartup.has(file.path));
+    assert.ok(initialFiles.every(file => !/dagobah|hoth|collector-/.test(file.path)), 'Later editions and collectors stay outside the startup bundle');
+    assert.ok(initialFiles.reduce((n, f) => n + f.gzipBytes, 0) < 600 * 1024, 'Initial game code and data retain the 600 KiB gzip budget');
+    assert.ok(release.files.filter(file => /(?:engine|data)\/dagobah[.-]/.test(file.path)).reduce((n, f) => n + f.gzipBytes, 0) < 180 * 1024, 'On-demand Dagobah rules and decks: 180 KiB gzip');
+    assert.ok(release.files.filter(file => !bannerArt.includes(file)).reduce((n, f) => n + f.gzipBytes, 0) < 800 * 1024, 'Complete four-edition code, data and guides: 800 KiB gzip');
     const premierePath = release.files.find(file => /^data\/premiere\.[a-f0-9]+\.json$/.test(file.path)).path;
     const data = JSON.parse(await readFile(join(output, premierePath), 'utf8'));
     assert.equal(data.cards.filter(card => card.printText != null).length, 16);
