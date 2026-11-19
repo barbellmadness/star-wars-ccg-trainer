@@ -18,6 +18,8 @@ Eine serverseitige API mit Datenbank wird sinnvoll, wenn Benutzerkonten, geräte
 
 ## Paket bauen und prüfen
 
+Die Original-Startercover teilen sich eine lokale SVG-Datei mit eingebettetem Foto und einem eigenen Bildbudget von 96 KiB gzip. Auf der Startseite laden die fünf Editionsbanner verzögert; Spielkataloge und Regelmodule bleiben dort unangefordert.
+
 Aus einem sauberen Entwicklungsbranch, niemals direkt aus main:
 
 ```powershell

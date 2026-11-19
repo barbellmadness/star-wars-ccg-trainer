@@ -27,6 +27,12 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.getByRole('heading', {level: 1}).waitFor();
     assert.match(await page.locator('.fan-notice').textContent(), /inoffizielles Fanprojekt/);
     assert.equal(requests.filter(url => /engine\/|data\/|https:\/\//.test(url)).length, 0, 'Homepage must not load game or external assets');
+    await page.waitForFunction(()=>[...document.querySelectorAll('.home-starter img')].every(image=>image.complete&&image.naturalWidth===640));
+    assert.equal(await page.locator('.home-editions [data-banner-edition]').count(),5);
+    for(const banner of await page.locator('.home-editions .edition-banner-art').all()){
+      await banner.scrollIntoViewIfNeeded();await banner.evaluate(image=>image.decode());
+    }
+    await page.evaluate(()=>scrollTo(0,0));
     await page.screenshot({path: '.hosting-qa-desktop.png', fullPage: true});
     for (const width of [360, 768, 1440]) {
       await page.setViewportSize({width, height: 900});
