@@ -300,6 +300,156 @@
           }
         }
       ]
+    },
+    "premiere-a-new-hope-hoth-dagobah-cloud-city": {
+      "light": [
+        {
+          "id": "cloud-city-landos-gasgeschaeft",
+          "name": "Landos Gasgeschäft",
+          "cover": {
+            "id": "Light:1466",
+            "name": "•Lando Calrissian",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/landocalrissian.gif"
+          }
+        },
+        {
+          "id": "cloud-city-lobots-stadtwache",
+          "name": "Lobots Stadtwache",
+          "cover": {
+            "id": "Light:1562",
+            "name": "•Lobot",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/lobot.gif"
+          }
+        },
+        {
+          "id": "cloud-city-skywalkers-mut",
+          "name": "Skywalkers Mut",
+          "cover": {
+            "id": "Light:1593",
+            "name": "•Luke Skywalker",
+            "image": "https://res.starwarsccg.org/cards/Premiere-Light/large/lukeskywalker.gif"
+          }
+        },
+        {
+          "id": "cloud-city-falcon-rettungskommando",
+          "name": "Falcon-Rettungskommando",
+          "cover": {
+            "id": "Light:360",
+            "name": "•Captain Han Solo",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/captainhansolo.gif"
+          }
+        },
+        {
+          "id": "cloud-city-droiden-im-untergrund",
+          "name": "Droiden im Untergrund",
+          "cover": {
+            "id": "Light:592",
+            "name": "•Cyborg Construct",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/cyborgconstruct.gif"
+          }
+        },
+        {
+          "id": "cloud-city-sabacc-und-schmuggler",
+          "name": "Sabacc und Schmuggler",
+          "cover": {
+            "id": "Light:2631",
+            "name": "•Treva Horme",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/trevahorme.gif"
+          }
+        },
+        {
+          "id": "cloud-city-flucht-aus-der-wolkenstadt",
+          "name": "Flucht aus der Wolkenstadt",
+          "cover": {
+            "id": "Light:2779",
+            "name": "•Weather Vane",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/weathervane.gif"
+          }
+        },
+        {
+          "id": "cloud-city-hoffnung-ueber-bespin",
+          "name": "Hoffnung über Bespin",
+          "cover": {
+            "id": "Light:332",
+            "name": "•Bright Hope",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Light/large/brighthope.gif"
+          }
+        }
+      ],
+      "dark": [
+        {
+          "id": "cloud-city-fetts-kopfgeldjagd",
+          "name": "Fetts Kopfgeldjagd",
+          "cover": {
+            "id": "Dark:287",
+            "name": "•Boba Fett",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/bobafett.gif"
+          }
+        },
+        {
+          "id": "cloud-city-vaders-entscheidung",
+          "name": "Vaders Entscheidung",
+          "cover": {
+            "id": "Dark:879",
+            "name": "•Epic Duel",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/epicduel.gif"
+          }
+        },
+        {
+          "id": "cloud-city-ein-dunkler-deal",
+          "name": "Ein dunkler Deal",
+          "cover": {
+            "id": "Dark:614",
+            "name": "•Dark Deal",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/darkdeal.gif"
+          }
+        },
+        {
+          "id": "cloud-city-landos-falsches-spiel",
+          "name": "Landos falsches Spiel",
+          "cover": {
+            "id": "Dark:1465",
+            "name": "•Lando Calrissian",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/landocalrissian.gif"
+          }
+        },
+        {
+          "id": "cloud-city-karbonit-protokoll",
+          "name": "Karbonit-Protokoll",
+          "cover": {
+            "id": "Dark:379",
+            "name": "Carbon-Freezing",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/carbonfreezing.gif"
+          }
+        },
+        {
+          "id": "cloud-city-die-schatten-des-turms",
+          "name": "Die Schatten des Turms",
+          "cover": {
+            "id": "Dark:1320",
+            "name": "•Interrogation Array",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/interrogationarray.gif"
+          }
+        },
+        {
+          "id": "cloud-city-obsidian-patrouille",
+          "name": "Obsidian-Patrouille",
+          "cover": {
+            "id": "Dark:1817",
+            "name": "•Obsidian 7",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/obsidian7.gif"
+          }
+        },
+        {
+          "id": "cloud-city-bewils-korridorfalle",
+          "name": "Bewils Korridorfalle",
+          "cover": {
+            "id": "Dark:355",
+            "name": "•Captain Bewil",
+            "image": "https://res.starwarsccg.org/cards/CloudCity-Dark/large/captainbewil.gif"
+          }
+        }
+      ]
     }
   }
 }

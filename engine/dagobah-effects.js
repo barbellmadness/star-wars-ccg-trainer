@@ -16,7 +16,7 @@ function dagoEffectOptions(side,window=null){
   const tableCosts={'Light:745':0,'Light:957':0,'Light:1140':2,'Light:1785':2,'Light:1856':2,'Light:1920':0,'Light:1976':0,'Light:2184':0,'Light:2539':all.some(e=>dagoTitle(e.card)==='c-3po'&&!e.unavailable)?0:3,'Dark:185':0,'Dark:336':0,'Dark:1569':0,'Dark:1934':3,'Dark:2261':0,'Dark:2518':0,'Dark:2551':0};
   if(Object.hasOwn(tableCosts,card.id))add(card,index,[],'Auf der eigenen Tischseite auslegen',{cost:tableCosts[card.id],tableOnly:true});
   state.locations.forEach((loc,site)=>{
-   if(!loc)return;const sector=DagobahRules.sector(loc),control=PremiereLocations.control(state,side,site,cardAbility)===true;
+   if(!loc)return;const sector=DagobahRules.asteroid(loc),control=PremiereLocations.control(state,side,site,cardAbility)===true;
    if(card.id==='Light:150'&&sector&&control)add(card,index,[site],loc.name,{site});
    if(['Light:151','Light:2143'].includes(card.id)&&sector&&(card.id!=='Light:2143'||dagoTitle(loc)==='big one'))all.forEach((target,targetIndex)=>{
     if(target.unavailable)return;
@@ -108,7 +108,7 @@ function dagoEffectTiming(event,tasks){
   for(const effect of dagoEffects('Dark:1710',enemy)){const entry=dagoEntry(effect.host);if(entry&&!entry.unavailable&&PremiereGame.sides.every(actor=>PremiereLocations.presence(state,actor,entry.slot,cardAbility)===true)&&!state.battledSitesThisTurn?.includes(entry.slot))tasks.push(done=>dagoLoss(side,4,'Much Anger In Him',done));}
   if(state.dagobahBattleDemand?.[side]!==undefined&&state.dagobahBattleDemand[side]<=turn&&!state.dagobahTurnActivity?.[side]?.initiatedBattle)tasks.push(done=>{delete state.dagobahBattleDemand[side];dagoLoss(side,4,'Anger, Fear, Aggression',done);});
  }
- if(event==='phase:start'&&state.phase===5)for(const id of ['Light:1303','Dark:2369'])for(const effect of dagoEffects(id,enemy))if((effect.host.owner??effect.host.side)===side&&state.locations.some((loc,slot)=>DagobahRules.sector(loc)&&PremiereLocations.occupy(state,enemy,slot,cardAbility)===true))tasks.push(done=>{
+ if(event==='phase:start'&&state.phase===5)for(const id of ['Light:1303','Dark:2369'])for(const effect of dagoEffects(id,enemy))if((effect.host.owner??effect.host.side)===side&&state.locations.some((loc,slot)=>DagobahRules.asteroid(loc)&&PremiereLocations.occupy(state,enemy,slot,cardAbility)===true))tasks.push(done=>{
   dagoPrompt(side,effect.card,'VoluntaryCancel',[{args:['lose'],label:'1 Force verlieren'},{args:['cancel'],label:effect.host.name+' freiwillig aufheben'}],choice=>{state.pendingCardView=null;if(choice.args[0]==='lose')dagoLoss(side,1,effect.card.name,done);else{const target=[...(state.tableEffects??[]),...Object.entries(state.locationEffects??{}).flatMap(([site,row])=>row.map(e=>({...e,site:Number(site)})))].find(e=>e.card===effect.host);if(target)hothCancelEffect(target);hothCancelEffect(effect);done();}return true;});
  });
  if(event==='turn:end'){
@@ -122,7 +122,7 @@ function dagoEffectTiming(event,tasks){
 function dagoDrainPlan(side,slot,plan){
  if(dagoTitle(state.locations[slot])==='dagobah'||dagoUnits().some(entry=>entry.slot===slot&&entry.card.concealed&&(entry.card.controller??entry.card.owner??entry.card.side)!==side))return null;
  const own=side.toLowerCase(),loc=state.locations[slot];let modifier=plan.modifier;
- if(dagoLocationText(slot)&&DagobahRules.sector(loc)&&dagoTitle(loc)==='big one')modifier+=side===dagoLocationPlayer(slot,state.locations[slot].side)?dagoSectors(dagoSystemSlot(slot)).filter(i=>/asteroid field/.test(dagoTitle(state.locations[i]))).length:loc.id==='Light:236'?1:0;
+ if(dagoLocationText(slot)&&DagobahRules.asteroid(loc)&&dagoTitle(loc)==='big one')modifier+=side===dagoLocationPlayer(slot,state.locations[slot].side)?dagoSectors(dagoSystemSlot(slot)).filter(i=>/asteroid field/.test(dagoTitle(state.locations[i]))).length:loc.id==='Light:236'?1:0;
  if(loc?.id==='Dark:910'&&side===dagoLocationPlayer(slot,'Light'))modifier++;
  if(dagoCompleted(PremiereGame.otherSide(side),1)){
   // Cancel each bonus individually: a +2 and a -1 leave the -1 intact.

@@ -85,7 +85,8 @@ const PremiereGame = (() => {
     const {hand, deck, force, used} = zones(state, side);
     const piles = {deck: isReserveInsert(deck?.at(-1)) ? [] : deck, force, used};
     if (Object.hasOwn(piles, preferred) && piles[preferred]?.length) return [{args: [preferred]}];
-    const cards = (hand ?? []).map((card, i) => ({args: ['hand', i], card})).filter(choice=>choice.card!==state.hothPayingInterrupt);
+    const sabacc = state.cloudCitySabacc?.hands?.[side];
+    const cards = (sabacc ?? hand ?? []).map((card, i) => ({args: [sabacc ? 'sabacc' : 'hand', i], card})).filter(choice=>choice.card!==state.hothPayingInterrupt);
     if (preferred === 'hand' && cards.length) return cards;
     return [...cards,
       ...Object.entries(piles).filter(([, pile]) => pile?.length).map(([zone]) => ({args: [zone]}))];
@@ -93,6 +94,11 @@ const PremiereGame = (() => {
 
   function loseForce(state, side, zone, index) {
     const {hand, deck, force, used, lost} = zones(state, side);
+    if (zone === 'sabacc') {
+      const cards=state.cloudCitySabacc?.hands?.[side];
+      if(!Number.isInteger(index)||!cards?.[index])return null;
+      const [card]=cards.splice(index,1);lost.push(card);return card;
+    }
     if (zone === 'hand') {
       if (!Number.isInteger(index) || !hand[index]) return null;
       const [card] = hand.splice(index, 1);
@@ -129,6 +135,8 @@ const PremiereGame = (() => {
       function conceal(unit) {
         if(unit.bluffs&&side!=='Dark')unit.bluffs=unit.bluffs.map(()=>({faceDown:true}));
         if(unit.escortedCaptive)conceal(unit.escortedCaptive);
+        for(const captive of unit.additionalCaptives??[])conceal(captive);
+        if(unit.cloudCityStored&&(unit.controller??unit.owner??unit.side)!==side)unit.cloudCityStored=unit.cloudCityStored.map(()=>({faceDown:true}));
         if (unit.salt) unit.salt = unit.salt.map(() => ({faceDown:true}));
         for (const item of [...(unit.weapons ?? []), ...(unit.attachments ?? []),
           ...(unit.occupants ?? []).map(occupant => occupant.card)]) conceal(item);
@@ -140,7 +148,8 @@ const PremiereGame = (() => {
       const piles = zones(state, player);
       const faceDown = lostPileFaceDown(state, player);
       const reserveCount = (piles.deck ?? []).some(isReserveInsert) ? null : piles.deck?.length ?? 0;
-      return [player, {handCount: piles.hand?.length ?? 0, reserveCount,
+      const hand=state.cloudCitySabacc?.hands?.[player]??piles.hand;
+      return [player, {handCount: hand?.length ?? 0, reserveCount,
         forceCount: piles.force?.length ?? 0, usedCount: piles.used?.length ?? 0,
         ...(piles.used?.at(-1)?.dagobahFaceUp?{usedTop:clone(piles.used.at(-1))}:{}),
         ...(piles.deck?.at(-1)?.dagobahFaceUp&&!isReserveInsert(piles.deck.at(-1))?{reserveTop:clone(piles.deck.at(-1))}:{}),
@@ -149,7 +158,7 @@ const PremiereGame = (() => {
         lostEffects: (state.lostPileEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),
         tableEffects: (state.tableEffects ?? []).filter(effect => effect.target === player).map(effect => clone(effect.card)),
         board: (piles.board ?? []).map(row => row.map(clone)),
-        ...(player === side ? {hand: (piles.hand ?? []).map(clone)} : {})}];
+        ...(player === side ? {hand: (hand ?? []).map(clone)} : {})}];
     }));
     return {phase: state.phase, activeSide: state.activeSide, turn: state.turn,
       winner: state.gameWinner, locations: state.locations.map(clone), players, outOfPlay:(state.outOfPlay??[]).map(clone),
@@ -167,7 +176,7 @@ const PremiereGame = (() => {
   function lifeForce(state, side) {
     const {deck, force, used} = zones(state, side);
     const draws = state.game?.responses.filter(frame=>frame.kind==='destiny'&&frame.side===side&&frame.draw).length??0;
-    return Number(state.pendingCardView?.mode==='destinyValue'&&state.pendingCardView.side===side)+reserveCards(deck).length + (force?.length ?? 0) + (used?.length ?? 0) + draws;
+    return (state.cloudCitySabacc?.hands?.[side]?.length??0)+Number(state.pendingCardView?.mode==='destinyValue'&&state.pendingCardView.side===side)+reserveCards(deck).length + (force?.length ?? 0) + (used?.length ?? 0) + draws;
   }
 
   function outcome(state) {

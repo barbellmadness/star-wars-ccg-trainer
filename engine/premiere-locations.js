@@ -4,7 +4,7 @@ const PremiereLocations = (() => {
   const opposite = side => side === 'Light' ? 'Dark' : 'Light';
   const title = card => (card?.name ?? '').replace(/^•+\s*/, '').split(' (')[0];
   const system = card => ['System','Sector'].includes(card?.subType);
-  const region = card => system(card) ? title(card) : title(card).split(':')[0];
+  const region = card => card?.cloudCityPlanet?.replace(/^./,letter=>letter.toUpperCase()) ?? (/^Cloud City:/.test(title(card)) ? 'Bespin' : system(card) ? title(card) : title(card).split(':')[0]);
   function hothMarker(card) {
     if(card?.type!=='Location'||card.subType!=='Site'||region(card).toLowerCase()!=='hoth')return null;
     const match=(card.name??'').match(/\(([1-7])(?:st|nd|rd|th) Marker\)/i);
@@ -27,6 +27,7 @@ const PremiereLocations = (() => {
       result.push({card, side, slot, carriers, unavailable, captive:held});
       for (const occupant of card.occupants ?? []) visit(occupant.card, slot, [card, ...carriers], unavailable);
       if (card.escortedCaptive) visit(card.escortedCaptive, slot, carriers, true, true);
+      for (const captive of card.additionalCaptives ?? []) visit(captive, slot, carriers, true, true);
       for (const attachment of [...(card.weapons ?? []), ...(card.attachments ?? [])]){
         visit(attachment, slot, carriers, unavailable, held);
       }
@@ -46,7 +47,7 @@ const PremiereLocations = (() => {
   function at(state, card, slot) {
     const entry = find(state, card), target = state.locations?.[slot];
     return !!entry && !!target && (entry.slot === slot ||
-      (system(target) && !system(state.locations[entry.slot]) && region(state.locations[entry.slot]) === region(target)));
+      (system(target) && (!system(state.locations[entry.slot])||target.subType==='System'&&state.locations[entry.slot]?.cloudCityPlanet) && region(state.locations[entry.slot]) === region(target)));
   }
 
   function aboard(state, card, carrier) {
@@ -81,7 +82,7 @@ const PremiereLocations = (() => {
     let known = 0, uncertain = false;
     for (const {card} of entries(state, side).filter(entry => entry.slot === slot && !entry.unavailable)) {
       if (card.undercover) continue;
-      if ((state.game?.cardRulesVersion??0)>=32&&state.game?.playFormat==='premiere-a-new-hope-hoth-dagobah'&&['Dark:9','Dark:1245'].includes(card.id)&&!units.textSuppressed(card))return true;
+      if ((state.game?.cardRulesVersion??0)>=32&&['premiere-a-new-hope-hoth-dagobah','premiere-a-new-hope-hoth-dagobah-cloud-city'].includes(state.game?.playFormat)&&['Dark:9','Dark:1245'].includes(card.id)&&!units.textSuppressed(card))return true;
       if (card.presence === true || (state.game?.cardRulesVersion??0)>=31 && ['Light:1404','Dark:1950'].includes(card.id) && !units.textSuppressed(card)) return true;
       if (card.type && !['Character', 'Vehicle', 'Starship', 'Creature'].includes(card.type)&&!['Light:694','Dark:1274'].includes(state.locations[slot]?.id)) continue;
       const value = ability(card);
@@ -102,6 +103,7 @@ const PremiereLocations = (() => {
   }
 
   function printedSide(state, slot, side) {
+    if(typeof cloudCityEnabled==='function'&&cloudCityEnabled()&&typeof ccDecree==='function'&&ccDecree('Dark'))return side;
     return effectsAt(state, slot).filter(effect => effect.card.id === 'Light:2110').length % 2
       ? opposite(side) : side;
   }
