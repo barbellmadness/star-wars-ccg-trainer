@@ -10,7 +10,7 @@ export const webPages = ['index.html', 'v2.html', 'editionen.html', 'anleitungen
   'anleitungen/a-new-hope.html','anleitungen/hoth.html','anleitungen/dagobah.html','anleitungen/cloud-city.html'];
 const cloudCityModules=['rules','card-rules','session','space','sabacc','captives','devices','freezing','locations','weather-vane','units','weapons','effects','abilities','reacts','interrupts','battle','duels','storage','timing','layout','support','captive-battle','reactions','answers','information','drains','nabrun','limits','bot'].map(name=>`engine/cloud-city-${name}.js`);
 // Deliberate allowlist: never collect arbitrary JSON, local reports, credentials or the checkout.
-const sourceAssets = ['assets/favicon.svg', 'assets/site.css', 'assets/home-covers.css', 'assets/edition-banners.css', 'assets/starter-boxes.svg', 'assets/starter-covers.css', 'assets/playfield-views.css', 'assets/playfield-views.js', ...['data', 'game', 'battle', 'units', 'locations',
+const sourceAssets = ['assets/favicon.svg', 'assets/site.css', 'assets/home-covers.css', 'assets/edition-banners.css', 'assets/faction-card-backs.svg', 'assets/starter-covers.css', 'assets/playfield-views.css', 'assets/playfield-views.js', ...['data', 'game', 'battle', 'units', 'locations',
   'weapons', 'card-rules', 'bot', 'learning', 'session'].map(name => `engine/premiere-${name}.js`),
   ...['rules','card-rules','session','interrupts','creatures','mines','timing'].map(name=>`engine/hoth-${name}.js`),
   ...['rules','card-rules','session','jedi','space','creatures','units','effects','weapons','locations','interrupts','timing','abilities','passives'].map(name=>`engine/dagobah-${name}.js`),
