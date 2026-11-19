@@ -51,4 +51,13 @@ Der Browsertest prüft beide Spielseiten, jeweils acht Decks, anklickbare Deckka
 
 ## Abnahme
 
-Die abschließenden Katalog-, Node-, Browser- und Veröffentlichungsergebnisse werden mit dem fertigen Commit im Pull Request dokumentiert. Bis zu dieser Abnahme bleibt die bisher veröffentlichte Version online.
+Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, auf [www.starwarsccg.de](https://www.starwarsccg.de/v2.html) veröffentlicht. Implementierungscommit: `e26b4c8`; [Pull Request #92](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/92) gegen den veröffentlichten Entwicklungsstand aus PR #91. Kein main-Push oder Merge.
+
+- Alle vier Spielkatalog-/Deckprüfungen und die Sammlerdatenprüfung bestanden.
+- **793 Node-Tests bestanden**, einschließlich acht vollständiger Dagobah-Deckpaarungen und der bestehenden Premiere-, ANH- und Hoth-Regressionen. Lokal wurden die Testdateien unter `tests/` explizit übergeben, damit die ignorierten fremden Worktrees nicht zusätzlich ausgeführt werden. GitHub führte `node --test` ebenfalls erfolgreich aus.
+- **Alle vier Chrome-Browserprüfungen bestanden**: Dagobah-Auswahl für beide Seiten, Spielfeldansichten, gebauter Webauftritt und allgemeiner V2-Ablauf. Zwei Zeitüberschreitungen beim parallelen Laptop-Lauf traten im getrennten Wiederholungslauf nicht mehr auf. Die GitHub-Push- und PR-Prüfungen sind ebenfalls erfolgreich.
+- Alle **115 Release-Dateien** stimmen auf dem Server per SHA-256 mit dem geprüften Paket überein; das öffentliche Manifest ist identisch.
+- Öffentlicher Start und Fortsetzen nach Reload wurden für alle vier Formate und beide Spielseiten geprüft. Format, Seed, Aktionszahl und Revision bleiben identisch; frühere Formate laden beim Erststart keine Hoth-/Dagobah-Kataloge.
+- HTTPS-Weiterleitungen, HTML-Revalidierung, unveränderliche Hash-Dateien und gzip wurden öffentlich geprüft. Private Drucktext- und Git-Pfade sind nicht öffentlich abrufbar. Die 308 privaten Premiere-Drucktexte bleiben auf dem Laptop.
+
+Es sind keine offenen Abnahmefehler bekannt. Die oben dokumentierte Zielabhängigkeit von Lando System? bleibt bestehen.

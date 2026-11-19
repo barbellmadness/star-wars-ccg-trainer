@@ -90,3 +90,11 @@ Abnahme:
 - Die beiden V2-Aufrufe waren in dieser Abnahme nach rund 1,0 Sekunden startbereit. Das ist eine Messung aus dieser Verbindung und kein allgemeines Ladezeitversprechen; weitere Geräte- und Netzbedingungen bleiben separat zu messen.
 - Hash-Ressourcen werden mit einem Jahr Cache-Laufzeit und `immutable` ausgeliefert, HTML mit `no-cache`; gzip wurde auf dem öffentlichen Server nachgewiesen.
 - Private Drucktext-Dateien, Git-Metadaten und die alten WordPress-Einstiege waren im öffentlichen Abruf nicht verfügbar. Genau 16 Drucktexte stehen im Paket; die übrigen 308 bleiben privat.
+
+## Dagobah-Veröffentlichung
+
+Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, aus Implementierungscommit `e26b4c8` auf www.starwarsccg.de veröffentlicht. [PR #92](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/92) dokumentiert 793 bestandene Node-Tests, alle fünf Katalog-/Deck-/Sammlerprüfungen und vier bestandene Browserprüfungen. Die veröffentlichten Spielfeldansichten aus V2.16.1 bleiben erhalten.
+
+Die bisherige Domain wurde vorher außerhalb des Webverzeichnisses unter `/.local/swccg-backups/starwarsccg-before-v2.17.0-20261119-0613.tar.gz` gesichert (SHA-256: `80e476f39278d585c786c89098355534a96a18352903e013648766187073b042`, Dateirechte 600). Nur die 116 Dateien des geprüften Pakets einschließlich Manifest wurden per SFTP übertragen; bestehende Hash-Dateien blieben erhalten. Alle 115 im Manifest aufgeführten Dateien wurden auf dem Server per SHA-256 geprüft.
+
+Die öffentliche Abnahme begann alle vier Formate mit beiden Seiten und setzte jede Partie nach Reload mit identischen Seed-, Format-, Aktions- und Revisionsdaten fort. Die Startbereitschaft lag dabei zwischen rund 0,9 und 1,7 Sekunden; externe Bilder waren für diesen Funktionscheck gesperrt. Das ist kein allgemeines Ladezeitversprechen. Dagobah lädt erst bei Auswahl, HTTPS-Weiterleitungen und Cache-/gzip-Header wurden bestätigt. Private Drucktext- und Git-Pfade waren nicht abrufbar; weiterhin genau 16 öffentliche Premiere-Drucktexte. [Regelstand und Abnahme](../DAGOBAH_REGELSTAND.md).

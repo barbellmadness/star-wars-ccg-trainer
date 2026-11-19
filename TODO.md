@@ -28,7 +28,7 @@ V2.17.0 ergänzt das Format **Premiere + A New Hope + Hoth + Dagobah**. Die [Reg
 - [x] Je acht Themendecks mit 60 Karten, Strategieeinweisung und Cover erstellen; alle Dagobah-Karten über die Deckauswahl erreichbar machen.
 - [x] Daten und Module erst bei Bedarf laden; bestehende Spielformate und gespeicherte Regelsätze erhalten.
 - [x] Dagobah-Anleitung, Karteninspektor, sichtbare Spielzustände und mehrstufige Speicher-/Replay-Prüfungen ergänzen.
-- [ ] Abschließende vollständige Tests, Pull Request und Veröffentlichung auf www.starwarsccg.de abnehmen.
+- [x] Abschließende vollständige Tests, Pull Request und Veröffentlichung auf www.starwarsccg.de abnehmen.
 
 Die 308 privaten Premiere-Drucktexte bleiben außerhalb des Repositorys auf dem Laptop.
 
