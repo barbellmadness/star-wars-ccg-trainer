@@ -231,3 +231,5 @@ Das Register nennt die beteiligten Cloud-City-Module; gemeinsam genutzte Grundre
 ## Lokale Abnahme vom 19.11.2026
 
 Alle fünf Karten-/Deckkataloge, die Sammlerprüfung und der Deckübersichtsabgleich sind bestanden. Der abschließende vollständige Node-Lauf besteht **886 von 886 Tests**; die vollständige Chrome-Suite besteht **fünf von fünf Browserprüfungen**, einschließlich Quellseite, gebautem Paket und beiden Cloud-City-Spielseiten. Auch die acht vollständigen Cloud-City-Deckpaarungen behalten jeweils 120 eindeutige Karteninstanzen und erreichen ein Spielende. Keine offenen lokalen Abnahmefehler bekannt. Veröffentlichung und öffentliche Abnahme werden in docs/ALL_INKL.md dokumentiert.
+
+Öffentliche Abnahme: V2.18.0, Release 2ffd6c3c0a485a83, auf www.starwarsccg.de veröffentlicht. Alle fünf Formate und beide Seiten beginnen und setzen nach Reload identisch fort; alle 120 Release-Dateien sind per SHA-256 geprüft. [Veröffentlichungsprotokoll](docs/ALL_INKL.md#cloud-city-veröffentlichung).
