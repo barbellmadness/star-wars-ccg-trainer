@@ -395,7 +395,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
     <p id="playFormatHint" class="hint"></p>
     <div id="launchSides" class="launch-side-grid"></div>
     <div id="launchDeckGrid" aria-label="Decks deiner Seite" hidden></div>
-    <p class="launch-cover-note">Covermotiv: originale Special-Edition-Starterbox. Gespielt wird mit dem gewählten Deck.</p>
+    <p class="launch-cover-note">Originale Kartenrückseiten · Light Side und Dark Side.</p>
     <div id="launchActions" class="launch-actions" hidden>
       <p id="launchSummary" class="launch-summary" aria-live="polite"></p>
       <div id="launchBotStyle" class="launch-bot-style" hidden>
@@ -582,7 +582,7 @@ html:has(#cardInspector[open],#battlePreview[open],#battleAnalysis[open],#moveme
 </dialog>
 <script src="assets/playfield-views.js"></script><script src="assets/edition-banners.js"></script><script src="engine/premiere-data.js?v=2.15.41"></script><script src="engine/premiere-game.js?v=2.15.41"></script><script src="engine/premiere-battle.js?v=2.15.41"></script><script src="engine/premiere-units.js?v=2.15.41"></script><script src="engine/premiere-locations.js?v=2.15.41"></script><script src="engine/premiere-weapons.js?v=2.15.41"></script><script src="engine/premiere-card-rules.js?v=2.15.41"></script><script src="engine/premiere-bot.js?v=2.15.41"></script><script src="engine/premiere-learning.js?v=2.15.29"></script><script src="engine/premiere-session.js?v=2.15.41"></script><script>
 const german=['Aktivieren','Kontrolle','Ausspielen','Kampf','Bewegung','Nachziehen'];
-const trainerVersion='2.18.2';
+const trainerVersion='2.18.3';
 const lessonCompleteMessage='Übung abgeschlossen. Du kannst die Partie weiterspielen oder die Übung neu starten.';
 let supplementalCatalog=[];
 const cardBackUrls={
@@ -917,9 +917,9 @@ function selectPlayFormat(format){
 }
 
 let launchArtObserver;
-function launchStarterArt(side){
- return '<img class="launch-original-cover" data-starter-side="'+side+'" width="640" height="900" loading="lazy" decoding="async" '
-  +(typeof IntersectionObserver==='undefined'?'src':'data-launch-src')+'="assets/starter-boxes.svg#'+side+'" alt="" onerror="this.hidden=true">';
+function launchSideBackArt(side){
+ return '<img class="launch-original-cover" data-cover-side="'+side+'" width="298" height="413" loading="lazy" decoding="async" '
+  +(typeof IntersectionObserver==='undefined'?'src':'data-launch-src')+'="assets/faction-card-backs.svg#'+side+'" alt="" onerror="this.hidden=true">';
 }
 
 function launchArt(url,fallback){
@@ -1014,7 +1014,7 @@ function renderLaunch(){
  if(sideStep)el('launchSides').innerHTML=Object.entries(launchFactions).map(([side,{caption}])=>{
   const name=sideName[side];
   return '<button type="button" class="launch-side launch-tone-'+side+'" data-side="'+side+'" onclick="chooseLaunchFaction(\''+side+'\')">'
-   +'<span class="launch-starter-hero" aria-hidden="true">'+launchStarterArt(side)+'</span>'
+   +'<span class="launch-starter-hero" aria-hidden="true">'+launchSideBackArt(side)+'</span>'
    +'<span class="launch-side-copy"><strong>'+name+' Side</strong><small>'+caption+'</small></span></button>';
  }).join('');
  if(!deckGrid.hidden){
@@ -1029,7 +1029,7 @@ function renderLaunch(){
      const pick='chooseLaunchDeck('+JSON.stringify(id)+','+JSON.stringify(format)+')';
      const preview='showStarterDeck('+JSON.stringify(side)+','+JSON.stringify(id)+','+JSON.stringify(format)+')';
      return '<div class="launch-deck-tile launch-tone-'+side+'"><button type="button" class="launch-deck" data-deck="'+escapeHTML(id)+'" data-format="'+format+'" aria-pressed="'+(id===selected&&format===selectedFormat)
-      +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchStarterArt(side)+'<span class="launch-deck-feature">'+launchArt(cover?.image,cover?.name??name)+'</span></span>'
+      +'" onclick="'+escapeHTML(pick)+'"><span class="launch-deck-visual" aria-hidden="true">'+launchSideBackArt(side)+'<span class="launch-deck-feature">'+launchArt(cover?.image,cover?.name??name)+'</span></span>'
       +'<span class="launch-deck-copy"><strong>'+escapeHTML(name)+'</strong><small>'+escapeHTML(cover?.name?.replace(/^•+\s*/,''))+'</small></span></button>'
       +'<button type="button" class="launch-deck-guide" aria-haspopup="dialog" aria-label="Strategie und Karten zu '+escapeHTML(name)
       +' ansehen" onclick="'+escapeHTML(preview)+'">Strategie &amp; Karten</button></div>';
