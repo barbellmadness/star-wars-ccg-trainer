@@ -9,7 +9,7 @@ Der Einzelspieler-Trainer bleibt zunächst eine statische Website. HTML, CSS, Ja
 Für spätere Editionen:
 
 1. Jede Edition erhält ihren eigenen Katalog, ihre Regeln, Deckdefinitionen und Prüfungen.
-2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Hoth und Dagobah laden ihre Kataloge, Decks und Regelmodule bereits erst bei Bedarf; die Sammlerlisten laden keine Spieldaten nach.
+2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Seit V2.17.1 zeigt eine kleine separate Deckübersicht Hoth und Dagobah sofort an. Ihre vollständigen Kataloge, Decks und Regelmodule laden erst bei Bedarf; die Sammlerlisten laden keine Spieldaten nach.
 3. Große Listen virtualisieren bzw. seitenweise anzeigen; Bilder bei Bedarf laden. Die Deck-Cover werden bereits verzögert geladen.
 4. Bot- und Replay-Rechenzeit messen. Bei belegten längeren Blockierungen die Ausführung unter Beibehaltung der deterministischen Reihenfolge aufteilen oder in einen Web Worker verlagern.
 5. Neue Editionen nur mit versionierten Regeln, Legalitätsprüfung und Autosave-/Replay-Tests freigeben. Bestehende Spielstände behalten ihren Regelstand.
@@ -25,6 +25,7 @@ node scripts/import_premiere.mjs --check
 node scripts/import_premiere.mjs --edition a-new-hope --check
 node scripts/import_premiere.mjs --edition hoth --check
 node scripts/import_premiere.mjs --edition dagobah --check
+node scripts/build-deck-overview.mjs --check
 node --test
 npm run test:browser
 node scripts/build-web.mjs --output dist/all-inkl-release

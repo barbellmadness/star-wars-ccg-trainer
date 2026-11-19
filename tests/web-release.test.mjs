@@ -46,7 +46,7 @@ test('public release is self-contained, versioned, small and excludes private ma
     assert.equal(bannerArt.length, 27, 'One prepared banner for every registered edition');
     assert.ok(bannerArt.reduce((n, f) => n + f.gzipBytes, 0) < 800 * 1024, 'All lazily loaded banner art: 800 KiB');
     const gameStartup = new Set([...game.matchAll(/(?:src|href)="((?:engine|assets)\/[^"?]+)(?:\?[^\"]*)?"/g)].map(match => match[1]));
-    for (const name of ['premiere', 'premiere-starter-decks', 'premiere-themed-decks', 'premiere-supplemental-cards', 'play-format-decks', 'a-new-hope']) {
+    for (const name of ['premiere', 'premiere-starter-decks', 'premiere-themed-decks', 'premiere-supplemental-cards', 'play-format-decks', 'a-new-hope', 'deck-overview']) {
       gameStartup.add(release.files.find(file => new RegExp('^data/' + name + '\\.[a-f0-9]+\\.json$').test(file.path)).path);
     }
     const initialFiles = release.files.filter(file => file.path === 'v2.html' || gameStartup.has(file.path));

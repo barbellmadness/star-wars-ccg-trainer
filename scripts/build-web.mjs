@@ -14,7 +14,7 @@ const sourceAssets = ['assets/site.css', 'assets/edition-banners.css', 'assets/p
   ...['rules','card-rules','session','interrupts','creatures','mines','timing'].map(name=>`engine/hoth-${name}.js`),
   ...['rules','card-rules','session','jedi','space','creatures','units','effects','weapons','locations','interrupts','timing','abilities','passives'].map(name=>`engine/dagobah-${name}.js`),
   ...['premiere', 'a-new-hope', 'hoth','dagobah', 'premiere-starter-decks', 'premiere-themed-decks',
-    'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks','hoth-decks','dagobah-decks'].map(name => `data/${name}.json`)];
+    'premiere-supplemental-cards', 'premiere-card-notes', 'play-format-decks','hoth-decks','dagobah-decks','deck-overview'].map(name => `data/${name}.json`)];
 const digest = body => createHash('sha256').update(body).digest('hex');
 
 export async function buildWeb(output) {
