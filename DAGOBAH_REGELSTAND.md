@@ -51,7 +51,7 @@ Der Browsertest prüft beide Spielseiten, jeweils acht Decks, anklickbare Deckka
 
 ## Abnahme
 
-Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, auf [www.starwarsccg.de](https://www.starwarsccg.de/v2.html) veröffentlicht. Implementierungscommit: `e26b4c8`; [Pull Request #92](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/92) gegen den veröffentlichten Entwicklungsstand aus PR #91. Kein main-Push oder Merge.
+Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, auf [www.starwarsccg.de](https://www.starwarsccg.de/v2.html) veröffentlicht. Implementierungscommit: `e26b4c8`; [Pull Request #92](https://github.com/jolnir-de/star-wars-ccg-trainer/pull/92) gegen den veröffentlichten Entwicklungsstand aus PR #91. Kein main-Push oder Merge.
 
 - Alle vier Spielkatalog-/Deckprüfungen und die Sammlerdatenprüfung bestanden.
 - **793 Node-Tests bestanden**, einschließlich acht vollständiger Dagobah-Deckpaarungen und der bestehenden Premiere-, ANH- und Hoth-Regressionen. Lokal wurden die Testdateien unter `tests/` explizit übergeben, damit die ignorierten fremden Worktrees nicht zusätzlich ausgeführt werden. GitHub führte `node --test` ebenfalls erfolgreich aus.

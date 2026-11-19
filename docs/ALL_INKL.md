@@ -95,7 +95,7 @@ Abnahme:
 
 ## Dagobah-Veröffentlichung
 
-Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, aus Implementierungscommit `e26b4c8` auf www.starwarsccg.de veröffentlicht. [PR #92](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/92) dokumentiert 793 bestandene Node-Tests, alle fünf Katalog-/Deck-/Sammlerprüfungen und vier bestandene Browserprüfungen. Die veröffentlichten Spielfeldansichten aus V2.16.1 bleiben erhalten.
+Am 19.11.2026 wurde **V2.17.0**, Release **7229795a81c9d182**, aus Implementierungscommit `e26b4c8` auf www.starwarsccg.de veröffentlicht. [PR #92](https://github.com/jolnir-de/star-wars-ccg-trainer/pull/92) dokumentiert 793 bestandene Node-Tests, alle fünf Katalog-/Deck-/Sammlerprüfungen und vier bestandene Browserprüfungen. Die veröffentlichten Spielfeldansichten aus V2.16.1 bleiben erhalten.
 
 Die bisherige Domain wurde vorher außerhalb des Webverzeichnisses unter `/.local/swccg-backups/starwarsccg-before-v2.17.0-20261119-0613.tar.gz` gesichert (SHA-256: `80e476f39278d585c786c89098355534a96a18352903e013648766187073b042`, Dateirechte 600). Nur die 116 Dateien des geprüften Pakets einschließlich Manifest wurden per SFTP übertragen; bestehende Hash-Dateien blieben erhalten. Alle 115 im Manifest aufgeführten Dateien wurden auf dem Server per SHA-256 geprüft.
 
@@ -103,7 +103,7 @@ Die öffentliche Abnahme begann alle vier Formate mit beiden Seiten und setzte j
 
 ## Vollständige Deckübersicht
 
-Am 19.11.2026 wurde **V2.17.1**, Release **ecd398ebdebb4c9c**, veröffentlicht. [PR #93](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/93) basiert auf dem Dagobah-Entwicklungsstand. Commit `fe4fc04` ergänzt die Übersicht; `d170767` passt die Browserprüfung an alle vier Editionsabschnitte an. Kein main-Push oder Merge.
+Am 19.11.2026 wurde **V2.17.1**, Release **ecd398ebdebb4c9c**, veröffentlicht. [PR #93](https://github.com/jolnir-de/star-wars-ccg-trainer/pull/93) basiert auf dem Dagobah-Entwicklungsstand. Commit `fe4fc04` ergänzt die Übersicht; `d170767` passt die Browserprüfung an alle vier Editionsabschnitte an. Kein main-Push oder Merge.
 
 Die Übersicht ergänzt Namen und Cover für sämtliche Hoth-/Dagobah-Decks mit **1.575 Bytes gzip**; insgesamt wächst das geprüfte Webpaket nur um 2.268 Bytes gzip. Alle 32 Decks der gewählten Seite sind sofort aufgeführt. Vollständige Erweiterungskataloge, Decklisten und Regelmodule laden erst bei Strategieaufruf oder Deckauswahl. Cover werden nur nahe dem sichtbaren Bereich angefordert.
 
@@ -113,7 +113,7 @@ Vorherige Website privat gesichert: `/.local/swccg-backups/starwarsccg-before-v2
 
 ## Cloud-City-Veröffentlichung
 
-Am 19.11.2026 wurde **V2.18.0**, Release **2ffd6c3c0a485a83**, aus Implementierungscommit `3e8ac56` auf [www.starwarsccg.de](https://www.starwarsccg.de/) veröffentlicht. [PR #94](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/94) basiert auf `codex/complete-deck-overview`; main wurde weder direkt geändert noch automatisch zusammengeführt. Alle 180 physischen Cloud-City-Karten und je acht zusätzliche Themendecks sind im Pool Premiere bis Cloud City integriert. Bedingte Ziele aus späteren Editionen bleiben verbindlich; siehe [Regelstand](../CLOUD_CITY_REGELSTAND.md).
+Am 19.11.2026 wurde **V2.18.0**, Release **2ffd6c3c0a485a83**, aus Implementierungscommit `3e8ac56` auf [www.starwarsccg.de](https://www.starwarsccg.de/) veröffentlicht. [PR #94](https://github.com/jolnir-de/star-wars-ccg-trainer/pull/94) basiert auf `codex/complete-deck-overview`; main wurde weder direkt geändert noch automatisch zusammengeführt. Alle 180 physischen Cloud-City-Karten und je acht zusätzliche Themendecks sind im Pool Premiere bis Cloud City integriert. Bedingte Ziele aus späteren Editionen bleiben verbindlich; siehe [Regelstand](../CLOUD_CITY_REGELSTAND.md).
 
 Abnahme: alle fünf Karten-/Deckprüfungen, Sammlerprüfung und Deckübersichtsabgleich, **886 Node-Tests** und **fünf Chrome-Browserprüfungen** bestanden. Die acht vollständigen Cloud-City-Deckpaarungen erreichen ein Spielende mit 120 eindeutigen Karteninstanzen.
 
