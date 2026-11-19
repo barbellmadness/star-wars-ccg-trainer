@@ -27,12 +27,12 @@ test('V2 starts, handles unavailable images and stays playable at desktop and na
     assert.equal(await page.locator('#launchDeckGrid').isVisible(), false);
     assert.match(await page.locator('#launchSides button').first().innerHTML(), /lightcardback\.png.*lukeskywalker\.gif/s);
     await chooseSide('light');
-    assert.equal(await page.locator('.edition-banner').count(),2);
+    assert.equal(await page.locator('.edition-banner').count(),4);
     await page.locator('.edition-banner-art').last().scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>[...document.querySelectorAll('.edition-banner-art')].every(image=>image.complete&&image.naturalWidth===440));
     assert.ok(bannerRequests.every(url=>/\/(premiere|a-new-hope|hoth|dagobah)(?:\.[a-f0-9]+)?\.svg$/.test(new URL(url).pathname)),'Only playable editions may load banners in the trainer');
     await page.locator('.edition-banner').first().screenshot({path:'.hosting-qa-banner-premiere.png'});
-    await page.locator('.edition-banner').last().screenshot({path:'.hosting-qa-banner-anh.png'});
+    await page.locator('.edition-banner').nth(1).screenshot({path:'.hosting-qa-banner-anh.png'});
     const botStyle = page.getByLabel('Bot-Spielstil', {exact: true});
     assert.equal(await botStyle.inputValue(), 'balanced');
     assert.deepEqual(await botStyle.locator('option').allTextContents(), ['Defensiv', 'Ausgewogen', 'Offensiv']);
