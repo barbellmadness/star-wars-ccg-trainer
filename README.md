@@ -4,6 +4,9 @@ Browserbasierter Lerntrainer für Star Wars CCG. Dieses Repository ist unabhäng
 
 ## Aktueller Stand
 
+- V2.18.2 zeigt auf der Startseite sowie in Seiten- und Deckauswahl die originalen Light-/Dark-Side-Starterverpackungen der Special Edition. Die Startseite verwendet außerdem die vorhandenen Banner für alle fünf spielbaren Editionen. Ein gemeinsames SVG-Tab-Icon kennzeichnet Startseite, Trainer, Kartenarchiv und Anleitungen. Die Deckkacheln behalten ihre Schlüsselkarte als kleines Erkennungsbild. Beide Cover teilen sich eine lokale Bilddatei; Decklisten und Regelfreigaben bleiben unverändert. [Bildquellen](docs/STARTER_COVER_SOURCES.md)
+- V2.18.1 aktualisiert alle Projekt- und Vorschau-Links auf den GitHub-Account **jolnir-de**. Das Git-Remote verwendet bereits das neue Repository; die Veröffentlichung auf www.starwarsccg.de bleibt das Hauptziel.
+
 - V2.18.0 ergänzt **alle 180 Cloud-City-Karten** und **acht weitere Themendecks je Spielseite** für den Kartenpool Premiere bis einschließlich Cloud City. Wolkensektoren, Sabacc, Carbon-Freezing, Binders, Weather Vane, Cyborg-Speicher, neue Antworten und Epic Duel verwenden die gemeinsame Engine, den Bot und Autosave/Replay. [Regelstand und Prüfmatrix](CLOUD_CITY_REGELSTAND.md) · [Spielanleitung](anleitungen/cloud-city.html).
 - Alle **40 Decks je Spielseite** sind sofort sichtbar. Die leichte Übersicht für Hoth, Dagobah und Cloud City enthält nur Namen und Cover (2.259 Bytes gzip). Erst Strategieaufruf oder Auswahl laden die jeweiligen vollständigen Karten, Decklisten und Regeln. Der öffentliche Cloud-City-Regelsatz lädt als ein optionales Skriptpaket.
 
@@ -67,8 +70,8 @@ Lege einen separaten Branch für jede Änderung an. Führe nach Codeänderungen 
 
 Für **ALL-INKL und www.starwarsccg.de** gibt es ein statisches Release-Paket mit versionierten Assets, Cache- und Komprimierungseinstellungen. Einrichtung, Upload-Reihenfolge, Rückgriff auf ein vorheriges Release und die Entscheidung gegen eine derzeit unnötige Datenbank stehen in der [Hosting-Anleitung](docs/ALL_INKL.md). Die Domain wird über das dedizierte Webverzeichnis bei ALL-INKL ausgeliefert; SSH-Schlüssel und private Berichte bleiben außerhalb des Repositorys. Die [gespeicherten Verbesserungsideen](docs/VERBESSERUNGSIDEEN.md) bleiben für später vorgemerkt.
 
-GitHub Actions aktualisiert die [öffentliche V2-Seite](https://barbellmadness.github.io/star-wars-ccg-trainer/v2.html) bei Pushes auf Entwicklungsbranches mit dem Präfix `codex/`. Lege neue Branches von einem Entwicklungsstand an, der den Veröffentlichungsworkflow bereits enthält.
+GitHub Actions aktualisiert die zusätzliche [GitHub-Pages-Vorschau](https://jolnir-de.github.io/star-wars-ccg-trainer/v2.html) bei Pushes auf Entwicklungsbranches mit dem Präfix `codex/`. Lege neue Branches von einem Entwicklungsstand an, der den Veröffentlichungsworkflow bereits enthält.
 
-Vor jeder Veröffentlichung prüft der Workflow alle vier Spielkataloge und die Sammlerdaten und führt `node --test` sowie die Browserprüfungen von Trainer und fertigem Webpaket aus. Für Pull Requests laufen dieselben Prüfungen. Das GitHub-Pages-Deployment wird durch den erfolgreichen Push ausgelöst und folgt dem Stand des getesteten Commits. Das geprüfte Paket steht zusätzlich als Artefakt `all-inkl-web-release` bereit.
+Vor jeder Veröffentlichung prüft der Workflow alle fünf Spielkataloge und die Sammlerdaten und führt `node --test` sowie die Browserprüfungen von Trainer und fertigem Webpaket aus. Für Pull Requests laufen dieselben Prüfungen. Das GitHub-Pages-Deployment wird durch den erfolgreichen Push ausgelöst und folgt dem Stand des getesteten Commits. Das geprüfte Paket steht zusätzlich als Artefakt `all-inkl-web-release` bereit.
 
 V2 lädt Kartenbilder von den im Datensatz hinterlegten URLs. Für die öffentliche Auslieferung eigener Bilddateien steht die rechtliche Prüfung aus.

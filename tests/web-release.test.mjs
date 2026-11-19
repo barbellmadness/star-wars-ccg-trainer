@@ -40,11 +40,16 @@ test('public release is self-contained, versioned, small and excludes private ma
       assert.ok(paths.has(edition.cardsUrl), 'Hashed collector data must exist: '+edition.id);
     }
     const home = await readFile(join(output, 'index.html'), 'utf8');
-    assert.doesNotMatch(home, /<script|<img|fetch\(/);
+    assert.doesNotMatch(home, /<script|fetch\(/);
+    assert.equal((home.match(/data-banner-edition=/g)??[]).length,5,'Homepage reuses all five playable edition banners');
+    assert.equal((home.match(/starter-boxes\.[a-f0-9]+\.svg#/g)??[]).length,2,'Homepage uses the real Light/Dark starter packaging');
     assert.ok(gzipSync(home).length < 12000, 'Homepage gzip budget: 12 KB');
     const bannerArt = release.files.filter(file => file.path.startsWith('assets/edition-banners/'));
     assert.equal(bannerArt.length, 27, 'One prepared banner for every registered edition');
     assert.ok(bannerArt.reduce((n, f) => n + f.gzipBytes, 0) < 800 * 1024, 'All lazily loaded banner art: 800 KiB');
+    const starterArt=release.files.filter(file=>/^assets\/starter-boxes\.[a-f0-9]+\.svg$/.test(file.path));
+    assert.equal(starterArt.length,1,'Both original starter covers share one self-contained photo');
+    assert.ok(starterArt[0].gzipBytes<96*1024,'Original starter packaging photo: 96 KiB gzip');
     const gameStartup = new Set([...game.matchAll(/(?:src|href)="((?:engine|assets)\/[^"?]+)(?:\?[^\"]*)?"/g)].map(match => match[1]));
     for (const name of ['premiere', 'premiere-starter-decks', 'premiere-themed-decks', 'premiere-supplemental-cards', 'play-format-decks', 'a-new-hope', 'deck-overview']) {
       gameStartup.add(release.files.find(file => new RegExp('^data/' + name + '\\.[a-f0-9]+\\.json$').test(file.path)).path);
@@ -53,7 +58,7 @@ test('public release is self-contained, versioned, small and excludes private ma
     assert.ok(initialFiles.every(file => !/cloud-city|dagobah|hoth|collector-/.test(file.path)), 'Later editions and collectors stay outside the startup bundle');
     assert.ok(initialFiles.reduce((n, f) => n + f.gzipBytes, 0) < 600 * 1024, 'Initial game code and data retain the 600 KiB gzip budget');
     assert.ok(release.files.filter(file => /(?:engine|data)\/dagobah[.-]/.test(file.path)).reduce((n, f) => n + f.gzipBytes, 0) < 180 * 1024, 'On-demand Dagobah rules and decks: 180 KiB gzip');
-    assert.ok(release.files.filter(file => !bannerArt.includes(file)).reduce((n, f) => n + f.gzipBytes, 0) < 1000 * 1024, 'Complete five-edition code, data and guides: 1000 KiB gzip');
+    assert.ok(release.files.filter(file => !bannerArt.includes(file)&&!starterArt.includes(file)).reduce((n, f) => n + f.gzipBytes, 0) < 1000 * 1024, 'Complete five-edition code, data and guides: 1000 KiB gzip');
     assert.equal(release.files.filter(file=>/^engine\/cloud-city-all\./.test(file.path)).length,1,'Cloud City uses one optional script request');
     assert.ok(release.files.filter(file=>/(?:engine|data)\/cloud-city[.-]/.test(file.path)).reduce((n,f)=>n+f.gzipBytes,0)<180*1024,'Optional Cloud City rules and decks: 180 KiB gzip');
     const premierePath = release.files.find(file => /^data\/premiere\.[a-f0-9]+\.json$/.test(file.path)).path;
