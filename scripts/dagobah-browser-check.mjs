@@ -17,9 +17,24 @@ test('Dagobah loads on demand, offers eight decks per side, and resumes both sid
   for(const side of ['light','dark']){
    await page.evaluate(()=>{localStorage.clear();});await page.reload();await page.waitForFunction(()=>!document.querySelector('#start').disabled);
    await page.locator('#launchSides [data-side="'+side+'"]').click();
-   await page.getByRole('button',{name:'Dagobah-Decks laden',exact:true}).click();
    const tiles=page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] [data-deck]');await tiles.first().waitFor();assert.equal(await tiles.count(),8);
+   for(const format of ['premiere','premiere-a-new-hope','premiere-a-new-hope-hoth','premiere-a-new-hope-hoth-dagobah'])assert.equal(await page.locator('[data-deck-format="'+format+'"] [data-deck]').count(),8);
+   assert.equal(await page.getByRole('button',{name:'Dagobah-Decks laden',exact:true}).count(),0);
+   assert.equal(await page.evaluate(()=>!!dagobahCatalog||!!hothCatalog),false,'Showing all decks loads no expansion card catalog');
+   const before=await page.evaluate(()=>({format:launchFormat(),deck:deckSelector(launchFaction).value}));
+   assert.ok(await tiles.first().locator('img[data-launch-src]').count(),'Offscreen covers wait for scrolling');
+   if(side==='light'){
+    await page.route('**/data/dagobah.json',route=>route.abort(),{times:1});
+    await page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] .launch-deck-guide').first().click();
+    await page.waitForFunction(()=>document.querySelector('#playFormatHint').textContent.includes('Bitte erneut'));
+    assert.deepEqual(await page.evaluate(()=>({format:launchFormat(),deck:deckSelector(launchFaction).value})),before,'Failed preview retains the selected deck');
+   }else{
+    await tiles.first().click();
+    await page.waitForFunction(()=>launchFormat()==='premiere-a-new-hope-hoth-dagobah');
+    await page.waitForFunction(()=>!document.querySelector('#start').disabled);
+   }
    await page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] .launch-deck-guide').first().click();
+   await page.locator('#starterDeckDialog').waitFor({state:'visible'});
    assert.match(await page.locator('#starterDeckTitle').innerText(),/Yodas Schule|Kopfgeldjäger-Gilde/);
    await page.locator('#starterDeckCards .deck-card-link').first().click();assert.equal(await page.locator('#cardInspector').isVisible(),true);
    await page.evaluate(()=>{for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();});

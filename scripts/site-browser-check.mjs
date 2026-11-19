@@ -157,7 +157,9 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     assert.match(await artillery.textContent(),/kein Korrekturslip hinterlegt/);
     assert.equal(await artillery.getByRole('link',{name:/Korrekturslip/}).count(),0);
     await page.keyboard.press('Escape');await page.keyboard.press('Escape');
-    await page.getByRole('button',{name:'Hoth-Decks laden'}).click();
+    await page.locator('[data-deck-format="premiere-a-new-hope-hoth"] .launch-deck-guide').first().click();
+    await page.locator('#starterDeckDialog').waitFor({state:'visible'});
+    await page.keyboard.press('Escape');
     const hothDecks=page.locator('[data-deck-format="premiere-a-new-hope-hoth"] [data-deck]');
     await hothDecks.first().waitFor({state:'visible'});
     assert.equal(await hothDecks.count(),8);
@@ -177,9 +179,11 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.evaluate(()=>localStorage.clear());await page.reload();
     await page.waitForFunction(()=>!document.querySelector('#start').disabled);
     await page.locator('#launchSides [data-side="dark"]').click();
-    await page.getByRole('button',{name:'Dagobah-Decks laden',exact:true}).click();
     const dagobahDecks=page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] [data-deck]');
     await dagobahDecks.first().waitFor();assert.equal(await dagobahDecks.count(),8);
+    assert.equal(await page.evaluate(()=>!!dagobahCatalog||!!hothCatalog),false,'Built overview does not load expansion catalogs');
+    await page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah"] .launch-deck-guide').first().click();
+    await page.locator('#starterDeckDialog').waitFor({state:'visible'});
     assert.equal(await page.evaluate(()=>dagobahCatalog.filter(card=>PremiereData.isReleasedExpansionCard(card,32)&&PremiereCardRules.entry(card).complete).length),180);
     assert.ok(requests.some(url=>/engine\/dagobah-passives\.[a-f0-9]{12}\.js$/.test(url)),'Built Dagobah modules use hashed URLs');
     assert.deepEqual(errors, []);
