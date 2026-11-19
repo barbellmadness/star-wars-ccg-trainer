@@ -69,7 +69,7 @@ function dagoSpaceContinuous(){
 function dagoSpaceTiming(event,tasks){
  const side=state.activeSide;
  if(event==='phase:start'&&state.phase===1)tasks.push(done=>{
-  const remaining=dagoUnits().filter(entry=>entry.side===side&&!entry.unavailable&&entry.card.type==='Starship'&&DagobahRules.sector(state.locations[entry.slot])&&PremiereLocations.presentAt(entry,entry.slot));
+  const remaining=dagoUnits().filter(entry=>entry.side===side&&!entry.unavailable&&entry.card.type==='Starship'&&DagobahRules.asteroid(state.locations[entry.slot])&&PremiereLocations.presentAt(entry,entry.slot));
   const next=()=>{const targets=remaining.filter(entry=>dagoEntry(entry.card));if(!targets.length){done();return;}const draw=entry=>{remaining.splice(remaining.indexOf(entry),1);state.pendingCardView=null;dagoAsteroid(entry,next);};
    if(targets.length===1){draw(targets[0]);return;}
    dagoPrompt(PremiereGame.otherSide(side),targets[0].card,'AsteroidOrder',targets.map((entry,i)=>({args:[i],card:entry.card,label:entry.card.name+' als nächstes prüfen'})),choice=>{draw(targets.find(entry=>entry.card===choice.card));return true;});
@@ -115,7 +115,7 @@ function dagoAsteroid(entry,done){
  const draw=()=>{state.dagobahAsteroidTarget=entry;(state.dagobahAsteroidsDrawn??=[]).push({card:entry.card,turn:state.game.timing.turn});drawDestinySeries(side,'asteroid',1,modifier,draws=>{
   const drawn=draws.length?PremiereBattle.total(draws):null,stats=craftStats(entry.card,entry.slot),defense=Number.isFinite(stats.armor)?stats.armor:stats.maneuver;
   dagoTargetTotal(side,entry.card,drawn,total=>{
-  if(draws.some(draw=>!draw.cancelled&&DagobahRules.sector(draw.card))||Number.isFinite(total)&&total>defense){const relay=entry.card.dagobahLostRelayTurn===state.game.timing.turn,forfeit=cardForfeitValueAt(entry.card,entry.side,entry.slot);loseTableCard(entry.side,entry.slot,entry.card);if(relay)dagoLoss(entry.side,forfeit??0,'Lost Relay',finish);else finish();}
+  if(draws.some(draw=>!draw.cancelled&&DagobahRules.asteroid(draw.card))||Number.isFinite(total)&&total>defense){const relay=entry.card.dagobahLostRelayTurn===state.game.timing.turn,forfeit=cardForfeitValueAt(entry.card,entry.side,entry.slot);loseTableCard(entry.side,entry.slot,entry.card);if(relay)dagoLoss(entry.side,forfeit??0,'Lost Relay',finish);else finish();}
   else finish();});
  });};
  withShipWeaponResponse({kind:'dagobahBeforeAsteroid',side,site:entry.slot,target:entry.card},draw);

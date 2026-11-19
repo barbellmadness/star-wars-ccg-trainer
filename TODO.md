@@ -1,5 +1,23 @@
 # Offene Funktionen für den Star Wars CCG Premiere Trainer
 
+## 17. Cloud City integrieren
+
+V2.18.0 erweitert den Pool um 180 Cloud-City-Karten und acht Themendecks je Spielseite. [Regelstand und Prüfmatrix](CLOUD_CITY_REGELSTAND.md) · [Anleitung](anleitungen/cloud-city.html). Veröffentlicht auf www.starwarsccg.de; lokale und öffentliche Abnahme sind abgeschlossen.
+
+- [x] Genau 180 physische Karten aus der festgeschriebenen öffentlichen Quelle übernehmen; Hindsight-Lesehilfe mit gleichem Gemp-Slot ausschließen.
+- [x] Wolkensektoren, Site-Anordnung und sämtliche Standorttexte vervollständigen.
+- [x] Sabacc einschließlich Einsätzen, Inserts, Antworten und Speicher-/Replay-Fällen abschließen.
+- [x] Carbonit, Binders, Gefangenenmissionen und Weather Vane vollständig umsetzen.
+- [x] Alle Charaktere, Fahrzeuge, Raumschiffe, Devices und Waffen integrieren.
+- [x] Sämtliche Effects, Interrupts und Epic Duel mit Antworten und Bot anbinden.
+- [x] Alle 180 Karten einzeln und in Kombination prüfen und erst dann freigeben.
+- [x] Je acht legale 60-Karten-Themendecks für Light und Dark mit allen Karten bis einschließlich Cloud City, Strategie und Cover ergänzen.
+- [x] Sofortige leichte Deckübersicht und verzögertes Laden der Spieldaten erweitern; frühere Formate und Spielstände erhalten.
+- [x] Alle Katalogprüfungen, Node-Tests und Browserprüfungen ausführen; per PR dokumentieren und auf www.starwarsccg.de veröffentlichen.
+
+Die 308 privaten Premiere-Drucktexte bleiben unberührt außerhalb des Repositorys.
+
+
 ## 15. Hoth integrieren
 
 Ziel: Premiere und Premiere + A New Hope weiter spielbar halten; Hoth ist seit V2.16.0 als zusätzliches Format integriert. [Regelstand, Quellen und Reihenfolge](HOTH_REGELSTAND.md)

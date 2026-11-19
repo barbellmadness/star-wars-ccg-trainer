@@ -1,6 +1,6 @@
 'use strict';
 function dagoLocationText(slot){const loc=state.locations[slot];return !!loc&&!loc.collapsed&&!loc.blownAway&&!PremiereUnits.textSuppressed(loc);}
-function dagoLocationPlayer(slot,printedSide){return !dagoLocationText(slot)?null:PremiereLocations.effectsAt(state,slot).filter(effect=>effect.card.id==='Light:2110').length%2?PremiereGame.otherSide(printedSide):printedSide;}
+function dagoLocationPlayer(slot,printedSide){return !dagoLocationText(slot)?null:PremiereLocations.printedSide(state,slot,printedSide);}
 function dagoLocationActions(side){
  const out=[],own=dagoOwn(side),active=state.activeSide===side;
  if(!active||battleSession)return out;

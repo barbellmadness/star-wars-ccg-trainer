@@ -35,7 +35,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.setViewportSize({width: 390, height: 844});
     await page.screenshot({path: '.hosting-qa-mobile.png', fullPage: true});
     await page.getByRole('link', {name: 'Anleitungen', exact: true}).click();
-    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope','hoth','dagobah']) {
+    for (const name of ['schnellstart', 'spielzug', 'kampf', 'a-new-hope','hoth','dagobah','cloud-city']) {
       await page.goto(origin + '/anleitungen/' + name + '.html');
       assert.equal(await page.getByRole('heading', {level: 1}).count(), 1);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Guide overflow: ' + name);
@@ -172,7 +172,7 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     }
     await page.getByRole('button',{name:'Partie beginnen',exact:true}).click();
     await page.waitForFunction(()=>!!state?.game?.playFormat&&state.game.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
-    assert.equal(await page.evaluate(()=>state.game.cardRulesVersion),32);
+    assert.equal(await page.evaluate(()=>state.game.cardRulesVersion),33);
     await page.reload();
     await page.getByRole('button',{name:'Partie fortsetzen',exact:true}).click();
     await page.waitForFunction(()=>state?.game?.playFormat==='premiere-a-new-hope-hoth'&&!document.querySelector('#gameTable').hidden);
@@ -186,6 +186,22 @@ test('built fan homepage, guides and hashed game run without remote images', {ti
     await page.locator('#starterDeckDialog').waitFor({state:'visible'});
     assert.equal(await page.evaluate(()=>dagobahCatalog.filter(card=>PremiereData.isReleasedExpansionCard(card,32)&&PremiereCardRules.entry(card).complete).length),180);
     assert.ok(requests.some(url=>/engine\/dagobah-passives\.[a-f0-9]{12}\.js$/.test(url)),'Built Dagobah modules use hashed URLs');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#launchDeckGrid [data-deck]').count(),40);
+    const cloudDecks=page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah-cloud-city"] [data-deck]');
+    assert.equal(await cloudDecks.count(),8);
+    assert.equal(await page.evaluate(()=>!!cloudCityCatalog),false,'Cloud City remains optional after loading Dagobah');
+    await page.locator('[data-deck-format="premiere-a-new-hope-hoth-dagobah-cloud-city"] .launch-deck-guide').first().click();
+    await page.locator('#starterDeckDialog').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>cloudCityCatalog.filter(card=>PremiereData.isReleasedExpansionCard(card,33)&&PremiereCardRules.entry(card).complete).length),180);
+    assert.equal(requests.filter(url=>/engine\/cloud-city-all\.[a-f0-9]{12}\.js$/.test(url)).length,1,'All Cloud City modules load through one hashed script');
+    await page.keyboard.press('Escape');await cloudDecks.first().click();await page.locator('#start').click();
+    await page.evaluate(()=>{let tries=0;do{dispatchUI(legalActions(null,playerSide()).find(action=>action.kind==='chooseStart'));if(!setupDecks.revealed.collision)break;if(++tries>30)throw Error('Repeated collision');dispatchUI(legalActions(null,playerSide()).find(action=>action.kind==='retrySetup'));}while(true);dispatchUI(legalActions(null,playerSide()).find(action=>action.kind==='beginGame'));});
+    const cloudSignature=()=>page.evaluate(()=>({format:state.game.playFormat,side:state.game.playerSide,seed:activeSave.seed,revision:state.game.revision,commands:activeSave.commands.length}));
+    const beforeCloud=await cloudSignature();assert.equal(beforeCloud.format,'premiere-a-new-hope-hoth-dagobah-cloud-city');
+    await page.reload();await page.getByRole('button',{name:'Partie fortsetzen',exact:true}).click();
+    await page.waitForFunction(()=>state?.game?.playFormat==='premiere-a-new-hope-hoth-dagobah-cloud-city');
+    assert.deepEqual(await cloudSignature(),beforeCloud);
     assert.deepEqual(errors, []);
   } finally {
     try { await browser?.close(); }

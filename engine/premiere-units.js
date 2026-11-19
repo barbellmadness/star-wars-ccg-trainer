@@ -33,6 +33,7 @@ const PremiereUnits = (() => {
     (hasSkill(card,'warrior') || bountyHunter(card) || card.characteristics?.includes('battle droid'));
 
   const capacity = new Map([
+    ['Light:332',{pilot:1,passenger:6}],['Light:2073',{pilot:4,passenger:4}],['Dark:2278',{pilot:1,passenger:3}],['Light:426',{shared:1}],['Dark:425',{shared:1}],
     ['Dark:176',{pilot:6,passenger:8,cargo:2,hangar:4}],['Dark:906',{pilot:Infinity,passenger:Infinity,cargo:Infinity,hangar:Infinity}],['Dark:1185',{pilot:1,passenger:6,cargo:1}],['Dark:1244',{pilot:1,passenger:2}],['Dark:1682',{pilot:2,passenger:3}],['Dark:1967',{pilot:1,passenger:1}],['Dark:2597',{pilot:1}],['Dark:2598',{pilot:0}],
     ['Light:1665',{pilot:1,passenger:4,cargo:1}], ['Light:2119',{shared:2}], ['Light:2120',{shared:2}],
     ['Light:2121',{shared:2}], ['Light:2294',{shared:1}], ['Light:2480',{passenger:1}],
@@ -57,8 +58,9 @@ const PremiereUnits = (() => {
   const enclosed = card => card.type === 'Starship' || tube(card) || crawler(card) || card.enclosed === true ||
     card.set === '3' && card.characteristics?.includes('enclosed');
 
-  function accepts(host, card, role, ignored = null, captiveSeats = Number(!!card?.escortedCaptive)) {
+  function accepts(host, card, role, ignored = null, captiveSeats = Number(!!card?.escortedCaptive)+(card?.additionalCaptives?.length??0)) {
     if (!active(host) || !active(card) || host === card) return false;
+    if(host.id==='Dark:2278'&&role==='pilot'&&!bountyHunter(card))return false;
     const backpack=host.attachments?.some(card=>card.id==='Light:1602'&&!textSuppressed(card));
     if(backpack&&host.type==='Character'&&(role!=='passenger'||!['yoda','kabe'].includes(name(card).toLowerCase())&&!card.characteristics?.some(trait=>['jawa','ewok'].includes(trait))))return false;
     if(role==='pilot'&&['Dark:1185','Dark:1244','Dark:1967'].includes(host.id)&&!bountyHunter(card)&&!hasSkill(card,'smuggler'))return false;
@@ -72,7 +74,7 @@ const PremiereUnits = (() => {
     const crew = (host.occupants ?? []).filter(entry => entry !== ignored);
     if(host.id==='Dark:1682'&&role==='pilot'&&!bountyHunter(card)&&!hasSkill(card,'smuggler')&&!crew.some(entry=>entry.role==='pilot'&&(bountyHunter(entry.card)||hasSkill(entry.card,'smuggler'))))return false;
     const isCrew = job => job === 'pilot' || job === 'passenger';
-    const captiveCount = crew.filter(entry => entry.card.escortedCaptive).length;
+    const captiveCount = crew.reduce((sum,entry)=>sum+Number(!!entry.card.escortedCaptive)+(entry.card.additionalCaptives?.length??0),0);
     const limit = spec[role] ?? (isCrew(role) ? spec.shared : 0);
     if (!limit || crew.filter(entry => entry.role === role).length >= limit) return false;
     if (isCrew(role) || captiveSeats) {
@@ -97,6 +99,7 @@ const PremiereUnits = (() => {
   }
 
   const matchingPilots = new Map([
+    ['Light:360',['Light:1677',2,true]],['Dark:287',['Dark:2278',2]],
     ['Dark:1029',['Dark:267',0,true]],
     ['Light:498',['Light:2119',2]], ['Light:707',[null,2,false,'Rogue 4']],
     ['Light:2911',['Light:2120',3,true]],

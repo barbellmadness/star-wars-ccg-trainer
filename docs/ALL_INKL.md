@@ -4,12 +4,12 @@
 
 Der Einzelspieler-Trainer bleibt zunächst eine statische Website. HTML, CSS, JavaScript und geprüfte JSON-Kataloge genügen für das Spiel gegen den Bot. Die Regeln, Zufallsfolge und Entscheidungen laufen im Browser; Autosaves liegen im Browserprofil des Spielers. Auf dem Webspace werden weder PHP noch ein laufender Node-Server für den Trainer benötigt.
 
-**Eine Datenbank ist für weitere Editionen keine Voraussetzung.** Das erste Veröffentlichungspaket lag bei etwa 403 KiB gzip. Mit vier spielbaren Editionen werden der erste Spielstart (höchstens 600 KiB gzip), die verzögert geladenen Dagobah-Regeln und -Decks (höchstens 180 KiB) und das gesamte Code-/Datenpaket einschließlich Sammlerlisten und Anleitungen (höchstens 800 KiB) getrennt geprüft. Editionsbanner haben ein eigenes Budget und laden bei Bedarf. Externe Kartenbilder zählen separat. Die genauen Größen stehen im Buildbericht und in `release.json`; sie sind keine gemessenen Netzwerk- oder Ladezeitwerte.
+**Eine Datenbank ist für weitere Editionen keine Voraussetzung.** Das erste Veröffentlichungspaket lag bei etwa 403 KiB gzip. Mit fünf spielbaren Editionen werden der erste Spielstart (höchstens 600 KiB gzip), die verzögert geladenen Dagobah-Regeln und -Decks (höchstens 180 KiB) und das gesamte Code-/Datenpaket einschließlich Sammlerlisten und Anleitungen (höchstens 1000 KiB) getrennt geprüft. Editionsbanner haben ein eigenes Budget und laden bei Bedarf. Cloud-City-Karten, Decks und Regeln benötigen zusammen 105.206 Bytes gzip bei Bedarf; die Regeln werden im öffentlichen Paket zu einer Skriptdatei gebündelt. Externe Kartenbilder zählen separat. Die genauen Größen stehen im Buildbericht und in `release.json`; sie sind keine gemessenen Netzwerk- oder Ladezeitwerte.
 
 Für spätere Editionen:
 
 1. Jede Edition erhält ihren eigenen Katalog, ihre Regeln, Deckdefinitionen und Prüfungen.
-2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Seit V2.17.1 zeigt eine kleine separate Deckübersicht Hoth und Dagobah sofort an. Ihre vollständigen Kataloge, Decks und Regelmodule laden erst bei Bedarf; die Sammlerlisten laden keine Spieldaten nach.
+2. Vor größerem Ausbau den Startbildschirm von den vollständigen Katalogen entkoppeln: kleine Deck-/Cover-Metadaten zuerst, benötigte Kataloge und Regelmodule beim Wählen eines Formats laden. Seit V2.17.1 zeigt eine kleine separate Deckübersicht Hoth, Dagobah und Cloud City sofort an. Ihre vollständigen Kataloge, Decks und Regelmodule laden erst bei Bedarf; die Sammlerlisten laden keine Spieldaten nach.
 3. Große Listen virtualisieren bzw. seitenweise anzeigen; Bilder bei Bedarf laden. Die Deck-Cover werden bereits verzögert geladen.
 4. Bot- und Replay-Rechenzeit messen. Bei belegten längeren Blockierungen die Ausführung unter Beibehaltung der deterministischen Reihenfolge aufteilen oder in einen Web Worker verlagern.
 5. Neue Editionen nur mit versionierten Regeln, Legalitätsprüfung und Autosave-/Replay-Tests freigeben. Bestehende Spielstände behalten ihren Regelstand.
@@ -25,6 +25,7 @@ node scripts/import_premiere.mjs --check
 node scripts/import_premiere.mjs --edition a-new-hope --check
 node scripts/import_premiere.mjs --edition hoth --check
 node scripts/import_premiere.mjs --edition dagobah --check
+node scripts/import_premiere.mjs --edition cloud-city --check
 node scripts/build-deck-overview.mjs --check
 node --test
 npm run test:browser
@@ -33,7 +34,7 @@ node scripts/build-web.mjs --output dist/all-inkl-release
 
 Das Ausgabeverzeichnis muss leer sein. Für ein weiteres Release einen neuen Verzeichnisnamen verwenden. Der Builder kopiert ausschließlich freigegebene Dateien, kompaktiert JSON, vereinheitlicht Zeilenenden und versieht CSS, Engine und Daten mit einem Inhalts-Hash. HTML verweist auf genau diese Dateien. `release.json` enthält Version, Releasekennung, Prüfsummen und Größen. Keine privaten Berichte, Schlüssel, Repository-Metadaten oder Testdateien werden übernommen.
 
-GitHub Actions prüft zusätzlich alle vier Browserabläufe und stellt dasselbe Paket als Artefakt **all-inkl-web-release** bereit. Die bisherige GitHub-Pages-Vorschau verwendet ebenfalls den Paket-Builder. Verbindliches Veröffentlichungsziel ist seit dem 18.11.2026 **https://www.starwarsccg.de/**: Nach bestandenen Tests jede Änderung direkt vom Laptop per SSH/SFTP veröffentlichen und öffentlich prüfen, ohne erneut nach Zustimmung zu fragen. Der eingerichtete SSH-Schlüssel bleibt auf dem Laptop; GitHub Actions erhält keinen privaten Schlüssel. Die GitHub-Pages-Veröffentlichung bleibt eine zusätzliche Vorschau. Kein direkter main-Push, Force-Push oder automatischer Merge.
+GitHub Actions prüft zusätzlich alle fünf Browserabläufe und stellt dasselbe Paket als Artefakt **all-inkl-web-release** bereit. Die bisherige GitHub-Pages-Vorschau verwendet ebenfalls den Paket-Builder. Verbindliches Veröffentlichungsziel ist seit dem 18.11.2026 **https://www.starwarsccg.de/**: Nach bestandenen Tests jede Änderung direkt vom Laptop per SSH/SFTP veröffentlichen und öffentlich prüfen, ohne erneut nach Zustimmung zu fragen. Der eingerichtete SSH-Schlüssel bleibt auf dem Laptop; GitHub Actions erhält keinen privaten Schlüssel. Die GitHub-Pages-Veröffentlichung bleibt eine zusätzliche Vorschau. Kein direkter main-Push, Force-Push oder automatischer Merge.
 
 ## ALL-INKL einrichten
 
@@ -109,3 +110,15 @@ Die Übersicht ergänzt Namen und Cover für sämtliche Hoth-/Dagobah-Decks mit 
 Abnahme: alle fünf Katalog-/Deck-/Sammlerprüfungen, der neue Übersichtsabgleich, **794 Node-Tests** und **vier Browserprüfungen** bestanden. Die GitHub-Push- und PR-Prüfungen sind ebenfalls erfolgreich. Öffentlich wurden alle vier Formate mit beiden Seiten gestartet und nach Reload identisch fortgesetzt; Strategie und Karten-Popup wurden geprüft. Die anfängliche Übersicht lädt keine Hoth-/Dagobah-Spielkataloge. Alle **116 Manifest-Dateien** stimmen auf dem Server per SHA-256 überein. Die Übersichtsdatei wird mit gzip und unveränderlichem Hash-Cache ausgeliefert.
 
 Vorherige Website privat gesichert: `/.local/swccg-backups/starwarsccg-before-v2.17.1-20261119-0710.tar.gz`, SHA-256 `86055033b95763d89765533d3086410e5698523dc3d0d4dccc049d19a7c77b1c`. Bestehende Hash-Dateien bleiben erhalten. Keine offenen Abnahmefehler bekannt; die 308 privaten Premiere-Drucktexte bleiben unverändert privat.
+
+## Cloud-City-Veröffentlichung
+
+Am 19.11.2026 wurde **V2.18.0**, Release **2ffd6c3c0a485a83**, aus Implementierungscommit `3e8ac56` auf [www.starwarsccg.de](https://www.starwarsccg.de/) veröffentlicht. [PR #94](https://github.com/barbellmadness/star-wars-ccg-trainer/pull/94) basiert auf `codex/complete-deck-overview`; main wurde weder direkt geändert noch automatisch zusammengeführt. Alle 180 physischen Cloud-City-Karten und je acht zusätzliche Themendecks sind im Pool Premiere bis Cloud City integriert. Bedingte Ziele aus späteren Editionen bleiben verbindlich; siehe [Regelstand](../CLOUD_CITY_REGELSTAND.md).
+
+Abnahme: alle fünf Karten-/Deckprüfungen, Sammlerprüfung und Deckübersichtsabgleich, **886 Node-Tests** und **fünf Chrome-Browserprüfungen** bestanden. Die acht vollständigen Cloud-City-Deckpaarungen erreichen ein Spielende mit 120 eindeutigen Karteninstanzen.
+
+Vor dem Upload wurde die bisherige Website außerhalb des Webverzeichnisses unter `/.local/swccg-backups/starwarsccg-before-v2.18.0-20261119-1015.tar.gz` gesichert (SHA-256 `2b3d007d44a9a2d064c1fbc7755a73e6c4bd4e580ed33fd2565a89f508f09f9d`, Rechte 600). Es wurden ausschließlich die 120 geprüften Release-Dateien und das Manifest per SFTP übertragen, Assets zuerst und HTML zuletzt. Bestehende Hash-Dateien blieben erhalten. Alle 120 Manifest-Dateien sind auf dem Server per SHA-256 identisch, ebenso das öffentliche Manifest.
+
+Öffentlich wurden alle fünf Formate mit beiden Seiten gestartet und nach Reload mit identischen Seed-, Format-, Aktions- und Revisionsdaten fortgesetzt. Alle 40 Decks der gewählten Seite sind sofort sichtbar. Strategie, Karten-Popup und das einzelne Cloud-City-Regelpaket sind geprüft; der Erststart lädt keine Hoth-/Dagobah-/Cloud-City-Spielkataloge. Startbereitschaft in diesen zehn Prüfungen: **906–1.982 ms** bei gesperrten externen Kartenbildern, kein allgemeines Ladezeitversprechen. Alle elf öffentlichen HTML-Seiten, drei HTTPS-/www-Weiterleitungen, gzip und unveränderliche Hash-Caches sind geprüft; HTML wird revalidiert. Private Drucktext- und Git-Pfade waren nicht abrufbar.
+
+Cloud-City-Katalog, Decks und Regelpaket umfassen zusammen **105.206 Bytes gzip** und laden bei Bedarf. Genau 16 Premiere-Drucktexte stehen im Paket; die übrigen 308 wurden nicht gelesen, kopiert oder veröffentlicht. Keine offenen öffentlichen Abnahmefehler bekannt.
